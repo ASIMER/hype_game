@@ -38,9 +38,9 @@ const CATALOG := {
 	"crate": { "model": "res://assets/models/environment/crate.glb", "icon": "res://assets/ui/icons/crate.png",
 		"prim": Prim.BOX, "size": Vector3(0.6, 0.6, 0.6), "color": Color(0.7, 0.55, 0.25),
 		"model_scale": 0.6, "model_albedo": Color(0.7, 0.55, 0.25) },
-	"loot_scrap": { "model": "", "icon": "res://assets/ui/icons/scrap.png",
+	"loot_scrap": { "model": "", "icon": "",
 		"prim": Prim.SPHERE, "size": Vector3(0.4, 0.4, 0.4), "color": Color(0.8, 0.7, 0.3) },
-	"loot_cell": { "model": "", "icon": "res://assets/ui/icons/cell.png",
+	"loot_cell": { "model": "", "icon": "",
 		"prim": Prim.CYLINDER, "size": Vector3(0.3, 0.5, 0.3), "color": Color(0.3, 0.9, 0.5) },
 
 	# --- Expansion: weapons (BOX placeholders; weapons-dev may add CC0 .glb later) ---
@@ -58,19 +58,18 @@ const CATALOG := {
 		"prim": Prim.SPHERE, "size": Vector3(0.7, 0.6, 0.7), "color": Color(0.9, 0.55, 0.1) },
 	"robot_wasp": { "model": "", "icon": "",
 		"prim": Prim.SPHERE, "size": Vector3(0.8, 0.7, 0.8), "color": Color(0.2, 0.7, 0.9) },
-	"robot_bastion": { "model": "res://assets/models/robots/heavy.glb", "icon": "",
-		"prim": Prim.BOX, "size": Vector3(2.0, 2.6, 2.0), "color": Color(0.5, 0.1, 0.1),
-		"model_scale": 1.05, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -1.3, 0) },
-	"robot_boss": { "model": "res://assets/models/robots/heavy.glb", "icon": "",
-		"prim": Prim.BOX, "size": Vector3(3.4, 4.4, 3.4), "color": Color(0.35, 0.05, 0.35),
-		"model_scale": 2.0, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -2.2, 0) },
+	# Distinct procedural turret/mech (ProceduralModels) — no shared .glb.
+	"robot_bastion": { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(2.0, 2.6, 2.0), "color": Color(0.5, 0.1, 0.1) },
+	"robot_boss": { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(3.4, 4.4, 3.4), "color": Color(0.35, 0.05, 0.35) },
 
 	# --- Expansion: items ---
-	"loot_medkit": { "model": "", "icon": "res://assets/ui/icons/medkit.png",
+	"loot_medkit": { "model": "", "icon": "",
 		"prim": Prim.BOX, "size": Vector3(0.4, 0.28, 0.4), "color": Color(0.9, 0.95, 0.95) },
-	"loot_grenade": { "model": "", "icon": "res://assets/ui/icons/grenade.png",
+	"loot_grenade": { "model": "", "icon": "",
 		"prim": Prim.SPHERE, "size": Vector3(0.3, 0.3, 0.3), "color": Color(0.25, 0.4, 0.2) },
-	"loot_ammo": { "model": "", "icon": "res://assets/ui/icons/ammo.png",
+	"loot_ammo": { "model": "", "icon": "",
 		"prim": Prim.BOX, "size": Vector3(0.35, 0.25, 0.35), "color": Color(0.7, 0.6, 0.25) },
 
 	# --- Expansion: salvage materials + valuables (colored-box fallback; no icons yet) ---
@@ -119,6 +118,11 @@ func get_model(id: String) -> Node3D:
 		if packed is PackedScene:
 			var glb := (packed as PackedScene).instantiate()
 			return _fit_model(glb, entry)
+	# Procedural composite model (distinct enemy/item shapes) before the flat fallback.
+	if ProceduralModels.has_builder(id):
+		var built: Node3D = ProceduralModels.build(id)
+		if built != null:
+			return built
 	return _make_primitive(entry)
 
 ## Wraps an instantiated GLB in a Node3D and applies the optional CATALOG fit
@@ -171,7 +175,8 @@ func get_icon(id: String) -> Texture2D:
 		var tex := load(icon_path)
 		if tex is Texture2D:
 			return tex
-	return null
+	# No authored PNG → render the 3D model to a texture (null on headless).
+	return IconRenderer.render_icon(id)
 
 func get_color(id: String) -> Color:
 	return CATALOG.get(id, {}).get("color", Color(0.6, 0.6, 0.6))

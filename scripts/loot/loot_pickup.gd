@@ -32,6 +32,14 @@ const LAYER_PLAYER := 1 << 1 # 3d_physics layer_2 "player"
 # Players currently overlapping this pickup (for interact-in-range detection).
 var _players_in_range: Array[Node] = []
 
+# Idle presentation: the model hovers, spins, and (by rarity) glows.
+const SPIN_SPEED := 1.0
+const BOB_AMP := 0.1
+const BOB_SPEED := 2.0
+const HOVER := 0.22
+var _model_root: Node3D = null
+var _bob_t: float = 0.0
+
 func _ready() -> void:
 	collision_layer = LAYER_LOOT
 	collision_mask = LAYER_PLAYER
@@ -41,11 +49,56 @@ func _ready() -> void:
 	var model := AssetRegistry.get_model(item_id)
 	model.name = "ModelRoot"
 	add_child(model)
+	_model_root = model
+	model.position.y = HOVER
+	_apply_loot_glow()
 
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	Events.pickup_requested.connect(_on_pickup_requested)
 	Events.loot_spawned.emit(self)
+
+## Idle spin + bob (visual only, runs on every peer — no authority gate).
+func _process(delta: float) -> void:
+	if _model_root == null:
+		return
+	_bob_t += delta
+	_model_root.rotation.y += SPIN_SPEED * delta
+	_model_root.position.y = HOVER + sin(_bob_t * BOB_SPEED) * BOB_AMP
+
+## A rarity-coloured glow: an OmniLight for UNCOMMON+, plus a soft light pillar for
+## RARE+ so valuable drops read across the arena.
+func _apply_loot_glow() -> void:
+	var item: ItemData = ItemCatalog.get_item(item_id)
+	if item == null:
+		return
+	var rarity: int = item.rarity
+	if rarity < 1:
+		return   # common loot stays unlit to avoid light spam
+	var col: Color = item.rarity_color()
+	var light := OmniLight3D.new()
+	light.light_color = col
+	light.light_energy = 1.4
+	light.omni_range = 2.6
+	light.shadow_enabled = false
+	light.position = Vector3(0, HOVER + 0.2, 0)
+	add_child(light)
+	if rarity >= 2:
+		var beam := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.04
+		cyl.bottom_radius = 0.12
+		cyl.height = 3.0
+		beam.mesh = cyl
+		beam.position = Vector3(0, 1.5, 0)
+		var bm := StandardMaterial3D.new()
+		bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		bm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		bm.albedo_color = Color(col.r, col.g, col.b, 0.12)
+		beam.material_override = bm
+		add_child(beam)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("interact"):

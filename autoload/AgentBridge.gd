@@ -172,6 +172,21 @@ func _handle_line(line: String) -> void:
 			if wc2 and wc2.has_method("refill_ammo"):
 				wc2.refill_ammo()
 			_send({ "ok": wc2 != null })
+		"render":
+			# Debug: render a logical id's model in isolation (clean 3/4 hero shot) and
+			# save it as a PNG for visual QA of procedural models + inventory icons.
+			var rid := str(json.get("id", ""))
+			var rname := str(json.get("name", rid))
+			var rtex: Texture2D = await IconRenderer.render_now(rid)
+			if rtex == null:
+				_send({ "ok": false, "error": "no texture (headless or unknown id)" })
+			else:
+				var rdir := "user://agent" if Settings.instance_tag == "" else "user://agent/%s" % Settings.instance_tag
+				DirAccess.make_dir_recursive_absolute(rdir)
+				var rpath := "%s/%s.png" % [rdir, rname.validate_filename()]
+				var rerr := rtex.get_image().save_png(rpath)
+				_send({ "ok": rerr == OK, "path": ProjectSettings.globalize_path(rpath),
+					"debug": IconRenderer.last_debug })
 		"stash":
 			# Debug: manipulate the persistent stash + bring-list (raid-economy QA).
 			#   {action:add|remove, id, count} · {action:bring, id, count} · {action:clear}
