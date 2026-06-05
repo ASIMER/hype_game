@@ -1,0 +1,571 @@
+extends Control
+class_name GunsmithTab
+## GUNSMITH hub tab. Lets the player equip AT-RISK weapon attachments (from the Stash)
+## and buy PERMANENT per-weapon perks (never lost) for each weapon in the loadout.
+##
+## Data flow:
+##   MetaProgression.get_loadout()                   -> which weapons to show
+##   MetaProgression.get_equipped(weapon_id)         -> currently-slotted attachments
+##   MetaProgression.equip_attachment(w, slot, id)   -> equip an attachment
+##   MetaProgression.unequip_attachment(w, slot)     -> clear a slot
+##   MetaProgression.WEAPON_PERKS                    -> perk catalog
+##   MetaProgression.weapon_perk_level(w, key)       -> current perk level
+##   MetaProgression.weapon_perk_cost(w, key)        -> next-level cost (-1 if maxed)
+##   MetaProgression.buy_weapon_perk(w, key)         -> purchase next perk level
+##   ItemCatalog.ids_of_kind(Kind.ATTACHMENT)        -> all known attachment ids
+##   ItemCatalog.get_item(id)                        -> AttachmentData (cast explicitly)
+##   Stash.count_of(id)                              -> owned count
+##   AssetRegistry.get_icon(id)                      -> icon / colored-box fallback
+##
+## Refreshed automatically on:
+##   Events.attachment_changed, Events.weapon_perk_changed,
+##   Events.currency_changed,   Events.stash_changed
+
+# Project theme colours (mirrors shop_tab.gd).
+const COL_AMBER  := Color(0.91,  0.64,  0.24,  1.0)
+const COL_TEAL   := Color(0.247, 0.71,  0.79,  1.0)
+const COL_DIM    := Color(0.45,  0.50,  0.55,  1.0)
+const COL_WHITE  := Color(0.88,  0.90,  0.92,  1.0)
+const COL_RED    := Color(0.85,  0.30,  0.25,  1.0)
+const COL_ORANGE := Color(0.93,  0.55,  0.15,  1.0)
+const COL_GREEN  := Color(0.40,  0.85,  0.40,  1.0)
+
+## The four canonical attachment slots in display order.
+const SLOTS: Array[String] = ["optic", "mag", "barrel", "grip"]
+## Slot display names.
+const SLOT_LABELS: Dictionary = {
+	"optic":  "OPTIC",
+	"mag":    "MAG",
+	"barrel": "BARREL",
+	"grip":   "GRIP",
+}
+
+# ── Node refs (built in _build_layout; no @onready) ──────────────────────────
+var _currency_label: Label         = null
+var _weapon_bar: HBoxContainer     = null   # weapon selector buttons
+var _content_scroll: ScrollContainer = null
+var _content_body: VBoxContainer   = null   # rebuilt on weapon switch
+
+## Which weapon is currently displayed.
+var _selected_weapon: String = ""
+
+## Weapon selector button refs: weapon_id -> Button
+var _weapon_btns: Dictionary = {}
+
+
+func _ready() -> void:
+	process_mode = PROCESS_MODE_ALWAYS
+	_build_layout()
+	Events.attachment_changed.connect(_on_data_changed)
+	Events.weapon_perk_changed.connect(_on_data_changed)
+	Events.currency_changed.connect(_on_currency_changed)
+	Events.stash_changed.connect(_refresh)
+	_refresh()
+
+
+func _exit_tree() -> void:
+	if Events.attachment_changed.is_connected(_on_data_changed):
+		Events.attachment_changed.disconnect(_on_data_changed)
+	if Events.weapon_perk_changed.is_connected(_on_data_changed):
+		Events.weapon_perk_changed.disconnect(_on_data_changed)
+	if Events.currency_changed.is_connected(_on_currency_changed):
+		Events.currency_changed.disconnect(_on_currency_changed)
+	if Events.stash_changed.is_connected(_refresh):
+		Events.stash_changed.disconnect(_refresh)
+
+
+# ── Layout construction ───────────────────────────────────────────────────────
+
+## Builds the static skeleton in code. The weapon-detail body is rebuilt by
+## _rebuild_content() whenever the selected weapon changes.
+func _build_layout() -> void:
+	# ── Outer scroll ──────────────────────────────────────────────────────────
+	var scroll := ScrollContainer.new()
+	scroll.name = "Scroll"
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
+
+	var margin := MarginContainer.new()
+	margin.name = "Margin"
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left",   24)
+	margin.add_theme_constant_override("margin_top",    20)
+	margin.add_theme_constant_override("margin_right",  24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	scroll.add_child(margin)
+
+	var root_vbox := VBoxContainer.new()
+	root_vbox.name = "RootVBox"
+	root_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root_vbox.add_theme_constant_override("separation", 16)
+	margin.add_child(root_vbox)
+
+	# ── Header row: "GUNSMITH" title + currency ───────────────────────────────
+	var hdr := HBoxContainer.new()
+	hdr.name = "HeaderRow"
+	hdr.add_theme_constant_override("separation", 12)
+	root_vbox.add_child(hdr)
+
+	var title_lbl := Label.new()
+	title_lbl.name = "TitleLabel"
+	title_lbl.text = "GUNSMITH"
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_lbl.add_theme_font_size_override("font_size", 42)
+	title_lbl.add_theme_color_override("font_color", COL_AMBER)
+	hdr.add_child(title_lbl)
+
+	_currency_label = Label.new()
+	_currency_label.name = "CurrencyLabel"
+	_currency_label.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_currency_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_currency_label.add_theme_font_size_override("font_size", 20)
+	_currency_label.add_theme_color_override("font_color", COL_AMBER)
+	hdr.add_child(_currency_label)
+
+	# ── Weapon selector bar ───────────────────────────────────────────────────
+	root_vbox.add_child(_make_section_header("SELECT WEAPON"))
+
+	_weapon_bar = HBoxContainer.new()
+	_weapon_bar.name = "WeaponBar"
+	_weapon_bar.add_theme_constant_override("separation", 8)
+	_weapon_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root_vbox.add_child(_weapon_bar)
+
+	# ── Content body (rebuilt on weapon change) ───────────────────────────────
+	_content_body = VBoxContainer.new()
+	_content_body.name = "ContentBody"
+	_content_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_body.add_theme_constant_override("separation", 16)
+	root_vbox.add_child(_content_body)
+
+
+# ── Weapon selector ───────────────────────────────────────────────────────────
+
+## Rebuilds the weapon selector buttons from the current loadout.
+func _rebuild_weapon_bar() -> void:
+	for c in _weapon_bar.get_children():
+		c.queue_free()
+	_weapon_btns.clear()
+
+	var weapons: Array = MetaProgression.get_loadout()
+	if weapons.is_empty():
+		return
+
+	# Default selection: keep existing if still in loadout, else first entry.
+	if _selected_weapon not in weapons:
+		_selected_weapon = String(weapons[0])
+
+	for raw_id in weapons:
+		var wid: String = String(raw_id)
+		var btn := Button.new()
+		btn.name = "WBtn_" + wid
+		btn.text = wid.to_upper()
+		btn.custom_minimum_size = Vector2(100, 36)
+		btn.focus_mode = Control.FOCUS_NONE
+		# Highlight active weapon.
+		if wid == _selected_weapon:
+			btn.add_theme_color_override("font_color", COL_AMBER)
+		btn.pressed.connect(func() -> void: _on_weapon_selected(wid))
+		_weapon_bar.add_child(btn)
+		_weapon_btns[wid] = btn
+
+
+# ── Content body ──────────────────────────────────────────────────────────────
+
+## Clears and rebuilds the attachment + perk panels for _selected_weapon.
+func _rebuild_content() -> void:
+	for c in _content_body.get_children():
+		c.queue_free()
+
+	if _selected_weapon.is_empty():
+		return
+
+	_build_attachments_section()
+	_build_perks_section()
+
+
+## Builds the ATTACHMENT SLOTS panel for _selected_weapon.
+func _build_attachments_section() -> void:
+	_content_body.add_child(_make_section_header("ATTACHMENT SLOTS"))
+
+	# AT-RISK warning note.
+	var note := Label.new()
+	note.name = "AtRiskNote"
+	note.text = "  WARNING — AT RISK: attachments are LOST if you do not extract."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_color_override("font_color", COL_ORANGE)
+	note.add_theme_font_size_override("font_size", 13)
+	_content_body.add_child(note)
+
+	var slots_panel := _make_panel()
+	_content_body.add_child(slots_panel)
+
+	var slots_vbox := VBoxContainer.new()
+	slots_vbox.name = "SlotsVBox"
+	slots_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slots_vbox.add_theme_constant_override("separation", 12)
+	slots_panel.add_child(slots_vbox)
+
+	# Collect all owned attachments once (saves repeated catalog iterations).
+	var owned_atts: Array[String] = _owned_attachments_for(_selected_weapon)
+
+	var equipped: Dictionary = MetaProgression.get_equipped(_selected_weapon)
+
+	for slot_id in SLOTS:
+		slots_vbox.add_child(_build_slot_row(slot_id, equipped, owned_atts))
+
+
+## Builds one attachment slot row: label | current att name + stat delta | dropdown | CLEAR.
+func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[String]) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.name = "SlotRow_" + slot_id
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 10)
+
+	# Slot label.
+	var slot_lbl := Label.new()
+	slot_lbl.name = "SlotLbl"
+	slot_lbl.text = SLOT_LABELS.get(slot_id, slot_id.to_upper())
+	slot_lbl.custom_minimum_size = Vector2(60, 0)
+	slot_lbl.add_theme_color_override("font_color", COL_TEAL)
+	slot_lbl.add_theme_font_size_override("font_size", 14)
+	slot_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(slot_lbl)
+
+	# Currently-equipped name + stat delta.
+	var cur_id: String = String(equipped.get(slot_id, ""))
+	var cur_lbl := Label.new()
+	cur_lbl.name = "CurLbl"
+	cur_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cur_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cur_lbl.add_theme_font_size_override("font_size", 13)
+
+	if cur_id.is_empty():
+		cur_lbl.text = "— empty —"
+		cur_lbl.add_theme_color_override("font_color", COL_DIM)
+	else:
+		var att_item: ItemData = ItemCatalog.get_item(cur_id)
+		if att_item != null:
+			var att_data: AttachmentData = att_item as AttachmentData
+			if att_data != null:
+				cur_lbl.text = att_data.display_name + "  " + _stat_delta_text(att_data)
+			else:
+				cur_lbl.text = att_item.display_name
+		else:
+			cur_lbl.text = cur_id
+		cur_lbl.add_theme_color_override("font_color", COL_WHITE)
+	row.add_child(cur_lbl)
+
+	# Filter owned attachments to this slot.
+	var candidates: Array[String] = []
+	for att_id in owned_atts:
+		var raw_item: ItemData = ItemCatalog.get_item(att_id)
+		if raw_item == null:
+			continue
+		var att: AttachmentData = raw_item as AttachmentData
+		if att == null:
+			continue
+		if att.slot == slot_id:
+			candidates.append(att_id)
+
+	# OptionButton to pick an attachment.
+	var opt := OptionButton.new()
+	opt.name = "AttOpt_" + slot_id
+	opt.custom_minimum_size = Vector2(180, 32)
+	opt.focus_mode = Control.FOCUS_NONE
+
+	# First entry is always "— pick —".
+	opt.add_item("— pick —", -1)
+	opt.set_item_metadata(0, "")
+
+	for i: int in candidates.size():
+		var att_id: String = candidates[i]
+		var raw_it: ItemData = ItemCatalog.get_item(att_id)
+		var display_name: String = att_id
+		if raw_it != null:
+			display_name = raw_it.display_name
+		opt.add_item(display_name, i)
+		opt.set_item_metadata(i + 1, att_id)
+
+	# Pre-select the currently equipped one.
+	if not cur_id.is_empty():
+		for k: int in opt.item_count:
+			if String(opt.get_item_metadata(k)) == cur_id:
+				opt.select(k)
+				break
+
+	var wid_cap: String = _selected_weapon  # capture for closure
+	opt.item_selected.connect(func(idx: int) -> void: _on_att_selected(wid_cap, slot_id, String(opt.get_item_metadata(idx))))
+	row.add_child(opt)
+
+	# CLEAR button — only enabled when something is equipped.
+	var clear_btn := Button.new()
+	clear_btn.name = "ClearBtn"
+	clear_btn.text = "CLEAR"
+	clear_btn.custom_minimum_size = Vector2(64, 32)
+	clear_btn.focus_mode = Control.FOCUS_NONE
+	clear_btn.disabled = cur_id.is_empty()
+	clear_btn.pressed.connect(func() -> void: _on_clear_slot(wid_cap, slot_id))
+	row.add_child(clear_btn)
+
+	return row
+
+
+## Builds the PERKS panel for _selected_weapon.
+func _build_perks_section() -> void:
+	_content_body.add_child(_make_section_header("PERMANENT PERKS"))
+
+	var perks_panel := _make_panel()
+	_content_body.add_child(perks_panel)
+
+	var perks_vbox := VBoxContainer.new()
+	perks_vbox.name = "PerksVBox"
+	perks_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	perks_vbox.add_theme_constant_override("separation", 10)
+	perks_panel.add_child(perks_vbox)
+
+	for raw_key in MetaProgression.WEAPON_PERKS:
+		var key: String = String(raw_key)
+		perks_vbox.add_child(_build_perk_row(key))
+
+
+## Builds one perk row: name + desc | Lv N/max | cost | BUY button.
+func _build_perk_row(key: String) -> HBoxContainer:
+	var perk_dict: Dictionary = MetaProgression.WEAPON_PERKS[key] as Dictionary
+
+	var lvl: int  = MetaProgression.weapon_perk_level(_selected_weapon, key)
+	var max_lvl: int = int(perk_dict.get("max_level", 1))
+	var cost: int    = MetaProgression.weapon_perk_cost(_selected_weapon, key)
+
+	var row := HBoxContainer.new()
+	row.name = "PerkRow_" + key
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 10)
+
+	# Name + description (stacked).
+	var info_vbox := VBoxContainer.new()
+	info_vbox.name = "InfoVBox"
+	info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info_vbox.add_theme_constant_override("separation", 2)
+	row.add_child(info_vbox)
+
+	var name_lbl := Label.new()
+	name_lbl.name = "PerkName"
+	name_lbl.text = String(perk_dict.get("name", key))
+	name_lbl.add_theme_color_override("font_color", COL_WHITE)
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	info_vbox.add_child(name_lbl)
+
+	var desc_lbl := Label.new()
+	desc_lbl.name = "PerkDesc"
+	desc_lbl.text = String(perk_dict.get("desc", ""))
+	desc_lbl.add_theme_color_override("font_color", COL_DIM)
+	desc_lbl.add_theme_font_size_override("font_size", 12)
+	info_vbox.add_child(desc_lbl)
+
+	# Level indicator.
+	var lvl_lbl := Label.new()
+	lvl_lbl.name = "LvlLbl"
+	lvl_lbl.text = "Lv %d/%d" % [lvl, max_lvl]
+	lvl_lbl.custom_minimum_size = Vector2(60, 0)
+	lvl_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	lvl_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if lvl >= max_lvl:
+		lvl_lbl.add_theme_color_override("font_color", COL_GREEN)
+	else:
+		lvl_lbl.add_theme_color_override("font_color", COL_TEAL)
+	lvl_lbl.add_theme_font_size_override("font_size", 13)
+	row.add_child(lvl_lbl)
+
+	# Cost label.
+	var cost_lbl := Label.new()
+	cost_lbl.name = "CostLbl"
+	cost_lbl.custom_minimum_size = Vector2(70, 0)
+	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cost_lbl.add_theme_font_size_override("font_size", 13)
+	if lvl >= max_lvl:
+		cost_lbl.text = "MAX"
+		cost_lbl.add_theme_color_override("font_color", COL_GREEN)
+	else:
+		cost_lbl.text = "CR %d" % cost
+		cost_lbl.add_theme_color_override("font_color", COL_AMBER)
+	row.add_child(cost_lbl)
+
+	# BUY button.
+	var buy_btn := Button.new()
+	buy_btn.name = "BuyBtn"
+	buy_btn.custom_minimum_size = Vector2(64, 32)
+	buy_btn.focus_mode = Control.FOCUS_NONE
+
+	if lvl >= max_lvl:
+		buy_btn.text     = "MAX"
+		buy_btn.disabled = true
+	else:
+		buy_btn.text     = "BUY"
+		buy_btn.disabled = MetaProgression.currency < cost
+		var wid_cap: String = _selected_weapon
+		buy_btn.pressed.connect(func() -> void: _on_buy_perk(wid_cap, key))
+	row.add_child(buy_btn)
+
+	return row
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+## Returns all attachment ids owned (Stash.count_of > 0) that fit _selected_weapon.
+func _owned_attachments_for(weapon_id: String) -> Array[String]:
+	var out: Array[String] = []
+	for raw_id in ItemCatalog.ids_of_kind(ItemData.Kind.ATTACHMENT):
+		var att_id: String = String(raw_id)
+		if Stash.count_of(att_id) <= 0:
+			continue
+		var raw_item: ItemData = ItemCatalog.get_item(att_id)
+		if raw_item == null:
+			continue
+		var att: AttachmentData = raw_item as AttachmentData
+		if att == null:
+			continue
+		if att.fits(weapon_id):
+			out.append(att_id)
+	return out
+
+
+## Short human-readable summary of an attachment's non-unity stat modifiers.
+## Examples: "+12 mag", "-8% recoil", "+5% dmg".
+func _stat_delta_text(att: AttachmentData) -> String:
+	var parts: Array[String] = []
+	if att.damage_mult    != 1.0:  parts.append("%+.0f%% dmg"    % ((att.damage_mult    - 1.0) * 100.0))
+	if att.fire_rate_mult != 1.0:  parts.append("%+.0f%% firerate" % ((att.fire_rate_mult - 1.0) * 100.0))
+	if att.recoil_mult    != 1.0:  parts.append("%+.0f%% recoil"  % ((att.recoil_mult    - 1.0) * 100.0))
+	if att.spread_mult    != 1.0:  parts.append("%+.0f%% spread"  % ((att.spread_mult    - 1.0) * 100.0))
+	if att.reload_mult    != 1.0:  parts.append("%+.0f%% reload"  % ((att.reload_mult    - 1.0) * 100.0))
+	if att.ads_fov_mult   != 1.0:  parts.append("%+.0f%% zoom"    % ((att.ads_fov_mult   - 1.0) * 100.0))
+	if att.range_mult     != 1.0:  parts.append("%+.0f%% range"   % ((att.range_mult     - 1.0) * 100.0))
+	if att.mag_add        != 0:    parts.append("%+d mag"         % att.mag_add)
+	if att.reserve_add    != 0:    parts.append("%+d reserve"     % att.reserve_add)
+	if att.crit_add       != 0.0:  parts.append("%+.0f%% crit"    % (att.crit_add * 100.0))
+	if parts.is_empty():
+		return ""
+	return "(" + ", ".join(parts) + ")"
+
+
+## Dark card panel matching shop_tab.gd / loadout_tab.gd _make_panel().
+func _make_panel() -> PanelContainer:
+	var pc := PanelContainer.new()
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.106, 0.133, 0.157, 0.97)
+	sb.border_width_left   = 1
+	sb.border_width_top    = 1
+	sb.border_width_right  = 1
+	sb.border_width_bottom = 1
+	sb.border_color = Color(0.235, 0.3, 0.36, 1.0)
+	sb.corner_radius_top_left     = 8
+	sb.corner_radius_top_right    = 8
+	sb.corner_radius_bottom_right = 8
+	sb.corner_radius_bottom_left  = 8
+	sb.shadow_color = Color(0.0, 0.0, 0.0, 0.45)
+	sb.shadow_size  = 14
+	sb.content_margin_left   = 16.0
+	sb.content_margin_top    = 14.0
+	sb.content_margin_right  = 16.0
+	sb.content_margin_bottom = 14.0
+	pc.add_theme_stylebox_override("panel", sb)
+	return pc
+
+
+## Teal-labeled section header matching shop_tab.gd _make_section_header().
+func _make_section_header(title: String) -> PanelContainer:
+	var pc := PanelContainer.new()
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.165, 0.20, 1.0)
+	sb.border_width_bottom = 1
+	sb.border_color = Color(0.235, 0.3, 0.36, 0.8)
+	sb.corner_radius_top_left  = 6
+	sb.corner_radius_top_right = 6
+	sb.content_margin_left   = 14.0
+	sb.content_margin_top    = 10.0
+	sb.content_margin_right  = 14.0
+	sb.content_margin_bottom = 10.0
+	pc.add_theme_stylebox_override("panel", sb)
+
+	var lbl := Label.new()
+	lbl.text = title
+	lbl.add_theme_color_override("font_color", COL_TEAL)
+	lbl.add_theme_font_size_override("font_size", 15)
+	pc.add_child(lbl)
+	return pc
+
+
+# ── Refresh ───────────────────────────────────────────────────────────────────
+
+## Full refresh: rebuild weapon bar + content body.
+func _refresh() -> void:
+	if not is_inside_tree():
+		return
+	if _currency_label != null:
+		_currency_label.text = "CR %d" % MetaProgression.currency
+	_rebuild_weapon_bar()
+	_rebuild_content()
+	_update_weapon_btn_highlights()
+
+
+# ── Signal handlers ───────────────────────────────────────────────────────────
+
+func _on_data_changed(_weapon_id: String) -> void:
+	## An attachment or perk changed on some weapon — full refresh.
+	_refresh()
+
+
+func _on_currency_changed(_amount: int) -> void:
+	## Currency changed — refresh header and perk buy-button states.
+	_refresh()
+
+
+# ── Weapon selector ───────────────────────────────────────────────────────────
+
+func _on_weapon_selected(weapon_id: String) -> void:
+	if _selected_weapon == weapon_id:
+		return
+	_selected_weapon = weapon_id
+	_update_weapon_btn_highlights()
+	_rebuild_content()
+
+
+## Update amber highlight on the active weapon button.
+func _update_weapon_btn_highlights() -> void:
+	for wid in _weapon_btns:
+		var btn: Button = _weapon_btns[wid]
+		if wid == _selected_weapon:
+			btn.add_theme_color_override("font_color", COL_AMBER)
+		else:
+			btn.remove_theme_color_override("font_color")
+
+
+# ── Attachment actions ────────────────────────────────────────────────────────
+
+## Called when the player picks an attachment from a slot's OptionButton.
+## Empty string means "— pick —" (no-op).
+func _on_att_selected(weapon_id: String, slot_id: String, att_id: String) -> void:
+	if att_id.is_empty():
+		return
+	MetaProgression.equip_attachment(weapon_id, slot_id, att_id)
+	# attachment_changed fires from equip_attachment; _refresh() runs via _on_data_changed.
+
+
+## Called when the player presses CLEAR for a slot.
+func _on_clear_slot(weapon_id: String, slot_id: String) -> void:
+	MetaProgression.unequip_attachment(weapon_id, slot_id)
+	# attachment_changed fires automatically; _refresh() runs.
+
+
+# ── Perk actions ──────────────────────────────────────────────────────────────
+
+## Attempt to purchase the next level of a perk. MetaProgression handles
+## affordability and spending; weapon_perk_changed fires on success.
+func _on_buy_perk(weapon_id: String, perk_key: String) -> void:
+	MetaProgression.buy_weapon_perk(weapon_id, perk_key)
+	# weapon_perk_changed fires on success; _refresh() runs via _on_data_changed.

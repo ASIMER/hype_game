@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://citemgmk201"]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "loot_grenade_mk2"
+display_name = "Frag Grenade Mk2"
+kind = 2
+rarity = 3
+weight = 1.0
+max_stack = 3
+grid_w = 1
+grid_h = 1
+description = "High-yield fragmentation grenade. Larger blast radius than standard issue — handle with care."
+value = 90

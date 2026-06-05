@@ -72,6 +72,37 @@ const CATALOG := {
 		"prim": Prim.SPHERE, "size": Vector3(0.3, 0.3, 0.3), "color": Color(0.25, 0.4, 0.2) },
 	"loot_ammo": { "model": "", "icon": "res://assets/ui/icons/ammo.png",
 		"prim": Prim.BOX, "size": Vector3(0.35, 0.25, 0.35), "color": Color(0.7, 0.6, 0.25) },
+
+	# --- Expansion: salvage materials + valuables (colored-box fallback; no icons yet) ---
+	"loot_plastic":   { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.35, 0.25, 0.35), "color": Color(0.82, 0.82, 0.86) },
+	"loot_chemicals": { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.3, 0.45, 0.3), "color": Color(0.6, 0.85, 0.25) },
+	"loot_circuit":   { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.35, 0.08, 0.3), "color": Color(0.25, 0.7, 0.55) },
+	"loot_artifact":  { "model": "", "icon": "", "prim": Prim.SPHERE, "size": Vector3(0.35, 0.35, 0.35), "color": Color(0.7, 0.35, 0.85) },
+	"loot_data_chip": { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.25, 0.04, 0.18), "color": Color(0.3, 0.85, 0.9) },
+
+	# --- Crafted gear + schematics (colored-box fallback) ---
+	"loot_stim":         { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.2, 0.4, 0.2), "color": Color(0.3, 0.9, 0.6) },
+	"loot_grenade_mk2":  { "model": "", "icon": "", "prim": Prim.SPHERE, "size": Vector3(0.32, 0.32, 0.32), "color": Color(0.2, 0.5, 0.25) },
+	"loot_circuit_pack": { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.4, 0.12, 0.3), "color": Color(0.2, 0.75, 0.6) },
+	"schematic_ammo":         { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.3, 0.02, 0.22), "color": Color(0.35, 0.55, 0.95) },
+	"schematic_stim":         { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.3, 0.02, 0.22), "color": Color(0.35, 0.55, 0.95) },
+	"schematic_circuit_pack": { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.3, 0.02, 0.22), "color": Color(0.35, 0.55, 0.95) },
+	"schematic_grenade_mk2":  { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.3, 0.02, 0.22), "color": Color(0.45, 0.45, 0.95) },
+
+	# --- Weapon attachments (colored-box fallback) ---
+	"att_scope_4x":    { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.12, 0.3, 0.12), "color": Color(0.2, 0.25, 0.32) },
+	"att_ext_mag":     { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.14, 0.3, 0.1), "color": Color(0.4, 0.42, 0.45) },
+	"att_compensator": { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.1, 0.18, 0.1), "color": Color(0.55, 0.55, 0.58) },
+	"att_holo_sight":     { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.12, 0.14, 0.12), "color": Color(0.22, 0.3, 0.4) },
+	"att_red_dot":        { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.1, 0.12, 0.1), "color": Color(0.25, 0.32, 0.42) },
+	"att_drum_mag":       { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.2, 0.16, 0.2), "color": Color(0.36, 0.38, 0.42) },
+	"att_light_mag":      { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.12, 0.24, 0.09), "color": Color(0.46, 0.48, 0.5) },
+	"att_long_barrel":    { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.08, 0.4, 0.08), "color": Color(0.5, 0.5, 0.54) },
+	"att_suppressor":     { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.1, 0.28, 0.1), "color": Color(0.3, 0.3, 0.33) },
+	"att_heavy_grip":     { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.1, 0.16, 0.12), "color": Color(0.4, 0.36, 0.32) },
+	"att_quickdraw_grip": { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.1, 0.16, 0.12), "color": Color(0.45, 0.42, 0.36) },
+	"schematic_drum_mag":   { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.3, 0.02, 0.22), "color": Color(0.4, 0.5, 0.95) },
+	"schematic_suppressor": { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.3, 0.02, 0.22), "color": Color(0.4, 0.5, 0.95) },
 }
 
 func has_id(id: String) -> bool:

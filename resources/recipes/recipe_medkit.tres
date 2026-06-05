@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CraftRecipe" load_steps=2 format=3 uid="uid://crecmedkit01"]
+
+[ext_resource type="Script" path="res://scripts/crafting/craft_recipe.gd" id="1_r"]
+
+[resource]
+script = ExtResource("1_r")
+id = "recipe_medkit"
+display_name = "Medkit"
+output_id = "loot_medkit"
+output_count = 1
+input_ids = PackedStringArray("loot_scrap")
+input_counts = PackedInt32Array(3)
+cost = 0
+blueprint = ""
+learn_item = ""
+category = "Consumables"

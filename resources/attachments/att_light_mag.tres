@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattlightmag01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_light_mag"
+display_name = "Lightweight Mag"
+kind = 4
+rarity = 1
+weight = 0.2
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Polymer-body magazine. Slightly fewer rounds but reloads snap in faster — great for aggressive play."
+value = 55
+slot = "mag"
+mag_add = -5
+reload_mult = 0.82

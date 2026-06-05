@@ -67,6 +67,8 @@ func _load_weapons() -> void:
 				var w := (res as WeaponData).duplicate() as WeaponData
 				w.damage *= dmg_mult
 				w.reload_time = maxf(0.1, w.reload_time * reload_mult)
+				_apply_perks(w)         # permanent per-weapon perks (never lost)
+				_apply_attachments(w)   # at-risk equipped attachments (lost on death)
 				_weapons.append(w)
 	# Initialise ammo/reserve for every loaded weapon (full mag + full reserve).
 	for w in _weapons:
@@ -74,6 +76,30 @@ func _load_weapons() -> void:
 		_reserve[w.id] = w.reserve_max
 	if _index >= _weapons.size():
 		_index = 0
+
+## Apply this weapon's PERMANENT perks (Gunsmith-bought, never lost) to the dup'd data.
+func _apply_perks(w: WeaponData) -> void:
+	var perks: Dictionary = MetaProgression.weapon_perks.get(w.id, {})
+	for key in perks:
+		var info: Dictionary = MetaProgression.WEAPON_PERKS.get(key, {})
+		if info.is_empty():
+			continue
+		var lvl: int = int(perks[key])
+		var eff: float = float(info.get("effect", 0.0)) * lvl
+		match String(info.get("field", "")):
+			"damage": w.damage *= (1.0 + eff)
+			"recoil": w.recoil = maxf(0.0, w.recoil * (1.0 - eff))
+			"reload": w.reload_time = maxf(0.1, w.reload_time * (1.0 - eff))
+			"mag":    w.mag_size = maxi(1, w.mag_size + int(eff))
+
+## Apply this weapon's equipped AT-RISK attachments (committed from the stash at deploy)
+## to the dup'd data. AttachmentData extends ItemData and lives in ItemCatalog.
+func _apply_attachments(w: WeaponData) -> void:
+	var slots: Dictionary = MetaProgression.get_equipped(w.id)
+	for s in slots:
+		var att := ItemCatalog.get_item(String(slots[s]))
+		if att is AttachmentData:
+			(att as AttachmentData).apply_to(w)
 
 ## Maps the MetaProgression loadout (weapon ids) to resource paths, keeping order.
 ## Falls back to the full WEAPON_PATHS arsenal when nothing resolves (offline tools,

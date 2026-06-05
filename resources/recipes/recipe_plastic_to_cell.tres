@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CraftRecipe" load_steps=2 format=3 uid="uid://crecplastictocell01"]
+
+[ext_resource type="Script" path="res://scripts/crafting/craft_recipe.gd" id="1_r"]
+
+[resource]
+script = ExtResource("1_r")
+id = "recipe_plastic_to_cell"
+display_name = "Plastic to Energy Cell"
+output_id = "loot_cell"
+output_count = 1
+input_ids = PackedStringArray("loot_plastic", "loot_chemicals")
+input_counts = PackedInt32Array(2, 1)
+cost = 0
+blueprint = ""
+learn_item = ""
+category = "Materials"

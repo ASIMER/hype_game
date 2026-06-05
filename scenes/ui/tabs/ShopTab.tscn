@@ -1,0 +1,19 @@
+; ShopTab — Hub tab scene for the SHOP (buy items + blueprints with currency).
+; The entire UI is built programmatically by shop_tab.gd so this scene is
+; intentionally minimal: just the full-rect root Control with its script.
+; The Hub instances this scene by path ("res://scenes/ui/tabs/ShopTab.tscn")
+; and shows/hides it; it does NOT host footer / deploy buttons.
+
+[gd_scene load_steps=2 format=3 uid="uid://cshoptab0001"]
+
+[ext_resource type="Script" path="res://scripts/ui/tabs/shop_tab.gd" id="1_shop_tab"]
+
+[node name="ShopTab" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+process_mode = 4
+script = ExtResource("1_shop_tab")

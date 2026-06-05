@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqstandwavevet01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qs_wave_veteran"
+title = "Contract: Last Stand"
+desc = "Survive until wave 5 in a single raid."
+daily = false
+obj_type = "reach_wave"
+obj_target = ""
+obj_count = 5
+reward_currency = 1000
+reward_item_ids = PackedStringArray("loot_artifact", "loot_stim", "loot_grenade_mk2")
+reward_item_counts = PackedInt32Array(1, 2, 2)
+reward_blueprints = PackedStringArray()

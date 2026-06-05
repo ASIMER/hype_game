@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CraftRecipe" load_steps=2 format=3 uid="uid://crecredot01"]
+
+[ext_resource type="Script" path="res://scripts/crafting/craft_recipe.gd" id="1_r"]
+
+[resource]
+script = ExtResource("1_r")
+id = "recipe_red_dot"
+display_name = "Red-Dot Sight"
+output_id = "att_red_dot"
+output_count = 1
+input_ids = PackedStringArray("loot_circuit", "loot_plastic", "loot_scrap")
+input_counts = PackedInt32Array(2, 3, 4)
+cost = 30
+blueprint = ""
+learn_item = ""
+category = "Attachments"

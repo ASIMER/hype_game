@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattholosight01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_holo_sight"
+display_name = "Holo Sight"
+kind = 4
+rarity = 2
+weight = 0.4
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Holographic optic with a wide field of view. Better zoom than a red-dot with no tunnel-vision penalty."
+value = 90
+slot = "optic"
+compatible_weapons = PackedStringArray("rifle", "smg", "shotgun")
+ads_fov_mult = 0.68
+range_mult = 1.08
+spread_mult = 0.95

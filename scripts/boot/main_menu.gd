@@ -39,8 +39,13 @@ func _on_host() -> void:
 	_apply_name()
 	var err := NetworkManager.host_game()
 	if err == OK:
-		status.text = "Hosting on port %d — loading arena…" % Settings.DEFAULT_PORT
-		_main().load_arena()
+		status.text = "Hosting on port %d — configure your loadout…" % Settings.DEFAULT_PORT
+		# Host goes through the Hub (loadout/stash) then DEPLOY; the match begins once
+		# every connected peer has deployed (the existing notify_loaded handshake).
+		if _main().has_method("open_hub"):
+			_main().open_hub("host")
+		else:
+			_main().load_arena()
 	else:
 		status.text = "Host failed: %s" % err
 
@@ -52,10 +57,17 @@ func _on_join() -> void:
 	var err := NetworkManager.join_game(ip)
 	if err == OK:
 		status.text = "Connecting to %s…" % ip
-		# Client loads the arena after connection; wait for connected signal.
-		multiplayer.connected_to_server.connect(func(): _main().load_arena(), CONNECT_ONE_SHOT)
+		# On connect, the client opens its OWN Hub to pick its loadout; DEPLOY loads the
+		# arena + readies it. (Falls back to a direct arena load if no hub exists.)
+		multiplayer.connected_to_server.connect(_on_connected_to_host, CONNECT_ONE_SHOT)
 	else:
 		status.text = "Join failed: %s" % err
+
+func _on_connected_to_host() -> void:
+	if _main().has_method("open_hub"):
+		_main().open_hub("client")
+	else:
+		_main().load_arena()
 
 func _on_all_ready() -> void:
 	status.text = "All players ready — match starting!"

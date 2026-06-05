@@ -67,28 +67,28 @@ func _complete(body: Node) -> void:
 	_completed[body] = true
 	Events.extraction_completed.emit(body)
 	_mark_extracted(body)
-	_award_currency(body)
+	_grant_extraction(body)
 	if GameState.all_players_resolved():
 		NetworkManager.broadcast_match_won()
 
-## Converts the extracting player's hauled loot into persistent currency (plus a
-## survival bonus that scales with the wave reached). Credits the LOCAL profile only
-## (offline, or this peer's own player in co-op) — meta-progression is local state.
-func _award_currency(body: Node) -> void:
-	var is_local := NetworkManager.is_offline \
-		or (body.has_method("get_multiplayer_authority") \
-			and body.get_multiplayer_authority() == multiplayer.get_unique_id())
-	if not is_local:
-		return
-	var loot_value := 0
+## Server-authoritative payout: the extracting player KEEPS its haul. We build the
+## deposit from the found-loot Inventory (server-side authoritative) + the surviving
+## brought consumables (replicated), then hand it to RaidManager, which deposits it into
+## THAT peer's own stash (locally for the host, via RPC for a remote client) plus a
+## wave-scaled survival-bonus currency. Death deposits nothing — gear is lost.
+func _grant_extraction(body: Node) -> void:
+	var peer_id := _peer_id_for(body)
+	var stacks: Array = []
 	var inv: Node = body.get_node_or_null("Inventory")
-	if inv and inv.has_method("total_value"):
-		loot_value = int(inv.total_value())
+	if inv and "stacks" in inv:
+		for s in inv.stacks:
+			var it: ItemData = s.get("item", null)
+			if it != null:
+				stacks.append({ "id": it.id, "count": int(s.get("count", 0)) })
+	if body.has_method("extracted_consumables"):
+		stacks.append_array(body.extracted_consumables())
 	var survival_bonus := 50 + GameState.current_wave * 25
-	var reward := loot_value + survival_bonus
-	GameState.last_run_reward = reward
-	MetaProgression.earn(reward)
-	Events.run_rewards.emit(reward, { "loot": loot_value, "survival": survival_bonus })
+	RaidManager.grant_extraction(peer_id, stacks, survival_bonus)
 
 ## Resolve the player node to a peer id and flag it extracted in GameState.
 func _mark_extracted(body: Node) -> void:

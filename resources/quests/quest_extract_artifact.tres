@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cquestextractart01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_extract_artifact"
+title = "Proof of the Anomaly"
+desc = "Traders want physical evidence. Extract with 2 Anomalous Artifacts still in your inventory."
+obj_type = "extract_item"
+obj_target = "loot_artifact"
+obj_count = 2
+reward_currency = 500
+reward_item_ids = PackedStringArray("schematic_stim")
+reward_item_counts = PackedInt32Array(1)
+reward_blueprints = PackedStringArray()

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattheavygrip01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_heavy_grip"
+display_name = "Heavy Grip"
+kind = 4
+rarity = 1
+weight = 0.5
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Weighted angled foregrip that soaks up muzzle climb and tightens sustained fire spread. Slower to raise."
+value = 65
+slot = "grip"
+recoil_mult = 0.72
+spread_mult = 0.88
+ads_fov_mult = 1.05

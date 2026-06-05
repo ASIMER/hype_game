@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattscope4x01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_scope_4x"
+display_name = "4x Scope"
+kind = 4
+rarity = 2
+weight = 0.8
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Magnified optic. Zooms in further when aiming and extends effective range. At risk in a raid."
+value = 80
+slot = "optic"
+compatible_weapons = PackedStringArray("rifle", "dmr")
+ads_fov_mult = 0.55
+range_mult = 1.15

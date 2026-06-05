@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattcomp01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_compensator"
+display_name = "Compensator"
+kind = 4
+rarity = 1
+weight = 0.4
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Muzzle device that cuts recoil and tightens spread. Fits any weapon."
+value = 50
+slot = "barrel"
+recoil_mult = 0.7
+spread_mult = 0.85

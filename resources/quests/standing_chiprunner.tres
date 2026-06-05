@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqstandchip01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qs_chiprunner"
+title = "Contract: Data Broker"
+desc = "Extract 5 Data Chips across any number of raids."
+daily = false
+obj_type = "extract_item"
+obj_target = "loot_data_chip"
+obj_count = 5
+reward_currency = 600
+reward_item_ids = PackedStringArray("loot_cell", "loot_chemicals")
+reward_item_counts = PackedInt32Array(5, 3)
+reward_blueprints = PackedStringArray("bp_drum_mag")

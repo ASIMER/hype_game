@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CraftRecipe" load_steps=2 format=3 uid="uid://crecstim01"]
+
+[ext_resource type="Script" path="res://scripts/crafting/craft_recipe.gd" id="1_r"]
+
+[resource]
+script = ExtResource("1_r")
+id = "recipe_stim"
+display_name = "Combat Stim"
+output_id = "loot_stim"
+output_count = 1
+input_ids = PackedStringArray("loot_chemicals", "loot_cell")
+input_counts = PackedInt32Array(2, 1)
+cost = 0
+blueprint = "bp_stim"
+learn_item = "schematic_stim"
+category = "Consumables"

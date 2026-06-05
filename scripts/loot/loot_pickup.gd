@@ -10,9 +10,17 @@ class_name LootPickup
 ## no multiplayer peer.
 
 const ITEM_PATHS := {
-	"loot_scrap": "res://resources/items/scrap.tres",
-	"loot_cell": "res://resources/items/energy_cell.tres",
-	"rifle": "res://resources/items/rifle.tres",
+	"loot_scrap":      "res://resources/items/scrap.tres",
+	"loot_cell":       "res://resources/items/energy_cell.tres",
+	"rifle":           "res://resources/items/rifle.tres",
+	"loot_medkit":     "res://resources/items/medkit.tres",
+	"loot_grenade":    "res://resources/items/grenade.tres",
+	"loot_ammo":       "res://resources/items/ammo_box.tres",
+	"loot_plastic":    "res://resources/items/plastic.tres",
+	"loot_chemicals":  "res://resources/items/chemicals.tres",
+	"loot_circuit":    "res://resources/items/circuit.tres",
+	"loot_artifact":   "res://resources/items/artifact.tres",
+	"loot_data_chip":  "res://resources/items/data_chip.tres",
 }
 
 const LAYER_LOOT := 1 << 3   # 3d_physics layer_4 "loot"
@@ -121,6 +129,14 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 		count = leftover
 
 func _load_item() -> ItemData:
+	# Prefer ItemCatalog autoload (scans all *.tres automatically) when available.
+	if Engine.has_singleton("ItemCatalog"):
+		var catalog := Engine.get_singleton("ItemCatalog")
+		if catalog.has_method("get_item"):
+			var cat_item := catalog.get_item(item_id) as ItemData
+			if cat_item != null:
+				return cat_item
+	# Fallback: direct path lookup for ids registered in ITEM_PATHS.
 	var path: String = ITEM_PATHS.get(item_id, "")
 	if path == "" or not ResourceLoader.exists(path):
 		push_warning("LootPickup: no ItemData for id '%s'" % item_id)

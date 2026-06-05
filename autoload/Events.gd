@@ -69,6 +69,30 @@ signal screen_shake(amount: float)
 ## A player footstep landed (audio-dev plays a footstep). Carries the player + whether sprinting.
 signal footstep(player: Node, sprinting: bool)
 
+# --- Stash / raid economy ---
+## Persistent stash contents changed (deposit/remove/sell) — the Lobby stash tab reads this.
+signal stash_changed()
+## This peer extracted: loot deposited to its stash + currency bonus earned.
+signal raid_loot_granted(payload: Array, bonus: int)
+
+# --- Crafting / quests ---
+## A crafting blueprint was learned (extract / buy / quest). Craft + shop UIs refresh.
+signal blueprint_learned(blueprint: String)
+## A quest objective advanced / completed (Quests autoload). The Quests tab reads these.
+signal quest_progress(quest_id: String, current: int, target: int)
+signal quest_completed(quest_id: String)
+## Daily contracts rotated to a new day's picks.
+signal dailies_rotated()
+
+# --- Gunsmith / haul ---
+## An attachment was equipped/unequipped on a weapon (Gunsmith reads this).
+signal attachment_changed(weapon_id: String)
+## A permanent weapon perk was bought.
+signal weapon_perk_changed(weapon_id: String)
+## An extraction haul would exceed the stash capacity — show the Manage-Your-Haul beat.
+## `incoming` is the haul stacks; `over_by` is the excess weight.
+signal haul_overflow(incoming: Array, over_by: float)
+
 # --- Networking / lobby ---
 signal peer_registered(peer_id: int, info: Dictionary)
 signal peer_unregistered(peer_id: int)

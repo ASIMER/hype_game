@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cquestpickupchip01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_pickup_data_chip"
+title = "Data Recovery"
+desc = "Recover 3 Data Chips from the ruins. The machines guard their secrets well."
+obj_type = "pickup"
+obj_target = "loot_data_chip"
+obj_count = 3
+reward_currency = 350
+reward_item_ids = PackedStringArray("schematic_circuit_pack")
+reward_item_counts = PackedInt32Array(1)
+reward_blueprints = PackedStringArray()

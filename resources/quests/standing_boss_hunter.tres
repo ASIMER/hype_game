@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqstandboss01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qs_boss_hunter"
+title = "Contract: Iron Giant"
+desc = "Destroy the Bastion boss 3 times across any number of raids."
+daily = false
+obj_type = "kill"
+obj_target = "bastion"
+obj_count = 3
+reward_currency = 800
+reward_item_ids = PackedStringArray("loot_artifact", "loot_circuit_pack")
+reward_item_counts = PackedInt32Array(2, 1)
+reward_blueprints = PackedStringArray("bp_suppressor")

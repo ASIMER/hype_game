@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattextmag01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_ext_mag"
+display_name = "Extended Mag"
+kind = 4
+rarity = 1
+weight = 0.5
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Larger magazine — more rounds before reloading, at the cost of slightly slower reloads."
+value = 60
+slot = "mag"
+reload_mult = 1.12
+mag_add = 12

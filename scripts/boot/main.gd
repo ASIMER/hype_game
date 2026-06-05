@@ -12,13 +12,18 @@ extends Node
 const MAIN_MENU := preload("res://scenes/boot/MainMenu.tscn")
 const ARENA_PATH := "res://scenes/world/Arena.tscn"
 const PAUSE_MENU := "res://scenes/ui/PauseMenu.tscn"
-const WORKSHOP_PATH := "res://scenes/ui/Workshop.tscn"
+const HUB_PATH := "res://scenes/ui/Hub.tscn"
+const WORKSHOP_PATH := "res://scenes/ui/Workshop.tscn"   # legacy fallback hub
+const RAID_SUMMARY := "res://scenes/ui/RaidSummary.tscn"
+const HAUL_MANAGER := "res://scenes/ui/HaulManager.tscn"
 
 @onready var ui_layer: Node = $UILayer
 @onready var world_root: Node = $WorldRoot
 
 var _pause_menu: Node = null
+var _raid_summary: Node = null
 var _paused: bool = false
+var _deploy_mode: String = "solo"   # "solo" | "host" | "client" — set when opening the hub
 
 func _ready() -> void:
 	# Main + the UI layer keep processing while the tree is paused; the WORLD pauses.
@@ -60,27 +65,49 @@ func _start_dedicated() -> void:
 	NetworkManager.host_game()
 	load_arena()
 
-## Pre-run hub: shows the Workshop (loadout / upgrades / difficulty) over the UI
-## layer. DEPLOY starts a single-player run; BACK returns to the main menu. Falls
-## back to starting a run directly if the Workshop scene isn't present.
-func open_workshop() -> void:
-	if not ResourceLoader.exists(WORKSHOP_PATH):
-		_deploy_single_player()
+## Pre-run LOBBY/HUB (stash / loadout / workshop / deploy) over the UI layer. DEPLOY
+## commits the bring-list and loads the raid; BACK returns to the menu. `mode` is
+## "solo" | "host" | "client"; the networking peer is set up at menu time (offline is
+## started at deploy for solo). Falls back to the legacy Workshop, then a direct deploy,
+## if no hub scene exists yet.
+func open_hub(mode: String = "solo") -> void:
+	_deploy_mode = mode
+	var path := HUB_PATH if ResourceLoader.exists(HUB_PATH) else WORKSHOP_PATH
+	if not ResourceLoader.exists(path):
+		_on_hub_deploy()
 		return
 	for c in ui_layer.get_children():
 		c.queue_free()
-	var shop: Node = (load(WORKSHOP_PATH) as PackedScene).instantiate()
-	ui_layer.add_child(shop)
-	if shop.has_signal("deploy_requested"):
-		shop.deploy_requested.connect(_deploy_single_player)
-	if shop.has_signal("back_requested"):
-		shop.back_requested.connect(_show_menu)
+	var hub: Node = (load(path) as PackedScene).instantiate()
+	ui_layer.add_child(hub)
+	if hub.has_signal("deploy_requested"):
+		hub.deploy_requested.connect(_on_hub_deploy)
+	if hub.has_signal("back_requested"):
+		hub.back_requested.connect(_on_hub_back)
 
-func _deploy_single_player() -> void:
+## Back-compat alias used by the main menu's Single Player button + the harness.
+func open_workshop() -> void:
+	open_hub("solo")
+
+func _on_hub_deploy() -> void:
 	for c in ui_layer.get_children():
 		c.queue_free()
-	NetworkManager.start_offline()
+	if _deploy_mode == "solo" and not NetworkManager.is_offline:
+		NetworkManager.start_offline()
+	# Fresh raid state (wave/peers) when re-deploying after a prior raid.
+	if GameState.is_local_authority_server():
+		GameState.reset_match()
+	# Commit the bring-list: pull those consumables out of the LOCAL stash (now at risk).
+	RaidManager.deploy()
 	load_arena()
+
+func _on_hub_back() -> void:
+	# Leaving the hub in co-op tears down the connection; solo just returns to the menu.
+	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
+		multiplayer.multiplayer_peer = null
+		GameState.peers.clear()
+		GameState.set_phase(GameState.Phase.MENU)
+	_show_menu()
 
 ## Self-play mode: boot single-player, open the control server, and park the
 ## window off-screen without focus so screenshots render but the desktop is undisturbed.
@@ -151,6 +178,18 @@ func load_arena() -> void:
 				_pause_menu.resume_pressed.connect(_resume)
 			if _pause_menu.has_signal("quit_to_menu_pressed"):
 				_pause_menu.quit_to_menu_pressed.connect(_on_quit_to_menu)
+		# Post-raid summary (self-shows on match_won/lost). Continue → back to the Lobby.
+		if ResourceLoader.exists(RAID_SUMMARY):
+			_raid_summary = (load(RAID_SUMMARY) as PackedScene).instantiate()
+			ui_layer.add_child(_raid_summary)
+			if _raid_summary.has_signal("continue_requested"):
+				_raid_summary.continue_requested.connect(_on_summary_continue)
+			if _raid_summary.has_signal("restart_requested"):
+				_raid_summary.restart_requested.connect(_on_summary_restart)
+		# Manage-Your-Haul overlay (self-shows on Events.haul_overflow when the stash
+		# would exceed capacity on deposit).
+		if ResourceLoader.exists(HAUL_MANAGER):
+			ui_layer.add_child((load(HAUL_MANAGER) as PackedScene).instantiate())
 	# Networked: run the load->ready handshake. Offline (incl. the OfflineMultiplayerPeer
 	# used by single-player/--agent) has a peer but needs no handshake — start directly.
 	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
@@ -160,6 +199,18 @@ func load_arena() -> void:
 
 func _on_match_started() -> void:
 	GameState.set_phase(GameState.Phase.IN_MATCH)
+
+## Post-raid summary: CONTINUE returns to the Lobby (re-equip / craft / shop / quests
+## between raids); RESTART reloads a fresh raid directly.
+func _on_summary_continue() -> void:
+	_raid_summary = null
+	if GameState.is_local_authority_server():
+		GameState.reset_match()
+	open_hub(_deploy_mode)
+
+func _on_summary_restart() -> void:
+	_raid_summary = null
+	restart_match()
 
 ## Restart on ENTER once the match has ended (won or lost). Reloads the arena with
 ## fresh state. Single-player / host only (clients would need a server-driven reload).

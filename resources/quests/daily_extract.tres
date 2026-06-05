@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqdailyextract01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qd_extract"
+title = "Daily: Smash and Grab"
+desc = "Extract from a raid today."
+daily = true
+obj_type = "extract"
+obj_target = ""
+obj_count = 1
+reward_currency = 200
+reward_item_ids = PackedStringArray("loot_cell")
+reward_item_counts = PackedInt32Array(2)

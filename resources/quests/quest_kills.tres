@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cquestkills01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_kills"
+title = "Cull the Machines"
+desc = "Destroy 10 robots across your raids."
+obj_type = "kill"
+obj_target = ""
+obj_count = 10
+reward_currency = 200

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cquestkillboss01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_kill_boss"
+title = "Slay the Bastion Prime"
+desc = "Bring down the Bastion Prime. One kill is all it takes — but that one will be earned."
+obj_type = "kill"
+obj_target = "robot_boss"
+obj_count = 1
+reward_currency = 750
+reward_item_ids = PackedStringArray("schematic_grenade_mk2")
+reward_item_counts = PackedInt32Array(1)
+reward_blueprints = PackedStringArray()

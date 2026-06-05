@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqdailykills01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qd_kills"
+title = "Daily: Scrapper"
+desc = "Destroy 8 robots today."
+daily = true
+obj_type = "kill"
+obj_target = ""
+obj_count = 8
+reward_currency = 150

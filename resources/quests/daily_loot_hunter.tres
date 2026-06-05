@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqdailyloot01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qd_loot_hunter"
+title = "Daily: Scav Run"
+desc = "Pick up 10 items in a single raid."
+daily = true
+obj_type = "pickup"
+obj_target = ""
+obj_count = 10
+reward_currency = 120
+reward_item_ids = PackedStringArray("loot_cell", "loot_medkit")
+reward_item_counts = PackedInt32Array(2, 1)

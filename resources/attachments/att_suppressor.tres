@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattsuppressor01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_suppressor"
+display_name = "Suppressor"
+kind = 4
+rarity = 3
+weight = 0.7
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Precision-machined barrel and recoil-damping baffles. The best muzzle control available — tames recoil and tightens spread hard, with only a slight range trade-off."
+value = 200
+slot = "barrel"
+recoil_mult = 0.68
+spread_mult = 0.70
+range_mult = 0.95

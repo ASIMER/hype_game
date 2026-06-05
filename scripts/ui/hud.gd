@@ -257,6 +257,10 @@ func _on_match_lost() -> void:
 	_show_banner("KIA — gear lost", Color(1.0, 0.35, 0.35))
 
 func _show_banner(text: String, color: Color) -> void:
+	# The RaidSummary screen owns the post-raid UI when present; only fall back to this
+	# inline banner if that scene isn't in the build.
+	if ResourceLoader.exists("res://scenes/ui/RaidSummary.tscn"):
+		return
 	banner.text = "%s\n\nPress ENTER to restart" % text
 	banner.add_theme_color_override("font_color", color)
 	banner.visible = true

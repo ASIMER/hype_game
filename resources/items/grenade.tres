@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://citemgrenade01"]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "loot_grenade"
+display_name = "Frag Grenade"
+kind = 2
+rarity = 1
+weight = 0.8
+max_stack = 5
+grid_w = 1
+grid_h = 1
+description = "High-explosive fragmentation grenade. Throwable. Bring some into a raid."
+value = 15

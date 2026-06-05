@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://dqueststab01"]
+
+[ext_resource type="Script" path="res://scripts/ui/tabs/quests_tab.gd" id="1_quests_tab"]
+
+; Full-rect Control root. Added as a child of the Hub content area, shown/hidden by
+; the Hub. ALL child nodes are built procedurally in quests_tab.gd:_build_layout().
+; Global theme from the Hub ancestor is inherited automatically.
+[node name="QuestsTab" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+process_mode = 4
+script = ExtResource("1_quests_tab")

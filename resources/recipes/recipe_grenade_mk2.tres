@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CraftRecipe" load_steps=2 format=3 uid="uid://crecgmk201"]
+
+[ext_resource type="Script" path="res://scripts/crafting/craft_recipe.gd" id="1_r"]
+
+[resource]
+script = ExtResource("1_r")
+id = "recipe_grenade_mk2"
+display_name = "Frag Grenade Mk2"
+output_id = "loot_grenade_mk2"
+output_count = 1
+input_ids = PackedStringArray("loot_scrap", "loot_cell", "loot_chemicals")
+input_counts = PackedInt32Array(3, 1, 2)
+cost = 0
+blueprint = "bp_grenade_mk2"
+learn_item = "schematic_grenade_mk2"
+category = "Consumables"

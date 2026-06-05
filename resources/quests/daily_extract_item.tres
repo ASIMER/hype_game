@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqdailyextitem01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qd_extract_item"
+title = "Daily: Relic Hunter"
+desc = "Extract an Artifact from a raid today."
+daily = true
+obj_type = "extract_item"
+obj_target = "loot_artifact"
+obj_count = 1
+reward_currency = 250
+reward_item_ids = PackedStringArray("loot_circuit")
+reward_item_counts = PackedInt32Array(3)
+reward_blueprints = PackedStringArray()

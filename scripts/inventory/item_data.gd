@@ -4,7 +4,7 @@ class_name ItemData
 ## resources/items/. Pure data — no scene/node references — so it is safe to
 ## reference from inventory logic, loot tables, and UI alike.
 
-enum Kind { MATERIAL, WEAPON, CONSUMABLE, KEY }
+enum Kind { MATERIAL, WEAPON, CONSUMABLE, KEY, ATTACHMENT }
 enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 @export var id: String = ""              # logical id, also AssetRegistry key

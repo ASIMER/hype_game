@@ -25,8 +25,8 @@ var _input_enabled: bool = true
 var _ads: bool = false                # aim-down-sights active
 var _ads_toggled: bool = false        # latched ADS when Settings.ads_toggle
 var _shoulder_sign: float = 1.0       # over-the-shoulder side; flipped by shoulder_swap
-var _medkits: int = 2                 # consumed by the heal action
-var _grenades: int = 3                # consumed by the grenade action
+var _medkits: int = 0                 # set at spawn from the bring-list; heal consumes
+var _grenades: int = 0                # set at spawn from the bring-list; grenade consumes
 var _stamina: float = Settings.MAX_STAMINA
 var _max_stamina: float = Settings.MAX_STAMINA  # base * meta stamina upgrade (set in _ready)
 var _sprint_locked: bool = false      # true after exhausting stamina, until it regens
@@ -92,6 +92,7 @@ func _ready() -> void:
 			(mh as Node3D).reparent(mount, false)
 
 	if is_multiplayer_authority():
+		apply_loadout()
 		camera.current = true
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		Events.item_use_requested.connect(_on_item_use)
@@ -345,6 +346,26 @@ func _on_item_use(item_id: String) -> void:
 			_try_heal()
 		"loot_grenade", "grenade":
 			_throw_grenade()
+
+
+## This peer's own player configures its STARTING consumables from its OWN profile's
+## bring-list (committed from the stash at deploy). Weapons are loaded separately by the
+## WeaponController from the same local profile. Authority-only — the counts replicate
+## to other peers via the MultiplayerSynchronizer so the server can read them on extract.
+func apply_loadout() -> void:
+	var brought := MetaProgression.get_bring()
+	_medkits = int(brought.get("loot_medkit", 0))
+	_grenades = int(brought.get("loot_grenade", 0))
+
+## Surviving brought consumables as stash stacks — added to the extraction deposit so
+## unused medkits/grenades come back out with you (and are lost if you die).
+func extracted_consumables() -> Array:
+	var out: Array = []
+	if _medkits > 0:
+		out.append({ "id": "loot_medkit", "count": _medkits })
+	if _grenades > 0:
+		out.append({ "id": "loot_grenade", "count": _grenades })
+	return out
 
 
 func _on_health_changed(current: float, max_health: float) -> void:

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CraftRecipe" load_steps=2 format=3 uid="uid://creccircuitpack01"]
+
+[ext_resource type="Script" path="res://scripts/crafting/craft_recipe.gd" id="1_r"]
+
+[resource]
+script = ExtResource("1_r")
+id = "recipe_circuit_pack"
+display_name = "Circuit Pack"
+output_id = "loot_circuit_pack"
+output_count = 1
+input_ids = PackedStringArray("loot_circuit", "loot_plastic")
+input_counts = PackedInt32Array(3, 2)
+cost = 0
+blueprint = "bp_circuit_pack"
+learn_item = "schematic_circuit_pack"
+category = "Materials"

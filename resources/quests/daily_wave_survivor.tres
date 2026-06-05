@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqdailywavesurv01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "qd_wave_survivor"
+title = "Daily: Hold the Line"
+desc = "Survive until wave 3 in a single raid."
+daily = true
+obj_type = "reach_wave"
+obj_target = ""
+obj_count = 3
+reward_currency = 175
+reward_item_ids = PackedStringArray("loot_ammo")
+reward_item_counts = PackedInt32Array(3)

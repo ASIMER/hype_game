@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattqdgrip01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_quickdraw_grip"
+display_name = "Quickdraw Grip"
+kind = 4
+rarity = 2
+weight = 0.3
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Ergonomic grip tape and contoured handle — faster handling and ADS transitions. Slightly less stability."
+value = 85
+slot = "grip"
+ads_fov_mult = 0.95
+reload_mult = 0.90
+recoil_mult = 1.08

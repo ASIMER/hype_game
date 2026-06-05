@@ -172,6 +172,68 @@ func _handle_line(line: String) -> void:
 			if wc2 and wc2.has_method("refill_ammo"):
 				wc2.refill_ammo()
 			_send({ "ok": wc2 != null })
+		"stash":
+			# Debug: manipulate the persistent stash + bring-list (raid-economy QA).
+			#   {action:add|remove, id, count} · {action:bring, id, count} · {action:clear}
+			var act := str(json.get("action", ""))
+			var sid := str(json.get("id", ""))
+			var cnt := int(json.get("count", 1))
+			match act:
+				"add": Stash.add(sid, cnt)
+				"remove": Stash.remove(sid, cnt)
+				"clear": Stash.clear()
+				"bring":
+					var b: Dictionary = MetaProgression.get_bring()
+					if cnt > 0: b[sid] = cnt
+					else: b.erase(sid)
+					MetaProgression.set_bring(b)
+				"deploy": RaidManager.deploy()   # commit the bring-list (remove from stash)
+				"craft": Crafting.craft(Crafting.recipe_by_id(sid))
+				"recycle": Crafting.recycle(sid)
+				"learn": MetaProgression.learn_blueprint(sid)   # simulate buy/quest blueprint
+				"claim": Quests.claim(sid)
+				"give":
+					# Add an item to the local player's MATCH inventory (simulate found loot).
+					var gpl: Node = _local_player(get_tree().get_nodes_in_group("players"))
+					var ginv: Node = gpl.get_node_or_null("Inventory") if gpl else null
+					var git: ItemData = ItemCatalog.get_item(sid)
+					if ginv and git and ginv.has_method("add_item"):
+						ginv.add_item(git, cnt)
+				"currency": MetaProgression.earn(cnt)           # grant currency for QA
+				"buy": Crafting.buy_blueprint(sid, int(json.get("price", 0)))
+				"questprog":                                    # force quest progress for QA
+					MetaProgression.quest_progress[sid] = cnt
+					MetaProgression.save_profile()
+				"equip": MetaProgression.equip_attachment(str(json.get("weapon", "")), str(json.get("slot", "")), sid)
+				"unequip": MetaProgression.unequip_attachment(str(json.get("weapon", "")), str(json.get("slot", "")))
+				"perk": MetaProgression.buy_weapon_perk(str(json.get("weapon", "")), str(json.get("perk", "")))
+				"daily": Quests.get_daily_quests()   # trigger daily rotation for QA
+			_send({ "ok": true, "stash": Stash.items, "bring": MetaProgression.bring,
+				"blueprints": MetaProgression.unlocked_blueprints })
+		"net":
+			# Debug: start co-op from an --agent --menu instance so the harness can drive
+			# multiplayer + per-player stash tests across instances. action: host | join.
+			var nact := str(json.get("action", ""))
+			var nsc := get_tree().current_scene
+			if nact == "host":
+				NetworkManager.host_game()
+				if nsc and nsc.has_method("open_hub"):
+					nsc.open_hub("host")
+				_send({ "ok": true })
+			elif nact == "join":
+				var ip := str(json.get("ip", "127.0.0.1"))
+				var jerr := NetworkManager.join_game(ip)
+				if jerr == OK and not multiplayer.connected_to_server.is_connected(_agent_open_client_hub):
+					multiplayer.connected_to_server.connect(_agent_open_client_hub, CONNECT_ONE_SHOT)
+				_send({ "ok": jerr == OK })
+			else:
+				_send({ "ok": false, "error": "net action host|join" })
+		"deploy":
+			# Debug: trigger the hub DEPLOY (commit bring-list + load the raid).
+			var dsc := get_tree().current_scene
+			if dsc and dsc.has_method("_on_hub_deploy"):
+				dsc._on_hub_deploy()
+			_send({ "ok": dsc != null })
 		"ui":
 			# Debug: open/close menus for screenshot verification.
 			_send({ "ok": _ui_action(str(json.get("action", ""))) })
@@ -329,6 +391,13 @@ func _debug_spawn(eid: String, dist: float) -> bool:
 	return true
 
 
+## Client-side: once connected to the host, open this peer's own Hub (loadout/stash).
+func _agent_open_client_hub() -> void:
+	var sc := get_tree().current_scene
+	if sc and sc.has_method("open_hub"):
+		sc.open_hub("client")
+
+
 ## Debug: open/close menu overlays so the harness can screenshot them.
 func _ui_action(action: String) -> bool:
 	var scene := get_tree().current_scene
@@ -360,6 +429,15 @@ func _ui_action(action: String) -> bool:
 			if scene.has_method("open_workshop"):
 				scene.open_workshop()
 				return true
+		"hub_stash", "hub_loadout", "hub_workshop", "hub_shop", "hub_quests", "hub_gunsmith":
+			# Switch the open Hub's active tab (screenshot QA of each tab).
+			var hub := scene.find_child("Hub", true, false)
+			if hub == null or not hub.has_method("_switch_tab"):
+				return false
+			var idx: int = { "hub_stash": 0, "hub_loadout": 1, "hub_workshop": 2,
+				"hub_shop": 3, "hub_quests": 4, "hub_gunsmith": 5 }.get(action, 0)
+			hub._switch_tab(idx)
+			return true
 	return false
 
 
@@ -418,8 +496,18 @@ func _snapshot() -> Dictionary:
 			"difficulty": GameState.difficulty,
 			"difficulty_name": GameState.difficulty_name(),
 			"loadout": MetaProgression.get_loadout(),
+			"bring": MetaProgression.bring,
+			"blueprints": MetaProgression.unlocked_blueprints,
+			"quests": MetaProgression.quest_progress,
+			"completed_quests": MetaProgression.completed_quests,
+			"attachments": MetaProgression.equipped_attachments,
+			"weapon_perks": MetaProgression.weapon_perks,
+			"dailies": MetaProgression.daily_quest_ids,
 			"last_reward": GameState.last_run_reward,
 		},
+		"stash": Stash.items,
+		"stash_weight": Stash.total_weight(),
+		"stash_cap": Stash.capacity(),
 	}
 	var players := get_tree().get_nodes_in_group("players")
 	d["players_count"] = players.size()

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattreddot01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_red_dot"
+display_name = "Red-Dot Sight"
+kind = 4
+rarity = 1
+weight = 0.3
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Lightweight reflex optic. Snaps to ADS quickly with a mild zoom. Fits anything but a DMR."
+value = 45
+slot = "optic"
+compatible_weapons = PackedStringArray("rifle", "pistol", "smg", "shotgun")
+ads_fov_mult = 0.78
+range_mult = 1.05

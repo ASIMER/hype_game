@@ -1,0 +1,141 @@
+[gd_scene load_steps=6 format=3 uid="uid://c0haulmanager01"]
+
+[ext_resource type="Script" path="res://scripts/ui/haul_manager.gd" id="1_haul"]
+
+[sub_resource type="StyleBoxFlat" id="SB_scrim"]
+bg_color = Color(0, 0, 0, 0.72)
+
+[sub_resource type="StyleBoxFlat" id="SB_panel"]
+bg_color = Color(0.10, 0.11, 0.13, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.20, 0.20, 0.70)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+
+[sub_resource type="StyleBoxFlat" id="SB_bar_bg"]
+bg_color = Color(0.18, 0.18, 0.20, 1.0)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="SB_confirm"]
+bg_color = Color(0.15, 0.17, 0.20, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.20, 0.75, 0.35, 0.60)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+
+[node name="HaulManager" type="CanvasLayer"]
+process_mode = 3
+script = ExtResource("1_haul")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+
+[node name="Scrim" type="Panel" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("SB_scrim")
+
+[node name="Panel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -340.0
+offset_right = 320.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("SB_panel")
+
+[node name="VBox" type="VBoxContainer" parent="Root/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Root/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.90, 0.20, 0.20, 1.0)
+text = "STASH OVERLOADED"
+
+[node name="Subtitle" type="Label" parent="Root/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.72, 0.72, 0.76, 1.0)
+text = "Trim your stash below capacity to continue."
+
+[node name="SepTop" type="HSeparator" parent="Root/Panel/VBox"]
+layout_mode = 2
+
+[node name="WeightBar" type="ProgressBar" parent="Root/Panel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 14)
+min_value = 0.0
+max_value = 200.0
+value = 0.0
+show_percentage = false
+theme_override_styles/background = SubResource("SB_bar_bg")
+
+[node name="WeightLabel" type="Label" parent="Root/Panel/VBox"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.90, 0.20, 0.20, 1.0)
+text = "0.0 / 0.0 kg"
+
+[node name="Scroll" type="ScrollContainer" parent="Root/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 200)
+
+[node name="ItemList" type="VBoxContainer" parent="Root/Panel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="SepBot" type="HSeparator" parent="Root/Panel/VBox"]
+layout_mode = 2
+
+[node name="ConfirmBtn" type="Button" parent="Root/Panel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 42)
+size_flags_horizontal = 4
+theme_override_styles/normal = SubResource("SB_confirm")
+text = "CONFIRM"
+disabled = true

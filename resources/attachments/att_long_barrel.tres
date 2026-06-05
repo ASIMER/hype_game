@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattlongbarrel01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_long_barrel"
+display_name = "Long Barrel"
+kind = 4
+rarity = 2
+weight = 0.6
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Extended barrel boosts muzzle velocity — tighter spread and greater effective range at the cost of handling."
+value = 110
+slot = "barrel"
+compatible_weapons = PackedStringArray("rifle", "dmr")
+range_mult = 1.25
+spread_mult = 0.78
+damage_mult = 1.05
+fire_rate_mult = 0.92

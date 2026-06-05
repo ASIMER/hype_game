@@ -1,0 +1,164 @@
+[gd_scene load_steps=5 format=3 uid="uid://c0arcraidsummary01"]
+
+[ext_resource type="Script" path="res://scripts/ui/raid_summary.gd" id="1_summary"]
+
+[sub_resource type="StyleBoxFlat" id="SB_scrim"]
+bg_color = Color(0, 0, 0, 0.72)
+
+[sub_resource type="StyleBoxFlat" id="SB_panel"]
+bg_color = Color(0.10, 0.11, 0.13, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.91, 0.64, 0.24, 0.60)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 32.0
+content_margin_top = 28.0
+content_margin_right = 32.0
+content_margin_bottom = 28.0
+
+[sub_resource type="StyleBoxFlat" id="SB_btn"]
+bg_color = Color(0.15, 0.17, 0.20, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.64, 0.24, 0.50)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+
+[node name="RaidSummary" type="CanvasLayer"]
+process_mode = 3
+script = ExtResource("1_summary")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Scrim" type="Panel" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("SB_scrim")
+
+[node name="Panel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -320.0
+offset_right = 280.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("SB_panel")
+
+[node name="VBox" type="VBoxContainer" parent="Root/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Root/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+horizontal_alignment = 1
+text = "EXTRACTED"
+
+[node name="Subtitle" type="Label" parent="Root/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+text = "Gear secured. Head back to the Hub."
+
+[node name="SepTop" type="HSeparator" parent="Root/Panel/VBox"]
+layout_mode = 2
+
+[node name="LootSection" type="VBoxContainer" parent="Root/Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LootHeader" type="Label" parent="Root/Panel/VBox/LootSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.55, 0.60, 0.65, 1.0)
+text = "ITEMS EXTRACTED"
+
+[node name="LootList" type="VBoxContainer" parent="Root/Panel/VBox/LootSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CurrencyLabel" type="Label" parent="Root/Panel/VBox/LootSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 2
+text = "+CR 0"
+
+[node name="BpSection" type="VBoxContainer" parent="Root/Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+visible = false
+
+[node name="BpHeader" type="Label" parent="Root/Panel/VBox/BpSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.55, 0.60, 0.65, 1.0)
+text = "BLUEPRINTS LEARNED"
+
+[node name="BpList" type="VBoxContainer" parent="Root/Panel/VBox/BpSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="QuestSection" type="VBoxContainer" parent="Root/Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+visible = false
+
+[node name="QuestHeader" type="Label" parent="Root/Panel/VBox/QuestSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.55, 0.60, 0.65, 1.0)
+text = "QUESTS COMPLETED"
+
+[node name="QuestList" type="VBoxContainer" parent="Root/Panel/VBox/QuestSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SepBot" type="HSeparator" parent="Root/Panel/VBox"]
+layout_mode = 2
+
+[node name="Buttons" type="HBoxContainer" parent="Root/Panel/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="ContinueBtn" type="Button" parent="Root/Panel/VBox/Buttons"]
+custom_minimum_size = Vector2(140, 46)
+layout_mode = 2
+theme_override_styles/normal = SubResource("SB_btn")
+text = "CONTINUE"
+
+[node name="RestartBtn" type="Button" parent="Root/Panel/VBox/Buttons"]
+custom_minimum_size = Vector2(140, 46)
+layout_mode = 2
+theme_override_styles/normal = SubResource("SB_btn")
+text = "RESTART"

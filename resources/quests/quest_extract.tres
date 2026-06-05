@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cquestextract01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_extract"
+title = "Make It Out Alive"
+desc = "Successfully extract from 3 raids. Reward unlocks the Ammo Box blueprint."
+obj_type = "extract"
+obj_target = ""
+obj_count = 3
+reward_currency = 250
+reward_blueprints = PackedStringArray("bp_ammo")

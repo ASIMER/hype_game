@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CraftRecipe" load_steps=2 format=3 uid="uid://crecsupp01"]
+
+[ext_resource type="Script" path="res://scripts/crafting/craft_recipe.gd" id="1_r"]
+
+[resource]
+script = ExtResource("1_r")
+id = "recipe_suppressor"
+display_name = "Suppressor"
+output_id = "att_suppressor"
+output_count = 1
+input_ids = PackedStringArray("loot_scrap", "loot_chemicals", "loot_circuit", "loot_cell")
+input_counts = PackedInt32Array(10, 4, 3, 2)
+cost = 100
+blueprint = "bp_suppressor"
+learn_item = "schematic_suppressor"
+category = "Attachments"

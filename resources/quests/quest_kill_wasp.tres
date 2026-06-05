@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cquestkillwasp01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_kill_wasp"
+title = "Swat the Swarm"
+desc = "Wasps are fast, fragile scouts — prove you can deal with them. Destroy 5 Wasps across your raids."
+obj_type = "kill"
+obj_target = "robot_wasp"
+obj_count = 5
+reward_currency = 300
+reward_item_ids = PackedStringArray("loot_cell")
+reward_item_counts = PackedInt32Array(3)
+reward_blueprints = PackedStringArray()

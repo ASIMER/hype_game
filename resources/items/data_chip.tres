@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://citemdatachip01"]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "loot_data_chip"
+display_name = "Encrypted Data Chip"
+kind = 0
+rarity = 3
+weight = 0.1
+max_stack = 5
+grid_w = 1
+grid_h = 1
+description = "Classified machine intelligence compressed onto a thumb-sized chip. Fetch a premium at extraction."
+value = 200

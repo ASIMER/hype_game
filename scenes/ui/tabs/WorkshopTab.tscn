@@ -1,0 +1,18 @@
+; WorkshopTab — Hub tab scene for weapon unlocks, permanent upgrades, and crafting.
+; The entire UI is built in code by workshop_tab.gd so this scene is intentionally
+; minimal: just the root Control with its script attached. The Hub shows/hides this
+; node; it does NOT contain footer / deploy buttons (those live in the Hub chrome).
+
+[gd_scene load_steps=2 format=3 uid="uid://cworkshobtab01"]
+
+[ext_resource type="Script" path="res://scripts/ui/workshop_tab.gd" id="1_wstab"]
+
+[node name="WorkshopTab" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+process_mode = 4
+script = ExtResource("1_wstab")

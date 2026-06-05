@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattdrummag01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_drum_mag"
+display_name = "Drum Magazine"
+kind = 4
+rarity = 3
+weight = 1.2
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Massive drum holds far more rounds but the bulk slows reloads noticeably. Best for suppressing waves."
+value = 180
+slot = "mag"
+compatible_weapons = PackedStringArray("rifle", "smg")
+mag_add = 30
+reserve_add = 20
+reload_mult = 1.35
+recoil_mult = 1.1

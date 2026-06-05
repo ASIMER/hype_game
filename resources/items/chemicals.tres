@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://citemchem01"]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "loot_chemicals"
+display_name = "Chemical Compound"
+kind = 0
+rarity = 1
+weight = 1.0
+max_stack = 10
+grid_w = 1
+grid_h = 1
+description = "Volatile industrial chemicals salvaged from robot coolant systems. Used in advanced crafting."
+value = 25
