@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://cwpnsmg01"]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_data.gd" id="1_wd"]
+
+[resource]
+script = ExtResource("1_wd")
+id = "smg"
+display_name = "Submachine Gun"
+damage = 9.0
+fire_rate = 14.0
+auto = true
+pellets = 1
+spread_deg = 1.6
+recoil = 0.7
+mag_size = 35
+reserve_max = 245
+reload_time = 1.8
+ads_fov = 45.0
+range = 60.0
+crit_mult = 2.0

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "hype-game": {
+      "command": "python",
+      "args": ["tools/agent/mcp_server.py"]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+[gd_scene load_steps=4 format=3 uid="uid://cwepctrl0arc01"]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_controller.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://scripts/combat/weapon.gd" id="2_weapon"]
+
+[node name="WeaponController" type="Node3D"]
+script = ExtResource("1_ctrl")
+
+[node name="Weapon" type="Node3D" parent="."]
+script = ExtResource("2_weapon")
+
+[node name="Muzzle" type="Marker3D" parent="Weapon"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, -1.2)
+
+[node name="ModelHolder" type="Node3D" parent="."]

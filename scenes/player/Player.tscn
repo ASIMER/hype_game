@@ -1,0 +1,79 @@
+[gd_scene load_steps=10 format=3 uid="uid://cplayer0arc01"]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
+[ext_resource type="Script" path="res://scripts/inventory/inventory.gd" id="3_inv"]
+[ext_resource type="PackedScene" path="res://scenes/combat/WeaponController.tscn" id="4_wepctrl"]
+[ext_resource type="Script" path="res://scripts/combat/hurtbox.gd" id="5_hurtbox"]
+[ext_resource type="Script" path="res://scripts/player/player_animator.gd" id="6_animator"]
+[ext_resource type="Script" path="res://scripts/fx/camera_fx.gd" id="7_camfx"]
+
+[sub_resource type="CapsuleShape3D" id="Capsule_body"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="SceneReplicationConfig" id="ReplConfig_1"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath("CameraPivot:rotation")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath("Health:current")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("Capsule_body")
+
+[node name="ModelRoot" type="Node3D" parent="."]
+
+[node name="PlayerAnimator" type="Node" parent="."]
+script = ExtResource("6_animator")
+
+[node name="WeaponMount" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.1, -0.35)
+
+[node name="CameraPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="SpringArm3D" type="SpringArm3D" parent="CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, 0)
+spring_length = 4.0
+collision_mask = 1
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot/SpringArm3D"]
+
+[node name="WeaponController" parent="CameraPivot/SpringArm3D/Camera3D" instance=ExtResource("4_wepctrl")]
+
+[node name="CameraFX" type="Node" parent="CameraPivot/SpringArm3D/Camera3D"]
+script = ExtResource("7_camfx")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_health")
+max_health = 100.0
+
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("3_inv")
+
+[node name="Hurtbox" type="Area3D" parent="."]
+collision_layer = 64
+collision_mask = 0
+script = ExtResource("5_hurtbox")
+health_path = NodePath("../Health")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("Capsule_body")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("ReplConfig_1")

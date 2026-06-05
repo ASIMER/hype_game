@@ -1,0 +1,20 @@
+extends Resource
+class_name WeaponData
+## Pure-data definition of one weapon. Saved as .tres under resources/weapons/.
+## No scene/node references so it is safe to load from the controller, HUD, and
+## loot tables alike. The Weapon node consumes these per-shot via fire_with().
+
+@export var id: String = "rifle"            # logical id, also AssetRegistry model key
+@export var display_name: String = "Rifle"
+@export var damage: float = 12.0            # per pellet
+@export var fire_rate: float = 8.0          # shots per second (cooldown = 1/fire_rate)
+@export var auto: bool = true               # true: held-to-fire, false: one shot per press
+@export var pellets: int = 1                # rays per shot (shotgun fires many)
+@export var spread_deg: float = 0.5         # cone half-angle in degrees per ray
+@export var recoil: float = 1.0             # kick magnitude (read by the player camera)
+@export var mag_size: int = 30
+@export var reserve_max: int = 180
+@export var reload_time: float = 2.0
+@export var ads_fov: float = 42.0           # zoomed FOV when aiming this weapon
+@export var range: float = 80.0             # hitscan max distance
+@export var crit_mult: float = 2.0          # extra multiplier applied on weak-point hits

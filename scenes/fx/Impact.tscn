@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cfximpact0arc"]
+
+[ext_resource type="Script" path="res://scripts/fx/impact.gd" id="1_impact"]
+
+[node name="Impact" type="Node3D"]
+script = ExtResource("1_impact")

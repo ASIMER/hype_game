@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://cwpndmr01"]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_data.gd" id="1_wd"]
+
+[resource]
+script = ExtResource("1_wd")
+id = "dmr"
+display_name = "Marksman Rifle"
+damage = 34.0
+fire_rate = 3.0
+auto = false
+pellets = 1
+spread_deg = 0.15
+recoil = 2.2
+mag_size = 10
+reserve_max = 90
+reload_time = 2.4
+ads_fov = 25.0
+range = 140.0
+crit_mult = 2.5

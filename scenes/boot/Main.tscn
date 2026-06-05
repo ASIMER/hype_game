@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://c0arcmain001"]
+
+[ext_resource type="Script" path="res://scripts/boot/main.gd" id="1_main"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="WorldRoot" type="Node3D" parent="."]
+
+[node name="UILayer" type="CanvasLayer" parent="."]

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://cwpnshotgun01"]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_data.gd" id="1_wd"]
+
+[resource]
+script = ExtResource("1_wd")
+id = "shotgun"
+display_name = "Combat Shotgun"
+damage = 11.0
+fire_rate = 1.4
+auto = false
+pellets = 8
+spread_deg = 4.5
+recoil = 3.0
+mag_size = 6
+reserve_max = 48
+reload_time = 2.8
+ads_fov = 50.0
+range = 40.0
+crit_mult = 1.8

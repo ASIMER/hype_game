@@ -1,0 +1,309 @@
+[gd_scene load_steps=8 format=3 uid="uid://c0arcworkshop01"]
+
+[ext_resource type="Script" path="res://scripts/ui/workshop.gd" id="1_workshop"]
+
+; Panel StyleBox — dark bg with subtle border (matches MainMenu/SettingsMenu).
+[sub_resource type="StyleBoxFlat" id="SB_panel"]
+content_margin_left = 20.0
+content_margin_top = 16.0
+content_margin_right = 20.0
+content_margin_bottom = 16.0
+bg_color = Color(0.106, 0.133, 0.157, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.235, 0.3, 0.36, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 14
+
+; Section header StyleBox — slightly lighter bg, no shadow.
+[sub_resource type="StyleBoxFlat" id="SB_section"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.13, 0.165, 0.20, 1.0)
+border_width_bottom = 1
+border_color = Color(0.235, 0.3, 0.36, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+
+; Footer panel StyleBox.
+[sub_resource type="StyleBoxFlat" id="SB_footer"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.085, 0.106, 0.13, 0.95)
+border_width_top = 1
+border_color = Color(0.235, 0.3, 0.36, 0.7)
+
+; Vignette gradient (radial, centre transparent → edge dark).
+[sub_resource type="Gradient" id="Grad_vignette"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0.55)
+
+[sub_resource type="GradientTexture2D" id="Tex_vignette"]
+gradient = SubResource("Grad_vignette")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 1)
+
+; Deploy button style (amber accent, larger).
+[sub_resource type="StyleBoxFlat" id="SB_deploy_normal"]
+content_margin_left = 24.0
+content_margin_top = 0.0
+content_margin_right = 24.0
+content_margin_bottom = 0.0
+bg_color = Color(0.55, 0.36, 0.08, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.64, 0.24, 1.0)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="SB_deploy_hover"]
+content_margin_left = 24.0
+content_margin_top = 0.0
+content_margin_right = 24.0
+content_margin_bottom = 0.0
+bg_color = Color(0.70, 0.46, 0.10, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.64, 0.24, 1.0)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+; ── Root ─────────────────────────────────────────────────────────────────────
+[node name="Workshop" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+process_mode = 4
+script = ExtResource("1_workshop")
+
+; Background fill (same #0f1318 as MainMenu).
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.059, 0.075, 0.094, 1)
+
+; Vignette overlay.
+[node name="Vignette" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("Tex_vignette")
+expand_mode = 1
+stretch_mode = 0
+
+; ── Outer layout (Header + Body + Footer stacked vertically) ─────────────────
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+; ── HEADER ───────────────────────────────────────────────────────────────────
+[node name="Header" type="PanelContainer" parent="Layout"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("SB_footer")
+
+[node name="HRow" type="HBoxContainer" parent="Layout/Header"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TitleBox" type="VBoxContainer" parent="Layout/Header/HRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Layout/Header/HRow/TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.64, 0.24, 1)
+theme_override_font_sizes/font_size = 48
+text = "WORKSHOP"
+
+[node name="Subtitle" type="Label" parent="Layout/Header/HRow/TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+theme_override_font_sizes/font_size = 14
+text = "LOADOUT // UPGRADES // DEPLOYMENT"
+
+[node name="CurrencyLabel" type="Label" parent="Layout/Header/HRow"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.91, 0.64, 0.24, 1)
+theme_override_font_sizes/font_size = 26
+text = "CR 0"
+horizontal_alignment = 2
+
+; ── BODY (scrollable left + right columns) ───────────────────────────────────
+[node name="Body" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="BodyMargin" type="MarginContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+
+[node name="Columns" type="HBoxContainer" parent="Layout/Body/BodyMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+; ── LEFT column: Loadout ─────────────────────────────────────────────────────
+[node name="Left" type="VBoxContainer" parent="Layout/Body/BodyMargin/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LoadoutHeader" type="PanelContainer" parent="Layout/Body/BodyMargin/Columns/Left"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("SB_section")
+
+[node name="LoadoutTitle" type="Label" parent="Layout/Body/BodyMargin/Columns/Left/LoadoutHeader"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+theme_override_font_sizes/font_size = 15
+text = "LOADOUT  (max 3 weapons)"
+
+[node name="LoadoutPanel" type="PanelContainer" parent="Layout/Body/BodyMargin/Columns/Left"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("SB_panel")
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/BodyMargin/Columns/Left/LoadoutPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="WeaponRows" type="VBoxContainer" parent="Layout/Body/BodyMargin/Columns/Left/LoadoutPanel/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+; ── RIGHT column: Upgrades + Difficulty ──────────────────────────────────────
+[node name="Right" type="VBoxContainer" parent="Layout/Body/BodyMargin/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+; Upgrades section.
+[node name="UpgradesHeader" type="PanelContainer" parent="Layout/Body/BodyMargin/Columns/Right"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("SB_section")
+
+[node name="UpgradesTitle" type="Label" parent="Layout/Body/BodyMargin/Columns/Right/UpgradesHeader"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+theme_override_font_sizes/font_size = 15
+text = "PERMANENT UPGRADES"
+
+[node name="UpgradesPanel" type="PanelContainer" parent="Layout/Body/BodyMargin/Columns/Right"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("SB_panel")
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/BodyMargin/Columns/Right/UpgradesPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="UpgradeRows" type="VBoxContainer" parent="Layout/Body/BodyMargin/Columns/Right/UpgradesPanel/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+; Difficulty section.
+[node name="DiffHeader" type="PanelContainer" parent="Layout/Body/BodyMargin/Columns/Right"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("SB_section")
+
+[node name="DiffTitle" type="Label" parent="Layout/Body/BodyMargin/Columns/Right/DiffHeader"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+theme_override_font_sizes/font_size = 15
+text = "DIFFICULTY"
+
+[node name="DifficultyPanel" type="PanelContainer" parent="Layout/Body/BodyMargin/Columns/Right"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("SB_panel")
+
+[node name="DiffVBox" type="VBoxContainer" parent="Layout/Body/BodyMargin/Columns/Right/DifficultyPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DiffOption" type="OptionButton" parent="Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DiffDesc" type="Label" parent="Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.50, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 2
+
+; ── FOOTER ───────────────────────────────────────────────────────────────────
+[node name="Footer" type="PanelContainer" parent="Layout"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("SB_footer")
+
+[node name="FooterRow" type="HBoxContainer" parent="Layout/Footer"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="BackBtn" type="Button" parent="Layout/Footer/FooterRow"]
+custom_minimum_size = Vector2(140, 48)
+layout_mode = 2
+text = "BACK"
+
+[node name="DeployBtn" type="Button" parent="Layout/Footer/FooterRow"]
+custom_minimum_size = Vector2(220, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.90, 0.60, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("SB_deploy_normal")
+theme_override_styles/hover = SubResource("SB_deploy_hover")
+text = "DEPLOY"

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cfxdmgnum0arc"]
+
+[ext_resource type="Script" path="res://scripts/fx/damage_number.gd" id="1_dmgnum"]
+
+[node name="DamageNumber" type="Node3D"]
+script = ExtResource("1_dmgnum")

@@ -1,0 +1,192 @@
+[gd_scene load_steps=5 format=3 uid="uid://c0arcmenu001"]
+
+[ext_resource type="Script" path="res://scripts/boot/main_menu.gd" id="1_menu"]
+[ext_resource type="PackedScene" path="res://scenes/ui/SettingsMenu.tscn" id="2_settings"]
+
+[sub_resource type="StyleBoxFlat" id="SB_menu_panel"]
+content_margin_left = 28.0
+content_margin_top = 28.0
+content_margin_right = 28.0
+content_margin_bottom = 28.0
+bg_color = Color(0.106, 0.133, 0.157, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.235, 0.3, 0.36, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 18
+
+[sub_resource type="Gradient" id="Grad_inner"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0.55)
+
+[sub_resource type="GradientTexture2D" id="Grad_vignette"]
+gradient = SubResource("Grad_inner")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 1)
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0588235, 0.0745098, 0.0941176, 1)
+
+[node name="Vignette" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("Grad_vignette")
+expand_mode = 1
+stretch_mode = 0
+
+[node name="TitleBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -260.0
+offset_top = 28.0
+offset_right = 260.0
+offset_bottom = 128.0
+grow_horizontal = 2
+grow_vertical = 1
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.64, 0.24, 1)
+theme_override_font_sizes/font_size = 64
+text = "HYPE RAIDERS"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+theme_override_font_sizes/font_size = 18
+text = "SURFACE OPERATIONS // EXTRACT OR DIE"
+horizontal_alignment = 1
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -190.0
+offset_right = 200.0
+offset_bottom = 210.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("SB_menu_panel")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="NameLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.66, 0.71, 1)
+theme_override_font_sizes/font_size = 13
+text = "CALLSIGN"
+
+[node name="NameField" type="LineEdit" parent="Panel/VBox"]
+layout_mode = 2
+placeholder_text = "Player name"
+text = "Raider"
+
+[node name="Sep1" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="SinglePlayerBtn" type="Button" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "SINGLE PLAYER"
+
+[node name="HostBtn" type="Button" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "HOST CO-OP"
+
+[node name="IPField" type="LineEdit" parent="Panel/VBox"]
+layout_mode = 2
+placeholder_text = "Host IP (default 127.0.0.1)"
+
+[node name="JoinBtn" type="Button" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "JOIN CO-OP"
+
+[node name="Sep2" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="BottomRow" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SettingsBtn" type="Button" parent="Panel/VBox/BottomRow"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SETTINGS"
+
+[node name="QuitBtn" type="Button" parent="Panel/VBox/BottomRow"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "QUIT"
+
+[node name="Status" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+horizontal_alignment = 1
+autowrap_mode = 2
+text = ""
+
+[node name="Version" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -90.0
+offset_top = -34.0
+offset_right = -16.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.45, 0.5, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = "v0.1"
+horizontal_alignment = 2
+
+[node name="SettingsMenu" parent="." instance=ExtResource("2_settings")]
+visible = false
+layout_mode = 1

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://citemscrap01"]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "loot_scrap"
+display_name = "Scrap"
+kind = 0
+rarity = 0
+weight = 0.5
+max_stack = 20
+grid_w = 1
+grid_h = 1
+description = "Salvaged metal and components. Common material used for crafting."
+value = 5

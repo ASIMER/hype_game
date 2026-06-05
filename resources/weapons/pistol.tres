@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://cwpnpistol01"]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_data.gd" id="1_wd"]
+
+[resource]
+script = ExtResource("1_wd")
+id = "pistol"
+display_name = "Sidearm"
+damage = 16.0
+fire_rate = 5.0
+auto = false
+pellets = 1
+spread_deg = 0.4
+recoil = 1.2
+mag_size = 12
+reserve_max = 9999
+reload_time = 1.4
+ads_fov = 48.0
+range = 70.0
+crit_mult = 2.0

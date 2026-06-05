@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://cwpnrifle01"]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_data.gd" id="1_wd"]
+
+[resource]
+script = ExtResource("1_wd")
+id = "rifle"
+display_name = "Assault Rifle"
+damage = 14.0
+fire_rate = 9.0
+auto = true
+pellets = 1
+spread_deg = 0.6
+recoil = 1.0
+mag_size = 30
+reserve_max = 180
+reload_time = 2.0
+ads_fov = 40.0
+range = 90.0
+crit_mult = 2.0

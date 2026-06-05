@@ -1,0 +1,348 @@
+[gd_scene load_steps=3 format=3 uid="uid://c0arcsettings01"]
+
+[ext_resource type="Script" path="res://scripts/ui/settings_menu.gd" id="1_settings"]
+
+[sub_resource type="StyleBoxFlat" id="SB_scrim"]
+bg_color = Color(0, 0, 0, 0.6)
+
+[node name="SettingsMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_settings")
+
+[node name="Scrim" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("SB_scrim")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -280.0
+offset_right = 320.0
+offset_bottom = 280.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Root" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Panel/Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.64, 0.24, 1)
+theme_override_font_sizes/font_size = 30
+text = "SETTINGS"
+horizontal_alignment = 1
+
+[node name="Tabs" type="HBoxContainer" parent="Panel/Root"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="GraphicsTab" type="Button" parent="Panel/Root/Tabs"]
+custom_minimum_size = Vector2(140, 38)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "GRAPHICS"
+
+[node name="AudioTab" type="Button" parent="Panel/Root/Tabs"]
+custom_minimum_size = Vector2(140, 38)
+layout_mode = 2
+toggle_mode = true
+text = "AUDIO"
+
+[node name="ControlsTab" type="Button" parent="Panel/Root/Tabs"]
+custom_minimum_size = Vector2(140, 38)
+layout_mode = 2
+toggle_mode = true
+text = "CONTROLS"
+
+[node name="TabSep" type="HSeparator" parent="Panel/Root"]
+layout_mode = 2
+
+[node name="Content" type="MarginContainer" parent="Panel/Root"]
+custom_minimum_size = Vector2(600, 340)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GraphicsPage" type="ScrollContainer" parent="Panel/Root/Content"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="V" type="VBoxContainer" parent="Panel/Root/Content/GraphicsPage"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="WindowRow" type="HBoxContainer" parent="Panel/Root/Content/GraphicsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/GraphicsPage/V/WindowRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Window Mode"
+
+[node name="WindowMode" type="OptionButton" parent="Panel/Root/Content/GraphicsPage/V/WindowRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ResRow" type="HBoxContainer" parent="Panel/Root/Content/GraphicsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/GraphicsPage/V/ResRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Resolution"
+
+[node name="Resolution" type="OptionButton" parent="Panel/Root/Content/GraphicsPage/V/ResRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VSyncRow" type="HBoxContainer" parent="Panel/Root/Content/GraphicsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/GraphicsPage/V/VSyncRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "VSync"
+
+[node name="VSync" type="OptionButton" parent="Panel/Root/Content/GraphicsPage/V/VSyncRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MsaaRow" type="HBoxContainer" parent="Panel/Root/Content/GraphicsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/GraphicsPage/V/MsaaRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Anti-Aliasing (MSAA)"
+
+[node name="Msaa" type="OptionButton" parent="Panel/Root/Content/GraphicsPage/V/MsaaRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ShadowRow" type="HBoxContainer" parent="Panel/Root/Content/GraphicsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/GraphicsPage/V/ShadowRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Shadow Quality"
+
+[node name="Shadows" type="OptionButton" parent="Panel/Root/Content/GraphicsPage/V/ShadowRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FovRow" type="HBoxContainer" parent="Panel/Root/Content/GraphicsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/GraphicsPage/V/FovRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Field of View"
+
+[node name="Fov" type="HSlider" parent="Panel/Root/Content/GraphicsPage/V/FovRow"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 60.0
+max_value = 100.0
+step = 1.0
+value = 60.0
+
+[node name="FovValue" type="Label" parent="Panel/Root/Content/GraphicsPage/V/FovRow"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+text = "60"
+horizontal_alignment = 2
+
+[node name="PresetRow" type="HBoxContainer" parent="Panel/Root/Content/GraphicsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/GraphicsPage/V/PresetRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+text = "Quality Preset"
+
+[node name="Preset" type="OptionButton" parent="Panel/Root/Content/GraphicsPage/V/PresetRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AudioPage" type="VBoxContainer" parent="Panel/Root/Content"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MasterRow" type="HBoxContainer" parent="Panel/Root/Content/AudioPage"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/AudioPage/MasterRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Master Volume"
+
+[node name="Master" type="HSlider" parent="Panel/Root/Content/AudioPage/MasterRow"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
+value = 0.9
+
+[node name="MasterValue" type="Label" parent="Panel/Root/Content/AudioPage/MasterRow"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+text = "90%"
+horizontal_alignment = 2
+
+[node name="SfxRow" type="HBoxContainer" parent="Panel/Root/Content/AudioPage"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/AudioPage/SfxRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "SFX Volume"
+
+[node name="Sfx" type="HSlider" parent="Panel/Root/Content/AudioPage/SfxRow"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
+value = 0.9
+
+[node name="SfxValue" type="Label" parent="Panel/Root/Content/AudioPage/SfxRow"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+text = "90%"
+horizontal_alignment = 2
+
+[node name="MuteRow" type="HBoxContainer" parent="Panel/Root/Content/AudioPage"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/AudioPage/MuteRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Mute All"
+
+[node name="Mute" type="CheckButton" parent="Panel/Root/Content/AudioPage/MuteRow"]
+layout_mode = 2
+
+[node name="ControlsPage" type="ScrollContainer" parent="Panel/Root/Content"]
+visible = false
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="V" type="VBoxContainer" parent="Panel/Root/Content/ControlsPage"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="SensRow" type="HBoxContainer" parent="Panel/Root/Content/ControlsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/ControlsPage/V/SensRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Mouse Sensitivity"
+
+[node name="Sens" type="HSlider" parent="Panel/Root/Content/ControlsPage/V/SensRow"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 0.2
+max_value = 3.0
+step = 0.05
+value = 1.0
+
+[node name="SensValue" type="Label" parent="Panel/Root/Content/ControlsPage/V/SensRow"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+text = "1.00"
+horizontal_alignment = 2
+
+[node name="InvertRow" type="HBoxContainer" parent="Panel/Root/Content/ControlsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/ControlsPage/V/InvertRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Invert Y Axis"
+
+[node name="InvertY" type="CheckButton" parent="Panel/Root/Content/ControlsPage/V/InvertRow"]
+layout_mode = 2
+
+[node name="AimRow" type="HBoxContainer" parent="Panel/Root/Content/ControlsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="L" type="Label" parent="Panel/Root/Content/ControlsPage/V/AimRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Aim Mode"
+
+[node name="AimMode" type="OptionButton" parent="Panel/Root/Content/ControlsPage/V/AimRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="KeybindsTitle" type="Label" parent="Panel/Root/Content/ControlsPage/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.71, 0.79, 1)
+theme_override_font_sizes/font_size = 14
+text = "KEYBINDS"
+
+[node name="Keybinds" type="VBoxContainer" parent="Panel/Root/Content/ControlsPage/V"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BottomSep" type="HSeparator" parent="Panel/Root"]
+layout_mode = 2
+
+[node name="Buttons" type="HBoxContainer" parent="Panel/Root"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Reset" type="Button" parent="Panel/Root/Buttons"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "RESET TO DEFAULTS"
+
+[node name="Back" type="Button" parent="Panel/Root/Buttons"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "BACK"

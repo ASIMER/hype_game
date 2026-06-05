@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cfxdmglayer0arc"]
+
+[ext_resource type="Script" path="res://scripts/fx/damage_numbers_layer.gd" id="1_dmglayer"]
+
+[node name="DamageNumbersLayer" type="Node3D"]
+script = ExtResource("1_dmglayer")
