@@ -18,18 +18,24 @@ func _ready() -> void:
 
 func _scan() -> void:
 	_quests.clear()
+	var seen: Dictionary = {}
 	var dir := DirAccess.open(QUESTS_DIR)
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var f := dir.get_next()
-	while f != "":
-		if not dir.current_is_dir() and (f.ends_with(".tres") or f.ends_with(".res")):
-			var res := load(QUESTS_DIR + f)
-			if res is QuestData and (res as QuestData).id != "":
-				_quests.append(res)
-		f = dir.get_next()
-	dir.list_dir_end()
+	if dir != null:
+		dir.list_dir_begin()
+		var f := dir.get_next()
+		while f != "":
+			if not dir.current_is_dir() and (f.ends_with(".tres") or f.ends_with(".res")):
+				_add_quest(load(QUESTS_DIR + f), seen)
+			f = dir.get_next()
+		dir.list_dir_end()
+	# Export fallback: DirAccess can't enumerate a PCK dir → load the generated index.
+	for p in ResourceIndex.QUESTS:
+		_add_quest(load(p), seen)
+
+func _add_quest(res: Resource, seen: Dictionary) -> void:
+	if res is QuestData and (res as QuestData).id != "" and not seen.has((res as QuestData).id):
+		seen[(res as QuestData).id] = true
+		_quests.append(res)
 
 # ---------------------------------------------------------------- queries
 func all() -> Array:

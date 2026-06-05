@@ -33,6 +33,9 @@ timeout 12 "...win64_console.exe" --headless -- --server
 # 3) Two-process co-op smoke (one --server, one --client 127.0.0.1) — no script/RPC errors on either side.
 ```
 
+## Release / packaging (portable Windows build)
+`pwsh tools/build/export_windows.ps1` → installs the 4.6.3 export templates on first run (one-time ~700 MB), regenerates `scripts/resource_index.gd`, exports a single self-contained `export/HypeRaiders.exe` (pck embedded), and zips it with a README as `export/HypeRaiders-v<VERSION>-win64.zip` (friends unzip + run; co-op via the menu's Host/Join over UDP 24565). Bump the `VERSION` file per release. `export_presets.cfg` uses **`export_filter="all_resources"`** so the string-loaded `assets/*` + the data `.tres` ship. **Export gotcha (already handled):** `DirAccess` can't enumerate a `res://` dir inside a PCK, so `ItemCatalog`/`Crafting`/`Quests` scan empty in a build — they fall back to **`ResourceIndex`** (generated path lists; loading by explicit path works because Godot remaps it). Drop a new `.tres` → the next build regenerates the index. `export/` is gitignored.
+
 ## Self-play harness in 6 lines (how to actually test gameplay)
 1. Launch `--agent` in the background → boots single-player, parks the window off-screen/no-focus, opens a TCP control server on `127.0.0.1:24700`. Add `--agent-port N` to run **multiple instances at once** (per-port control + screenshots + saves — `docs/TESTING.md` §7; `tools/agent/launch_agents.ps1`).
 2. Drive it with `python tools/agent/play.py <cmd>` — e.g. `state`, `move 0 1 0.5`, `aim`, `fire 0.3`, `goto <x> <z>`, `act reload`, `spawn boss`, `godmode on`, `tp <x> <z>`.

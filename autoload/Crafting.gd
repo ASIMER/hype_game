@@ -24,18 +24,24 @@ func _ready() -> void:
 
 func _scan() -> void:
 	_recipes.clear()
+	var seen: Dictionary = {}
 	var dir := DirAccess.open(RECIPES_DIR)
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var f := dir.get_next()
-	while f != "":
-		if not dir.current_is_dir() and (f.ends_with(".tres") or f.ends_with(".res")):
-			var res := load(RECIPES_DIR + f)
-			if res is CraftRecipe and (res as CraftRecipe).id != "":
-				_recipes.append(res)
-		f = dir.get_next()
-	dir.list_dir_end()
+	if dir != null:
+		dir.list_dir_begin()
+		var f := dir.get_next()
+		while f != "":
+			if not dir.current_is_dir() and (f.ends_with(".tres") or f.ends_with(".res")):
+				_add_recipe(load(RECIPES_DIR + f), seen)
+			f = dir.get_next()
+		dir.list_dir_end()
+	# Export fallback: DirAccess can't enumerate a PCK dir → load the generated index.
+	for p in ResourceIndex.RECIPES:
+		_add_recipe(load(p), seen)
+
+func _add_recipe(res: Resource, seen: Dictionary) -> void:
+	if res is CraftRecipe and (res as CraftRecipe).id != "" and not seen.has((res as CraftRecipe).id):
+		seen[(res as CraftRecipe).id] = true
+		_recipes.append(res)
 
 # ---------------------------------------------------------------- queries
 func all_recipes() -> Array:

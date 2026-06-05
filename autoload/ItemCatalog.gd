@@ -13,22 +13,28 @@ func _ready() -> void:
 
 func _scan() -> void:
 	_by_id.clear()
-	_scan_dir(ITEMS_DIR)
-	_scan_dir(ATTACHMENTS_DIR)
+	_scan_dir(ITEMS_DIR, ResourceIndex.ITEMS)
+	_scan_dir(ATTACHMENTS_DIR, ResourceIndex.ATTACHMENTS)
 
-func _scan_dir(path: String) -> void:
+## Loads every ItemData from `path` (editor live scan) AND from the generated `index`
+## (exported builds, where DirAccess can't enumerate a PCK directory). Deduped by id,
+## so running both in the editor is harmless (load() is cached).
+func _scan_dir(path: String, index: PackedStringArray) -> void:
 	var dir := DirAccess.open(path)
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var f := dir.get_next()
-	while f != "":
-		if not dir.current_is_dir() and (f.ends_with(".tres") or f.ends_with(".res")):
-			var res := load(path + f)
-			if res is ItemData and (res as ItemData).id != "":
-				_by_id[(res as ItemData).id] = res
-		f = dir.get_next()
-	dir.list_dir_end()
+	if dir != null:
+		dir.list_dir_begin()
+		var f := dir.get_next()
+		while f != "":
+			if not dir.current_is_dir() and (f.ends_with(".tres") or f.ends_with(".res")):
+				_add_item(load(path + f))
+			f = dir.get_next()
+		dir.list_dir_end()
+	for p in index:
+		_add_item(load(p))
+
+func _add_item(res: Resource) -> void:
+	if res is ItemData and (res as ItemData).id != "":
+		_by_id[(res as ItemData).id] = res
 
 func has(id: String) -> bool:
 	return _by_id.has(id)
