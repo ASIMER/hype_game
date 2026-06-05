@@ -21,6 +21,12 @@ var _strafe_dir: float = 1.0           # +1 / -1, flips occasionally
 var _strafe_flip_t: float = 0.0
 var _ground_y: float = 0.0             # sampled ground level under us
 
+# Procedural idle parts (visual only): the rotor pivots spin, the body bobs, the
+# core pulses. Cached once in _cache_proc_parts (OVERRIDE of the base).
+var _proc_rotors: Array[Node3D] = []
+var _proc_body: Node3D = null
+var _proc_body_rest_y: float = 0.0
+
 func _ready() -> void:
 	super._ready()
 	var stats: Dictionary = Settings.ENEMY_STATS.get(enemy_id, {})
@@ -109,6 +115,38 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	var dy := target_y - global_position.y
 	velocity.y = clampf(dy * 4.0, -speed, speed)
 	move_and_slide()
+
+## OVERRIDE: cache the wasp's rotor pivots + body + glowing core for idle motion.
+func _cache_proc_parts() -> void:
+	var asm := _proc_root()
+	if asm == null:
+		return
+	var hub := asm.find_child("RotorHub", true, false)
+	if hub is Node3D:
+		for i in 4:
+			var r := (hub as Node3D).find_child("Rotor%d" % i, true, false)
+			if r is Node3D:
+				_proc_rotors.append(r as Node3D)
+	var bodyn := asm.find_child("Body", true, false)
+	if bodyn is Node3D:
+		_proc_body = bodyn as Node3D
+		_proc_body_rest_y = _proc_body.position.y
+	var core := asm.find_child("Core", true, false)
+	if core is MeshInstance3D:
+		_pulse_part = core as MeshInstance3D
+		_pulse_base_energy = _read_emission_energy(core as MeshInstance3D)
+	_has_proc_anim = not _proc_rotors.is_empty() or _proc_body != null or _pulse_part != null
+
+## OVERRIDE: fast rotor spin (each pivot about its own Y), gentle body bob, core pulse.
+func _animate_visual(delta: float) -> void:
+	for r in _proc_rotors:
+		if r and is_instance_valid(r):
+			r.rotation.y += delta * 38.0
+	if _proc_body and is_instance_valid(_proc_body):
+		_proc_body.position.y = _proc_body_rest_y + sin(_anim_time * 3.0) * 0.05
+	# Core glows brighter/faster while attacking.
+	var atk := current_state == State.ATTACK
+	_pulse_emission(0.6, 1.5, 5.0 if atk else 3.0)
 
 ## OVERRIDE: full-3D separation so wasps spread in the air, not just on XZ.
 func _separation_steer() -> Vector3:

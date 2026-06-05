@@ -61,6 +61,12 @@ const FINAL_WAVE_COUNT_MULT: float = 3.5     # storm wave size vs a normal late 
 const FINAL_WAVE_CONCURRENT: int = 18        # storm raises the alive-cap hard
 const FINAL_WAVE_SPAWN_INTERVAL: float = 0.5 # and spawns much faster
 
+# Atmosphere / mood — ambient particle density + how long the day→storm visual
+# transition takes when the final wave begins (world_atmosphere.gd reads these).
+const ATMOSPHERE_DUST := 90       # ambient dust-mote particle count
+const ATMOSPHERE_EMBERS := 40     # drifting ember particle count
+const STORM_TWEEN_TIME := 6.0     # seconds to lerp sky/fog/light into the storm look
+
 # Ballistics — shots now arc under gravity (bullet drop). The shot is resolved as a
 # stepped raycast along the trajectory; per-weapon muzzle velocity may override.
 const BULLET_GRAVITY: float = 9.8            # m/s² downward on the projectile

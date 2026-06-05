@@ -13,6 +13,12 @@ const BARRAGE_SHOTS: int = 6
 
 var _barrage_t: float = BARRAGE_INTERVAL
 
+# Procedural idle parts (visual only): the upper Torso tracks the player on Y; the
+# chest core (via the base _pulse_part) AND the eyes pulse. Cached in _cache_proc_parts.
+var _proc_torso: Node3D = null
+var _proc_eyes: MeshInstance3D = null
+var _proc_eyes_base_energy: float = 6.0
+
 func _ready() -> void:
 	super._ready()
 	burst_count = 3
@@ -29,6 +35,37 @@ func _physics_process(delta: float) -> void:
 	if _barrage_t <= 0.0 and _target != null:
 		_barrage_t = BARRAGE_INTERVAL
 		_shots_left_in_burst = BARRAGE_SHOTS
+
+## OVERRIDE: cache the boss's Torso pivot + glowing chest core + eyes.
+func _cache_proc_parts() -> void:
+	var asm := _proc_root()
+	if asm == null:
+		return
+	var torso := asm.find_child("Torso", true, false)
+	if torso is Node3D:
+		_proc_torso = torso as Node3D
+	var core := asm.find_child("ChestCore", true, false)
+	if core is MeshInstance3D:
+		_pulse_part = core as MeshInstance3D
+		_pulse_base_energy = _read_emission_energy(core as MeshInstance3D)
+	var eyes := asm.find_child("Eyes", true, false)
+	if eyes is MeshInstance3D:
+		_proc_eyes = eyes as MeshInstance3D
+		_proc_eyes_base_energy = _read_emission_energy(_proc_eyes)
+	_has_proc_anim = _proc_torso != null or _pulse_part != null or _proc_eyes != null
+
+## OVERRIDE: turn the upper torso to face the nearest player + pulse chest core and
+## eyes (brighter/faster while attacking) so the boss looms and tracks you.
+func _animate_visual(delta: float) -> void:
+	_track_player_yaw(_proc_torso, delta, 2.0)
+	var atk := current_state == State.ATTACK
+	_pulse_emission(0.7, 1.5, 4.5 if atk else 2.0)
+	# Eyes pulse on their own (the base _pulse_part owns the chest core).
+	if _proc_eyes and is_instance_valid(_proc_eyes) and _flash_t <= 0.0:
+		var mat := _proc_eyes.get_active_material(0)
+		if mat is StandardMaterial3D:
+			var k := 0.5 + 0.5 * sin(_anim_time * (5.0 if atk else 2.5) + 1.0)
+			(mat as StandardMaterial3D).emission_energy_multiplier = _proc_eyes_base_energy * lerpf(0.6, 1.5, k)
 
 ## OVERRIDE: slam in melee range, otherwise fall back to the gunner hitscan burst.
 func _strike(target: Node) -> void:
@@ -52,3 +89,7 @@ func _melee_slam(target: Node) -> void:
 ## OVERRIDE: bar sits well above the huge model.
 func _health_bar_height() -> float:
 	return 4.6
+
+## OVERRIDE: boss death shakes the screen + makes bigger debris (via the base FX).
+func _is_boss() -> bool:
+	return true

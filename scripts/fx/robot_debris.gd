@@ -10,7 +10,7 @@ class_name RobotDebris
 
 const LIFETIME := 3.0
 const FADE_START := 2.0     # chunks begin fading at this age
-const CHUNK_COUNT := 7
+const CHUNK_COUNT := 11
 
 var _t := 0.0
 var _scale := 1.0
@@ -27,6 +27,7 @@ func setup(scale: float, tint: Color = Color(0.55, 0.57, 0.6)) -> void:
 func _ready() -> void:
 	_spawn_chunks()
 	_spawn_smoke()
+	_spawn_embers()
 
 func _spawn_chunks() -> void:
 	for i in CHUNK_COUNT:
@@ -114,6 +115,40 @@ func _spawn_smoke() -> void:
 	_smoke.position = Vector3(0, 0.6 * _scale, 0)
 	add_child(_smoke)
 	_smoke.emitting = true
+
+## A quick burst of bright, enemy-tinted embers that arc out and fall — adds spark
+## "juice" on top of the grey chunks + smoke. Short-lived + unshaded so it glows.
+func _spawn_embers() -> void:
+	var embers := GPUParticles3D.new()
+	embers.one_shot = true
+	embers.explosiveness = 1.0
+	embers.amount = int(round(16 * _scale))
+	embers.lifetime = 0.7
+	embers.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var em := ParticleProcessMaterial.new()
+	em.direction = Vector3(0, 1, 0)
+	em.spread = 180.0
+	em.initial_velocity_min = 2.5 * _scale
+	em.initial_velocity_max = 7.0 * _scale
+	em.gravity = Vector3(0, -10.0, 0)
+	em.scale_min = 0.5
+	em.scale_max = 1.2
+	# Brighten the body tint so embers read as hot sparks, not dull paint.
+	em.color = _tint.lerp(Color(1.0, 0.85, 0.4), 0.5)
+	embers.process_material = em
+	var dot := SphereMesh.new()
+	dot.radius = 0.045 * _scale
+	dot.height = 0.09 * _scale
+	dot.radial_segments = 6
+	dot.rings = 3
+	var dot_mat := StandardMaterial3D.new()
+	dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dot_mat.albedo_color = em.color
+	dot.material = dot_mat
+	embers.draw_pass_1 = dot
+	embers.position = Vector3(0, 0.6 * _scale, 0)
+	add_child(embers)
+	embers.emitting = true
 
 func _process(delta: float) -> void:
 	_t += delta

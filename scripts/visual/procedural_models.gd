@@ -147,12 +147,14 @@ static func _strut(parent: Node3D, a: Vector3, b: Vector3, radius: float,
 ## so local y0 = world 0.35, feet at local y≈-0.35.
 static func build_robot_tick() -> Node3D:
 	var root := Node3D.new()
-	var shell := _mat(Color(0.27, 0.33, 0.36), 0.35, 0.5)
-	var dark := _mat(Color(0.15, 0.17, 0.19), 0.3, 0.55)
+	# Weathered shell so the carapace reads as worn metal (world=false so it doesn't
+	# swim as the tick skitters); metal bits get a touch more metallic for SDFGI.
+	var shell := ProcMaterials.weathered(Color(0.27, 0.33, 0.36), 0.55, 0.5, 0.55, 11, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.15, 0.17, 0.19), 0.45, 0.55)
 	var accent_col := AssetRegistry.get_color("robot_tick")  # orange
-	var accent := _mat(accent_col, 0.2, 0.45)
-	var eye_mat := _mat(accent_col, 0.0, 0.3, accent_col, 5.0)
-	var leg_mat := _mat(Color(0.32, 0.35, 0.38), 0.4, 0.45)
+	var accent := _mat(accent_col, 0.3, 0.45)
+	var eye_mat := _mat(accent_col, 0.0, 0.3, accent_col, 6.0)
+	var leg_mat := _mat(Color(0.32, 0.35, 0.38), 0.55, 0.45)
 
 	# Flat, wide beetle carapace + a slightly smaller underbelly.
 	_part(root, _sphere(0.32, false, 9, 16), shell, Vector3(0, 0.06, 0.0), Vector3.ZERO, Vector3(1.25, 0.5, 1.4))
@@ -162,21 +164,31 @@ static func build_robot_tick() -> Node3D:
 	_part(root, _box(Vector3(0.05, 0.05, 0.46)), accent, Vector3(-0.2, 0.08, 0.02))
 	_part(root, _box(Vector3(0.3, 0.05, 0.08)), accent, Vector3(0, 0.12, -0.32), Vector3(20, 0, 0))
 	# Forward glowing sensor eye (faces -Z) + two mandible prongs.
-	_part(root, _sphere(0.1, false, 8, 12), eye_mat, Vector3(0, 0.04, -0.42))
+	var eye := _part(root, _sphere(0.1, false, 8, 12), eye_mat, Vector3(0, 0.04, -0.42))
+	eye.name = "Eye"
 	_part(root, _cone(0.04, 0.18), dark, Vector3(0.1, -0.04, -0.46), Vector3(-100, 0, 0))
 	_part(root, _cone(0.04, 0.18), dark, Vector3(-0.1, -0.04, -0.46), Vector3(-100, 0, 0))
 
 	# Six wide-splayed bent legs (3 per side): knee up-and-out, foot planted on ground.
+	# Each leg lives under its own pivot Node3D at the body attach point so the enemy
+	# script can micro-sway the whole leg by rotating the pivot (named "Leg0".."Leg5").
 	var zs := [-0.22, 0.02, 0.26]
+	var li := 0
 	for side in [-1.0, 1.0]:
 		for z in zs:
 			var zf := float(z)
 			var attach := Vector3(side * 0.2, 0.02, zf)
 			var knee := Vector3(side * 0.5, 0.16, zf + side * 0.03)
 			var foot := Vector3(side * 0.6, -0.35, zf + side * 0.02)
-			_strut(root, attach, knee, 0.05, leg_mat)
-			_strut(root, knee, foot, 0.038, leg_mat)
-			_part(root, _sphere(0.05, false, 6, 8), dark, foot)
+			var pivot := Node3D.new()
+			pivot.name = "Leg%d" % li
+			pivot.position = attach
+			root.add_child(pivot)
+			# Build the leg in pivot-local space (subtract the attach point).
+			_strut(pivot, Vector3.ZERO, knee - attach, 0.05, leg_mat)
+			_strut(pivot, knee - attach, foot - attach, 0.038, leg_mat)
+			_part(pivot, _sphere(0.05, false, 6, 8), dark, foot - attach)
+			li += 1
 	return root
 
 ## Wasp — flying drone. Glowing core + ringed body + 4 rotor arms + a stinger.
@@ -184,26 +196,50 @@ static func build_robot_tick() -> Node3D:
 static func build_robot_wasp() -> Node3D:
 	var root := Node3D.new()
 	var glow_col := AssetRegistry.get_color("robot_wasp")  # cyan
-	var body := _mat(Color(0.18, 0.2, 0.24), 0.5, 0.4)
-	var dark := _mat(Color(0.1, 0.11, 0.13), 0.4, 0.5)
-	var rotor := _mat(Color(0.22, 0.24, 0.27), 0.3, 0.3)
-	var core_mat := _mat(glow_col, 0.0, 0.3, glow_col, 5.0)
+	var body := ProcMaterials.weathered(Color(0.18, 0.2, 0.24), 0.6, 0.4, 0.6, 23, Vector3(0.7, 0.7, 0.7), false)
+	var dark := _mat(Color(0.1, 0.11, 0.13), 0.5, 0.5)
+	var rotor := _mat(Color(0.22, 0.24, 0.27), 0.4, 0.3)
+	var core_mat := _mat(glow_col, 0.0, 0.3, glow_col, 6.0)
 
+	# A body pivot wrapping the pod + core + stinger so the script can bob just the
+	# body (named "Body") without moving the rotors' spin hub.
+	var bodyp := Node3D.new()
+	bodyp.name = "Body"
+	root.add_child(bodyp)
 	# Central body pod (flattened) with a glowing sensor core at the front.
-	_part(root, _sphere(0.24, false, 10, 14), body, Vector3(0, 0, 0), Vector3.ZERO, Vector3(1.0, 0.6, 1.1))
-	_part(root, _sphere(0.12, false, 10, 14), core_mat, Vector3(0, 0.0, -0.2))
+	_part(bodyp, _sphere(0.24, false, 10, 14), body, Vector3(0, 0, 0), Vector3.ZERO, Vector3(1.0, 0.6, 1.1))
+	var core := _part(bodyp, _sphere(0.12, false, 10, 14), core_mat, Vector3(0, 0.0, -0.2))
+	core.name = "Core"
 	# Top + bottom caps.
-	_part(root, _sphere(0.16, true, 8, 14), dark, Vector3(0, 0.06, 0), Vector3.ZERO, Vector3(1.0, 0.7, 1.0))
+	_part(bodyp, _sphere(0.16, true, 8, 14), dark, Vector3(0, 0.06, 0), Vector3.ZERO, Vector3(1.0, 0.7, 1.0))
+	# Downward stinger (faces -Z, angled down) — its ranged "gun".
+	_part(bodyp, _cone(0.06, 0.32), dark, Vector3(0, -0.08, -0.28), Vector3(-115, 0, 0))
+
 	# Four rotor arms out to the diagonals, each ending in a flat spinning rotor disc.
+	# Each disc sits under its OWN pivot Node3D centred on the disc (so a Y rotation
+	# spins the blade in place, not orbiting the body); all pivots are grouped under
+	# a "RotorHub" so the script can find + spin them in one cheap loop. Arms (struts)
+	# stay fixed on the root. The disc mesh is given a 2-bladed look via a thin crossbar
+	# so the spin actually reads.
+	var hub := Node3D.new()
+	hub.name = "RotorHub"
+	root.add_child(hub)
 	var arms := [Vector3(0.34, 0.12, 0.34), Vector3(-0.34, 0.12, 0.34),
 		Vector3(0.34, 0.12, -0.34), Vector3(-0.34, 0.12, -0.34)]
+	var ri := 0
 	for tip in arms:
 		var tv: Vector3 = tip
 		_strut(root, Vector3(tv.x * 0.4, 0.04, tv.z * 0.4), tv, 0.03, dark)
-		_part(root, _cyl(0.16, 0.025, 12), rotor, tv + Vector3(0, 0.02, 0))
+		var pivot := Node3D.new()
+		pivot.name = "Rotor%d" % ri
+		pivot.position = tv + Vector3(0, 0.02, 0)
+		hub.add_child(pivot)
+		_part(pivot, _cyl(0.16, 0.025, 12), rotor)
+		# Two crossed blades so the spin is visible against the disc.
+		_part(pivot, _box(Vector3(0.32, 0.035, 0.04)), dark, Vector3(0, 0.02, 0))
+		_part(pivot, _box(Vector3(0.04, 0.035, 0.32)), dark, Vector3(0, 0.02, 0))
 		_part(root, _sphere(0.05, false, 6, 8), dark, tv)
-	# Downward stinger (faces -Z, angled down) — its ranged "gun".
-	_part(root, _cone(0.06, 0.32), dark, Vector3(0, -0.08, -0.28), Vector3(-115, 0, 0))
+		ri += 1
 	return root
 
 ## Bastion — heavy stationary turret with a glowing WEAK POINT on top. Collision box
@@ -212,27 +248,38 @@ static func build_robot_wasp() -> Node3D:
 static func build_robot_bastion() -> Node3D:
 	var root := Node3D.new()
 	var red := AssetRegistry.get_color("robot_bastion")  # dark red
-	var armor := _mat(Color(0.28, 0.1, 0.1), 0.45, 0.5)
-	var dark := _mat(Color(0.13, 0.12, 0.13), 0.4, 0.55)
-	var trim := _mat(red, 0.3, 0.45)
+	var armor := ProcMaterials.weathered(Color(0.28, 0.1, 0.1), 0.55, 0.5, 0.5, 31, Vector3(0.4, 0.4, 0.4), false)
+	var dark := _mat(Color(0.13, 0.12, 0.13), 0.5, 0.55)
+	var trim := _mat(red, 0.4, 0.45)
 	var weak := _mat(Color(1.0, 0.55, 0.15), 0.0, 0.3, Color(1.0, 0.45, 0.1), 6.0)
 
-	# Wide armored base.
+	# Wide armored base — STATIC (does not track the player).
 	_part(root, _box(Vector3(1.7, 0.9, 1.7)), dark, Vector3(0, -0.85, 0))
 	_part(root, _box(Vector3(1.85, 0.2, 1.85)), armor, Vector3(0, -1.25, 0))
+
+	# The whole upper turret rotates on Y to face the player: body + barrels + weak
+	# point + shoulders all live under "TurretHead" (pivoted at the base top so it
+	# spins about the centre column). The script yaws this node toward the nearest player.
+	var head := Node3D.new()
+	head.name = "TurretHead"
+	root.add_child(head)
 	# Main turret body (mid).
-	_part(root, _box(Vector3(1.5, 1.0, 1.4)), armor, Vector3(0, 0.05, 0))
-	_part(root, _box(Vector3(1.55, 0.18, 1.45)), trim, Vector3(0, 0.5, 0))
-	# Twin forward cannon barrels (face -Z).
+	_part(head, _box(Vector3(1.5, 1.0, 1.4)), armor, Vector3(0, 0.05, 0))
+	_part(head, _box(Vector3(1.55, 0.18, 1.45)), trim, Vector3(0, 0.5, 0))
+	# Twin forward cannon barrels (face -Z), named so the script can find the gun.
+	var bi := 0
 	for sx in [-0.35, 0.35]:
-		_part(root, _cyl(0.13, 1.0, 12), dark, Vector3(float(sx), 0.1, -0.85), Vector3(90, 0, 0))
-		_part(root, _cyl(0.16, 0.2, 12), trim, Vector3(float(sx), 0.1, -0.5), Vector3(90, 0, 0))
+		var barrel := _part(head, _cyl(0.13, 1.0, 12), dark, Vector3(float(sx), 0.1, -0.85), Vector3(90, 0, 0))
+		barrel.name = "Barrel%d" % bi
+		_part(head, _cyl(0.16, 0.2, 12), trim, Vector3(float(sx), 0.1, -0.5), Vector3(90, 0, 0))
+		bi += 1
 	# Shoulder armor plates.
 	for sx2 in [-0.85, 0.85]:
-		_part(root, _box(Vector3(0.25, 0.7, 1.1)), dark, Vector3(float(sx2), 0.2, 0), Vector3(0, 0, 12) * signf(float(sx2)))
+		_part(head, _box(Vector3(0.25, 0.7, 1.1)), dark, Vector3(float(sx2), 0.2, 0), Vector3(0, 0, 12) * signf(float(sx2)))
 	# Glowing weak point dome on top (over the WeakPoint hurtbox at world y2.6).
-	_part(root, _cyl(0.45, 0.25, 8), dark, Vector3(0, 0.95, 0))
-	_part(root, _sphere(0.4, true, 10, 16), weak, Vector3(0, 1.05, 0), Vector3.ZERO, Vector3(1.0, 1.1, 1.0))
+	_part(head, _cyl(0.45, 0.25, 8), dark, Vector3(0, 0.95, 0))
+	var dome := _part(head, _sphere(0.4, true, 10, 16), weak, Vector3(0, 1.05, 0), Vector3.ZERO, Vector3(1.0, 1.1, 1.0))
+	dome.name = "WeakDome"
 	return root
 
 ## Boss — large multi-part mech. Collision box 3.0×4.2 @ world y2.1; ModelRoot @ y2.2
@@ -240,36 +287,47 @@ static func build_robot_bastion() -> Node3D:
 static func build_robot_boss() -> Node3D:
 	var root := Node3D.new()
 	var violet := AssetRegistry.get_color("robot_boss")  # dark purple
-	var armor := _mat(Color(0.26, 0.12, 0.32), 0.45, 0.45)
-	var dark := _mat(Color(0.12, 0.1, 0.14), 0.4, 0.5)
-	var trim := _mat(Color(0.55, 0.3, 0.85), 0.4, 0.4)
+	var armor := ProcMaterials.weathered(Color(0.26, 0.12, 0.32), 0.55, 0.45, 0.5, 47, Vector3(0.3, 0.3, 0.3), false)
+	var dark := _mat(Color(0.12, 0.1, 0.14), 0.5, 0.5)
+	var trim := _mat(Color(0.55, 0.3, 0.85), 0.5, 0.4)
 	var core_mat := _mat(Color(0.8, 0.4, 1.0), 0.0, 0.3, Color(0.7, 0.3, 1.0), 6.0)
 	var eye_mat := _mat(Color(1.0, 0.4, 0.6), 0.0, 0.3, Color(1.0, 0.2, 0.4), 6.0)
 
-	# Two heavy legs from the ground (local y-2.2) up to the hips.
+	# Two heavy legs from the ground (local y-2.2) up to the hips — STATIC base.
 	for sx in [-0.6, 0.6]:
 		var fx := float(sx)
 		_part(root, _box(Vector3(0.55, 0.3, 0.95)), dark, Vector3(fx, -2.05, 0.05))      # foot
 		_strut(root, Vector3(fx, -2.0, 0), Vector3(fx, -1.1, 0.15), 0.22, armor)          # shin
 		_strut(root, Vector3(fx, -1.1, 0.15), Vector3(fx * 0.7, -0.4, 0), 0.26, armor)    # thigh
 		_part(root, _sphere(0.28, false, 8, 10), dark, Vector3(fx, -1.1, 0.15))           # knee joint
-	# Hips + torso.
+	# Hips — STATIC.
 	_part(root, _box(Vector3(1.5, 0.5, 0.9)), dark, Vector3(0, -0.45, 0))
-	_part(root, _box(Vector3(1.7, 1.5, 1.0)), armor, Vector3(0, 0.5, 0))
-	_part(root, _box(Vector3(1.75, 0.25, 1.05)), trim, Vector3(0, 1.25, 0))
+
+	# Upper body (torso + chest core + arms + head) rotates on Y to face the player.
+	# Pivoted near the hips ("Torso") so the whole mech upper turns toward the target.
+	var torso := Node3D.new()
+	torso.name = "Torso"
+	torso.position = Vector3(0, -0.2, 0)
+	root.add_child(torso)
+	# Torso shell (built in torso-local space: subtract the pivot y-offset).
+	_part(torso, _box(Vector3(1.7, 1.5, 1.0)), armor, Vector3(0, 0.7, 0))
+	_part(torso, _box(Vector3(1.75, 0.25, 1.05)), trim, Vector3(0, 1.45, 0))
 	# Glowing chest core.
-	_part(root, _sphere(0.32, false, 12, 16), core_mat, Vector3(0, 0.45, -0.45))
-	_part(root, _cyl(0.4, 0.2, 8), dark, Vector3(0, 0.45, -0.42), Vector3(90, 0, 0))
+	var core := _part(torso, _sphere(0.32, false, 12, 16), core_mat, Vector3(0, 0.65, -0.45))
+	core.name = "ChestCore"
+	_part(torso, _cyl(0.4, 0.2, 8), dark, Vector3(0, 0.65, -0.42), Vector3(90, 0, 0))
 	# Shoulder pods + arm cannons.
 	for sx3 in [-1.0, 1.0]:
 		var ax := float(sx3)
-		_part(root, _box(Vector3(0.6, 0.7, 0.8)), dark, Vector3(ax, 1.0, 0))
-		_strut(root, Vector3(ax, 0.8, 0), Vector3(ax * 1.05, -0.3, -0.2), 0.16, armor)    # upper arm
-		_part(root, _cyl(0.18, 1.1, 12), dark, Vector3(ax * 1.1, -0.5, -0.5), Vector3(80, 0, 0))  # cannon
-		_part(root, _cyl(0.22, 0.25, 12), trim, Vector3(ax * 1.12, -0.5, -0.95), Vector3(80, 0, 0))
+		_part(torso, _box(Vector3(0.6, 0.7, 0.8)), dark, Vector3(ax, 1.2, 0))
+		_strut(torso, Vector3(ax, 1.0, 0), Vector3(ax * 1.05, -0.1, -0.2), 0.16, armor)   # upper arm
+		_part(torso, _cyl(0.18, 1.1, 12), dark, Vector3(ax * 1.1, -0.3, -0.5), Vector3(80, 0, 0))  # cannon
+		_part(torso, _cyl(0.22, 0.25, 12), trim, Vector3(ax * 1.12, -0.3, -0.95), Vector3(80, 0, 0))
 	# Head with twin glowing eyes.
-	_part(root, _box(Vector3(0.7, 0.55, 0.7)), dark, Vector3(0, 1.55, 0))
-	_part(root, _box(Vector3(0.5, 0.12, 0.1)), eye_mat, Vector3(0, 1.6, -0.36))
+	var head := _part(torso, _box(Vector3(0.7, 0.55, 0.7)), dark, Vector3(0, 1.75, 0))
+	head.name = "Head"
+	var eyes := _part(torso, _box(Vector3(0.5, 0.12, 0.1)), eye_mat, Vector3(0, 1.8, -0.36))
+	eyes.name = "Eyes"
 	return root
 
 # ================================================================= ITEMS

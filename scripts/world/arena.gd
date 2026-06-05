@@ -114,6 +114,11 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 		Vector3(30, 0, -55), Vector3(-60, 0, -20), Vector3(60, 0, -5),
 		Vector3(15, 0, 55), Vector3(-10, 0, 35), Vector3(5, 0, -35),
 		Vector3(-66, 0, -60), Vector3(66, 0, 60), Vector3(-70, 0, 12),
+		# Extra debris across open ground for landscape interest (still clear of
+		# POIs/spawns/zones — small piles between the existing crossroads).
+		Vector3(38, 0, 22), Vector3(-40, 0, -8), Vector3(8, 0, 20),
+		Vector3(-18, 0, 58), Vector3(48, 0, 10), Vector3(-48, 0, 56),
+		Vector3(22, 0, -10), Vector3(-8, 0, -58),
 	]
 	for i in range(spots.size()):
 		var pile := ProceduralBuildings.rubble_pile(i * 137 + 11)
@@ -126,22 +131,24 @@ func _enrich_ground() -> void:
 	var ground_mesh := nav_region.get_node_or_null("Ground/Mesh") as MeshInstance3D
 	if ground_mesh == null:
 		return
-	var asphalt := StandardMaterial3D.new()
-	asphalt.albedo_color = Color(0.16, 0.165, 0.175)
-	asphalt.roughness = 0.97
-	asphalt.metallic = 0.0
+	# Triplanar noise-detailed asphalt: broad cracks/patches via the shared toolkit
+	# (low scale = large-scale features) so the ground reads as worn paving, not flat.
+	var asphalt: StandardMaterial3D = ProcMaterials.weathered(
+		Color(0.16, 0.165, 0.175), 0.0, 0.95, 0.5, 7,
+		Vector3(0.05, 0.05, 0.05), true)
 	ground_mesh.set_surface_override_material(0, asphalt)
-	# Subtle dirt-tint detail plane slightly above the ground (no collision), large
-	# and faintly transparent so it reads as weathering variation, not a hard layer.
+	# Second, very-low-frequency stain layer (no collision): a large faintly-transparent
+	# plane carrying its own coarse grime noise for big tonal patches of dirt/oil.
 	var detail := MeshInstance3D.new()
 	detail.name = "GroundDetail"
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(160, 160)
 	detail.mesh = pm
-	var dm := StandardMaterial3D.new()
+	var dm: StandardMaterial3D = ProcMaterials.weathered(
+		Color(0.22, 0.19, 0.15), 0.0, 1.0, 0.35, 13,
+		Vector3(0.02, 0.02, 0.02), true)
 	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	dm.albedo_color = Color(0.22, 0.19, 0.15, 0.18)
-	dm.roughness = 1.0
+	dm.albedo_color = Color(0.22, 0.19, 0.15, 0.22)
 	detail.material_override = dm
 	detail.position = Vector3(0, 0.02, 0)
 	var ground_body := nav_region.get_node_or_null("Ground")

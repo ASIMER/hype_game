@@ -161,6 +161,9 @@ func load_arena() -> void:
 	# World-space floating damage numbers (visual only).
 	if DisplayServer.get_name() != "headless" and ResourceLoader.exists("res://scenes/fx/DamageNumbersLayer.tscn"):
 		world_root.add_child((load("res://scenes/fx/DamageNumbersLayer.tscn") as PackedScene).instantiate())
+	# Ambient atmosphere (dust/embers + the day→storm transition on the final wave).
+	if DisplayServer.get_name() != "headless" and ResourceLoader.exists("res://scenes/fx/Atmosphere.tscn"):
+		world_root.add_child((load("res://scenes/fx/Atmosphere.tscn") as PackedScene).instantiate())
 	# Local HUD + inventory overlay (skip on a dedicated headless server).
 	if DisplayServer.get_name() != "headless":
 		if ResourceLoader.exists("res://scenes/ui/HUD.tscn"):

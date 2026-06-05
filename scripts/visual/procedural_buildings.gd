@@ -18,32 +18,54 @@ class_name ProceduralBuildings
 ## Dictionary.get()/untyped ternary — every local below is explicitly typed.
 
 # ---------------------------------------------------------------- materials
-## Weathered urban palette. All StandardMaterial3D (required).
-static func mat_concrete() -> StandardMaterial3D:
-	return ProceduralModels._mat(Color(0.40, 0.40, 0.42), 0.0, 0.92)
+## Weathered urban palette. All StandardMaterial3D (required), now procedurally
+## WORN via the shared ProcMaterials toolkit (triplanar grime/streak noise) instead
+## of flat solid albedo. Each helper takes an optional per-piece `sid` so adjacent
+## walls/slabs don't share the exact same grime pattern; callers thread the seeds
+## they already have. `world`-triplanar keeps detail continuous across a building.
+##
+## `streaked()` (vertical rain-stain weathering) is used for TALL wall surfaces so
+## stains run down; `weathered()` (broad grime mask) for slabs/roofs/horizontals.
 
-static func mat_concrete_dark() -> StandardMaterial3D:
-	return ProceduralModels._mat(Color(0.27, 0.28, 0.30), 0.0, 0.94)
+## Light worn concrete — broad grime, fully matte. Used for general walls/piers.
+static func mat_concrete(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.streaked(Color(0.40, 0.40, 0.42), 0.0, 0.92, 0.5, sid * 7 + 3)
 
-static func mat_concrete_stained() -> StandardMaterial3D:
-	return ProceduralModels._mat(Color(0.33, 0.32, 0.30), 0.05, 0.9)
+## Darker concrete for slabs/floors/roofs — horizontal grime (not streaked).
+static func mat_concrete_dark(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.27, 0.28, 0.30), 0.0, 0.94, 0.45,
+		sid * 13 + 5, Vector3(0.14, 0.14, 0.14), true)
 
-static func mat_rust() -> StandardMaterial3D:
-	return ProceduralModels._mat(Color(0.46, 0.26, 0.16), 0.25, 0.82)
+## Stained warehouse concrete — heavier dirt streaks.
+static func mat_concrete_stained(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.streaked(Color(0.33, 0.32, 0.30), 0.05, 0.9, 0.38, sid * 17 + 9)
 
-static func mat_metal() -> StandardMaterial3D:
-	return ProceduralModels._mat(Color(0.34, 0.37, 0.41), 0.55, 0.45)
+## Mottled rust — broad noise so the corrosion patches read as blotchy, not striped.
+## Moderate metallic + mid roughness so SDFGI reflections still catch.
+static func mat_rust(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.46, 0.26, 0.16), 0.3, 0.6, 0.4,
+		sid * 23 + 1, Vector3(0.12, 0.12, 0.12), true)
 
-static func mat_metal_dark() -> StandardMaterial3D:
-	return ProceduralModels._mat(Color(0.18, 0.19, 0.21), 0.5, 0.5)
+## Dirtier structural metal — kept semi-reflective (metallic ~0.45, roughness ~0.55)
+## so it reads as worn steel and SDFGI bounces off it.
+static func mat_metal(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.34, 0.37, 0.41), 0.45, 0.55, 0.5,
+		sid * 29 + 4, Vector3(0.12, 0.12, 0.12), true)
+
+## Dark grimy metal for ribs/door-ends/trim.
+static func mat_metal_dark(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.18, 0.19, 0.21), 0.4, 0.55, 0.5,
+		sid * 31 + 2, Vector3(0.10, 0.10, 0.10), true)
 
 static func mat_glass() -> StandardMaterial3D:
-	# Dark window glass with a faint cold emission so windows read at dusk.
+	# Dark window glass with a faint cold emission so windows read at dusk. Kept flat
+	# (no grime) via _mat so the emission path is preserved.
 	return ProceduralModels._mat(Color(0.07, 0.09, 0.12), 0.6, 0.15,
 		Color(0.10, 0.16, 0.22), 0.5)
 
 static func mat_container(sid: int) -> StandardMaterial3D:
-	# Pick a faded shipping-container color deterministically from seed.
+	# Pick a faded shipping-container color deterministically from seed, then weather
+	# it with vertical streaks (rust running down the corrugated panels).
 	var palette: Array[Color] = [
 		Color(0.42, 0.20, 0.14),  # rust red
 		Color(0.20, 0.34, 0.27),  # faded green
@@ -53,7 +75,7 @@ static func mat_container(sid: int) -> StandardMaterial3D:
 	]
 	var idx: int = _h(sid) % palette.size()
 	var c: Color = palette[idx]
-	return ProceduralModels._mat(c, 0.2, 0.72)
+	return ProcMaterials.streaked(c, 0.2, 0.7, 0.42, sid * 37 + 6)
 
 # ---------------------------------------------------------------- seed helper
 ## Cheap deterministic positive hash of an int → big positive int.
@@ -147,6 +169,13 @@ static func wall(length: float, height: float, thickness: float, mat: StandardMa
 		# Glass pane filling the opening (decorative, thin, no collision).
 		_decor(root, Vector3(ww, win_h, thickness * 0.4), glass,
 			Vector3(0.0, sill_h + win_h * 0.5, 0.0))
+		# Protruding sill ledge under the window (cheap silhouette detail; render-only).
+		var ledge := mat_concrete_dark(int(length * 17.0))
+		_decor(root, Vector3(ww + 0.4, 0.12, thickness + 0.18), ledge,
+			Vector3(0.0, sill_h - 0.02, 0.0))
+		# A thin lintel lip above the opening so the header casts a shadow line.
+		_decor(root, Vector3(ww + 0.3, 0.1, thickness + 0.12), ledge,
+			Vector3(0.0, head_y + 0.04, 0.0))
 	else:
 		_solid(root, Vector3(length, height, thickness), mat,
 			Vector3(0.0, height * 0.5, 0.0))
@@ -169,6 +198,16 @@ static func roof(w: float, d: float, mat: StandardMaterial3D) -> Node3D:
 	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, -d * 0.5 + 0.12))
 	_solid(root, Vector3(0.25, ph, d), mat, Vector3(w * 0.5 - 0.12, ph * 0.5, 0.0))
 	_solid(root, Vector3(0.25, ph, d), mat, Vector3(-w * 0.5 + 0.12, ph * 0.5, 0.0))
+	# Darker coping cap along the parapet top (cheap render-only silhouette trim).
+	var cap := mat_metal_dark(int(w * 53.0 + d))
+	_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, d * 0.5 - 0.12))
+	_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, -d * 0.5 + 0.12))
+	_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(w * 0.5 - 0.12, ph + 0.02, 0.0))
+	_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(-w * 0.5 + 0.12, ph + 0.02, 0.0))
+	# A vent/pipe stub on the roof for rooftop interest (render-only).
+	var vent := mat_metal(int(w * 71.0))
+	_decor(root, Vector3(0.5, 0.9, 0.5), vent, Vector3(w * 0.25, 0.45, -d * 0.2))
+	_decor(root, Vector3(0.3, 0.6, 0.3), vent, Vector3(-w * 0.28, 0.3, d * 0.22))
 	return root
 
 ## A square pillar of height h, radius r (box-section), base at local y=0.
@@ -180,9 +219,9 @@ static func pillar(h: float, r: float, mat: StandardMaterial3D) -> Node3D:
 ## A pile of a few tilted broken blocks (collidable cover), deterministic by seed.
 static func rubble_pile(sid: int) -> Node3D:
 	var root := Node3D.new()
-	var m_a := mat_concrete()
-	var m_b := mat_concrete_dark()
-	var m_c := mat_rust()
+	var m_a := mat_concrete(sid * 3 + 1)
+	var m_b := mat_concrete_dark(sid * 3 + 2)
+	var m_c := mat_rust(sid * 3 + 3)
 	var count: int = 3 + (_h(sid) % 3)  # 3..5 chunks
 	for i in range(count):
 		var s: int = sid * 31 + i * 7
@@ -207,7 +246,7 @@ static func container(w: float, h: float, d: float, mat: StandardMaterial3D) -> 
 	var root := Node3D.new()
 	_solid(root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0))
 	# Corrugation ribs + a darker door end (decorative only).
-	var ribs := mat_metal_dark()
+	var ribs := mat_metal_dark(int(w * 41.0 + d))
 	var n: int = int(d / 0.8)
 	for i in range(n):
 		var z: float = -d * 0.5 + 0.4 + i * 0.8
@@ -233,8 +272,7 @@ static func build_tower(footprint: Vector2) -> Node3D:
 	var root := Node3D.new()
 	var w: float = footprint.x
 	var d: float = footprint.y
-	var conc := mat_concrete()
-	var conc_d := mat_concrete_dark()
+	var conc_d := mat_concrete_dark(int(w + d))
 	var th: float = 0.35
 	var storeys: int = 3 + (_h(1) % 2)  # 3..4
 	var sh: float = 3.0                  # storey height
@@ -243,6 +281,8 @@ static func build_tower(footprint: Vector2) -> Node3D:
 	for s in range(storeys):
 		var y: float = s * sh
 		var win: bool = s > 0
+		# Per-storey concrete so the grime streaks differ band-to-band.
+		var conc := mat_concrete(s * 5 + 1)
 		# Four perimeter walls per storey (front has a door on storey 0).
 		_place_wall(root, w, sh, th, conc, Vector3(0, y, -d * 0.5 + th * 0.5), 0.0,
 			win, s == 0)
@@ -255,10 +295,14 @@ static func build_tower(footprint: Vector2) -> Node3D:
 	var top: float = storeys * sh
 	# Roof + small rooftop utility housing.
 	_place(root, roof(w, d, conc_d), Vector3(0, top, 0))
-	_place(root, container(w * 0.35, 2.0, d * 0.35, mat_metal()), Vector3(w * 0.18, top, -d * 0.15))
+	_place(root, container(w * 0.35, 2.0, d * 0.35, mat_metal(2)), Vector3(w * 0.18, top, -d * 0.15))
 	# A couple of corner pilasters for silhouette.
 	_place(root, pillar(top, 0.4, conc_d), Vector3(-w * 0.5 + 0.4, 0, -d * 0.5 + 0.4))
 	_place(root, pillar(top, 0.4, conc_d), Vector3(w * 0.5 - 0.4, 0, d * 0.5 - 0.4))
+	# A vertical drainpipe strip down one facade corner (render-only silhouette).
+	var pipe := mat_metal_dark(3)
+	_decor(root, Vector3(0.22, top - 0.4, 0.22), pipe,
+		Vector3(w * 0.5 - 0.5, top * 0.5, -d * 0.5 + 0.25))
 	return root
 
 ## WAREHOUSE: a big single-storey shed with tall walls, roller-door front, clerestory
@@ -268,8 +312,7 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 	var root := Node3D.new()
 	var w: float = footprint.x
 	var d: float = footprint.y
-	var conc := mat_concrete_stained()
-	var metal := mat_metal()
+	var conc := mat_concrete_stained(int(w + d * 3.0))
 	var th: float = 0.4
 	var h: float = 5.0
 	# Back wall (north, -Z) + two side walls always; front wall only if NOT courtyard.
@@ -282,7 +325,7 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 			_place_wall(root, seg, h, th, conc, Vector3(-w * 0.5 + th * 0.5, 0, cz), 90.0, true, false)
 			_place_wall(root, seg, h, th, conc, Vector3(w * 0.5 - th * 0.5, 0, cz), 90.0, true, false)
 			# Roof wing only over the closed (north) portion, leaving center open.
-			_place(root, roof(w, d * 0.5 - COURT_CLEAR + 0.5, mat_metal_dark()),
+			_place(root, roof(w, d * 0.5 - COURT_CLEAR + 0.5, mat_metal_dark(int(w))),
 				Vector3(0, h, -COURT_CLEAR - (d * 0.5 - COURT_CLEAR) * 0.5 + 0.25))
 		# Stacked containers along the back as cover (clear of center).
 		_place(root, container(3.0, 2.6, 6.0, mat_container(7)),
@@ -293,7 +336,7 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 		_place_wall(root, d, h, th, conc, Vector3(-w * 0.5 + th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, d, h, th, conc, Vector3(w * 0.5 - th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, w, h, th, conc, Vector3(0, 0, d * 0.5 - th * 0.5), 0.0, false, true)
-		_place(root, roof(w, d, mat_metal_dark()), Vector3(0, h, 0))
+		_place(root, roof(w, d, mat_metal_dark(int(w + d))), Vector3(0, h, 0))
 		_place(root, container(3.0, 2.6, 6.0, mat_container(7)), Vector3(-w * 0.5 + 2.5, 0, 0))
 	return root
 
@@ -304,8 +347,10 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 	var root := Node3D.new()
 	var w: float = footprint.x
 	var d: float = footprint.y
-	var brick := ProceduralModels._mat(Color(0.40, 0.30, 0.26), 0.0, 0.85)
-	var conc_d := mat_concrete_dark()
+	# Weathered brick — vertical streaks (rain stains down the brickwork).
+	var brick := ProcMaterials.streaked(Color(0.40, 0.30, 0.26), 0.0, 0.85, 0.45,
+		int(w * 19.0 + d))
+	var conc_d := mat_concrete_dark(int(w + d * 2.0))
 	var th: float = 0.3
 	var sh: float = 3.0
 	# Ground slab.
@@ -344,8 +389,8 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 ## stays open & walkable (plaza is an enemy-spawn crossroads, no extraction zone).
 static func build_plaza_cover() -> Node3D:
 	var root := Node3D.new()
-	var conc := mat_concrete()
-	var conc_d := mat_concrete_dark()
+	var conc := mat_concrete(91)
+	var conc_d := mat_concrete_dark(92)
 	# Four chest-high cover blocks at the quadrants.
 	var quad: Array[Vector2] = [Vector2(-7, -7), Vector2(7, -7), Vector2(7, 7), Vector2(-7, 7)]
 	for i in range(quad.size()):

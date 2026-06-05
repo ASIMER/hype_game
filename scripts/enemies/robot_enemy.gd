@@ -27,6 +27,10 @@ const LOOT_SCENE := "res://scenes/items/LootPickup.tscn"
 const LOOT_IDS := ["loot_scrap", "loot_cell"]
 const HP_BAR_SCENE := "res://scenes/enemies/EnemyHealthBar.tscn"
 const DEBRIS_SCENE := "res://scenes/fx/RobotDebris.tscn"
+const IMPACT_SCENE := "res://scenes/fx/Impact.tscn"
+
+# Death scale-pop: the model snaps up then collapses over this window before freeing.
+const DEATH_POP_TIME: float = 0.32
 
 # How long the corpse lingers (death anim + SFX) before it is freed.
 const DEATH_LINGER: float = 1.0
@@ -53,6 +57,11 @@ var _home: Vector3 = Vector3.ZERO
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 20.0)
 var _retarget_timer: float = 0.0
 var _dying: bool = false
+# Death scale-pop progress (counts UP from 0 to DEATH_POP_TIME while dying).
+var _death_pop_t: float = 0.0
+# Visual death FX (burst + scale-pop) run on ALL peers off the replicated is_dead,
+# so every client sees the juice even though _on_died (gameplay) is authority-only.
+var _death_fx_started: bool = false
 
 # --- Stuck detection / recovery --------------------------------------------
 # A chasing enemy that spawns inside a building or jams on geometry yields a zero
@@ -115,6 +124,24 @@ var _last_hit_health: float = -1.0
 
 var _hp_bar: EnemyHealthBar = null
 
+# --- Procedural idle animation (visual only, runs on ALL peers) --------------
+# Only the primitive/procedural models (NO AnimationPlayer) get scripted idle
+# motion; the .glb grunt/heavy drive their own AnimationPlayer instead. Parts are
+# cached ONCE in _ready (by stable name set in ProceduralModels) and animated each
+# _process. We rotate/scale/emit on CHILD nodes of ModelRoot only — never the
+# replicated body transform/velocity/state — so co-op stays in sync.
+var _has_proc_anim: bool = false
+var _anim_time: float = 0.0
+# Tick parts.
+var _proc_eye: MeshInstance3D = null
+var _proc_legs: Array[Node3D] = []
+var _proc_leg_rest: Array[Vector3] = []
+# Emission-pulse bookkeeping: a glowing part + its authored base energy. We scale
+# this base by a sine each frame, but ONLY while the hit-flash is idle (the flash
+# owns emission_energy_multiplier during its window, then restores it to 1.0).
+var _pulse_part: MeshInstance3D = null
+var _pulse_base_energy: float = 6.0
+
 # Replicated to clients by the MultiplayerSynchronizer (see .tscn). Authority
 # writes it each tick; clients read it for animation/state-driven visuals.
 var current_state: int = State.PATROL
@@ -135,6 +162,10 @@ func _ready() -> void:
 		_model_root.add_child(model)
 		_setup_animation()
 		_collect_flash_materials(model)
+		# Procedural idle motion only when the model has NO AnimationPlayer (the .glb
+		# grunt/heavy animate themselves). Subclasses override _cache_proc_parts.
+		if _anim_player == null:
+			_cache_proc_parts()
 	# Remember the model's rest transform so the hit flinch can return to it.
 	if _model_root:
 		_model_rest_pos = _model_root.position
@@ -236,6 +267,19 @@ func _process(delta: float) -> void:
 	# `current_state` (replicated by the MultiplayerSynchronizer) and Health.is_dead.
 	# This deliberately lives outside _physics_process so AI gating is untouched.
 	_update_animation()
+	var dead := _health != null and _health.is_dead
+	if dead:
+		# Death owns ModelRoot via the scale-pop; skip idle anim + the stagger (which
+		# would otherwise reset ModelRoot back to rest each frame and cancel the pop).
+		if not _death_fx_started:
+			_death_fx_started = true
+			_start_death_fx()
+		_tick_death_pop(delta)
+		_tick_flash(delta)        # let a final hit-flash finish; it only touches emission
+		return
+	if _has_proc_anim:
+		_anim_time += delta
+		_animate_visual(delta)
 	_tick_flash(delta)
 	_tick_stagger(delta)
 
@@ -316,6 +360,110 @@ func _pick_anim(names: PackedStringArray, candidates: Array) -> String:
 			if String(n).to_lower() == lc:
 				return n
 	return ""
+
+# --- Procedural idle animation (visual only) --------------------------------
+
+## Locate + cache the named parts ProceduralModels gave this enemy's model so
+## _animate_visual can drive them cheaply. BASE = tick (eye + 6 legs). OVERRIDE in
+## the ranged/flyer subclasses (wasp/bastion/boss) for their own parts. Sets
+## `_has_proc_anim` true only if something animatable was actually found.
+func _cache_proc_parts() -> void:
+	# The procedural assembly is the first (only) child of ModelRoot.
+	var asm := _proc_root()
+	if asm == null:
+		return
+	var eye := asm.find_child("Eye", true, false)
+	if eye is MeshInstance3D:
+		_proc_eye = eye as MeshInstance3D
+		_pulse_part = _proc_eye
+		_pulse_base_energy = _read_emission_energy(_proc_eye)
+	for i in 6:
+		var leg := asm.find_child("Leg%d" % i, true, false)
+		if leg is Node3D:
+			_proc_legs.append(leg as Node3D)
+			_proc_leg_rest.append((leg as Node3D).rotation)
+	_has_proc_anim = _proc_eye != null or not _proc_legs.is_empty()
+
+## The procedural model assembly node under ModelRoot (the Node3D ProceduralModels
+## built), or null if this enemy uses a .glb / single primitive without named parts.
+func _proc_root() -> Node3D:
+	if _model_root == null:
+		return null
+	for c in _model_root.get_children():
+		if c is Node3D:
+			return c as Node3D
+	return null
+
+## BASE idle = the tick: a slow whole-body bob (on the assembly child, NOT ModelRoot
+## which is the stagger's home), out-of-phase leg micro-sway, and an eye emission
+## pulse. OVERRIDE for other archetypes.
+func _animate_visual(_delta: float) -> void:
+	var asm := _proc_root()
+	if asm:
+		asm.position.y = sin(_anim_time * 2.0) * 0.025
+	for i in _proc_legs.size():
+		var leg := _proc_legs[i]
+		if leg == null or not is_instance_valid(leg):
+			continue
+		var phase := float(i) * 1.05
+		var sway := sin(_anim_time * 3.5 + phase) * 0.10
+		leg.rotation = _proc_leg_rest[i] + Vector3(sway * 0.5, 0.0, sway)
+	_pulse_emission(0.7, 1.3, 3.0)
+
+## Pulse the cached `_pulse_part`'s emission energy between base*lo and base*hi at
+## `speed`. Skips while the hit-flash owns the emission (flash energy wins; it
+## restores energy to 1.0 on finish, then this resumes). emission_energy_multiplier
+## only — never touches the emission COLOR (flash lerps that). Safe on all peers.
+func _pulse_emission(lo: float, hi: float, speed: float) -> void:
+	if _pulse_part == null or _flash_t > 0.0:
+		return
+	var mat := _pulse_part.get_active_material(0)
+	if mat is StandardMaterial3D:
+		var k := 0.5 + 0.5 * sin(_anim_time * speed)
+		(mat as StandardMaterial3D).emission_energy_multiplier = _pulse_base_energy * lerpf(lo, hi, k)
+
+## Read a glowing part's authored emission energy (so the pulse oscillates around it).
+func _read_emission_energy(part: MeshInstance3D) -> float:
+	if part == null:
+		return 6.0
+	var mat := part.get_active_material(0)
+	if mat is StandardMaterial3D and (mat as StandardMaterial3D).emission_enabled:
+		return (mat as StandardMaterial3D).emission_energy_multiplier
+	return 6.0
+
+## Yaw a child pivot node toward the nearest player on the Y axis only (turret/torso
+## tracking). Smoothly lerps `pivot.rotation.y` in the enemy-LOCAL frame so it reads
+## as the head aiming at you. Visual only — never the body. Used by bastion/boss.
+func _track_player_yaw(pivot: Node3D, delta: float, speed: float = 4.0) -> void:
+	if pivot == null or not is_instance_valid(pivot):
+		return
+	var p := _nearest_player_visual()
+	if p == null:
+		return
+	var to := p.global_position - global_position
+	to.y = 0.0
+	if to.length() < 0.05:
+		return
+	# Desired yaw in world space, minus the body's yaw = the local yaw the pivot
+	# needs (the model authored facing -Z, matching the body's forward).
+	var world_yaw := atan2(to.x, to.z)
+	var local_yaw := wrapf(world_yaw - rotation.y, -PI, PI)
+	pivot.rotation.y = lerp_angle(pivot.rotation.y, local_yaw, clampf(delta * speed, 0.0, 1.0))
+
+## Nearest living player for VISUAL tracking — runs on all peers (no authority gate),
+## reads the "players" group directly. Cheap; called at most once per frame per enemy.
+func _nearest_player_visual() -> Node3D:
+	var nearest: Node3D = null
+	var best := INF
+	for p in get_tree().get_nodes_in_group("players"):
+		if p == null or not is_instance_valid(p) or not (p is Node3D):
+			continue
+		var pn := p as Node3D
+		var d := global_position.distance_to(pn.global_position)
+		if d < best:
+			best = d
+			nearest = pn
+	return nearest
 
 # --- Hit flash --------------------------------------------------------------
 
@@ -682,6 +830,8 @@ func _on_died(_killer: Node) -> void:
 	get_tree().create_timer(DEATH_LINGER).timeout.connect(queue_free)
 
 ## Optional ragdoll/debris from fx-dev. Guarded so we never hard-depend on it.
+## Scaled + tinted to the enemy so a boss erupts in big purple chunks, a tick pops
+## small orange ones. setup() must be called BEFORE add_child (the scene reads it in _ready).
 func _spawn_debris() -> void:
 	if not ResourceLoader.exists(DEBRIS_SCENE):
 		return
@@ -689,10 +839,69 @@ func _spawn_debris() -> void:
 	if not (packed is PackedScene):
 		return
 	var debris: Node = (packed as PackedScene).instantiate()
+	if debris.has_method("setup"):
+		debris.call("setup", _debris_scale(), _body_tint())
 	var container := _loot_container()      # reuse the sibling FX-safe container
 	container.add_child(debris)
 	if debris is Node3D:
 		(debris as Node3D).global_position = global_position + Vector3.UP * 0.8
+
+## Debris size, scaled off the HP-bar height (a decent proxy for body size):
+## tick≈2 → ~1.0, bastion → ~1.3, boss(4.6) → ~2.0.
+func _debris_scale() -> float:
+	return clampf(_health_bar_height() * 0.45, 0.7, 2.0)
+
+## The enemy's signature colour (orange tick / cyan wasp / red bastion / purple boss),
+## desaturated toward metal so debris reads as charred-tinted chunks not pure neon.
+func _body_tint() -> Color:
+	var c := AssetRegistry.get_color(enemy_id)
+	return c.lerp(Color(0.5, 0.5, 0.52), 0.55)
+
+## DEATH JUICE (all peers): a bright enemy spark/oil burst at the body core + a
+## scale-pop kick. The pop itself decays in _tick_death_pop. Boss adds screen shake.
+func _start_death_fx() -> void:
+	_death_pop_t = 0.0
+	# Kill any in-flight stagger so it stops fighting the death pop for ModelRoot.
+	_stagger_t = 0.0
+	_spawn_death_burst()
+	if _is_boss():
+		Events.screen_shake.emit(0.6)
+
+## Boss subclasses flag this so the death burst shakes the screen + scales bigger.
+func _is_boss() -> bool:
+	return false
+
+## Instance a bright enemy-hit Impact at the body core for the death flash/sparks.
+func _spawn_death_burst() -> void:
+	if not ResourceLoader.exists(IMPACT_SCENE):
+		return
+	var packed := load(IMPACT_SCENE)
+	if not (packed is PackedScene):
+		return
+	var burst: Node = (packed as PackedScene).instantiate()
+	if burst.has_method("set_enemy_hit"):
+		burst.call("set_enemy_hit", true)
+	# Park it in the FX-safe sibling container (survives our queue_free).
+	var container := _loot_container()
+	container.add_child(burst)
+	if burst is Node3D:
+		(burst as Node3D).global_position = global_position + Vector3.UP * maxf(0.6, _health_bar_height() * 0.4)
+
+## Animate the ModelRoot scale-pop on death: a quick swell then a collapse to ~0,
+## so the corpse "bursts" instead of statically lingering. ModelRoot is the stagger's
+## home, but the stagger is finished by death; this fully owns ModelRoot now.
+func _tick_death_pop(delta: float) -> void:
+	if _model_root == null:
+		return
+	_death_pop_t = minf(DEATH_POP_TIME, _death_pop_t + delta)
+	var k := _death_pop_t / DEATH_POP_TIME          # 0 -> 1
+	# Swell to 1.25 in the first third, then collapse to ~0.05 by the end.
+	var s: float
+	if k < 0.33:
+		s = lerpf(1.0, 1.25, k / 0.33)
+	else:
+		s = lerpf(1.25, 0.05, (k - 0.33) / 0.67)
+	_model_root.scale = _model_rest_scale * s
 
 func _spawn_loot() -> void:
 	if not ResourceLoader.exists(LOOT_SCENE):

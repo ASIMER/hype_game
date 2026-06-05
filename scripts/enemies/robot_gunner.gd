@@ -20,6 +20,10 @@ const TRACER_SCENE := "res://scenes/fx/Tracer.tscn"
 var _shots_left_in_burst: int = 0
 var _burst_just_ended: bool = false
 
+# Procedural idle parts (visual only): the bastion's turret head tracks the player
+# on Y and its weak-point dome pulses. Cached in _cache_proc_parts (OVERRIDE).
+var _proc_turret: Node3D = null
+
 func _ready() -> void:
 	super._ready()
 	var stats: Dictionary = Settings.ENEMY_STATS.get(enemy_id, {})
@@ -48,6 +52,27 @@ func _next_cooldown() -> float:
 		_burst_just_ended = false
 		return burst_recovery
 	return _stat_cooldown
+
+## OVERRIDE: cache the bastion's TurretHead pivot + glowing weak-point dome.
+func _cache_proc_parts() -> void:
+	var asm := _proc_root()
+	if asm == null:
+		return
+	var head := asm.find_child("TurretHead", true, false)
+	if head is Node3D:
+		_proc_turret = head as Node3D
+	var dome := asm.find_child("WeakDome", true, false)
+	if dome is MeshInstance3D:
+		_pulse_part = dome as MeshInstance3D
+		_pulse_base_energy = _read_emission_energy(dome as MeshInstance3D)
+	_has_proc_anim = _proc_turret != null or _pulse_part != null
+
+## OVERRIDE: slowly yaw the turret head to face the nearest player + pulse the weak
+## point (brighter/faster while attacking) so the bastion reads as alive + aiming.
+func _animate_visual(delta: float) -> void:
+	_track_player_yaw(_proc_turret, delta, 2.5)
+	var atk := current_state == State.ATTACK
+	_pulse_emission(0.6, 1.4, 5.0 if atk else 2.5)
 
 ## Resolve a straight shot from our muzzle to the target centre. If the LOS ray
 ## is clear to the target we deal damage through its Hurtbox; otherwise the shot

@@ -16,6 +16,21 @@ var _timers: Dictionary = {}
 var _completed: Dictionary = {}
 var _is_server: bool = false
 
+# --- Procedural beacon (visual only; built in _ready, animated in _process) ---
+# A bright emissive core + a tall additive light pillar + an OmniLight3D for local
+# glow + a couple of expanding/fading rings, so the zone reads as a landmark from
+# across the 160x160 map. Tinted by open/closed state. Skipped on a headless server.
+var _beacon: Node3D = null
+var _beacon_core: MeshInstance3D = null
+var _beacon_pillar: MeshInstance3D = null
+var _beacon_light: OmniLight3D = null
+var _beacon_rings: Array[MeshInstance3D] = []
+var _beacon_mats: Array[StandardMaterial3D] = []   # all tinted mats (recolour on flip)
+var _beacon_time: float = 0.0
+var _beacon_pulse_base: float = 1.0          # 1.0 open / dimmer when closed
+const _OPEN_TINT := Color(0.25, 1.0, 0.6)    # green/teal
+const _CLOSED_TINT := Color(0.95, 0.6, 0.15) # dim amber
+
 # --- Timed open/close window (driven server-auth by ExtractionDirector) ---
 # Zones rotate between OPEN (extraction works) and CLOSED (fill is paused/ignored).
 # Defaults to OPEN so the zone is usable even before a director attaches and on
@@ -42,6 +57,7 @@ func set_window(open: bool, remaining: float) -> void:
 		Events.extraction_window_changed.emit(self, _open, _window_remaining)
 		return
 	_open = open
+	_apply_beacon_tint()   # recolour the landmark beacon on a state flip (visual only)
 	if not _open:
 		# Closing: cancel anyone mid-extraction so they don't silently bank progress.
 		for body in _timers.keys():
@@ -56,8 +72,12 @@ func set_window(open: bool, remaining: float) -> void:
 
 func _ready() -> void:
 	add_to_group("extraction")   # so the minimap/compass can mark zones
+	# Visual beacon (clients build it too so the landmark shows on every machine).
+	_build_beacon()
 	_is_server = GameState.is_local_authority_server()
 	if not _is_server:
+		# Clients don't advance extraction timers (server-auth), but still animate the
+		# beacon via _process. Disable only the server-auth _physics_process.
 		set_physics_process(false)
 		return
 	body_entered.connect(_on_body_entered)
@@ -152,3 +172,162 @@ func _peer_id_for(body: Node) -> int:
 
 func _is_player(body: Node) -> bool:
 	return body != null and body.is_in_group("players")
+
+# ============================================================ PROCEDURAL BEACON
+# Visual landmark only — none of this touches the server-auth window/progress logic.
+
+## Build the beacon assembly under the zone: hide the old translucent box, add a
+## glowing core, a tall additive light pillar, an OmniLight3D, and animated rings.
+## Cheap on headless (skips meshes/lights — pure server keeps zero visual cost).
+func _build_beacon() -> void:
+	# De-emphasise the prior translucent placeholder box (named "Beacon" in Arena.tscn).
+	var old: Node = get_node_or_null("Beacon")
+	if old is MeshInstance3D:
+		(old as MeshInstance3D).visible = false
+
+	if DisplayServer.get_name() == "headless":
+		# Dedicated server: no visuals needed, and no _process animation.
+		set_process(false)
+		return
+
+	_beacon = Node3D.new()
+	_beacon.name = "ProcBeacon"
+	add_child(_beacon)
+	var tint := _OPEN_TINT if _open else _CLOSED_TINT
+
+	# Glowing core — a small bright sphere just above the ground.
+	var core_mat := _emis(tint, 6.0)
+	_beacon_core = MeshInstance3D.new()
+	var core_mesh := SphereMesh.new()
+	core_mesh.radius = 0.6
+	core_mesh.height = 1.2
+	core_mesh.radial_segments = 16
+	core_mesh.rings = 8
+	_beacon_core.mesh = core_mesh
+	_beacon_core.material_override = core_mat
+	_beacon_core.position = Vector3(0, 1.2, 0)
+	_beacon.add_child(_beacon_core)
+
+	# A short emissive plinth ring at the base so the footprint glows too.
+	var base_ring := MeshInstance3D.new()
+	var base_mesh := CylinderMesh.new()
+	base_mesh.top_radius = 2.6
+	base_mesh.bottom_radius = 2.8
+	base_mesh.height = 0.2
+	base_mesh.radial_segments = 24
+	base_ring.mesh = base_mesh
+	base_ring.material_override = _emis(tint, 3.0)
+	base_ring.position = Vector3(0, 0.1, 0)
+	_beacon.add_child(base_ring)
+
+	# Tall additive light pillar — the see-it-from-across-the-map shaft.
+	_beacon_pillar = MeshInstance3D.new()
+	var pillar_mesh := CylinderMesh.new()
+	pillar_mesh.top_radius = 0.35
+	pillar_mesh.bottom_radius = 1.1
+	pillar_mesh.height = 16.0
+	pillar_mesh.radial_segments = 16
+	_beacon_pillar.mesh = pillar_mesh
+	_beacon_pillar.material_override = _additive(tint, 1.6)
+	_beacon_pillar.position = Vector3(0, 8.0, 0)
+	_beacon.add_child(_beacon_pillar)
+
+	# Local glow light.
+	_beacon_light = OmniLight3D.new()
+	_beacon_light.light_color = tint
+	_beacon_light.light_energy = 4.0
+	_beacon_light.omni_range = 14.0
+	_beacon_light.position = Vector3(0, 1.5, 0)
+	_beacon.add_child(_beacon_light)
+
+	# A couple of expanding/fading rings (flat thin cylinders) animated in _process.
+	for i in range(2):
+		var ring := MeshInstance3D.new()
+		var rm := CylinderMesh.new()
+		rm.top_radius = 1.0
+		rm.bottom_radius = 1.0
+		rm.height = 0.06
+		rm.radial_segments = 28
+		ring.mesh = rm
+		ring.material_override = _additive(tint, 2.0)
+		ring.position = Vector3(0, 0.3, 0)
+		_beacon.add_child(ring)
+		_beacon_rings.append(ring)
+
+	_apply_beacon_tint()
+	set_process(true)
+
+## Emissive solid material (registered for recolour on state flip).
+func _emis(tint: Color, energy: float) -> StandardMaterial3D:
+	var m := ProcMaterials.emissive(tint, energy, tint * 0.4)
+	_beacon_mats.append(m)
+	return m
+
+## Additive, transparent, unshaded material for the pillar/rings (so they read as
+## light, not solid geometry). Registered for recolour on state flip.
+func _additive(tint: Color, energy: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(tint.r, tint.g, tint.b, 0.35)
+	m.emission_enabled = true
+	m.emission = tint
+	m.emission_energy_multiplier = energy
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_beacon_mats.append(m)
+	return m
+
+## Recolour every beacon material + the light to match the current open/closed state.
+func _apply_beacon_tint() -> void:
+	if _beacon == null:
+		return
+	var tint := _OPEN_TINT if _open else _CLOSED_TINT
+	var energy_mul := 1.0 if _open else 0.55   # dim when closed
+	for m in _beacon_mats:
+		m.emission = tint
+		# Preserve each material's relative alpha while restating the hue.
+		var a: float = m.albedo_color.a
+		m.albedo_color = Color(tint.r, tint.g, tint.b, a) if a < 1.0 else tint * 0.4
+	if _beacon_light != null:
+		_beacon_light.light_color = tint
+		_beacon_light.light_energy = (5.0 if _open else 2.0)
+	# A bigger, brighter pillar when open.
+	if _beacon_pillar != null:
+		_beacon_pillar.scale = Vector3(1.0, 1.0, 1.0) if _open else Vector3(0.7, 0.7, 0.7)
+	_beacon_pulse_base = energy_mul
+
+## Animate the beacon: a gentle core pulse + expanding/fading rings + a slow pillar
+## shimmer. Cheap; disabled entirely on headless (set_process(false) in _build).
+func _process(delta: float) -> void:
+	if _beacon == null:
+		return
+	_beacon_time += delta
+	# Core pulse (brightness breathes).
+	if _beacon_core != null:
+		var pulse := 1.0 + 0.35 * sin(_beacon_time * 3.0)
+		var cm := _beacon_core.material_override as StandardMaterial3D
+		if cm != null:
+			cm.emission_energy_multiplier = (6.0 * _beacon_pulse_base) * pulse
+		_beacon_core.scale = Vector3.ONE * (1.0 + 0.06 * sin(_beacon_time * 3.0))
+	# Pillar subtle vertical shimmer.
+	if _beacon_pillar != null:
+		var pm := _beacon_pillar.material_override as StandardMaterial3D
+		if pm != null:
+			pm.emission_energy_multiplier = (1.6 * _beacon_pulse_base) * (1.0 + 0.2 * sin(_beacon_time * 1.5))
+	# Expanding/fading rings — each ring grows from ~1 to ~4.5 then resets, fading out.
+	var n := _beacon_rings.size()
+	for i in range(n):
+		var ring := _beacon_rings[i]
+		if ring == null:
+			continue
+		var phase: float = fmod(_beacon_time * 0.5 + float(i) / float(maxi(n, 1)), 1.0)
+		var radius := 1.0 + phase * 3.5
+		ring.scale = Vector3(radius, 1.0, radius)
+		ring.position.y = 0.3 + phase * 1.2
+		var rm := ring.material_override as StandardMaterial3D
+		if rm != null:
+			var fade := (1.0 - phase) * (0.6 if _open else 0.3)
+			var tint := _OPEN_TINT if _open else _CLOSED_TINT
+			rm.albedo_color = Color(tint.r, tint.g, tint.b, fade * 0.5)
+			rm.emission_energy_multiplier = 2.0 * fade * _beacon_pulse_base
