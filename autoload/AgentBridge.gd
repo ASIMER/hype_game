@@ -253,11 +253,16 @@ func _handle_line(line: String) -> void:
 			else:
 				_send({ "ok": false, "error": "net action host|join" })
 		"deploy":
-			# Debug: trigger the hub DEPLOY (commit bring-list + load the raid).
+			# Debug: trigger the hub DEPLOY/START (solo or co-op leader synchronized start).
 			var dsc := get_tree().current_scene
 			if dsc and dsc.has_method("_on_hub_deploy"):
 				dsc._on_hub_deploy()
 			_send({ "ok": dsc != null })
+		"ready":
+			# Debug: a co-op CLIENT readies/unreadies in the lobby (set_ready RPC to host).
+			var rdy := bool(json.get("on", true))
+			NetworkManager.set_ready.rpc_id(1, rdy)
+			_send({ "ok": true, "ready": rdy })
 		"ui":
 			# Debug: open/close menus for screenshot verification.
 			_send({ "ok": _ui_action(str(json.get("action", ""))) })

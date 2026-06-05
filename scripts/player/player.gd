@@ -94,6 +94,10 @@ func _ready() -> void:
 	if is_multiplayer_authority():
 		apply_loadout()
 		camera.current = true
+		camera.make_current()
+		# Re-assert next frame in case the spawn order left another (or no) camera
+		# current — guards against the client "grey screen" (no active camera).
+		_ensure_camera_current.call_deferred()
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		Events.item_use_requested.connect(_on_item_use)
 		Events.local_player_spawned.emit(self)
@@ -101,6 +105,22 @@ func _ready() -> void:
 		# Remote avatars: their camera/input must never run on this machine.
 		camera.current = false
 		set_process_unhandled_input(false)
+
+
+## Deferred safety: the LOCAL player must own the viewport camera. Re-asserts a frame
+## after spawn so a late-resolved authority / spawn-order quirk can't leave the screen
+## with no current camera (the co-op grey screen).
+func _ensure_camera_current() -> void:
+	if is_instance_valid(self) and is_multiplayer_authority() and camera:
+		camera.make_current()
+
+## Server → owning client: place this player at its spawn marker. A client owns its
+## own transform, so it ignores the server's spawn-state position (would start at world
+## origin); the server calls this to set it authoritatively on the owner.
+@rpc("any_peer", "call_remote", "reliable")
+func _net_place(pos: Vector3) -> void:
+	global_position = pos
+	velocity = Vector3.ZERO
 
 
 func _physics_process(delta: float) -> void:

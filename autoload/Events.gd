@@ -111,3 +111,8 @@ signal peer_registered(peer_id: int, info: Dictionary)
 signal peer_unregistered(peer_id: int)
 signal all_players_ready()
 signal match_started()
+## The squad roster or a member's ready state changed — the Hub lobby UI refreshes.
+signal squad_changed()
+## The leader started the raid — EVERY peer runs its local deploy (commit bring-list +
+## load the arena) on this signal, so the whole squad deploys on the same tick.
+signal begin_deploy()

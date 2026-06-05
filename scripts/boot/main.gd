@@ -31,6 +31,9 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	world_root.process_mode = Node.PROCESS_MODE_PAUSABLE
 	Events.match_started.connect(_on_match_started)
+	# Synchronized co-op deploy: the leader's START broadcasts begin_deploy to all
+	# peers, and each runs its local deploy here on the same tick.
+	Events.begin_deploy.connect(_do_deploy)
 	# Accept flags from either the user-args section (after a `--`) or the raw
 	# command line so `godot --headless --server` and `godot -- --client <ip>`
 	# both work.
@@ -89,14 +92,26 @@ func open_hub(mode: String = "solo") -> void:
 func open_workshop() -> void:
 	open_hub("solo")
 
+## The Hub footer button. Solo deploys immediately; in co-op only the LEADER reaches
+## here (clients' button is a READY toggle) and it kicks off the SYNCHRONIZED deploy —
+## every peer loads the arena together, players spawn only once all have loaded.
 func _on_hub_deploy() -> void:
+	if _deploy_mode == "solo":
+		if not NetworkManager.is_offline:
+			NetworkManager.start_offline()
+		GameState.reset_match()
+		_do_deploy()
+		return
+	# Co-op leader: ask the server to start the squad (gated on all members ready).
+	# Returns false if not everyone is ready — the button should already be disabled,
+	# so just no-op. The actual deploy runs via Events.begin_deploy on every peer.
+	if GameState.is_leader():
+		NetworkManager.request_start()
+
+## The local deploy step — runs on every peer (solo: directly; co-op: on begin_deploy).
+func _do_deploy() -> void:
 	for c in ui_layer.get_children():
 		c.queue_free()
-	if _deploy_mode == "solo" and not NetworkManager.is_offline:
-		NetworkManager.start_offline()
-	# Fresh raid state (wave/peers) when re-deploying after a prior raid.
-	if GameState.is_local_authority_server():
-		GameState.reset_match()
 	# Commit the bring-list: pull those consumables out of the LOCAL stash (now at risk).
 	RaidManager.deploy()
 	load_arena()

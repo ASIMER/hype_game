@@ -135,6 +135,7 @@ func _start_next_wave() -> void:
 	_alive_enemies.clear()
 	_watchdog_time = 0.0
 	Events.wave_started.emit(next, _wave_total)
+	NetworkManager.sync_wave(next, _wave_total)   # mirror to co-op clients' HUD
 	# Can't spawn (scene missing / no container)? Don't deadlock the match.
 	if not ResourceLoader.exists(ENEMY_SCENE) or _enemies_container == null:
 		_finish_wave()
@@ -206,6 +207,7 @@ func _tick_match_timer(delta: float) -> void:
 	if _timer_emit_accum >= TIMER_EMIT_INTERVAL or GameState.match_time_left <= 0.0:
 		_timer_emit_accum = 0.0
 		Events.match_timer_changed.emit(GameState.match_time_left, GameState.match_duration)
+		NetworkManager.sync_match_timer(GameState.match_time_left, GameState.match_duration, GameState.final_wave)
 
 	# One-shot "storm incoming" warning.
 	if not _warned and GameState.match_time_left <= Settings.FINAL_WAVE_WARN:
@@ -244,6 +246,7 @@ func _begin_storm_wave() -> void:
 	# Keep the wave number monotonically climbing so HUDs read an escalating storm.
 	GameState.current_wave += 1
 	Events.wave_started.emit(GameState.current_wave, _wave_total)
+	NetworkManager.sync_wave(GameState.current_wave, _wave_total)
 	if not ResourceLoader.exists(ENEMY_SCENE) or _enemies_container == null:
 		# Can't spawn — don't busy-loop; just stop the storm spinning.
 		_wave_active = false
@@ -320,6 +323,7 @@ func _finish_wave() -> void:
 	_wave_active = false
 	var cleared := GameState.current_wave
 	Events.wave_cleared.emit(cleared)
+	NetworkManager.sync_wave_cleared(cleared)
 	# Storm: the team somehow cleared a batch — immediately refill another, no win,
 	# no intermission. The storm only ends when everyone is resolved (extract/wipe).
 	if _storm:

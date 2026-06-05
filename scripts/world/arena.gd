@@ -185,15 +185,12 @@ func _on_match_started() -> void:
 		print("[arena] match started — ensuring %d player(s) for peers %s" % [ids.size(), str(ids)])
 	for peer_id in ids:
 		_ensure_player_spawned(peer_id)
-	# Spawn for anyone who joins after the match has already begun.
-	if not Events.peer_registered.is_connected(_on_peer_registered):
-		Events.peer_registered.connect(_on_peer_registered)
-
-func _on_peer_registered(peer_id: int, _info: Dictionary) -> void:
-	# A peer joining mid-match gets a player immediately; pre-match joins are handled
-	# by the _on_match_started sweep above.
-	if _match_running:
-		_ensure_player_spawned(peer_id)
+	# NOTE: players are spawned ONLY here, after the synchronized deploy guarantees
+	# EVERY peer has loaded its arena (and thus its MultiplayerSpawner). We deliberately
+	# do NOT spawn on peer-register/connect anymore: doing so created a peer's player on
+	# the server before that peer's own arena existed, so it never replicated back to
+	# them → no camera → grey screen. A peer that connects mid-raid waits in the hub
+	# lobby and deploys with the squad next round.
 
 ## Idempotent: spawns the Player for `peer_id` exactly once. Safe to call from the
 ## match-start sweep and from the peer-joined hook.
@@ -216,9 +213,14 @@ func _ensure_player_spawned(peer_id: int) -> void:
 	if p.has_method("set_multiplayer_authority"):
 		p.set_multiplayer_authority(peer_id)
 	var marker := _pick_marker(player_spawn_markers, index)
+	var mx := marker.global_transform if marker else global_transform
+	# Set on the server copy (also the host's own player, which the host owns).
+	p.global_transform = mx
 	players.add_child(p, true)
-	if marker:
-		p.global_transform = marker.global_transform
+	# A CLIENT owns its own transform and ignores the server's spawn position (it would
+	# start at world origin), so explicitly tell the owning client where to spawn.
+	if peer_id != 1 and multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
+		p._net_place.rpc_id(peer_id, mx.origin)
 	if Settings.NET_DEBUG:
 		print("[arena] spawned player '%s' (authority=%d, marker=%d)" % [node_name, peer_id, index])
 

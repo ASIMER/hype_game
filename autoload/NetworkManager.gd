@@ -77,24 +77,65 @@ func _broadcast_roster(roster: Dictionary) -> void:
 func _serialize_roster() -> Dictionary:
 	return GameState.peers.duplicate(true)
 
-# --------------------------------------------------------- ready handshake
-## Called by each client once the match scene has finished loading on its side.
+# --------------------------------------------------------- squad ready-up
+## A client toggles its lobby ready state; the server records it and re-broadcasts
+## the roster so every lobby UI updates. (The host/leader is implicitly ready.)
+@rpc("any_peer", "call_local", "reliable")
+func set_ready(ready: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender == 0:
+		sender = 1
+	GameState.set_peer_ready(sender, ready)
+	_broadcast_roster.rpc(_serialize_roster())
+	Events.squad_changed.emit()
+
+## LEADER (host) presses START RAID. Server-only: gate on LOBBY + all members ready,
+## then reset the match and tell EVERY peer to deploy on the same tick.
+func request_start() -> bool:
+	if not multiplayer.is_server():
+		return false
+	if not GameState.squad_all_ready():
+		return false
+	GameState.reset_match()
+	_loaded.clear()
+	_begin_deploy.rpc()
+	return true
+
+## Runs on EVERY peer: kick off the local deploy (commit bring-list + load arena).
+@rpc("authority", "call_local", "reliable")
+func _begin_deploy() -> void:
+	GameState.set_phase(GameState.Phase.LOADING)
+	Events.begin_deploy.emit()
+
+# --------------------------------------------------------- load gate -> start
+var _loaded: Dictionary = {}   # peer_id -> true (reset each deploy in request_start)
+
+## Each peer calls this once its arena scene has finished loading. The match (and the
+## player spawns) only begins once EVERY peer has loaded — so no peer's spawner is
+## missing when players are created (the old grey-screen bug).
 @rpc("any_peer", "call_local", "reliable")
 func notify_loaded() -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if GameState.peers.has(sender):
-		GameState.peers[sender]["ready"] = true
-	if _everyone_ready():
+	if sender == 0:
+		sender = 1   # the host's own call_local invocation has no remote sender
+	_loaded[sender] = true
+	if _all_loaded():
+		# Don't clear _loaded here — keeping peers marked lets a LATER joiner's load
+		# re-fire begin_match so the (idempotent) match-start sweep spawns them, after
+		# their own arena exists. _loaded is reset at the next synchronized deploy
+		# (request_start). begin_match/_ensure_player_spawned are both idempotent.
 		Events.all_players_ready.emit()
 		begin_match.rpc()
 
-func _everyone_ready() -> bool:
+func _all_loaded() -> bool:
 	if GameState.peers.is_empty():
 		return false
 	for id in GameState.peers:
-		if not GameState.peers[id].get("ready", false):
+		if not _loaded.has(id):
 			return false
 	return true
 
@@ -104,6 +145,43 @@ func begin_match() -> void:
 		print("[net] begin_match on peer %d" % multiplayer.get_unique_id())
 	GameState.set_phase(GameState.Phase.IN_MATCH)
 	Events.match_started.emit()
+
+# -------------------------------------------------- gameplay state sync (HUD parity)
+## The wave system + match timer run server-only, so clients' HUDs would show stale
+## "PREPARING"/wrong timer. The server mirrors that state to clients here. No-ops in
+## single-player / on a client.
+func _is_remote_server() -> bool:
+	return multiplayer.has_multiplayer_peer() and not is_offline and multiplayer.is_server()
+
+func sync_wave(wave: int, count: int) -> void:
+	if _is_remote_server():
+		_rpc_wave.rpc(wave, count)
+
+func sync_wave_cleared(wave: int) -> void:
+	if _is_remote_server():
+		_rpc_wave_cleared.rpc(wave)
+
+func sync_match_timer(left: float, total: float, final_wave: bool) -> void:
+	if _is_remote_server():
+		_rpc_match_timer.rpc(left, total, final_wave)
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_wave(wave: int, count: int) -> void:
+	GameState.current_wave = wave
+	Events.wave_started.emit(wave, count)
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_wave_cleared(wave: int) -> void:
+	Events.wave_cleared.emit(wave)
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _rpc_match_timer(left: float, total: float, final_wave: bool) -> void:
+	GameState.match_time_left = left
+	GameState.match_duration = total
+	if final_wave and not GameState.final_wave:
+		Events.final_wave_started.emit()
+	GameState.final_wave = final_wave
+	Events.match_timer_changed.emit(left, total)
 
 # ----------------------------------------------------- match-end broadcast
 ## Server calls these to end the match on EVERY peer. Offline (incl. the offline

@@ -59,6 +59,31 @@ func set_phase(p: int) -> void:
 func is_local_authority_server() -> bool:
 	return not multiplayer.has_multiplayer_peer() or multiplayer.is_server()
 
+## This peer's id (1 when offline / host).
+func local_peer_id() -> int:
+	if not multiplayer.has_multiplayer_peer():
+		return 1
+	return multiplayer.get_unique_id()
+
+## The squad leader is always the host (peer 1). This peer leads if it's the host.
+func is_leader() -> bool:
+	return is_local_authority_server()
+
+## True when every NON-leader squad member is marked ready (the host/leader is
+## implicitly ready). Used to gate START RAID. Host-alone → true.
+func squad_all_ready() -> bool:
+	for id in peers:
+		if int(id) == 1:
+			continue
+		if not peers[id].get("ready", false):
+			return false
+	return true
+
+## Mark a peer ready/unready in the roster (server-side).
+func set_peer_ready(peer_id: int, ready: bool) -> void:
+	if peers.has(peer_id):
+		peers[peer_id]["ready"] = ready
+
 ## True when every registered peer is marked alive==false or extracted (match over).
 func all_players_resolved() -> bool:
 	if peers.is_empty():
