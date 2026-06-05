@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://cmapui0000001"]
+
+[ext_resource type="Script" path="res://scripts/ui/map_ui.gd" id="1_mapui"]
+
+[node name="MapUI" type="CanvasLayer"]
+layer = 80
+process_mode = 3
+visible = false
+script = ExtResource("1_mapui")

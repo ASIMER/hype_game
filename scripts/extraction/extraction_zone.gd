@@ -16,6 +16,44 @@ var _timers: Dictionary = {}
 var _completed: Dictionary = {}
 var _is_server: bool = false
 
+# --- Timed open/close window (driven server-auth by ExtractionDirector) ---
+# Zones rotate between OPEN (extraction works) and CLOSED (fill is paused/ignored).
+# Defaults to OPEN so the zone is usable even before a director attaches and on
+# pure clients (which mirror state via Events.extraction_window_changed).
+var _open: bool = true
+var _window_remaining: float = 0.0
+
+## True while this zone accepts extraction progress.
+func is_open() -> bool:
+	return _open
+
+## Seconds left in the current open/closed window (informational; the director owns
+## the authoritative countdown). 0 if unknown.
+func window_remaining() -> float:
+	return _window_remaining
+
+## Server-auth: flip the open/closed state. Closing resets every in-progress fill
+## (players must re-start when it reopens). Re-emits the window state for UIs.
+## Single-player counts as server, so this drives offline play too.
+func set_window(open: bool, remaining: float) -> void:
+	_window_remaining = maxf(remaining, 0.0)
+	if open == _open:
+		# Same state — just refresh the countdown for listeners.
+		Events.extraction_window_changed.emit(self, _open, _window_remaining)
+		return
+	_open = open
+	if not _open:
+		# Closing: cancel anyone mid-extraction so they don't silently bank progress.
+		for body in _timers.keys():
+			if not _completed.has(body) and is_instance_valid(body):
+				Events.extraction_cancelled.emit(body)
+		_timers.clear()
+	elif _is_server:
+		# Reopening: pick up anyone already standing inside (body_entered won't re-fire).
+		for body in get_overlapping_bodies():
+			_on_body_entered(body)
+	Events.extraction_window_changed.emit(self, _open, _window_remaining)
+
 func _ready() -> void:
 	add_to_group("extraction")   # so the minimap/compass can mark zones
 	_is_server = GameState.is_local_authority_server()
@@ -35,6 +73,10 @@ func _on_body_entered(body: Node) -> void:
 		return
 	if _timers.has(body):
 		return
+	# Closed zone: no fill accrues while standing inside (re-entry on reopen handled
+	# by _physics_process, which only fills overlapping bodies once _open is true).
+	if not _open:
+		return
 	_timers[body] = 0.0
 	Events.extraction_started.emit(body, self)
 	Events.extraction_progress.emit(body, 0.0)
@@ -48,6 +90,10 @@ func _on_body_exited(body: Node) -> void:
 		Events.extraction_cancelled.emit(body)
 
 func _physics_process(delta: float) -> void:
+	# Closed window: no progress accrues (timers are cleared on close, but guard so a
+	# late body_entered race can't sneak in a fill).
+	if not _open:
+		return
 	if _timers.is_empty():
 		return
 	# Iterate a copy so completion can erase from _timers mid-loop.

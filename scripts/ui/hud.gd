@@ -40,6 +40,9 @@ func _ready() -> void:
 	Events.reload_started.connect(func(_id): _set_reload(true))
 	Events.reload_finished.connect(func(_id): _set_reload(false))
 
+	Events.match_timer_changed.connect(_on_match_timer_changed)
+	Events.final_wave_started.connect(_on_final_wave_started)
+
 	extract_panel.visible = false
 	banner.visible = false
 	_set_health(Settings.PLAYER_MAX_HEALTH, Settings.PLAYER_MAX_HEALTH)
@@ -55,6 +58,9 @@ var _ammo_label: Label
 var _weapon_label: Label
 var _reloading: bool = false
 var _current_weapon_name: String = "RIFLE"
+var _timer_label: Label
+var _storm_banner: Label
+var _storm_banner_t: float = 0.0
 
 func _build_hud_widgets() -> void:
 	# Replace the static dot with the dynamic spread crosshair.
@@ -65,6 +71,38 @@ func _build_hud_widgets() -> void:
 	$Root.add_child(_crosshair)
 	_minimap = (load("res://scripts/ui/minimap.gd") as Script).new()
 	$Root.add_child(_minimap)
+
+	# Match-timer readout (mm:ss), top-centre just under the wave label. Goes red as
+	# the storm approaches. Polls GameState as a fallback so it shows even before the
+	# first Events.match_timer_changed push.
+	_timer_label = Label.new()
+	_timer_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_timer_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_timer_label.offset_top = 34.0
+	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_timer_label.add_theme_font_size_override("font_size", 22)
+	_timer_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	_timer_label.add_theme_constant_override("outline_size", 4)
+	_timer_label.text = ""
+	$Root.add_child(_timer_label)
+
+	# Final-wave warning banner ("STORM INCOMING"), centred a little above middle.
+	# Hidden until Events.final_wave_started; then flashes briefly.
+	_storm_banner = Label.new()
+	_storm_banner.set_anchors_preset(Control.PRESET_CENTER)
+	_storm_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_storm_banner.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_storm_banner.offset_top = -120.0
+	_storm_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_storm_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_storm_banner.add_theme_font_size_override("font_size", 30)
+	_storm_banner.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
+	_storm_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_storm_banner.add_theme_constant_override("outline_size", 5)
+	_storm_banner.text = "⚠ STORM INCOMING — EXTRACT"
+	_storm_banner.visible = false
+	$Root.add_child(_storm_banner)
 
 	# UX overlay components (authored by hud-dev). Guarded so the HUD works whether
 	# or not they exist yet; each is a self-contained Control that listens to Events.
@@ -105,7 +143,7 @@ func _build_hud_widgets() -> void:
 	hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hints.add_theme_font_size_override("font_size", 12)
 	hints.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 0.7))
-	hints.text = "WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory"
+	hints.text = "WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"
 	$Root.add_child(hints)
 
 func _on_weapon_switched(weapon_id: String, ammo: int, reserve: int) -> void:
@@ -162,6 +200,49 @@ func _process(delta: float) -> void:
 		_hit_marker_t -= delta
 		if _hit_marker_t <= 0.0:
 			_hit_marker.visible = false
+	# Poll the match timer each frame as a fallback (Events.match_timer_changed also
+	# pushes it). Cheap; keeps the readout live even if the push is throttled.
+	_refresh_match_timer(GameState.match_time_left, GameState.match_duration)
+	# Fade the storm banner out after its flash.
+	if _storm_banner and _storm_banner.visible:
+		_storm_banner_t -= delta
+		_storm_banner.modulate.a = clampf(_storm_banner_t / 1.0, 0.0, 1.0) if _storm_banner_t < 1.0 else 1.0
+		# Keep a steady pulse while it lingers, then hide.
+		if _storm_banner_t <= 0.0:
+			_storm_banner.visible = false
+
+# --- Match timer / storm warning -------------------------------------------
+
+func _on_match_timer_changed(left: float, total: float) -> void:
+	_refresh_match_timer(left, total)
+
+func _refresh_match_timer(left: float, total: float) -> void:
+	if _timer_label == null:
+		return
+	if total <= 0.0 and left <= 0.0:
+		# No match timer configured / not started — keep the readout empty.
+		_timer_label.text = ""
+		return
+	if GameState.final_wave:
+		_timer_label.text = "⚠ FINAL WAVE"
+		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+		return
+	var l: float = maxf(0.0, left)
+	var s: int = int(ceil(l))
+	_timer_label.text = "%d:%02d" % [s / 60, s % 60]
+	if l <= Settings.FINAL_WAVE_WARN:
+		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+	else:
+		_timer_label.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0))
+
+func _on_final_wave_started() -> void:
+	if _storm_banner:
+		_storm_banner.visible = true
+		_storm_banner.modulate.a = 1.0
+		_storm_banner_t = 4.0   # lingers ~4s, then fades in the final second
+	if _timer_label:
+		_timer_label.text = "⚠ FINAL WAVE"
+		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
 
 ## Tints the screen on local-player damage and pops a hit marker when the local
 ## player damages an enemy. damage_dealt(target, amount, source).

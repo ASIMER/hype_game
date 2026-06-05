@@ -169,6 +169,11 @@ func load_arena() -> void:
 		if ResourceLoader.exists("res://scenes/ui/InventoryUI.tscn"):
 			var inv_ui: Node = (load("res://scenes/ui/InventoryUI.tscn") as PackedScene).instantiate()
 			ui_layer.add_child(inv_ui)
+		# Full-screen map (M) + crosshair hit-marker overlay.
+		if ResourceLoader.exists("res://scenes/ui/MapUI.tscn"):
+			ui_layer.add_child((load("res://scenes/ui/MapUI.tscn") as PackedScene).instantiate())
+		if ResourceLoader.exists("res://scenes/ui/HitMarker.tscn"):
+			ui_layer.add_child((load("res://scenes/ui/HitMarker.tscn") as PackedScene).instantiate())
 		if ResourceLoader.exists(PAUSE_MENU):
 			_pause_menu = (load(PAUSE_MENU) as PackedScene).instantiate()
 			ui_layer.add_child(_pause_menu)

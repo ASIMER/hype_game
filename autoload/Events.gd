@@ -43,6 +43,19 @@ signal wave_cleared(wave_number: int)
 signal enemy_spawned(enemy: Node)
 signal match_won()
 signal match_lost()
+## Match countdown (server-auth, replicated). `left`/`total` in seconds.
+signal match_timer_changed(left: float, total: float)
+## The match timer expired → the final overwhelming "storm" wave begins.
+signal final_wave_started()
+
+# --- Extraction windows ---
+## A zone opened/closed its timed extraction window. `remaining` = seconds in the
+## current state. Map + minimap + HUD read this. (Per-zone, server-auth.)
+signal extraction_window_changed(zone: Node, open: bool, remaining: float)
+
+# --- Map UI ---
+## The full-screen map was toggled (M key).
+signal map_toggled(open: bool)
 
 # --- UI / UX ---
 ## A nearby interactable (loot / extraction) — HUD shows "[E] <prompt>".

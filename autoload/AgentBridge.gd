@@ -187,6 +187,15 @@ func _handle_line(line: String) -> void:
 				var rerr := rtex.get_image().save_png(rpath)
 				_send({ "ok": rerr == OK, "path": ProjectSettings.globalize_path(rpath),
 					"debug": IconRenderer.last_debug })
+		"clock":
+			# Debug: drive the match timer for QA. {action:set, left:<sec>} sets the
+			# remaining time; {action:skip} jumps to ~2s left to trigger the final wave.
+			var cact := str(json.get("action", "skip"))
+			if cact == "set":
+				GameState.match_time_left = float(json.get("left", 0.0))
+			else:
+				GameState.match_time_left = minf(GameState.match_time_left, 2.0)
+			_send({ "ok": true, "left": GameState.match_time_left, "total": GameState.match_duration })
 		"stash":
 			# Debug: manipulate the persistent stash + bring-list (raid-economy QA).
 			#   {action:add|remove, id, count} · {action:bring, id, count} · {action:clear}
@@ -444,6 +453,14 @@ func _ui_action(action: String) -> bool:
 			if scene.has_method("open_workshop"):
 				scene.open_workshop()
 				return true
+		"open_map", "close_map":
+			# Toggle the in-raid full map (M). MapUI listens to Events.map_toggled.
+			var mp := scene.find_child("MapUI", true, false)
+			if mp and mp.has_method("set_open"):
+				mp.set_open(action == "open_map")
+				return true
+			Events.map_toggled.emit(action == "open_map")
+			return true
 		"hub_stash", "hub_loadout", "hub_workshop", "hub_shop", "hub_quests", "hub_gunsmith":
 			# Switch the open Hub's active tab (screenshot QA of each tab).
 			var hub := scene.find_child("Hub", true, false)
@@ -498,6 +515,21 @@ func _send(obj: Dictionary) -> void:
 	_client.put_data(line.to_utf8_buffer())
 
 
+## Per-zone extraction state for QA (position + timed-window state if the zone
+## exposes it; defensive so it works before/after the ExtractionDirector lane lands).
+func _extraction_zone_states() -> Array:
+	var out: Array = []
+	for z in get_tree().get_nodes_in_group("extraction"):
+		if not (z is Node3D):
+			continue
+		var zp: Vector3 = (z as Node3D).global_position
+		var entry: Dictionary = { "name": z.name, "pos": [zp.x, zp.y, zp.z] }
+		entry["open"] = bool(z.call("is_open")) if z.has_method("is_open") else true
+		entry["window_left"] = float(z.call("window_remaining")) if z.has_method("window_remaining") else 0.0
+		out.append(entry)
+	return out
+
+
 func _snapshot() -> Dictionary:
 	var d: Dictionary = {
 		"ok": true,
@@ -506,6 +538,9 @@ func _snapshot() -> Dictionary:
 		"fps": Engine.get_frames_per_second(),
 		"result": _result,
 		"extraction": { "active": _extraction_active, "ratio": _extraction_ratio },
+		"match_timer": { "left": GameState.match_time_left, "total": GameState.match_duration,
+			"final_wave": GameState.final_wave },
+		"extraction_zones": _extraction_zone_states(),
 		"meta": {
 			"currency": MetaProgression.currency,
 			"difficulty": GameState.difficulty,

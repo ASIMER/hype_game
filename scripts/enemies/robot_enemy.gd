@@ -93,7 +93,25 @@ var _death_anim_played := false
 var _flash_mats: Array[StandardMaterial3D] = []
 var _flash_base_emission: Array = []        # parallel: original emission colors
 var _flash_t: float = 0.0
-const FLASH_TIME: float = 0.08
+const FLASH_TIME: float = 0.14        # longer so hits read clearly
+
+# --- Hit stagger (visual flinch + small knockback) --------------------------
+# On taking damage we kick a brief model-local flinch (recoil scale + dip) that
+# decays over STAGGER_TIME, plus a tiny server-driven knockback nudge away from
+# the hit so the body reacts. Both are small to avoid net desync; the flinch is
+# purely on ModelRoot (replicated transform unaffected). Authority computes the
+# knockback so clients see it through the synchronizer.
+var _stagger_t: float = 0.0
+const STAGGER_TIME: float = 0.16
+var _model_rest_pos: Vector3 = Vector3.ZERO
+var _model_rest_scale: Vector3 = Vector3.ONE
+# Pending knockback velocity applied (and decayed) by the authority's movement.
+var _knockback: Vector3 = Vector3.ZERO
+const KNOCKBACK_SPEED: float = 2.2    # m/s initial nudge (small)
+const KNOCKBACK_DECAY: float = 12.0   # how fast the nudge bleeds off
+# Last attacker position (for knockback direction); set by Health via apply_hit
+# chain isn't available, so we derive direction from the nearest threat instead.
+var _last_hit_health: float = -1.0
 
 var _hp_bar: EnemyHealthBar = null
 
@@ -117,6 +135,10 @@ func _ready() -> void:
 		_model_root.add_child(model)
 		_setup_animation()
 		_collect_flash_materials(model)
+	# Remember the model's rest transform so the hit flinch can return to it.
+	if _model_root:
+		_model_rest_pos = _model_root.position
+		_model_rest_scale = _model_root.scale
 
 	# Health is configured via the scene export; ensure max matches stats even if
 	# the scene drifts, then refill. Only the authority should own its state.
@@ -215,6 +237,7 @@ func _process(delta: float) -> void:
 	# This deliberately lives outside _physics_process so AI gating is untouched.
 	_update_animation()
 	_tick_flash(delta)
+	_tick_stagger(delta)
 
 # --- Animation (visual only) ------------------------------------------------
 
@@ -331,16 +354,49 @@ func _tick_flash(delta: float) -> void:
 		var base: Color = _flash_base_emission[i]
 		var m := _flash_mats[i]
 		m.emission = base.lerp(Color(1, 1, 1), k)
-		m.emission_energy_multiplier = lerpf(1.0, 2.5, k)
+		m.emission_energy_multiplier = lerpf(1.0, 4.0, k)   # stronger spike
 		if _flash_t <= 0.0:
 			# Restore the original emission state exactly.
 			m.emission = base
 			m.emission_enabled = base.r > 0.0 or base.g > 0.0 or base.b > 0.0
 
 func _on_health_changed(current: float, _max_health: float) -> void:
-	# A drop in health = a hit; flash. (heal also fires this but is rare for enemies.)
-	if not _dying and not _health.is_dead and current > 0.0:
+	# A drop in health = a hit; flash + stagger. (heal also fires this but is rare
+	# for enemies.) Only react to actual damage (health went DOWN).
+	var took_damage := _last_hit_health < 0.0 or current < _last_hit_health
+	_last_hit_health = current
+	if not _dying and not _health.is_dead and current > 0.0 and took_damage:
 		_start_flash()
+		_start_stagger()
+
+## Kick the visual flinch (runs everywhere) and, on the authority, a tiny
+## knockback away from the likely shooter (nearest player) so the body reacts.
+func _start_stagger() -> void:
+	_stagger_t = STAGGER_TIME
+	if is_multiplayer_authority() and not _dying:
+		var shooter := _find_nearest_player()
+		if shooter and is_instance_valid(shooter):
+			var away := global_position - shooter.global_position
+			away.y = 0.0
+			if away.length() > 0.001:
+				_knockback = away.normalized() * KNOCKBACK_SPEED
+
+## Decays the model-local flinch (a quick recoil dip + squash) back to rest, and
+## bleeds off the knockback nudge. Visual flinch runs on server AND clients; the
+## knockback velocity is consumed by the authority's _apply_movement.
+func _tick_stagger(delta: float) -> void:
+	if _stagger_t <= 0.0:
+		if _model_root and _model_root.scale != _model_rest_scale:
+			_model_root.scale = _model_rest_scale
+			_model_root.position = _model_rest_pos
+		return
+	_stagger_t = maxf(0.0, _stagger_t - delta)
+	var k := _stagger_t / STAGGER_TIME      # 1 -> 0
+	if _model_root:
+		# Quick squash + a small downward dip that eases back to rest.
+		var squash := 1.0 - 0.12 * k
+		_model_root.scale = _model_rest_scale * Vector3(1.0 + 0.08 * k, squash, 1.0 + 0.08 * k)
+		_model_root.position = _model_rest_pos + Vector3(0.0, -0.06 * k, 0.0)
 
 # --- HP bar -----------------------------------------------------------------
 
@@ -499,8 +555,13 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	if move.length() > 1.0:
 		move = move.normalized()
 	var speed: float = _stat_speed
-	velocity.x = move.x * speed
-	velocity.z = move.z * speed
+	velocity.x = move.x * speed + _knockback.x
+	velocity.z = move.z * speed + _knockback.z
+	# Bleed off the hit knockback nudge.
+	if _knockback.length() > 0.01:
+		_knockback = _knockback.move_toward(Vector3.ZERO, KNOCKBACK_DECAY * delta)
+	else:
+		_knockback = Vector3.ZERO
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	else:

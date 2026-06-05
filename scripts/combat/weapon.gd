@@ -15,6 +15,12 @@ class_name Weapon
 
 signal fired(hit_point: Vector3, hit_node: Node)
 signal hit(target: Node, amount: float)
+## Emitted alongside `fired` carrying the ballistic arc points (muzzle → hit) so
+## the VFX can draw a tracer that FOLLOWS the curve instead of a straight line.
+signal fired_arc(arc_points: PackedVector3Array, hit_node: Node)
+
+# Hard cap on ballistic raycast segments so a long-range shot stays cheap.
+const _MAX_BALLISTIC_SEGMENTS := 40
 
 @export var weapon_id: String = "rifle"
 @export var damage: float = 12.0
@@ -24,6 +30,10 @@ signal hit(target: Node, amount: float)
 @export var hurtbox_mask: int = 0b1000101   # layers: world(1) + enemy(3) + hurtbox(7)
 
 var _cooldown: float = 0.0
+# Surface normal of the most recent resolved hit (Vector3.ZERO = none). Set in
+# _shoot right before `fired` is emitted; read synchronously in _on_fired to
+# orient the impact burst to the surface. Per-pellet, single-threaded — safe.
+var _last_hit_normal: Vector3 = Vector3.ZERO
 
 # --- VFX (purely visual/local, never networked) -----------------------------
 # Preloaded combat feedback scenes. Spawned from our own `fired` signal so the
@@ -45,6 +55,8 @@ func _ready() -> void:
 		_impact_ps = load(_IMPACT_SCENE)
 	if not fired.is_connected(_on_fired):
 		fired.connect(_on_fired)
+	if not fired_arc.is_connected(_on_fired_arc):
+		fired_arc.connect(_on_fired_arc)
 
 func _process(delta: float) -> void:
 	if _cooldown > 0.0:
@@ -56,7 +68,7 @@ func try_fire(from_node: Node3D) -> bool:
 	if _cooldown > 0.0:
 		return false
 	_cooldown = 1.0 / maxf(0.1, fire_rate)
-	_shoot(from_node, weapon_id, damage, max_range, 0.0, 1.0, false)
+	_shoot(from_node, weapon_id, damage, max_range, 0.0, 1.0, false, 0.0)
 	return true
 
 ## Data-driven fire used by WeaponController. Fires `data.pellets` converged rays
@@ -70,14 +82,19 @@ func fire_with(from_node: Node3D, data: WeaponData) -> bool:
 		return false
 	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
 	var pellets: int = maxi(1, data.pellets)
+	# Optional per-weapon muzzle velocity override (flatter trajectory for rifles,
+	# droopier for slow projectile weapons). 0 / absent -> Settings default.
+	var muzzle_v: float = 0.0
+	if "muzzle_velocity" in data:
+		muzzle_v = float(data.muzzle_velocity)
 	for i in pellets:
-		_shoot(from_node, data.id, data.damage, data.range, data.spread_deg, data.crit_mult, true)
+		_shoot(from_node, data.id, data.damage, data.range, data.spread_deg, data.crit_mult, true, muzzle_v)
 	return true
 
 ## One converged hitscan ray (chest-origin toward the crosshair aim point) with
 ## optional spread. Applies damage to any Hurtbox hit and emits the per-shot
 ## signals. `emit_numbers` gates the floating damage number (legacy path off).
-func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: float, crit_mult: float, emit_numbers: bool) -> void:
+func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: float, crit_mult: float, emit_numbers: bool, data_muzzle_velocity: float) -> void:
 	var space := from_node.get_world_3d().direct_space_state
 	var shooter := _find_owner_body()
 
@@ -110,18 +127,72 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 	var dir := (aim_point - origin).normalized()
 	if spread_deg > 0.0:
 		dir = _apply_spread(dir, spread_deg)
-	var params := PhysicsRayQueryParameters3D.create(origin, origin + dir * rng)
-	params.collision_mask = hurtbox_mask
-	params.collide_with_areas = true
-	params.collide_with_bodies = true
-	params.exclude = exclude
-	var result := space.intersect_ray(params)
 
-	var hit_point := origin + dir * rng
+	# Stepped BALLISTIC raycast: instead of one straight instant ray, march a
+	# projectile from `origin` along `dir` at muzzle velocity `v`, with gravity
+	# pulling -Y. Each BULLET_STEP-long segment is a short intersect_ray along the
+	# curved path; the first segment that hits resolves the hurtbox/world exactly
+	# like a hitscan did. Damage stays applied right here (server-authoritative).
+	var v: float = _muzzle_velocity(data_muzzle_velocity)
+	var grav := Vector3(0.0, -Settings.BULLET_GRAVITY, 0.0)
+	var vel := dir * v
+	var pos := origin
+
+	# Build the arc points as we go so the tracer can follow the curve. Always
+	# starts at the muzzle origin; subsequent points are the marched positions.
+	var arc := PackedVector3Array()
+	arc.append(origin)
+
+	# Cap the number of segments for performance; the arc length is bounded by rng.
+	var seg_count: int = clampi(int(ceil(rng / maxf(0.1, Settings.BULLET_STEP))), 1, _MAX_BALLISTIC_SEGMENTS)
+	var dt: float = Settings.BULLET_STEP / maxf(0.1, v)   # time per segment at muzzle speed
+
+	var hit_point := origin
 	var hit_node: Node = null
-	if result:
-		hit_point = result["position"]
-		hit_node = result["collider"]
+	var resolved := false
+	var travelled := 0.0
+	_last_hit_normal = Vector3.ZERO
+
+	for i in seg_count:
+		# Advance the projectile one ballistic segment (simple Euler integration).
+		var next_vel := vel + grav * dt
+		var next_pos := pos + vel * dt
+		var seg := next_pos - pos
+		var seg_len := seg.length()
+		if seg_len < 0.0001:
+			break
+		# Don't overshoot the weapon's max range on the final partial segment.
+		if travelled + seg_len > rng:
+			var allow := rng - travelled
+			next_pos = pos + seg.normalized() * allow
+			seg = next_pos - pos
+			seg_len = allow
+
+		var params := PhysicsRayQueryParameters3D.create(pos, next_pos)
+		params.collision_mask = hurtbox_mask
+		params.collide_with_areas = true
+		params.collide_with_bodies = true
+		params.exclude = exclude
+		var result := space.intersect_ray(params)
+		if result:
+			hit_point = result["position"]
+			hit_node = result["collider"]
+			_last_hit_normal = result.get("normal", Vector3.ZERO)
+			arc.append(hit_point)
+			resolved = true
+			break
+
+		pos = next_pos
+		vel = next_vel
+		travelled += seg_len
+		arc.append(pos)
+		if travelled >= rng:
+			break
+
+	if not resolved:
+		hit_point = arc[arc.size() - 1]
+
+	if hit_node != null:
 		var hb := _resolve_hurtbox(hit_node)
 		if hb:
 			# A weak-point hurtbox carries damage_multiplier > 1 (e.g. headshot).
@@ -141,8 +212,16 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 			if emit_numbers and _is_enemy(hit_node):
 				# Report the damage actually applied (incl. the hurtbox's own multiplier).
 				Events.damage_number.emit(hit_point, dealt * hb.damage_multiplier, is_crit)
+	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)
+
+## Muzzle velocity for the ballistic march: a weapon may override the Settings
+## default by exposing a positive `muzzle_velocity` on its WeaponData.
+func _muzzle_velocity(override_v: float) -> float:
+	if override_v > 0.0:
+		return override_v
+	return Settings.BULLET_MUZZLE_VELOCITY
 
 ## Rotates `dir` by a random offset within a cone of half-angle `spread_deg`.
 func _apply_spread(dir: Vector3, spread_deg: float) -> Vector3:
@@ -173,19 +252,38 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 		if mf is Node3D:
 			(mf as Node3D).global_position = muzzle
 
-	if _tracer_ps:
-		var tr := _tracer_ps.instantiate()
-		if tr is Tracer:
-			(tr as Tracer).setup(muzzle, hit_point)
-		host.add_child(tr)
+	# Tracer is drawn by _on_fired_arc (which follows the ballistic curve). We only
+	# spawn the impact burst here. (fired_arc always fires alongside fired.)
 
 	if _impact_ps:
 		var im := _impact_ps.instantiate()
 		if im is Impact:
 			(im as Impact).set_enemy_hit(_is_enemy(hit_node))
+			# Orient the burst to the surface normal if we can resolve one.
+			(im as Impact).set_surface_normal(_last_hit_normal)
 		host.add_child(im)
 		if im is Node3D:
 			(im as Node3D).global_position = hit_point
+
+## Draws the tracer as a chain of short straight Tracer segments through the arc
+## points so the visible streak follows the ballistic curve. Reuses the existing
+## Tracer scene (one per segment) — kept cheap by the capped segment count. The
+## first arc point is the muzzle, so the segment chain starts exactly at the barrel.
+func _on_fired_arc(arc_points: PackedVector3Array, _hit_node: Node) -> void:
+	if _tracer_ps == null or arc_points.size() < 2:
+		return
+	var host := _fx_host()
+	if host == null:
+		return
+	# Anchor the first segment at the real muzzle so the streak leaves the barrel.
+	var muzzle := _muzzle_position()
+	for i in range(arc_points.size() - 1):
+		var a: Vector3 = muzzle if i == 0 else arc_points[i]
+		var b: Vector3 = arc_points[i + 1]
+		var tr := _tracer_ps.instantiate()
+		if tr is Tracer:
+			(tr as Tracer).setup(a, b)
+		host.add_child(tr)
 
 ## World-space muzzle point. Prefer a sibling "Muzzle" Marker3D if the scene
 ## provides one; otherwise use the weapon node itself (sits on the camera).

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://chitmarker0fx"]
+
+[ext_resource type="Script" path="res://scripts/ui/hit_marker.gd" id="1_hitmarker"]
+
+[node name="HitMarker" type="CanvasLayer"]
+script = ExtResource("1_hitmarker")

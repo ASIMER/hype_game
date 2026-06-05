@@ -7,6 +7,11 @@ const RADIUS := 78.0
 const RANGE := 65.0   # world metres mapped to the radar edge
 
 var _player: Node3D = null
+# Per-zone extraction-window state cached from Events.extraction_window_changed:
+#   zone(Node) -> { "open": bool, "remaining": float }
+var _zone_windows: Dictionary = {}
+# Drives the OPEN-zone pulse.
+var _pulse: float = 0.0
 
 
 func _ready() -> void:
@@ -22,9 +27,32 @@ func _ready() -> void:
 	offset_right = -16.0
 	offset_bottom = (RADIUS * 2.0) + 16.0
 	Events.local_player_spawned.connect(func(p): _player = p as Node3D)
+	Events.extraction_window_changed.connect(_on_window_changed)
 
 
-func _process(_delta: float) -> void:
+func _on_window_changed(zone: Node, open: bool, remaining: float) -> void:
+	if zone == null:
+		return
+	_zone_windows[zone] = { "open": open, "remaining": remaining }
+
+
+## Extraction-window state for a zone — cached Events value first, then a defensive
+## zone query (another lane adds is_open()/window_remaining()), else open by default.
+func _window_for(zone: Node) -> Dictionary:
+	var cached: Variant = _zone_windows.get(zone, null)
+	if cached != null:
+		return cached as Dictionary
+	var is_open_val: bool = true
+	if zone != null and zone.has_method("is_open"):
+		is_open_val = bool(zone.call("is_open"))
+	var remaining_val: float = 0.0
+	if zone != null and zone.has_method("window_remaining"):
+		remaining_val = float(zone.call("window_remaining"))
+	return { "open": is_open_val, "remaining": remaining_val }
+
+
+func _process(delta: float) -> void:
+	_pulse += delta
 	queue_redraw()
 
 
@@ -43,11 +71,28 @@ func _draw() -> void:
 	var north := _to_radar(Vector3(0, 0, -1) * RANGE, _player.global_position, yaw)
 	draw_string(ThemeDB.fallback_font, c + north.normalized() * (RADIUS - 12.0) - Vector2(5, -6),
 		"N", HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color(0.7, 0.8, 0.9, 0.8))
-	# Extraction zones.
+	# Extraction zones — OPEN ones pulse green, CLOSED ones are dim grey, each with a
+	# thin countdown ring when a window timer is known.
 	for z in get_tree().get_nodes_in_group("extraction"):
 		if z is Node3D:
-			_blip(c, _to_radar((z as Node3D).global_position, _player.global_position, yaw),
-				Color(0.3, 1.0, 0.5), 4.0)
+			var pos := _to_radar((z as Node3D).global_position, _player.global_position, yaw)
+			var w: Dictionary = _window_for(z)
+			var is_open_z: bool = bool(w.get("open", true))
+			var remaining: float = float(w.get("remaining", 0.0))
+			var col: Color
+			var r: float = 4.0
+			if is_open_z:
+				var t: float = 0.5 + 0.5 * sin(_pulse * 4.0)
+				col = Color(0.3, 1.0, 0.5, 0.6 + 0.4 * t)
+				r = 4.0 + 1.5 * t
+			else:
+				col = Color(0.55, 0.6, 0.62, 0.7)
+			_blip(c, pos, col, r)
+			# Countdown ring: a short arc whose sweep shrinks as the window runs out
+			# (assumes a nominal 30s window for the visual; purely cosmetic).
+			if remaining > 0.0:
+				var frac: float = clampf(remaining / 30.0, 0.0, 1.0)
+				draw_arc(c + pos, r + 2.5, -PI * 0.5, -PI * 0.5 + TAU * frac, 16, col, 1.5)
 	# Enemies.
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if e is Node3D:

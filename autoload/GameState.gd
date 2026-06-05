@@ -14,6 +14,18 @@ var difficulty: int = Difficulty.NORMAL
 ## Loot value extracted this run (summed at extraction; used for the rewards screen).
 var last_run_reward: int = 0
 
+## Match countdown (server-authoritative; WaveManager ticks it, clients mirror via
+## Events.match_timer_changed). `match_time_left` counts down from `match_duration`.
+## When it hits 0 the final overwhelming wave begins (`final_wave` = true).
+var match_duration: float = 0.0
+var match_time_left: float = 0.0
+var final_wave: bool = false
+
+func match_timer_ratio() -> float:
+	if match_duration <= 0.0:
+		return 0.0
+	return clampf(match_time_left / match_duration, 0.0, 1.0)
+
 func difficulty_name() -> String:
 	match difficulty:
 		Difficulty.EASY: return "EASY"
@@ -25,6 +37,8 @@ var peers: Dictionary = {}
 
 func reset_match() -> void:
 	current_wave = 0
+	match_time_left = match_duration
+	final_wave = false
 	for id in peers:
 		peers[id]["alive"] = true
 		peers[id]["extracted"] = false

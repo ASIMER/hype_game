@@ -119,7 +119,7 @@ func _physics_process(delta: float) -> void:
 	if AgentBridge.active:
 		var lk := AgentBridge.consume_look()
 		if lk != Vector2.ZERO:
-			camera_pivot.rotation.y -= lk.x
+			rotation.y -= lk.x
 			spring_arm.rotation.x = clampf(spring_arm.rotation.x - lk.y,
 				Settings.CAMERA_PITCH_MIN, Settings.CAMERA_PITCH_MAX)
 
@@ -158,11 +158,9 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	# Over-the-shoulder feel: the body faces where the camera looks. CameraPivot is a
-	# CHILD of the body, so its yaw is LOCAL — we TRANSFER the accumulated look yaw
-	# into the body and zero the pivot. (Assigning rotation.y = pivot.rotation.y
-	# instead would double-count: global camera yaw = body + pivot.)
-	rotation.y += camera_pivot.rotation.y
+	# Over-the-shoulder feel: the body yaw IS the look yaw (applied directly at render
+	# rate in _unhandled_input / the agent path), so the camera_pivot carries no yaw —
+	# nothing to transfer here. Keep it zeroed as a safety against stray writes.
 	camera_pivot.rotation.y = 0.0
 
 	# ADS zoom, shoulder offset, and dynamic peek/lean around walls.
@@ -257,7 +255,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Aiming lowers sensitivity for precision.
 		var sens := Settings.mouse_sensitivity * (Settings.ADS_SENS_SCALE if _ads else 1.0)
 		var inv := -1.0 if Settings.invert_y else 1.0
-		camera_pivot.rotation.y -= motion.relative.x * sens
+		# Yaw the BODY directly at render rate (mouse events arrive per frame) so the
+		# player model rotates smoothly with the camera. Previously yaw accumulated on
+		# camera_pivot and was transferred to the body only in _physics_process (60Hz),
+		# which made the model stutter relative to the smooth camera.
+		rotation.y -= motion.relative.x * sens
 		var pitch := spring_arm.rotation.x - motion.relative.y * sens * inv
 		spring_arm.rotation.x = clampf(pitch, Settings.CAMERA_PITCH_MIN, Settings.CAMERA_PITCH_MAX)
 	elif Settings.ads_toggle and event.is_action_pressed("aim"):

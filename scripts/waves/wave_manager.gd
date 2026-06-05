@@ -50,6 +50,21 @@ var _boss_spawned: bool = false   # boss-wave: ensures exactly one boss is spawn
 const WATCHDOG_STALL: float = 12.0
 var _watchdog_time: float = 0.0
 
+# --- Match timer + storm (final overwhelming wave) ---
+# While the match is active the server ticks GameState.match_time_left down from
+# match_duration. At FINAL_WAVE_WARN seconds we warn once; at 0 we flip into STORM
+# mode: ignore MAX_WAVE, raise the alive-cap to FINAL_WAVE_CONCURRENT, spawn on
+# FINAL_WAVE_SPAWN_INTERVAL from the toughest pool, and keep refilling an escalating
+# stream so the player is physically pressured toward extraction.
+var _timer_active: bool = false      # ticking the match clock
+var _timer_emit_accum: float = 0.0   # throttle match_timer_changed to ~4x/sec
+const TIMER_EMIT_INTERVAL: float = 0.25
+var _warned: bool = false            # FINAL_WAVE_WARN notify fired once
+var _storm: bool = false             # storm spawning engaged
+var _storm_started: bool = false     # final_wave_started emitted once
+# Storm pool: the heaviest archetypes, weighted toward the nastiest.
+const STORM_POOL := [SCENE_HEAVY, SCENE_BASTION, SCENE_BASTION, SCENE_WASP, SCENE_HEAVY, SCENE_TICK]
+
 func _ready() -> void:
 	# Resolve the Arena root and the enemy container. The Arena exposes
 	# get_enemy_spawn_point(index); enemies live under Net/Enemies.
@@ -90,9 +105,24 @@ func _on_match_started() -> void:
 		return
 	_started = true
 	GameState.current_wave = 0
+	# Arm the match clock. reset_match() set match_duration; default it if still 0.
+	if GameState.match_duration <= 0.0:
+		GameState.match_duration = Settings.MATCH_DURATION
+		GameState.match_time_left = Settings.MATCH_DURATION
+	_timer_active = true
+	_timer_emit_accum = 0.0
+	_warned = false
+	_storm = false
+	_storm_started = false
+	Events.match_timer_changed.emit(GameState.match_time_left, GameState.match_duration)
 	_start_next_wave()
 
 func _start_next_wave() -> void:
+	# During the storm the gradual 1-5 progression is over: keep the same "wave"
+	# spinning and just refill from the storm stream instead of ending the match.
+	if _storm:
+		_begin_storm_wave()
+		return
 	var next := GameState.current_wave + 1
 	if next > MAX_WAVE:
 		_on_all_waves_survived()
@@ -118,17 +148,22 @@ func _start_next_wave() -> void:
 func _spawn_loop() -> void:
 	if not _wave_active:
 		return
-	if _wave_spawned < _wave_total and _alive_enemies.size() < Settings.WAVE_MAX_CONCURRENT:
+	var cap: int = Settings.FINAL_WAVE_CONCURRENT if _storm else Settings.WAVE_MAX_CONCURRENT
+	var interval: float = Settings.FINAL_WAVE_SPAWN_INTERVAL if _storm else Settings.WAVE_SPAWN_INTERVAL
+	if _wave_spawned < _wave_total and _alive_enemies.size() < cap:
 		_spawn_enemy(_wave_spawned, _scene_for_spawn())
 		_wave_spawned += 1
 	if _wave_spawned < _wave_total:
-		get_tree().create_timer(Settings.WAVE_SPAWN_INTERVAL).timeout.connect(_spawn_loop)
+		get_tree().create_timer(interval).timeout.connect(_spawn_loop)
 
 ## Belt-and-suspenders so a wave can never deadlock on an unreachable straggler.
 ## Only meaningful once the wave is fully spawned; if the alive count holds steady
 ## for WATCHDOG_STALL seconds, un-stick every survivor (relocate near a player).
 func _process(delta: float) -> void:
-	if not _wave_active or not GameState.is_local_authority_server():
+	if not GameState.is_local_authority_server():
+		return
+	_tick_match_timer(delta)
+	if not _wave_active:
 		return
 	# NOTE: do NOT gate on "fully spawned" — stuck enemies fill the concurrency cap
 	# (WAVE_MAX_CONCURRENT), which stalls spawning, so the wave would never report
@@ -155,6 +190,71 @@ func _process(delta: float) -> void:
 		if nd > 55.0 and e.has_method("force_unstuck"):
 			e.force_unstuck()
 
+## Server-auth match clock. Counts match_time_left down, throttle-emits
+## match_timer_changed (~4x/sec), warns once at FINAL_WAVE_WARN, and triggers the
+## storm at 0. Stops ticking once the match is resolved.
+func _tick_match_timer(delta: float) -> void:
+	if not _timer_active:
+		return
+	if GameState.all_players_resolved():
+		_timer_active = false
+		return
+	GameState.match_time_left = maxf(GameState.match_time_left - delta, 0.0)
+
+	# Throttled HUD update.
+	_timer_emit_accum += delta
+	if _timer_emit_accum >= TIMER_EMIT_INTERVAL or GameState.match_time_left <= 0.0:
+		_timer_emit_accum = 0.0
+		Events.match_timer_changed.emit(GameState.match_time_left, GameState.match_duration)
+
+	# One-shot "storm incoming" warning.
+	if not _warned and GameState.match_time_left <= Settings.FINAL_WAVE_WARN:
+		_warned = true
+		Events.notify.emit("Storm incoming — extract!", 2)
+
+	# Clock expired -> engage the storm (once).
+	if GameState.match_time_left <= 0.0 and not _storm_started:
+		_trigger_storm()
+
+## Flip the match into STORM mode: ignore MAX_WAVE, raise the alive-cap, spawn faster
+## from the toughest pool, and keep refilling an escalating stream until everyone is
+## resolved (extract = win, wipe = loss via the existing paths).
+func _trigger_storm() -> void:
+	_storm = true
+	_storm_started = true
+	GameState.final_wave = true
+	Events.final_wave_started.emit()
+	Events.notify.emit("THE STORM HAS ARRIVED", 2)
+	# Flood IMMEDIATELY, even mid-wave — the storm interrupts whatever is happening so
+	# pressure spikes the instant the clock runs out. Any already-alive enemies are
+	# kept (see _begin_storm_wave) and the cap fills around them.
+	_begin_storm_wave()
+
+## Start (or re-arm) one storm "wave". The storm runs as a chain of large refilling
+## batches so the alive-cap stays saturated; each batch ends -> the next begins, so
+## the match never wins-by-survival while the storm runs.
+func _begin_storm_wave() -> void:
+	_wave_total = _storm_batch_size()
+	_wave_spawned = 0
+	_boss_spawned = true   # no scripted boss in the storm batches
+	_wave_active = true
+	# Keep any already-alive enemies tracked (the storm may interrupt a live wave) so
+	# the concurrency cap fills around them rather than double-counting.
+	_watchdog_time = 0.0
+	# Keep the wave number monotonically climbing so HUDs read an escalating storm.
+	GameState.current_wave += 1
+	Events.wave_started.emit(GameState.current_wave, _wave_total)
+	if not ResourceLoader.exists(ENEMY_SCENE) or _enemies_container == null:
+		# Can't spawn — don't busy-loop; just stop the storm spinning.
+		_wave_active = false
+		return
+	_spawn_loop()
+
+## Storm batch size: a late-wave count scaled by FINAL_WAVE_COUNT_MULT.
+func _storm_batch_size() -> int:
+	var late := _enemy_count_for_wave(MAX_WAVE)
+	return maxi(Settings.FINAL_WAVE_CONCURRENT, int(round(late * Settings.FINAL_WAVE_COUNT_MULT)))
+
 func _enemy_count_for_wave(wave: int) -> int:
 	var base := Settings.WAVE_BASE_ENEMIES + (wave - 1) * Settings.WAVE_ENEMY_GROWTH
 	# Difficulty scales the wave size (Easy thins it, Hard swells it). Always >= 1.
@@ -166,6 +266,10 @@ func _enemy_count_for_wave(wave: int) -> int:
 ## support pool. Missing scenes fall back to the grunt so a wave never deadlocks.
 func _scene_for_spawn() -> String:
 	var wave: int = GameState.current_wave
+	# Storm draws from the heaviest pool — no boss, just an overwhelming heavy stream.
+	if _storm:
+		var sp: String = STORM_POOL[randi() % STORM_POOL.size()]
+		return sp if ResourceLoader.exists(sp) else SCENE_GRUNT
 	if wave >= MAX_WAVE and not _boss_spawned:
 		_boss_spawned = true
 		if ResourceLoader.exists(SCENE_BOSS):
@@ -216,6 +320,11 @@ func _finish_wave() -> void:
 	_wave_active = false
 	var cleared := GameState.current_wave
 	Events.wave_cleared.emit(cleared)
+	# Storm: the team somehow cleared a batch — immediately refill another, no win,
+	# no intermission. The storm only ends when everyone is resolved (extract/wipe).
+	if _storm:
+		_begin_storm_wave.call_deferred()
+		return
 	if cleared >= MAX_WAVE:
 		_on_all_waves_survived()
 		return

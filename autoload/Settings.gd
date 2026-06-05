@@ -44,6 +44,28 @@ const INVENTORY_MAX_WEIGHT: float = 50.0
 
 # Extraction
 const EXTRACTION_TIME: float = 8.0
+# Timed extraction windows (ExtractionDirector rotates which zone is open). A zone
+# is open OPEN_DURATION then closed COOLDOWN before the next zone opens; only an
+# OPEN zone makes extraction progress. STAGGER opens zones at offset phases so the
+# map shows several with different countdowns.
+const EXTRACT_OPEN_DURATION: float = 75.0
+const EXTRACT_COOLDOWN: float = 35.0
+const EXTRACT_WINDOW_STAGGER: float = 28.0
+
+# Match timer — the raid has a hard time budget. When it expires the FINAL "storm"
+# wave begins (see WaveManager) and forces extraction. Gradual wave progression is
+# preserved up to that point.
+const MATCH_DURATION: float = 540.0          # 9 minutes
+const FINAL_WAVE_WARN: float = 30.0          # warn the player this many seconds before
+const FINAL_WAVE_COUNT_MULT: float = 3.5     # storm wave size vs a normal late wave
+const FINAL_WAVE_CONCURRENT: int = 18        # storm raises the alive-cap hard
+const FINAL_WAVE_SPAWN_INTERVAL: float = 0.5 # and spawns much faster
+
+# Ballistics — shots now arc under gravity (bullet drop). The shot is resolved as a
+# stepped raycast along the trajectory; per-weapon muzzle velocity may override.
+const BULLET_GRAVITY: float = 9.8            # m/s² downward on the projectile
+const BULLET_MUZZLE_VELOCITY: float = 120.0  # m/s default (high = flat; low = droppy)
+const BULLET_STEP: float = 2.5               # metres per ballistic raycast segment
 
 # Waves — spawns are STAGGERED (a steady trickle, capped concurrency) rather than
 # dumped all at once, so late waves stay beatable-but-challenging instead of an
