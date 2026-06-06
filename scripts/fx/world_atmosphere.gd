@@ -26,6 +26,9 @@ var _dust_mat: ParticleProcessMaterial
 
 var _env: Environment
 var _sun: DirectionalLight3D
+# The WorldEnvironment NODE (carries `.camera_attributes`, where DOF lives). Captured
+# alongside `_env` in _find_env_and_light so the DOF lever has somewhere to write.
+var _world_env_node: WorldEnvironment
 # The Sky3D SkyDome node (driving clouds/atmosphere). Typed as Node so this script
 # does not hard-depend on the Sky3D class_name being registered.
 var _skydome: Node
@@ -37,6 +40,9 @@ var _base_ambient := 0.95
 var _base_fog_density := 0.001
 var _base_fog_color := Color(0.64, 0.68, 0.72, 1)
 var _base_glow := 0.55
+# Live volumetric-fog density (the value the quality setting last applied). The storm
+# tween thickens FROM this, and _restore_day() resets BACK to it.
+var _base_vol_fog_density := 0.025
 var _base_sun_energy := 1.35
 var _base_sun_rot := Vector3.ZERO
 # SkyDome baselines.
@@ -135,6 +141,37 @@ func _apply_graphics_quality(level: int) -> void:
 		if _env.ssil_enabled:
 			_env.ssil_radius = 5.0
 			_env.ssil_intensity = 1.0
+		# Global volumetric fog — a soft world-space haze that the FogVolume zones layer on
+		# top of (they only render when this is on). Read both ways so toggling off restores
+		# the clear day. The live density is remembered so the storm tween scales from it.
+		_env.volumetric_fog_enabled = bool(SettingsManager.get_value("volumetric_fog"))
+		if _env.volumetric_fog_enabled:
+			_base_vol_fog_density = clampf(float(SettingsManager.get_value("volumetric_fog_density")), 0.0, 0.2)
+			_env.volumetric_fog_density = _base_vol_fog_density
+	# God rays: let the sun cast volumetric shafts THROUGH the global fog (no-op when
+	# volumetric fog is off). Shadow distance also lives on the sun. Guard non-null.
+	if _sun != null:
+		_sun.light_volumetric_fog_energy = 1.0 if bool(SettingsManager.get_value("god_rays")) else 0.0
+		_sun.directional_shadow_max_distance = clampf(float(SettingsManager.get_value("shadow_distance")), 60.0, 250.0)
+	# Cinematic depth-of-field — FAR-ONLY (the player/gun must stay sharp; never enable
+	# near-blur). Lives on the WorldEnvironment node's CameraAttributes; create a
+	# CameraAttributesPractical if the node has none yet.
+	if _world_env_node != null:
+		var ca := _world_env_node.camera_attributes as CameraAttributesPractical
+		if ca == null:
+			ca = CameraAttributesPractical.new()
+			_world_env_node.camera_attributes = ca
+		ca.dof_blur_far_enabled = bool(SettingsManager.get_value("dof"))
+		ca.dof_blur_far_distance = 30.0
+		ca.dof_blur_far_transition = 40.0
+		ca.dof_blur_amount = clampf(float(SettingsManager.get_value("dof_amount")), 0.0, 0.2)
+	# Particle-density scaling — thins the ambient dust/embers immediately (amount_ratio
+	# caps at 1.0; values <1.0 cut particle count with no rebuild). Guard non-null.
+	var pd := clampf(float(SettingsManager.get_value("particle_density")), 0.0, 1.5)
+	if _dust != null:
+		_dust.amount_ratio = clampf(pd, 0.0, 1.0)
+	if _embers != null:
+		_embers.amount_ratio = clampf(pd, 0.0, 1.0)
 	if _skydome != null:
 		var clouds := bool(SettingsManager.get_value("clouds"))
 		_skydome.set("cumulus_visible", clouds)
@@ -252,6 +289,7 @@ func _find_env_and_light() -> void:
 	if root == null:
 		root = get_tree().root
 	var we := _find_world_environment(root)
+	_world_env_node = we
 	if we != null and we.environment != null:
 		_env = we.environment
 	# Fall back to the viewport's world environment if no WorldEnvironment node.
@@ -376,6 +414,9 @@ func _restore_day() -> void:
 		_env.fog_density = DAY_FOG_DENSITY
 		_env.fog_light_color = DAY_FOG_COLOR
 		_env.glow_intensity = DAY_GLOW
+		# Reset volumetric fog to its live (quality-setting) density, undoing any storm thicken.
+		if _env.volumetric_fog_enabled:
+			_env.volumetric_fog_density = _base_vol_fog_density
 	if _sun != null:
 		_sun.light_energy = DAY_SUN_ENERGY
 		if _base_sun_rot != Vector3.ZERO:
@@ -412,6 +453,9 @@ func _start_storm_tween() -> void:
 		_storm_tween.tween_property(_env, "fog_density", _base_fog_density * 3.2, t)
 		_storm_tween.tween_property(_env, "fog_light_color", Color(0.22, 0.20, 0.24, 1.0), t)
 		_storm_tween.tween_property(_env, "glow_intensity", _base_glow * 1.25, t)
+		# Thicken the global volumetric fog into the storm (only if it's enabled this run).
+		if _env.volumetric_fog_enabled:
+			_storm_tween.tween_property(_env, "volumetric_fog_density", _base_vol_fog_density * 2.5, t)
 
 	if _sun != null:
 		_storm_tween.tween_property(_sun, "light_energy", _base_sun_energy * 0.4, t)

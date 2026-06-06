@@ -1194,7 +1194,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L72",
+      "source_location": "L74",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1203,7 +1203,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L86",
+      "source_location": "L88",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1212,7 +1212,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L89",
+      "source_location": "L91",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -2031,7 +2031,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "agentbridge._handle_line (command dispatch)",
       "id": "agentbridge_handle_line"
     },
@@ -2044,7 +2044,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -2057,7 +2057,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "agentbridge._aim_at (converging camera aim)",
       "id": "agentbridge_aim_at"
     },
@@ -2070,7 +2070,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -2096,7 +2096,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "agentbridge._ui_action (menu open/close)",
       "id": "agentbridge_ui_action"
     },
@@ -2291,7 +2291,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -2330,7 +2330,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -2538,7 +2538,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 70,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -2642,7 +2642,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 70,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -2772,7 +2772,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -2811,7 +2811,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "serverbrowser.add_favorite / record_connect",
       "id": "serverbrowser_add_favorite"
     },
@@ -3695,7 +3695,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 70,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -3708,7 +3708,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 70,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -5369,9 +5369,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server",
-      "target": "agent_mcp_server_resolve_agent_port",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_resolve_agent_port"
     },
     {
       "relation": "contains",
@@ -5410,9 +5410,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L179",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_179",
-      "target": "agent_mcp_server_log",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_log"
     },
     {
       "relation": "calls",
@@ -5441,9 +5441,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L184",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_184",
-      "target": "agent_mcp_server_public_tool",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_public_tool"
     },
     {
       "relation": "calls",
@@ -5516,9 +5516,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L197",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_197",
-      "target": "agent_mcp_server_handle_request",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_handle_request"
     },
     {
       "relation": "contains",
@@ -8339,9 +8339,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L178",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
-      "target": "agent_readme_parallel_development_across_git_worktrees",
-      "confidence_score": 1.0
+      "target": "agent_readme_parallel_development_across_git_worktrees"
     },
     {
       "relation": "contains",
@@ -11558,5 +11558,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "401b09ddf07a222ddd2f6fdc0ee8fb5714b38c44"
+  "built_at_commit": "65b9a55da5b84597e7b0cdb7ddc83e35cc2f29dc"
 }

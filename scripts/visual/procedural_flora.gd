@@ -177,8 +177,10 @@ static func _emit_model_mm(parent: Node3D, nm: String, mesh: Mesh,
 	for j in range(xforms.size()):
 		mm.set_instance_transform(j, xforms[j])
 	mmi.multimesh = mm
-	# Beyond ~110 m a tree is a few pixels — cull the lot to keep distant draw cheap.
-	mmi.visibility_range_end = 120.0
+	# Beyond ~110 m a tree is a few pixels — cull the lot to keep distant draw cheap. The
+	# Settings.draw_distance_scale lever (0.5..2.0, read at build) widens/narrows this range;
+	# 1.0 keeps the current 120 m cutoff.
+	mmi.visibility_range_end = 120.0 * clampf(Settings.draw_distance_scale, 0.5, 2.0)
 	mmi.visibility_range_end_margin = 12.0
 	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	parent.add_child(mmi)
@@ -374,7 +376,12 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	# cost is what the perf gate measures and that's bounded by the visible-tile area.
 	# Graphics-quality scale (set by SettingsManager from the quality preset; read here at
 	# build, so a quality change applies on the next raid). 1.0 = Ultra ceiling.
-	var q: float = clampf(Settings.grass_density_scale, 0.1, 1.0)
+	# Grass density lever — widened to 2.0 so the beyond-Ultra density preset actually emits
+	# more grass (was capped at 1.0). 0.1 floor keeps the lowest preset non-empty.
+	var q: float = clampf(Settings.grass_density_scale, 0.1, 2.0)
+	# Draw-distance lever (0.5..2.0, read at build) multiplies the near/far grass visibility
+	# ranges; 1.0 keeps the current cutoffs.
+	var dd: float = clampf(Settings.draw_distance_scale, 0.5, 2.0)
 	var near_target: int = maxi(1, int(NEAR_GRASS_CAP * q))
 	var near_xforms: Array[Transform3D] = _grass_transforms(
 		seed, near_target, NEAR_GRASS_GRID, 4099, 1.0, true)
@@ -382,7 +389,7 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	near_root.name = "Grass_Near"
 	root.add_child(near_root)
 	var near_tiles: int = _emit_grass_tiled(near_root, "near", mesh, mat, near_xforms,
-		0.0, Settings.GRASS_VIS_RANGE, 8.0)
+		0.0, Settings.GRASS_VIS_RANGE * dd, 8.0)
 
 	# FAR layer: fewer, larger tufts, picks up where near begins to drop out. Tiled too —
 	# its AABB is otherwise also map-wide, so without tiling it'd never cull either.
@@ -394,7 +401,7 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	root.add_child(far_root)
 	# begin=33 so it cross-fades in as the near layer fades out (no hard ring/line).
 	var far_tiles: int = _emit_grass_tiled(far_root, "far", mesh, mat, far_xforms,
-		33.0, Settings.GRASS_FAR_RANGE, 10.0)
+		33.0 * dd, Settings.GRASS_FAR_RANGE * dd, 10.0)
 
 	if Settings.NET_DEBUG:
 		print("[flora] grass near=%d (%d tiles) far=%d (%d tiles) tile=%.0fm" % [

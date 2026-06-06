@@ -41,6 +41,25 @@ var _toggle_voxelgi: CheckButton
 var _grass_density: HSlider
 var _grass_density_value: Label
 
+# --- cinematic / beyond ultra controls (built programmatically) ---
+var _draw_distance: HSlider
+var _draw_distance_value: Label
+var _particle_density: HSlider
+var _particle_density_value: Label
+var _terrain_detail: HSlider
+var _terrain_detail_value: Label
+var _volumetric_fog_density: HSlider
+var _volumetric_fog_density_value: Label
+var _shadow_distance: HSlider
+var _shadow_distance_value: Label
+var _dof_amount: HSlider
+var _dof_amount_value: Label
+var _toggle_volumetric_fog: CheckButton
+var _toggle_local_fog: CheckButton
+var _toggle_god_rays: CheckButton
+var _toggle_dof: CheckButton
+var _toggle_terrain_parallax: CheckButton
+
 # --- stats overlay controls (built programmatically) ---
 var _show_fps: CheckButton
 var _show_detailed: CheckButton
@@ -173,11 +192,63 @@ func _build_quality_rows() -> void:
 	_toggle_voxelgi = _add_toggle_row("VoxelGI (experimental)", "voxelgi", "(experimental — applies next raid)")
 
 	# Grass Density slider (applies next raid).
-	var gd_row := _make_slider_row("Grass Density", 0.3, 1.0, 0.05, next_raid)
+	var gd_row := _make_slider_row("Grass Density", 0.3, 2.0, 0.05, next_raid)
 	_grass_density = gd_row[1]
 	_grass_density_value = gd_row[2]
 	_grass_density.value_changed.connect(_on_grass_density)
 	_graphics_v.add_child(gd_row[0])
+
+	# --- Cinematic / beyond-ultra section ---
+	_graphics_v.add_child(_make_header("CINEMATIC / BEYOND ULTRA", accent))
+
+	# Draw Distance — label in metres (58 m = base near-grass range).
+	var dd_row := _make_slider_row("Draw Distance", 0.5, 2.0, 0.05, next_raid)
+	_draw_distance = dd_row[1]
+	_draw_distance_value = dd_row[2]
+	_draw_distance.value_changed.connect(_on_draw_distance)
+	_graphics_v.add_child(dd_row[0])
+
+	# Particle Density.
+	var pd_row := _make_slider_row("Particle Density", 0.0, 1.5, 0.05)
+	_particle_density = pd_row[1]
+	_particle_density_value = pd_row[2]
+	_particle_density.value_changed.connect(_on_particle_density)
+	_graphics_v.add_child(pd_row[0])
+
+	# Terrain Detail.
+	var td_row := _make_slider_row("Terrain Detail", 1.0, 2.0, 0.1, "(applies next raid; heavy)")
+	_terrain_detail = td_row[1]
+	_terrain_detail_value = td_row[2]
+	_terrain_detail.value_changed.connect(_on_terrain_detail)
+	_graphics_v.add_child(td_row[0])
+
+	# Volumetric Fog Density.
+	var vfd_row := _make_slider_row("Volumetric Fog Density", 0.0, 0.08, 0.005)
+	_volumetric_fog_density = vfd_row[1]
+	_volumetric_fog_density_value = vfd_row[2]
+	_volumetric_fog_density.value_changed.connect(_on_volumetric_fog_density)
+	_graphics_v.add_child(vfd_row[0])
+
+	# Shadow Distance.
+	var sd_row := _make_slider_row("Shadow Distance", 60.0, 250.0, 10.0)
+	_shadow_distance = sd_row[1]
+	_shadow_distance_value = sd_row[2]
+	_shadow_distance.value_changed.connect(_on_shadow_distance)
+	_graphics_v.add_child(sd_row[0])
+
+	# DOF Amount.
+	var dof_row := _make_slider_row("DOF Amount", 0.0, 0.2, 0.01)
+	_dof_amount = dof_row[1]
+	_dof_amount_value = dof_row[2]
+	_dof_amount.value_changed.connect(_on_dof_amount)
+	_graphics_v.add_child(dof_row[0])
+
+	# Cinematic toggles.
+	_toggle_volumetric_fog = _add_toggle_row("Volumetric Fog", "volumetric_fog", "")
+	_toggle_local_fog = _add_toggle_row("Local Fog Zones", "local_fog", next_raid)
+	_toggle_god_rays = _add_toggle_row("God Rays", "god_rays", "")
+	_toggle_dof = _add_toggle_row("Depth of Field", "dof", "")
+	_toggle_terrain_parallax = _add_toggle_row("Terrain Parallax (POM)", "terrain_parallax", "(applies next raid; heavy)")
 
 	# --- Statistics overlay section ---
 	_graphics_v.add_child(_make_header("STATISTICS OVERLAY", accent))
@@ -333,6 +404,31 @@ func sync_from_settings() -> void:
 	_grass_density.value = float(g.get_value("grass_density"))
 	_grass_density_value.text = "%d%%" % roundi(_grass_density.value * 100.0)
 
+	# Cinematic / beyond ultra.
+	var draw_distance: float = float(g.get_value("draw_distance"))
+	_draw_distance.value = draw_distance
+	_draw_distance_value.text = "%d m" % roundi(58.0 * draw_distance)
+	var particle_density: float = float(g.get_value("particle_density"))
+	_particle_density.value = particle_density
+	_particle_density_value.text = "%d%%" % roundi(particle_density * 100.0)
+	var terrain_detail: float = float(g.get_value("terrain_detail"))
+	_terrain_detail.value = terrain_detail
+	_terrain_detail_value.text = "%.1fx" % terrain_detail
+	var volumetric_fog_density: float = float(g.get_value("volumetric_fog_density"))
+	_volumetric_fog_density.value = volumetric_fog_density
+	_volumetric_fog_density_value.text = "%.3f" % volumetric_fog_density
+	var shadow_distance: float = float(g.get_value("shadow_distance"))
+	_shadow_distance.value = shadow_distance
+	_shadow_distance_value.text = "%d m" % roundi(shadow_distance)
+	var dof_amount: float = float(g.get_value("dof_amount"))
+	_dof_amount.value = dof_amount
+	_dof_amount_value.text = "%d%%" % roundi(dof_amount * 100.0)
+	_toggle_volumetric_fog.button_pressed = bool(g.get_value("volumetric_fog"))
+	_toggle_local_fog.button_pressed = bool(g.get_value("local_fog"))
+	_toggle_god_rays.button_pressed = bool(g.get_value("god_rays"))
+	_toggle_dof.button_pressed = bool(g.get_value("dof"))
+	_toggle_terrain_parallax.button_pressed = bool(g.get_value("terrain_parallax"))
+
 	# Stats overlay.
 	_show_fps.button_pressed = bool(g.get_value("show_fps"))
 	var detailed: bool = bool(g.get_value("show_detailed_stats"))
@@ -386,6 +482,37 @@ func _on_render_scale(v: float) -> void:
 func _on_grass_density(v: float) -> void:
 	_grass_density_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("grass_density", v)
+	_refresh_preset_label()
+
+
+func _on_draw_distance(v: float) -> void:
+	_draw_distance_value.text = "%d m" % roundi(58.0 * v)
+	_apply_setting("draw_distance", v)
+	_refresh_preset_label()
+
+func _on_particle_density(v: float) -> void:
+	_particle_density_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("particle_density", v)
+	_refresh_preset_label()
+
+func _on_terrain_detail(v: float) -> void:
+	_terrain_detail_value.text = "%.1fx" % v
+	_apply_setting("terrain_detail", v)
+	_refresh_preset_label()
+
+func _on_volumetric_fog_density(v: float) -> void:
+	_volumetric_fog_density_value.text = "%.3f" % v
+	_apply_setting("volumetric_fog_density", v)
+	_refresh_preset_label()
+
+func _on_shadow_distance(v: float) -> void:
+	_shadow_distance_value.text = "%d m" % roundi(v)
+	_apply_setting("shadow_distance", v)
+	_refresh_preset_label()
+
+func _on_dof_amount(v: float) -> void:
+	_dof_amount_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("dof_amount", v)
 	_refresh_preset_label()
 
 

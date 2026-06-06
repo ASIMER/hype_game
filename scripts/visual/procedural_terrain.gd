@@ -379,9 +379,15 @@ static func build(parent: Node3D, poi_defs: Dictionary) -> Node3D:
 
 # ---------------------------------------------------------------- ground mesh
 static func _build_ground(root: Node3D) -> void:
-	var cell: float = Settings.TERRAIN_CELL
-	var n: int = int(round((HALF * 2.0) / cell))   # cells per side (80)
-	var verts: int = n + 1                          # 81 verts per side
+	# DENSER MESH (Lane C): subdivide the grid by Settings.terrain_detail_scale (1.0..2.0).
+	# Effective cell = TERRAIN_CELL / detail, CLAMPED so the cell never drops below ~0.5 m
+	# (caps the vertex count at ~4× = (2×)² and avoids a runaway grid on weak GPUs). At
+	# detail 1.0 the cell == TERRAIN_CELL exactly → the mesh is byte-identical to before
+	# (height_at sampling is unchanged; only the sample DENSITY changes). Pure / deterministic.
+	var detail: float = clampf(Settings.terrain_detail_scale, 1.0, 2.0)
+	var cell: float = maxf(Settings.TERRAIN_CELL / detail, 0.5)
+	var n: int = int(round((HALF * 2.0) / cell))   # cells per side (80 at detail 1.0)
+	var verts: int = n + 1                          # 81 verts per side at detail 1.0
 
 	# Precompute height + per-vertex color/normal grids. Building the surface from
 	# EXPLICIT arrays (add_surface_from_arrays) guarantees the ARRAY_COLOR is stored —
@@ -527,6 +533,12 @@ static func _build_ground_material() -> ShaderMaterial:
 	m.set_shader_parameter("rock_slope_lo", 0.66)
 	m.set_shader_parameter("rock_slope_hi", 0.86)
 	m.set_shader_parameter("normal_strength", 0.85)
+	# PARALLAX-OCCLUSION MAPPING (Lane C). parallax_scale > 0 turns the POM march on; 0 makes
+	# the shader early-out so the output is byte-identical to the pre-POM terrain. Gated on
+	# Settings.terrain_parallax_enabled (read at build → applies on the next raid). Height is
+	# derived from the per-layer ROUGHNESS texture luminance (ambientCG ground roughness is a
+	# decent height proxy → ZERO new asset dependency); see _GROUND_SHADER. 0.04 m max relief.
+	m.set_shader_parameter("parallax_scale", 0.04 if Settings.terrain_parallax_enabled else 0.0)
 	return m
 
 # Embedded triplanar splat shader (kept in this file to keep Lane C self-contained — owns
@@ -555,6 +567,10 @@ uniform float dirt_hi = 5.5;
 uniform float rock_slope_lo = 0.66;
 uniform float rock_slope_hi = 0.86;
 uniform float normal_strength = 0.85;
+// PARALLAX-OCCLUSION MAPPING. 0.0 = OFF (the fragment shader early-outs and the output is
+// byte-identical to the no-POM terrain). > 0 = max relief depth in metres marched along the
+// view vector. Set from Settings.terrain_parallax_enabled in _build_ground_material.
+uniform float parallax_scale = 0.0;
 
 varying vec3 v_wpos;
 varying vec3 v_wnrm;
@@ -564,27 +580,31 @@ void vertex() {
 	v_wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
-// World-space triplanar albedo for one set.
-vec3 tri_albedo(sampler2D t, vec3 wpos, vec3 bw, float s) {
-	vec3 cx = texture(t, wpos.zy * s).rgb;
-	vec3 cy = texture(t, wpos.xz * s).rgb;
-	vec3 cz = texture(t, wpos.xy * s).rgb;
-	return cx * bw.x + cy * bw.y + cz * bw.z;
+// World-space triplanar albedo for one set. `duv` shifts ONLY the dominant plane (selected by
+// `dom`: 0=YZ/x, 1=XZ/y, 2=XY/z) — single-axis POM keeps it cheap + seam-free.
+vec3 tri_albedo(sampler2D t, vec3 wpos, vec3 bw, float s, int dom, vec2 duv) {
+	vec2 uvx = wpos.zy * s; if (dom == 0) uvx += duv;
+	vec2 uvy = wpos.xz * s; if (dom == 1) uvy += duv;
+	vec2 uvz = wpos.xy * s; if (dom == 2) uvz += duv;
+	return texture(t, uvx).rgb * bw.x + texture(t, uvy).rgb * bw.y + texture(t, uvz).rgb * bw.z;
 }
 
-float tri_rough(sampler2D t, vec3 wpos, vec3 bw, float s) {
-	float rx = texture(t, wpos.zy * s).r;
-	float ry = texture(t, wpos.xz * s).r;
-	float rz = texture(t, wpos.xy * s).r;
-	return rx * bw.x + ry * bw.y + rz * bw.z;
+float tri_rough(sampler2D t, vec3 wpos, vec3 bw, float s, int dom, vec2 duv) {
+	vec2 uvx = wpos.zy * s; if (dom == 0) uvx += duv;
+	vec2 uvy = wpos.xz * s; if (dom == 1) uvy += duv;
+	vec2 uvz = wpos.xy * s; if (dom == 2) uvz += duv;
+	return texture(t, uvx).r * bw.x + texture(t, uvy).r * bw.y + texture(t, uvz).r * bw.z;
 }
 
 // Triplanar tangent-space normal -> world-space (whiteout blend), then re-expressed in the
-// fragment's TANGENT/BINORMAL frame for NORMAL output.
-vec3 tri_normal_world(sampler2D t, vec3 wpos, vec3 wn, vec3 bw, float s) {
-	vec3 nx = texture(t, wpos.zy * s).xyz * 2.0 - 1.0;
-	vec3 ny = texture(t, wpos.xz * s).xyz * 2.0 - 1.0;
-	vec3 nz = texture(t, wpos.xy * s).xyz * 2.0 - 1.0;
+// fragment's TANGENT/BINORMAL frame for NORMAL output. `duv`/`dom` apply the POM shift.
+vec3 tri_normal_world(sampler2D t, vec3 wpos, vec3 wn, vec3 bw, float s, int dom, vec2 duv) {
+	vec2 uvx = wpos.zy * s; if (dom == 0) uvx += duv;
+	vec2 uvy = wpos.xz * s; if (dom == 1) uvy += duv;
+	vec2 uvz = wpos.xy * s; if (dom == 2) uvz += duv;
+	vec3 nx = texture(t, uvx).xyz * 2.0 - 1.0;
+	vec3 ny = texture(t, uvy).xyz * 2.0 - 1.0;
+	vec3 nz = texture(t, uvz).xyz * 2.0 - 1.0;
 	// Reorient each axis sample into world space (UDN-style) around the geometric normal.
 	vec3 wnx = normalize(vec3(nx.xy + wn.zy, abs(wn.x)));
 	vec3 wny = normalize(vec3(ny.xy + wn.xz, abs(wn.y)));
@@ -593,6 +613,11 @@ vec3 tri_normal_world(sampler2D t, vec3 wpos, vec3 wn, vec3 bw, float s) {
 	vec3 worldN = wnx.zyx * bw.x + wny.xzy * bw.y + wnz.xyz * bw.z;
 	return normalize(mix(wn, worldN, normal_strength));
 }
+
+// POM HEIGHT SOURCE: the per-layer ROUGHNESS textures are reused as a pseudo-height field
+// (luminance proxy — ambientCG ground roughness reads as a decent relief map, so NO new
+// displacement asset is needed). The march below blends the 3 layers' roughness with the SAME
+// dirt/rock weights as the albedo splat so the marched bed matches the rendered surface.
 
 void fragment() {
 	vec3 wn = normalize(v_wnrm);
@@ -605,20 +630,92 @@ void fragment() {
 	float dirt_w = smoothstep(dirt_lo, dirt_hi, wy);
 	float rock_w = 1.0 - smoothstep(rock_slope_lo, rock_slope_hi, wn.y); // 1 = steep
 
-	vec3 a0 = tri_albedo(tex0_albedo, v_wpos, bw, scale0);
-	vec3 a1 = tri_albedo(tex1_albedo, v_wpos, bw, scale1);
-	vec3 a2 = tri_albedo(tex2_albedo, v_wpos, bw, scale2);
+	// ---- PARALLAX-OCCLUSION MAPPING (gated; single dominant axis) -------------------------
+	// duv is the 2D UV offset applied (only) to the dominant projection plane's samples below.
+	vec2 duv = vec2(0.0);
+	int dom = 1; // default dominant = Y (XZ plane), the common flat-ground case
+	if (parallax_scale > 0.0001) {
+		// Dominant triplanar axis = largest |normal| component → its projection plane carries
+		// the relief. Pick the plane's 2D world-UV scale + the view direction projected onto it.
+		float ax = abs(wn.x); float ay = abs(wn.y); float az = abs(wn.z);
+		// Camera -> fragment direction in WORLD space (per-fragment, accurate at grazing).
+		vec3 vdir = normalize(v_wpos - CAMERA_POSITION_WORLD);
+		vec2 base_uv;
+		vec2 vproj;   // view direction in the plane's 2D UV axes
+		float depth_along; // |view . plane-normal|, scales how far to march
+		float s;
+		if (ay >= ax && ay >= az) {
+			dom = 1; s = (scale0 + scale1 + scale2) / 3.0;
+			base_uv = v_wpos.xz; vproj = vdir.xz; depth_along = max(ay, 0.15);
+		} else if (ax >= az) {
+			dom = 0; s = (scale0 + scale1 + scale2) / 3.0;
+			base_uv = v_wpos.zy; vproj = vdir.zy; depth_along = max(ax, 0.15);
+		} else {
+			dom = 2; s = (scale0 + scale1 + scale2) / 3.0;
+			base_uv = v_wpos.xy; vproj = vdir.xy; depth_along = max(az, 0.15);
+		}
+		// Max UV shift at full depth = parallax_scale (metres) * texel-scale, along the in-plane
+		// view direction divided by the view's plane-normal component (steeper view → longer
+		// march). Clamp the in-plane vector so grazing angles don't smear into long streaks.
+		vec2 max_off = (vproj * s) * (parallax_scale / depth_along);
+		float mlen = length(max_off);
+		float cap = parallax_scale * s * 4.0; // clamp the total UV offset (anti-grazing smear)
+		if (mlen > cap && mlen > 1e-6) max_off *= (cap / mlen);
+
+		// 10-step parallax-occlusion march: walk the ray down from height=1 to 0; at each step
+		// compare the ray's current height to the sampled pseudo-height (roughness). When the
+		// ray dips below the surface, binary-blend the last two samples for the hit UV. The
+		// per-layer roughness is blended with the SAME weights as the splat for a matching bed.
+		const int STEPS = 10;
+		float layer_step = 1.0 / float(STEPS);
+		float ray_h = 1.0;          // ray height, walks 1 -> 0
+		vec2 cur = vec2(0.0);       // accumulated UV offset at the current step
+		float prev_h = 1.0;         // ray height at the previous step
+		float prev_surf = 0.0;      // sampled surface at the previous step
+		vec2 prev_uv = vec2(0.0);   // UV offset at the previous step
+		bool hit = false;
+		for (int i = 0; i < STEPS; i++) {
+			vec2 uv = (base_uv * s) + cur;
+			float r0 = texture(tex0_rough, uv).r;
+			float r1 = texture(tex1_rough, uv).r;
+			float r2 = texture(tex2_rough, uv).r;
+			float surf = mix(mix(r0, r1, dirt_w), r2, rock_w);
+			if (ray_h <= surf) {
+				// Crossing found between prev (ray above surf) and cur (ray below surf).
+				// Interpolate the crossing fraction from the two gaps for a smooth UV.
+				float gap_prev = prev_h - prev_surf;   // > 0 (was above)
+				float gap_cur = surf - ray_h;          // > 0 (now below)
+				float t = gap_prev / max(gap_prev + gap_cur, 1e-4);
+				duv = mix(prev_uv, cur, t);
+				hit = true;
+				break;
+			}
+			prev_h = ray_h;
+			prev_surf = surf;
+			prev_uv = cur;
+			ray_h -= layer_step;
+			cur += max_off * layer_step;
+		}
+		if (!hit) {
+			duv = cur; // ray reached the bottom without intersecting → deepest offset
+		}
+	}
+	// ---------------------------------------------------------------------------------------
+
+	vec3 a0 = tri_albedo(tex0_albedo, v_wpos, bw, scale0, dom, duv);
+	vec3 a1 = tri_albedo(tex1_albedo, v_wpos, bw, scale1, dom, duv);
+	vec3 a2 = tri_albedo(tex2_albedo, v_wpos, bw, scale2, dom, duv);
 	vec3 base = mix(a0, a1, dirt_w);
 	base = mix(base, a2, rock_w);
 
-	float r0 = tri_rough(tex0_rough, v_wpos, bw, scale0);
-	float r1 = tri_rough(tex1_rough, v_wpos, bw, scale1);
-	float r2 = tri_rough(tex2_rough, v_wpos, bw, scale2);
+	float r0 = tri_rough(tex0_rough, v_wpos, bw, scale0, dom, duv);
+	float r1 = tri_rough(tex1_rough, v_wpos, bw, scale1, dom, duv);
+	float r2 = tri_rough(tex2_rough, v_wpos, bw, scale2, dom, duv);
 	float rough = mix(mix(r0, r1, dirt_w), r2, rock_w);
 
-	vec3 n0 = tri_normal_world(tex0_normal, v_wpos, wn, bw, scale0);
-	vec3 n1 = tri_normal_world(tex1_normal, v_wpos, wn, bw, scale1);
-	vec3 n2 = tri_normal_world(tex2_normal, v_wpos, wn, bw, scale2);
+	vec3 n0 = tri_normal_world(tex0_normal, v_wpos, wn, bw, scale0, dom, duv);
+	vec3 n1 = tri_normal_world(tex1_normal, v_wpos, wn, bw, scale1, dom, duv);
+	vec3 n2 = tri_normal_world(tex2_normal, v_wpos, wn, bw, scale2, dom, duv);
 	vec3 worldN = normalize(mix(mix(n0, n1, dirt_w), n2, rock_w));
 
 	ALBEDO = base;

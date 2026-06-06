@@ -178,6 +178,11 @@ var water_refraction: float = 0.12      # water.gdshader refract_amt baked at wa
 # "RT-style" tier rebuild-bound levers (scene nodes spawned at arena build; Ultra+RT only).
 var reflection_probes_enabled: bool = false  # spawn baked ReflectionProbes at POIs (off-screen reflections)
 var voxelgi_enabled: bool = false            # EXPERIMENTAL runtime VoxelGI bake (heavy)
+# Cinematic pass III rebuild-bound levers (read at arena build; apply on the NEXT raid).
+var draw_distance_scale: float = 1.0         # multiplies flora/grass visibility ranges
+var terrain_detail_scale: float = 1.0        # multiplies ground-mesh subdivision density
+var terrain_parallax_enabled: bool = false   # parallax-occlusion mapping baked into the ground material
+var local_fog_enabled: bool = false          # spawn localized FogVolume zones at POIs
 
 # --- Multi-instance / git-worktree parallelism -----------------------------
 # To run several game instances at once (each driven by its own agent, often from a

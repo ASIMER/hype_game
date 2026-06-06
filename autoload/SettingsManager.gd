@@ -32,6 +32,19 @@ const DEFAULTS := {
 	"ssil": false,            # screen-space indirect lighting — Ultra+RT only
 	"reflection_probes": false, # baked ReflectionProbes at POIs (rebuild-bound; off-screen reflections)
 	"voxelgi": false,         # EXPERIMENTAL voxel GI bake (rebuild-bound; heavy — never in a preset)
+	# Cinematic pass III — sliders have SANE CLAMPS but a "beyond Ultra" headroom; presets stay
+	# safe, the player can crank further. Numeric value is shown beside each slider in the menu.
+	"draw_distance": 1.0,         # 0.5..2.0 flora/grass visibility-range multiplier (rebuild-bound)
+	"particle_density": 1.0,      # 0.0..1.5 ambient dust/ember amount multiplier (immediate)
+	"terrain_detail": 1.0,        # 1.0..2.0 ground-mesh subdivision multiplier (rebuild-bound)
+	"volumetric_fog_density": 0.0, # 0.0..0.08 froxel volumetric fog density (immediate; 0 = off look)
+	"shadow_distance": 140.0,     # 60..250 m directional shadow max distance (immediate)
+	"dof_amount": 0.0,            # 0.0..0.2 far depth-of-field blur amount (immediate; 0 = none)
+	"volumetric_fog": false,      # enable the global froxel volumetric fog (immediate)
+	"local_fog": false,           # spawn localized FogVolume zones at POIs (rebuild-bound)
+	"god_rays": false,            # sun light shafts through the volumetric fog (immediate)
+	"dof": false,                 # cinematic far depth-of-field (immediate)
+	"terrain_parallax": false,    # parallax-occlusion mapping on the ground (rebuild-bound; heavy)
 	# Diagnostics overlay
 	"show_fps": false,            # minimal FPS counter
 	"show_detailed_stats": false, # full perf + network panel
@@ -70,6 +83,18 @@ const QUALITY_PRESETS := {
 	"ssil":              [false, false, false, false, true],
 	"reflection_probes": [false, false, false, false, true],
 	"voxelgi":           [false, false, false, false, false],
+	# Cinematic pass III — tasteful defaults per tier; sliders can push beyond ("Custom").
+	"draw_distance":          [0.6,  0.8,  1.0,  1.0,  1.2],
+	"particle_density":       [0.3,  0.5,  0.85, 1.0,  1.0],
+	"terrain_detail":         [1.0,  1.0,  1.0,  1.3,  1.5],
+	"volumetric_fog_density": [0.0,  0.01, 0.02, 0.025, 0.03],
+	"shadow_distance":        [80.0, 110.0, 140.0, 160.0, 200.0],
+	"dof_amount":             [0.0,  0.0,  0.0,  0.06, 0.08],
+	"volumetric_fog":         [false, true,  true, true, true],
+	"local_fog":              [false, false, false, false, true],
+	"god_rays":               [false, false, true, true, true],
+	"dof":                    [false, false, false, true, true],
+	"terrain_parallax":       [false, false, false, true, true],
 }
 
 var _values: Dictionary = {}
@@ -166,7 +191,10 @@ func apply(key: String) -> void:
 		"graphics_quality": Events.graphics_quality_changed.emit(int(v))
 		"render_scale": _apply_render_scale(float(v))
 		"sdfgi", "ssao", "glow", "clouds", "water_refraction", "grass_density", \
-		"ssr", "ssil", "reflection_probes", "voxelgi":
+		"ssr", "ssil", "reflection_probes", "voxelgi", \
+		"draw_distance", "particle_density", "terrain_detail", "volumetric_fog_density", \
+		"shadow_distance", "dof_amount", "volumetric_fog", "local_fog", "god_rays", \
+		"dof", "terrain_parallax":
 			_apply_quality_lever()
 		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
 		"master_volume": _apply_master(float(v))
@@ -236,10 +264,16 @@ func _apply_render_scale(scale: float) -> void:
 ## levers (Environment SDFGI/SSAO/glow/SSR/SSIL, Sky3D clouds — applied by world_atmosphere)
 ## re-read the live settings immediately.
 func _apply_quality_lever() -> void:
-	Settings.grass_density_scale = clampf(float(get_value("grass_density")), 0.1, 1.0)
+	# Grass cap multiplier — widened to a 2.0 "beyond Ultra" ceiling (was 1.0).
+	Settings.grass_density_scale = clampf(float(get_value("grass_density")), 0.1, 2.0)
 	Settings.water_refraction = 0.12 if bool(get_value("water_refraction")) else 0.0
 	Settings.reflection_probes_enabled = bool(get_value("reflection_probes"))
 	Settings.voxelgi_enabled = bool(get_value("voxelgi"))
+	# Cinematic pass III rebuild-bound levers (read at next arena build).
+	Settings.draw_distance_scale = clampf(float(get_value("draw_distance")), 0.5, 2.0)
+	Settings.terrain_detail_scale = clampf(float(get_value("terrain_detail")), 1.0, 2.0)
+	Settings.terrain_parallax_enabled = bool(get_value("terrain_parallax"))
+	Settings.local_fog_enabled = bool(get_value("local_fog"))
 	Events.graphics_quality_changed.emit(int(get_value("graphics_quality")))
 
 ## Push the current overlay config to the StatsOverlay (instanced in main.gd).
