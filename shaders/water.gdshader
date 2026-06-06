@@ -1,27 +1,34 @@
 shader_type spatial;
-// Render-only river water for ProceduralTerrain. VISIBLE flowing water: the vertex stage
-// bobs the surface, the fragment stage scrolls two ripple-noise layers DOWNSTREAM (along
-// the ribbon's V = arclength flow coordinate), perturbs the normal for moving glints,
-// shades deep→shallow, and paints animated bank foam + crest foam + sun sparkle. The mesh
-// carries real UVs (U across [0..1], V = arclength/3) so flow follows the river, not world
-// XZ. TIME is fine here (render-only — gameplay determinism doesn't touch the shader).
-render_mode blend_mix, cull_disabled, depth_draw_opaque, diffuse_burley, specular_schlick_ggx;
+// DEEP river water for ProceduralTerrain (Lane A overhaul). Reads as REAL water filling a
+// ~1.5 m carved channel: depth-fade via DEPTH_TEXTURE (shallow edges transparent → riverbed
+// shows through; deep centre murkier/opaque), refraction via SCREEN_TEXTURE (the bed wobbles
+// under the ripple normal), a natural teal-green→murky-brown river palette (no neon cyan),
+// downstream flow scroll along the ribbon's V=arclength axis, bank + crest foam strongest at
+// the waterline, fresnel rim, sun sparkle, and a vertex bob. TIME is fine (render-only — the
+// shader never touches gameplay determinism). Transparent pass so SCREEN/DEPTH read the scene
+// BEHIND the surface; depth_draw_always keeps the depth write without forcing the opaque pass.
+render_mode blend_mix, cull_disabled, depth_draw_always, diffuse_burley, specular_schlick_ggx;
 
-// --- legacy uniforms (kept so any default_env-style caller that sets them still works) ---
-uniform vec3 shallow_color : source_color = vec3(0.20, 0.52, 0.55);
-uniform vec3 deep_color : source_color = vec3(0.04, 0.16, 0.26);
-uniform vec3 foam_color : source_color = vec3(0.85, 0.92, 0.94);
-uniform float wave_speed = 0.35;     // legacy; flow speeds below are the live knobs
-uniform float wave_scale = 0.30;     // legacy
-uniform float water_alpha = 0.78;    // base transparency
+// --- natural river palette (sRGB). Deep teal-green → murky brown-green; NO neon cyan. ---
+uniform vec3 shallow_tint : source_color = vec3(0.16, 0.40, 0.34);  // shallow teal-green
+uniform vec3 deep_tint : source_color = vec3(0.03, 0.11, 0.11);     // murky deep green
+uniform vec3 absorb : source_color = vec3(0.46, 0.18, 0.24);        // per-metre absorption (more red/green kill w/ depth)
+uniform vec3 foam_color : source_color = vec3(0.82, 0.90, 0.90);
 
-// --- new tuning (sane defaults; flow clearly readable from 5 m) ---
+// --- tuning (clearly readable as deep flowing water from 5 m) ---
+uniform float depth_scale = 1.6;     // metres of water that fully saturates the deep look (raised for the ~2.7 m channel so the murk grades across the depth instead of slamming opaque at the edge)
+uniform float refract_amt = 0.12;    // screen-UV refraction offset (scaled by depth)
+uniform float min_tint = 0.30;       // floor on the watercolour body even in shallows (kills the washed-out film)
 uniform float flow_speed_a = 0.80;   // downstream scroll of ripple layer A
 uniform float flow_speed_b = 1.35;   // downstream scroll of ripple layer B
-uniform float bob_amp = 0.045;       // primary vertex bob amplitude
+uniform float bob_amp = 0.040;       // primary vertex bob amplitude
 uniform float ripple_strength = 0.85;// how hard ripple noise perturbs the normal
-uniform float foam_amount = 1.15;    // bank/crest foam intensity
+uniform float foam_amount = 0.85;    // bank/crest foam intensity
 uniform float sparkle = 1.2;         // sun-glint intensity
+uniform float edge_softness = 0.6;   // metres over which the shallow edge fades to clear
+
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform sampler2D depth_tex : hint_depth_texture, filter_linear_mipmap;
 
 // --- cheap value noise ------------------------------------------------------
 float hash2(vec2 p) {
@@ -29,7 +36,6 @@ float hash2(vec2 p) {
 	p += dot(p, p + 34.345);
 	return fract(p.x * p.y);
 }
-
 float vnoise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
@@ -40,7 +46,6 @@ float vnoise(vec2 p) {
 	float d = hash2(i + vec2(1.0, 1.0));
 	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
-
 float fbm(vec2 p) {
 	float v = 0.0;
 	float amp = 0.5;
@@ -59,50 +64,83 @@ void vertex() {
 	// Visible bobbing — two travelling sine waves along the flow coordinate (UV.y) with a
 	// cross-river (UV.x) phase so the surface isn't a flat sheet. Displaces VERTEX.y.
 	float w = bob_amp * sin(UV.y * 4.2 - TIME * 1.7)
-		+ 0.025 * sin(UV.y * 9.0 - TIME * 2.9 + UV.x * 3.0);
+		+ 0.022 * sin(UV.y * 9.0 - TIME * 2.9 + UV.x * 3.0);
 	VERTEX.y += w;
 }
 
 void fragment() {
 	vec2 uv = v_uv;
-	// Two ripple layers scrolling DOWNSTREAM (subtract TIME from the V/flow axis). 0.4–1 m
-	// features: UV.x*2 packs ripples across the ~5 m channel; the V scale gives metre-scale
-	// streaks travelling with the current.
+	// Two ripple layers scrolling DOWNSTREAM (subtract TIME from the V/flow axis). UV.x*2
+	// packs ripples across the channel; the V scale gives metre-scale streaks travelling
+	// with the current.
 	vec2 ra = vec2(uv.x * 2.0, uv.y - TIME * flow_speed_a);
 	vec2 rb = vec2(uv.x * 2.3, uv.y * 1.0 - TIME * flow_speed_b);
 	float n1 = fbm(ra * 3.0);
 	float n2 = fbm(rb * 3.7);
 	float ripple = (n1 + n2) * 0.5;
 
-	// Perturb NORMAL from the ripple gradient → moving specular highlights/glints.
+	// Ripple gradient → perturbed normal for moving glints + refraction direction.
 	float e = 0.04;
 	float gx = (fbm((ra + vec2(e, 0.0)) * 3.0) - n1) + (fbm((rb + vec2(e, 0.0)) * 3.7) - n2);
 	float gy = (fbm((ra + vec2(0.0, e)) * 3.0) - n1) + (fbm((rb + vec2(0.0, e)) * 3.7) - n2);
 	vec3 nrm = normalize(vec3(-gx * ripple_strength, 1.0, -gy * ripple_strength));
 	NORMAL = normalize(mix(NORMAL, nrm, 0.7));
 
-	// Deep→shallow albedo driven by ripple (troughs read deeper, crests catch light).
-	vec3 base = mix(deep_color, shallow_color, ripple);
+	// --- DEPTH-FADE: reconstruct how much water the view ray passes through ---------------
+	// Scene depth behind the water (the riverbed) vs this fragment's own depth → water_depth
+	// in view-space metres. Shallow edges = small depth = transparent; deep centre = opaque.
+	vec2 screen_uv = SCREEN_UV;
+	float scene_d = texture(depth_tex, screen_uv).r;
+	vec3 scene_ndc = vec3(screen_uv * 2.0 - 1.0, scene_d);
+	vec4 scene_view = INV_PROJECTION_MATRIX * vec4(scene_ndc, 1.0);
+	scene_view.xyz /= scene_view.w;
+	float bed_z = -scene_view.z;            // linear view-space distance to the bed
+	float surf_z = -VERTEX.z;               // this fragment (water surface) view distance
+	float water_depth = max(bed_z - surf_z, 0.0);
+	// Normalised depth factors: edge fade (transparency near the waterline) + saturation.
+	float edge_fade = clamp(water_depth / edge_softness, 0.0, 1.0);
+	float deep = clamp(water_depth / depth_scale, 0.0, 1.0);
 
-	// Bank foam: white streaks hugging BOTH banks (UV.x near 0 and 1), animated by ripple
-	// so they shimmer and crawl rather than sit static.
-	float edge = abs(uv.x * 2.0 - 1.0);                 // 0 at centre, 1 at both banks
-	float bank_foam = smoothstep(0.75, 0.95, edge) * (0.6 + 0.4 * ripple);
-	// Crest foam where ripple peaks (mid-channel churn) — wider band → more visible churn.
-	float crest_foam = smoothstep(0.58, 0.82, ripple);
+	// --- REFRACTION: sample the screen behind the water, offset by the ripple normal -------
+	// Offset grows with depth so deep water wobbles the bed more than the thin edge. Clamp
+	// the offset UV so we never sample off-surface garbage at the silhouette.
+	vec2 roff = nrm.xz * refract_amt * (0.35 + deep);
+	vec2 ref_uv = clamp(screen_uv + roff, vec2(0.001), vec2(0.999));
+	vec3 bg = texture(screen_tex, ref_uv).rgb;
+
+	// --- COLOR: tint the refracted bed by depth-based absorption (Beer-Lambert-ish) --------
+	vec3 absorption = exp(-absorb * water_depth * 1.9);   // 1 at surface → kills red/warmth with depth
+	vec3 watercol = mix(shallow_tint, deep_tint, deep);
+	// Blend: shallow → the refracted (absorbed) bed shows through but is ALWAYS tinted by at
+	// least min_tint of the watercolour so it never reads as a washed-out glass film; deep →
+	// the murky water colour dominates. This is the fix that kills the flat-sticker look.
+	vec3 refracted = bg * absorption;
+	float body_mix = clamp(min_tint + deep * 0.70, 0.0, 0.95);
+	vec3 body = mix(refracted, watercol, body_mix);
+
+	// --- FOAM: a tight band right at the WATERLINE (very shallow edge) + sparse crest churn.
+	// Keep it NARROW so foam frames the river edge instead of whitewashing the whole surface.
+	float waterline = smoothstep(0.35, 0.0, water_depth); // 1 only within the first ~0.35 m of depth
+	float bank_edge = abs(uv.x * 2.0 - 1.0);              // 0 centre, 1 at both ribbon banks
+	float bank_foam = max(smoothstep(0.84, 0.98, bank_edge), waterline) * (0.5 + 0.5 * ripple);
+	float crest_foam = smoothstep(0.72, 0.90, ripple) * (0.2 + 0.5 * deep);
 	float foam = clamp((bank_foam + crest_foam) * foam_amount, 0.0, 1.0);
 
-	// Sparkle: tight specular glint on ripple crests facing the view.
+	// --- sparkle + fresnel -----------------------------------------------------------------
 	float ndotv = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
 	float glint = pow(1.0 - abs(ripple - 0.62), 6.0) * sparkle;
-
-	// Fresnel rim — stronger at grazing angles for a watery sheen at the far bank.
 	float fres = pow(1.0 - ndotv, 4.0);
 
-	ALBEDO = mix(base, foam_color, foam * 0.8);
-	ROUGHNESS = mix(0.06, 0.32, ripple) - foam * 0.04;
+	vec3 col = mix(body, foam_color, foam * 0.85);
+	col = mix(col, shallow_tint * 1.1, fres * 0.10);      // watery sheen at grazing angles
+
+	ALBEDO = col;
+	ROUGHNESS = mix(0.10, 0.34, ripple) - foam * 0.05;
 	METALLIC = 0.0;
-	SPECULAR = 0.7;
-	ALPHA = clamp(water_alpha + fres * 0.22 + foam * 0.25, 0.0, 0.97);
-	EMISSION = foam_color * (foam * 0.10 + glint * 0.18) + shallow_color * fres * 0.12;
+	SPECULAR = 0.6;
+	// Opacity ramps with depth: near-clear at the waterline (bed visible), nearly opaque in
+	// the deep centre. Foam + fresnel add their own coverage on top.
+	float opacity = mix(0.32, 0.94, deep);
+	ALPHA = clamp(opacity + foam * 0.30 + fres * 0.10, 0.0, 0.97);
+	EMISSION = foam_color * (foam * 0.08 + glint * 0.16) + shallow_tint * fres * 0.10;
 }

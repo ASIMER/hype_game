@@ -57,7 +57,7 @@ const CATALOG := {
 		"model_scale": 0.67, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, 0) },
 	"dmr": { "model": "res://assets/models/weapons/dmr.glb", "icon": "res://assets/ui/icons/dmr.png",
 		"prim": Prim.BOX, "size": Vector3(0.1, 0.16, 1.1), "color": Color(0.15, 0.17, 0.2),
-		"model_scale": 0.52, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, -0.15) },
+		"model_scale": 0.52, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, -0.06) },
 
 	# --- Expansion: enemy archetypes (primitive fallbacks; enemies-dev may swap glbs) ---
 	"robot_tick": { "model": "", "icon": "",

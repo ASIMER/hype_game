@@ -35,6 +35,9 @@ const SOUNDS := {
 	"heartbeat":      "res://assets/audio/heartbeat.ogg",
 	"ambient":        "res://assets/audio/ambient.ogg",
 	"music":          "res://assets/audio/music.ogg",
+	# Water immersion (Lane B): entry splash + looping submerged ambience.
+	"water_splash":   "res://assets/audio/water_splash.ogg",
+	"underwater":     "res://assets/audio/underwater.ogg",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -54,6 +57,8 @@ const SOUND_DB := {
 	"heartbeat":    -14.0,
 	"ambient":      -18.0,
 	"music":        -20.0,
+	"water_splash":  -5.0,
+	"underwater":   -12.0,
 }
 
 ## Master toggle + trim.  Public so a settings menu can drive them later.
@@ -98,6 +103,11 @@ const HEARTBEAT_HP_THRESHOLD := 0.30   # ratio of max_health
 # ---------------------------------------------------------------------------
 var _ambient_player: AudioStreamPlayer = null
 var _music_player:   AudioStreamPlayer = null
+# Underwater ambience bed + Master-bus lowpass for the muffled submerged effect.
+var _underwater_player: AudioStreamPlayer = null
+var _underwater_lowpass_idx := -1   # index of the lowpass effect we add to Master (-1 = none)
+var _underwater_active := false
+const UNDERWATER_BASE_DB := -12.0
 const AMBIENT_BASE_DB := -18.0
 const MUSIC_BASE_DB   := -20.0
 const MUSIC_WAVE_DB   := -16.0   # slight raise during active waves
@@ -137,6 +147,10 @@ func _ready() -> void:
 		_music_player = _make_looping_player("music", MUSIC_BASE_DB)
 		_music_player.volume_db = -80.0
 
+		# Underwater ambience bed (starts silent; faded in on SUBMERGED).
+		_underwater_player = _make_looping_player("underwater", UNDERWATER_BASE_DB)
+		_underwater_player.volume_db = -80.0
+
 		# Wire UI click to all buttons added after this point.
 		get_tree().node_added.connect(_on_node_added)
 
@@ -155,6 +169,7 @@ func _ready() -> void:
 	Events.weapon_switched.connect(_on_weapon_switched)
 	Events.local_player_spawned.connect(_on_local_player_spawned)
 	Events.player_health_changed.connect(_on_player_health_changed)
+	Events.water_state_changed.connect(_on_water_state_changed)
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
@@ -302,6 +317,56 @@ func _on_player_health_changed(player: Node, current: float, max_hp: float) -> v
 					if _heartbeat_player != null:
 						_heartbeat_player.stop()
 			)
+
+# ---------------------------------------------------------------------------
+# Water immersion (Lane B) — muffled audio + ambience while submerged
+# ---------------------------------------------------------------------------
+
+## LOCAL water state changed (0 DRY, 1 WADING, 2 SUBMERGED). On SUBMERGED we muffle the
+## Master bus (lowpass) + fade in a looping underwater ambience; restored on surface.
+## Emitted only by the local authority player, so no remote gating is needed here.
+func _on_water_state_changed(state: int, _world_pos: Vector3) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var submerged := state == 2
+	if submerged == _underwater_active:
+		return
+	_underwater_active = submerged
+	_set_master_muffle(submerged)
+	if _underwater_player == null:
+		return
+	if submerged:
+		if _streams.get("underwater") != null:
+			var amb: AudioStream = _streams["underwater"]
+			_set_stream_loop(amb)
+			if _underwater_player.stream != amb:
+				_underwater_player.stream = amb
+			if not _underwater_player.playing:
+				_underwater_player.play()
+			_tween_volume(_underwater_player, UNDERWATER_BASE_DB + master_db, 0.4)
+	else:
+		_tween_volume(_underwater_player, -80.0, 0.5)
+
+## Add (or remove) a lowpass filter on the Master bus so everything sounds muffled while
+## underwater. Idempotent — tracks the effect index it inserted and never duplicates it.
+func _set_master_muffle(on: bool) -> void:
+	var bus := AudioServer.get_bus_index("Master")
+	if bus < 0:
+		return
+	if on:
+		if _underwater_lowpass_idx >= 0:
+			return
+		var lp := AudioEffectLowPassFilter.new()
+		lp.cutoff_hz = 700.0
+		AudioServer.add_bus_effect(bus, lp)
+		_underwater_lowpass_idx = AudioServer.get_bus_effect_count(bus) - 1
+	else:
+		if _underwater_lowpass_idx < 0:
+			return
+		# Remove only if it's still the last effect we added (defensive).
+		if _underwater_lowpass_idx < AudioServer.get_bus_effect_count(bus):
+			AudioServer.remove_bus_effect(bus, _underwater_lowpass_idx)
+		_underwater_lowpass_idx = -1
 
 # ---------------------------------------------------------------------------
 # UI button auto-wiring

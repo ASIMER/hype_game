@@ -23,6 +23,7 @@ All SHIPPED assets are **CC0** (public domain, no attribution required) or **MIT
 | **Sci-Fi Modular Gun Pack** (Quaternius) | Weapons | https://quaternius.com/packs/scifimodularguns.html | CC0 | ✅ | `assets/models/weapons/` → `AssetRegistry` rifle/pistol/smg/shotgun/dmr |
 | **Blaster Kit** (Kenney) | Weapons (fallback) | https://kenney.nl/assets/blaster-kit | CC0 | ✅/🔎 | reliable CC0 GLB fallback for gun ids + projectiles/crates |
 | **Kenney Audio** (Impact / UI / Sci-Fi) | Audio | https://kenney.nl/assets/category:Audio | CC0 | ✅ | `assets/audio/` — shot/hit/explosion/reload/ui/extract SFX |
+| **Water SFX** (self-generated) | Audio | `tools/audio/gen_audio.py` (procedural) | CC0 (own work) | ✅ | `assets/audio/water_splash.ogg` + `underwater.ogg` — river immersion |
 
 ---
 

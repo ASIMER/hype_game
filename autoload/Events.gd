@@ -24,6 +24,11 @@ signal player_healed(player: Node, amount: float)
 # --- Player ---
 signal local_player_spawned(player: Node)
 signal player_health_changed(player: Node, current: float, max_health: float)
+## The LOCAL player's water submersion state changed (cosmetic, authority-only — emitted
+## only by the authority player so a remote peer wading never tints YOUR screen).
+## state: 0 DRY, 1 WADING (feet/legs in water, head above), 2 SUBMERGED (camera underwater).
+## world_pos is the player's position at the transition (splash/ripple origin).
+signal water_state_changed(state: int, world_pos: Vector3)
 
 # --- Loot / Inventory ---
 signal loot_spawned(loot: Node)

@@ -47,6 +47,22 @@ var _base_atm_darkness := 0.45
 var _base_skydome_exposure := 1.0
 var _captured := false
 
+# Explicit DAY look — the known-good bright-day values authored in Arena.tscn /
+# default_env.tres. We force the (shared, in-place-mutated) Environment + SkyDome
+# back to these whenever a NEW match begins, so a raid never inherits the previous
+# raid's storm darkness after a restart. Capture then scales the storm tween from
+# the live values, but these are the source-of-truth fallbacks/resets.
+const DAY_AMBIENT := 0.95
+const DAY_FOG_DENSITY := 0.001
+const DAY_FOG_COLOR := Color(0.64, 0.68, 0.72, 1.0)
+const DAY_GLOW := 0.55
+const DAY_SUN_ENERGY := 1.35
+const DAY_CUMULUS_COVERAGE := 0.55
+const DAY_CUMULUS_THICKNESS := 0.0243
+const DAY_CUMULUS_INTENSITY := 0.7
+const DAY_ATM_DARKNESS := 0.45
+const DAY_SKYDOME_EXPOSURE := 1.0
+
 # Storm look targets for the SkyDome.
 const STORM_CUMULUS_COVERAGE := 0.92
 const STORM_CUMULUS_THICKNESS := 0.06
@@ -63,12 +79,22 @@ func _ready() -> void:
 	_build_dust()
 	_build_embers()
 	_find_env_and_light()
+	# The Environment is a SHARED resource that the storm mutates IN PLACE; across a
+	# mid-match restart / fresh raid the same object persists, so it may still be in
+	# its stormed (dark) state when we load. Force it back to explicit bright-day
+	# BEFORE capturing, so the captured baseline is the true day (not a stormed one)
+	# and the storm tween scales correctly.
+	_restore_day()
 	_capture_baseline()
 	# If the match somehow already flipped to the final wave before we loaded.
 	if GameState and GameState.final_wave:
 		_apply_storm_instant()
 	if Events and not Events.final_wave_started.is_connected(_on_final_wave):
 		Events.final_wave_started.connect(_on_final_wave)
+	# Every new match starts bright-day: re-apply the day baseline + clear the storm
+	# flag (covers a debug restart where this Atmosphere may NOT be re-instanced).
+	if Events and not Events.match_started.is_connected(_on_match_started):
+		Events.match_started.connect(_on_match_started)
 
 # ---------------------------------------------------------------------------
 # Particles
@@ -277,6 +303,41 @@ func _capture_baseline() -> void:
 # ---------------------------------------------------------------------------
 # Storm transition
 # ---------------------------------------------------------------------------
+## A fresh match started — guarantee a bright day even if the previous raid ended in a
+## storm (the shared Environment persists across restarts).
+func _on_match_started() -> void:
+	if _storm_tween != null and _storm_tween.is_valid():
+		_storm_tween.kill()
+	_stormed = false
+	_restore_day()
+	# If this new match has *already* flipped to the final wave by the time the signal
+	# lands (unlikely, but safe), re-storm.
+	if GameState and GameState.final_wave:
+		_apply_storm_instant()
+
+## Reset every storm-mutated property on the (shared) Environment + SkyDome + sun back
+## to its explicit bright-day value. Also re-sets the ambient particle tint. Uses the
+## captured baselines where they exist (true authored values), falling back to the
+## explicit DAY_* constants so this is correct even if capture ran on a stormed env.
+func _restore_day() -> void:
+	if _skydome != null:
+		_skydome.set("cumulus_coverage", DAY_CUMULUS_COVERAGE)
+		_skydome.set("cumulus_thickness", DAY_CUMULUS_THICKNESS)
+		_skydome.set("cumulus_intensity", DAY_CUMULUS_INTENSITY)
+		_skydome.set("atm_darkness", DAY_ATM_DARKNESS)
+		_skydome.set("exposure", DAY_SKYDOME_EXPOSURE)
+	if _env != null:
+		_env.ambient_light_energy = DAY_AMBIENT
+		_env.fog_density = DAY_FOG_DENSITY
+		_env.fog_light_color = DAY_FOG_COLOR
+		_env.glow_intensity = DAY_GLOW
+	if _sun != null:
+		_sun.light_energy = DAY_SUN_ENERGY
+		if _base_sun_rot != Vector3.ZERO:
+			_sun.rotation = _base_sun_rot
+	if _dust_mat != null:
+		_dust_mat.color = Color(0.85, 0.84, 0.8, 0.18)
+
 func _on_final_wave() -> void:
 	if _stormed:
 		return

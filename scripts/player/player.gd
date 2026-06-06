@@ -33,6 +33,17 @@ var _sprint_locked: bool = false      # true after exhausting stamina, until it 
 var _interact_target: Node = null     # nearest interactable (for the "[E]" prompt)
 var _interact_timer: float = 0.0
 
+# --- Water immersion (LOCAL/cosmetic, authority-only) ---
+enum Water { DRY, WADING, SUBMERGED }
+var _water_state: int = Water.DRY
+const CAM_HEIGHT: float = 1.5         # camera Y above the player root (= feet)
+const WATER_SLOW: float = 0.65        # speed multiplier while wading/submerged (~35% slow)
+const _TERRAIN_SCRIPT := "res://scripts/visual/procedural_terrain.gd"
+var _terrain_gd: GDScript = null      # cached terrain script (for water_surface_at)
+var _terrain_checked: bool = false
+var _bubbles: GPUParticles3D = null   # rising bubbles while submerged (lazy)
+var _ripple: GPUParticles3D = null    # feet ripple while wading (lazy)
+
 const GRENADE_SCENE := "res://scenes/items/Grenade.tscn"
 
 
@@ -172,11 +183,17 @@ func _physics_process(delta: float) -> void:
 	if sprinting:
 		speed = Settings.PLAYER_SPRINT_SPEED
 	_update_stamina(delta, sprinting)
+	# Wading/swimming slows movement (sluggish in water).
+	if _water_state != Water.DRY:
+		speed *= WATER_SLOW
 
 	velocity.x = move_dir.x * speed
 	velocity.z = move_dir.z * speed
 
 	move_and_slide()
+
+	# Cosmetic water submersion state + enter/exit splash & particle FX (LOCAL only).
+	_check_water(delta)
 
 	# Over-the-shoulder feel: the body yaw IS the look yaw (applied directly at render
 	# rate in _unhandled_input / the agent path), so the camera_pivot carries no yaw —
@@ -323,6 +340,203 @@ func _throw_grenade() -> void:
 		(nade as Node3D).global_position = from
 	_grenades -= 1
 	Events.grenade_thrown.emit(self, from, dir)
+
+
+## Cosmetic water immersion. Reads the water surface Y at the player's XZ (Lane A's
+## `ProceduralTerrain.water_surface_at`, with a local river fallback so this works before
+## that lands). Classifies DRY / WADING (legs in) / SUBMERGED (camera underwater) and, on
+## a transition, emits Events.water_state_changed + drives splash/ripple/bubble FX.
+## Authority-only (the caller is already authority-gated in _physics_process).
+func _check_water(_delta: float) -> void:
+	var surf := _water_surface_at(global_position.x, global_position.z)
+	var new_state: int = Water.DRY
+	if not is_nan(surf):
+		var feet_y := global_position.y
+		var cam_y := global_position.y + CAM_HEIGHT
+		if cam_y < surf:
+			new_state = Water.SUBMERGED
+		elif feet_y < surf:
+			new_state = Water.WADING
+
+	if new_state == _water_state:
+		# Keep submerged bubbles parked at the camera as it moves.
+		if _water_state == Water.SUBMERGED and _bubbles != null and is_instance_valid(_bubbles):
+			_bubbles.global_position = global_position + Vector3.UP * (CAM_HEIGHT - 0.2)
+		return
+
+	var was_wet := _water_state != Water.DRY
+	var now_wet := new_state != Water.DRY
+	_water_state = new_state
+	Events.water_state_changed.emit(new_state, global_position)
+
+	# DRY -> wet is an ENTER: splash sound + droplet burst at the entry point.
+	if now_wet and not was_wet:
+		var entry := global_position
+		if not is_nan(surf):
+			entry.y = surf
+		AudioManager._play_at("water_splash", self)
+		_spawn_splash(entry)
+
+	# Manage the persistent ambient particles for the current state.
+	_set_ripple(new_state == Water.WADING)
+	_set_bubbles(new_state == Water.SUBMERGED)
+
+
+## Water surface world-Y at (x,z) over the river, else NAN. Prefers Lane A's frozen
+## contract `ProceduralTerrain.water_surface_at`; if that method is absent (Lane A not
+## landed) falls back to a local river probe so wading still works for testing.
+func _water_surface_at(x: float, z: float) -> float:
+	if not _terrain_checked:
+		_terrain_checked = true
+		if ResourceLoader.exists(_TERRAIN_SCRIPT):
+			var res := load(_TERRAIN_SCRIPT)
+			if res is GDScript:
+				_terrain_gd = res
+	if _terrain_gd != null and _terrain_gd.has_method("water_surface_at"):
+		var s: float = _terrain_gd.water_surface_at(x, z)
+		return s   # NAN when not over water (contract); used as-is.
+	return _fallback_surface_at(x, z)
+
+
+## Local river-surface fallback (used only until Lane A's water_surface_at lands). Returns
+## the water surface Y if (x,z) is within the river channel, else NAN. Derived from the
+## terrain's PUBLIC river centerline + the bed height so it tracks shallow OR deep rivers.
+func _fallback_surface_at(x: float, z: float) -> float:
+	if _terrain_gd == null:
+		return NAN
+	# Distance to the polyline river centerline (replicates the terrain's private probe
+	# using its public RIVER_PTS constant).
+	var pts: Variant = _terrain_gd.get("RIVER_PTS")
+	if not (pts is Array) or (pts as Array).size() < 2:
+		return NAN
+	var p := Vector2(x, z)
+	var best := INF
+	var arr := pts as Array
+	for i in range(arr.size() - 1):
+		var a: Vector2 = arr[i]
+		var b: Vector2 = arr[i + 1]
+		var ab := b - a
+		var len2 := ab.length_squared()
+		var t := 0.0 if len2 < 0.0001 else clampf((p - a).dot(ab) / len2, 0.0, 1.0)
+		var d := p.distance_to(a + ab * t)
+		if d < best:
+			best = d
+	var halfw: float = float(Settings.RIVER_WIDTH) * 0.5
+	if best > halfw:
+		return NAN
+	# Bed height at this XZ (the terrain mesh's own value) → surface sits just above it.
+	# RIVER_DEPTH-relative offset keeps the surface near the visible water ribbon (~-0.12).
+	if not _terrain_gd.has_method("height_at"):
+		return NAN
+	var bed: float = _terrain_gd.height_at(x, z)
+	return bed + float(Settings.RIVER_DEPTH) - 0.12
+
+
+## One-shot droplet burst when entering water (white droplets, gravity down).
+func _spawn_splash(at: Vector3) -> void:
+	var world := get_tree().current_scene
+	if world == null:
+		return
+	var ps := GPUParticles3D.new()
+	ps.amount = 24
+	ps.lifetime = 0.7
+	ps.one_shot = true
+	ps.explosiveness = 0.9
+	ps.local_coords = false
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0, 1, 0)
+	mat.spread = 55.0
+	mat.gravity = Vector3(0, -9.8, 0)
+	mat.initial_velocity_min = 2.0
+	mat.initial_velocity_max = 4.5
+	mat.scale_min = 0.4
+	mat.scale_max = 1.0
+	mat.color = Color(0.75, 0.88, 0.95, 0.9)
+	ps.process_material = mat
+	ps.draw_pass_1 = _droplet_mesh()
+	world.add_child(ps)
+	ps.global_position = at
+	ps.restart()
+	ps.emitting = true
+	# Self-free after the burst finishes.
+	get_tree().create_timer(1.2).timeout.connect(func() -> void:
+		if is_instance_valid(ps):
+			ps.queue_free())
+
+
+## Continuous feet-ripple particles while WADING (small, cheap).
+func _set_ripple(on: bool) -> void:
+	if on:
+		if _ripple == null or not is_instance_valid(_ripple):
+			_ripple = GPUParticles3D.new()
+			_ripple.amount = 10
+			_ripple.lifetime = 0.6
+			_ripple.local_coords = false
+			var m := ParticleProcessMaterial.new()
+			m.direction = Vector3(0, 1, 0)
+			m.spread = 40.0
+			m.gravity = Vector3(0, -6.0, 0)
+			m.initial_velocity_min = 0.6
+			m.initial_velocity_max = 1.6
+			m.scale_min = 0.2
+			m.scale_max = 0.5
+			m.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+			m.emission_sphere_radius = 0.35
+			m.color = Color(0.7, 0.85, 0.9, 0.6)
+			_ripple.process_material = m
+			_ripple.draw_pass_1 = _droplet_mesh()
+			add_child(_ripple)
+			_ripple.position = Vector3(0, 0.1, 0)
+		_ripple.emitting = true
+	elif _ripple != null and is_instance_valid(_ripple):
+		_ripple.emitting = false
+
+
+## Rising bubble particles past the camera while SUBMERGED.
+func _set_bubbles(on: bool) -> void:
+	if on:
+		if _bubbles == null or not is_instance_valid(_bubbles):
+			_bubbles = GPUParticles3D.new()
+			_bubbles.amount = 28
+			_bubbles.lifetime = 1.6
+			_bubbles.local_coords = false
+			var m := ParticleProcessMaterial.new()
+			m.direction = Vector3(0, 1, 0)
+			m.spread = 20.0
+			m.gravity = Vector3(0, 1.2, 0)   # bubbles rise
+			m.initial_velocity_min = 0.4
+			m.initial_velocity_max = 1.1
+			m.scale_min = 0.15
+			m.scale_max = 0.5
+			m.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+			m.emission_box_extents = Vector3(0.8, 0.6, 0.8)
+			m.color = Color(0.8, 0.92, 1.0, 0.5)
+			_bubbles.process_material = m
+			_bubbles.draw_pass_1 = _droplet_mesh()
+			var world := get_tree().current_scene
+			if world != null:
+				world.add_child(_bubbles)
+			else:
+				add_child(_bubbles)
+		_bubbles.global_position = global_position + Vector3.UP * (CAM_HEIGHT - 0.2)
+		_bubbles.emitting = true
+	elif _bubbles != null and is_instance_valid(_bubbles):
+		_bubbles.emitting = false
+
+
+## A tiny shared sphere mesh for water droplets/bubbles.
+func _droplet_mesh() -> Mesh:
+	var sm := SphereMesh.new()
+	sm.radius = 0.05
+	sm.height = 0.10
+	sm.radial_segments = 6
+	sm.rings = 3
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.8, 0.9, 1.0, 0.85)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.material = mat
+	return sm
 
 
 ## Sprint stamina: drain while sprinting, regen otherwise; lock sprint once empty
