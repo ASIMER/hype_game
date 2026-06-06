@@ -64,8 +64,8 @@ const DOT_WAIT   := Color(0.93, 0.82, 0.27, 1.0)
 @onready var _currency_label: Label       = $Layout/Header/HeaderVBox/HRow/CurrencyLabel
 @onready var _tab_buttons: Array          = []  # populated in _ready from TabBar
 @onready var _content_area: Control       = $Layout/Body/ContentArea
-@onready var _diff_option: OptionButton   = $Layout/Footer/FooterRow/DiffOption
-@onready var _diff_desc: Label            = $Layout/Footer/FooterRow/DiffDesc
+@onready var _diff_option: OptionButton   = $Layout/Footer/FooterRow/DiffVBox/DiffOption
+@onready var _diff_desc: Label            = $Layout/Footer/FooterRow/DiffVBox/DiffDesc
 @onready var _back_btn: Button            = $Layout/Footer/FooterRow/BackBtn
 @onready var _deploy_btn: Button          = $Layout/Footer/FooterRow/DeployBtn
 
@@ -210,12 +210,17 @@ func _build_squad_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "SquadPanel"
 	# Bottom strip: anchored to the bottom edge, stretched across, lifted clear of
-	# the footer row so the DEPLOY/START button stays unobstructed.
+	# the footer row so the DEPLOY/START button stays unobstructed. The footer
+	# ($Layout/Footer PanelContainer in the VBox) is a flow element whose height
+	# grows with the DEPLOY button + wrapped difficulty description (~70–140px at
+	# larger HUD scales); GROW_BEGIN anchors the band's BOTTOM at -148 (clear of a
+	# tall footer) and lets it grow upward so its size is preserved at any scale.
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.offset_left = 24
 	panel.offset_right = -24
-	panel.offset_top = -132
-	panel.offset_bottom = -84
+	panel.offset_top = -184
+	panel.offset_bottom = -148
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)

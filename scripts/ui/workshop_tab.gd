@@ -252,7 +252,12 @@ func _build_weapon_rows() -> void:
 	for id in WEAPON_ORDER:
 		var row := HBoxContainer.new()
 		row.name = "Row_" + id
-		row.add_theme_constant_override("separation", 12)
+		row.add_theme_constant_override("separation", 10)
+
+		# Small weapon icon cell.
+		var icon := _icon_cell(id, 0, 40)
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(icon)
 
 		var name_lbl := Label.new()
 		name_lbl.name = "NameLbl"
@@ -345,9 +350,70 @@ func _build_upgrade_rows() -> void:
 		}
 
 
-## One row per recipe from Crafting.all_recipes(). Shows blueprint-gating,
-## output × count, and the full ingredient list. Rows are rebuilt whenever the
-## recipe list could change (currently only at startup, but this is forward-safe).
+## Arc-style icon cell: a fixed-size Panel with a rarity-colored border holding an
+## icon TextureRect (or colored-box fallback) + an optional count badge.
+## Modeled on inventory_ui.gd::_make_slot. `id` may be an ItemData id (border uses
+## rarity_color) or any other id (border uses a neutral teal).
+func _icon_cell(id: String, count: int, cell_size: int) -> Panel:
+	var slot := Panel.new()
+	slot.custom_minimum_size = Vector2(cell_size, cell_size)
+	slot.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	sb.set_border_width_all(2)
+	var item: ItemData = ItemCatalog.get_item(id)
+	sb.border_color = item.rarity_color() if item != null else COL_TEAL
+	sb.set_corner_radius_all(4)
+	slot.add_theme_stylebox_override("panel", sb)
+	if item != null:
+		slot.tooltip_text = item.display_name
+
+	var icon := AssetRegistry.get_icon(id)
+	if icon != null:
+		var tex := TextureRect.new()
+		tex.texture = icon
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tex.offset_left = 5
+		tex.offset_top = 5
+		tex.offset_right = -5
+		tex.offset_bottom = -5
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(tex)
+	else:
+		var box := ColorRect.new()
+		box.color = AssetRegistry.get_color(id)
+		box.set_anchors_preset(Control.PRESET_FULL_RECT)
+		box.offset_left = 7
+		box.offset_top = 7
+		box.offset_right = -7
+		box.offset_bottom = -7
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(box)
+
+	if count > 1:
+		var badge := Label.new()
+		badge.text = "x%d" % count
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		badge.set_anchors_preset(Control.PRESET_FULL_RECT)
+		badge.offset_right = -3
+		badge.offset_bottom = -1
+		badge.add_theme_color_override("font_color", Color.WHITE)
+		badge.add_theme_color_override("font_outline_color", Color.BLACK)
+		badge.add_theme_constant_override("outline_size", 4)
+		badge.add_theme_font_size_override("font_size", 12)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(badge)
+	return slot
+
+
+## One row per recipe from Crafting.all_recipes(). Renders the OUTPUT item as an
+## icon cell, a "←" arrow, the INPUT ingredients as small icon cells (with counts),
+## a status label (lock / cost / affordability), and a CRAFT button. Rows are
+## rebuilt whenever the recipe list could change.
 func _build_craft_rows() -> void:
 	# Clear any previously built rows so a future hot-rebuild is safe.
 	for c in _craft_rows.get_children():
@@ -359,48 +425,65 @@ func _build_craft_rows() -> void:
 		if recipe == null or recipe.id == "":
 			continue
 
-		var row := HBoxContainer.new()
-		row.name = "CraftRow_" + recipe.id
-		row.add_theme_constant_override("separation", 12)
-
-		# ── Left: recipe description label ───────────────────────────────────
-		# "Output Name ×N  ←  A ×a  +  B ×b  [+  CR cost]"
 		var out_item: ItemData = ItemCatalog.get_item(recipe.output_id)
 		var out_name: String = out_item.display_name if out_item != null else recipe.output_id
 
-		var parts: Array[String] = []
+		var row := HBoxContainer.new()
+		row.name = "CraftRow_" + recipe.id
+		row.add_theme_constant_override("separation", 8)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		# ── OUTPUT icon cell (48px, badged with output_count) ────────────────
+		var out_cell := _icon_cell(recipe.output_id, maxi(1, recipe.output_count), 48)
+		out_cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		out_cell.tooltip_text = "%s ×%d" % [out_name, maxi(1, recipe.output_count)]
+		row.add_child(out_cell)
+
+		# ── "←" arrow ────────────────────────────────────────────────────────
+		var arrow := Label.new()
+		arrow.text = "←"
+		arrow.add_theme_color_override("font_color", COL_TEAL)
+		arrow.add_theme_font_size_override("font_size", 22)
+		arrow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(arrow)
+
+		# ── INPUT ingredient icon cells (36px, badged with count) ────────────
+		var ingredients := HBoxContainer.new()
+		ingredients.name = "Ingredients"
+		ingredients.add_theme_constant_override("separation", 6)
+		ingredients.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ingredients.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		for inp in recipe.inputs():
-			var in_item: ItemData = ItemCatalog.get_item(String(inp["id"]))
-			var in_name: String = in_item.display_name if in_item != null else String(inp["id"])
-			parts.append("%d× %s" % [int(inp["count"]), in_name])
+			var in_id: String = String(inp["id"])
+			var in_cnt: int = int(inp["count"])
+			var in_item: ItemData = ItemCatalog.get_item(in_id)
+			var in_name: String = in_item.display_name if in_item != null else in_id
+			var in_cell := _icon_cell(in_id, in_cnt, 36)
+			in_cell.tooltip_text = "%d× %s" % [in_cnt, in_name]
+			ingredients.add_child(in_cell)
+		row.add_child(ingredients)
 
-		var cost_suffix: String = ("  +  %d CR" % recipe.cost) if recipe.cost > 0 else ""
-		var recipe_text: String = "%s ×%d  ←  %s%s" % [
-			out_name,
-			maxi(1, recipe.output_count),
-			"  +  ".join(parts),
-			cost_suffix,
-		]
+		# ── Status label (lock / cost / affordability) ──────────────────────
+		var status_lbl := Label.new()
+		status_lbl.name = "StatusLbl"
+		status_lbl.custom_minimum_size = Vector2(110, 0)
+		status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		status_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		status_lbl.add_theme_font_size_override("font_size", 12)
+		row.add_child(status_lbl)
 
-		var recipe_lbl := Label.new()
-		recipe_lbl.name = "RecipeLbl"
-		recipe_lbl.text = recipe_text
-		recipe_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		recipe_lbl.add_theme_color_override("font_color", COL_WHITE)
-		recipe_lbl.add_theme_font_size_override("font_size", 13)
-		recipe_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(recipe_lbl)
-
-		# ── Right: CRAFT button ───────────────────────────────────────────────
+		# ── CRAFT button ─────────────────────────────────────────────────────
 		var craft_btn := Button.new()
 		craft_btn.name = "CraftBtn"
-		craft_btn.custom_minimum_size = Vector2(90, 32)
+		craft_btn.custom_minimum_size = Vector2(90, 36)
 		craft_btn.text = "CRAFT"
+		craft_btn.focus_mode = Control.FOCUS_NONE
 		craft_btn.pressed.connect(func() -> void: _on_craft_pressed(recipe.id))
 		row.add_child(craft_btn)
 
 		_craft_rows.add_child(row)
-		_craft_ui[recipe.id] = { "lbl": recipe_lbl, "btn": craft_btn }
+		_craft_ui[recipe.id] = { "lbl": status_lbl, "btn": craft_btn }
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
@@ -471,8 +554,8 @@ func _refresh_upgrade_rows() -> void:
 
 
 ## Refresh craft row affordability + blueprint-gating from the live Crafting state.
-## Blueprint-locked rows appear dimmed with a lock note; unlocked rows color
-## missing inputs red and disable the button.
+## Blueprint-locked rows show a lock note + hide CRAFT; unlocked rows show the
+## CR cost (or READY) tinted red when missing inputs / unaffordable.
 func _refresh_craft_rows() -> void:
 	for recipe_id in _craft_ui:
 		var ui: Dictionary = _craft_ui[recipe_id]
@@ -486,12 +569,9 @@ func _refresh_craft_rows() -> void:
 		var btn: Button  = ui["btn"] as Button
 
 		if not Crafting.recipe_unlocked(recipe):
-			# Locked: dim the row, annotate label, disable button.
+			# Locked: annotate the status label, hide the CRAFT button.
 			lbl.add_theme_color_override("font_color", COL_DIM)
-			# Show a lock note so the player knows why they cannot craft.
-			var locked_item: ItemData = ItemCatalog.get_item(recipe.output_id)
-			var locked_name: String   = locked_item.display_name if locked_item != null else recipe.output_id
-			lbl.text    = "%s — Blueprint required (extract / buy / quest)" % locked_name
+			lbl.text     = "Blueprint required\n(extract / buy / quest)"
 			btn.disabled = true
 			btn.visible  = false
 			continue
@@ -499,36 +579,22 @@ func _refresh_craft_rows() -> void:
 		# Blueprint known — restore button visibility then check ingredients.
 		btn.visible = true
 
-		# Rebuild label text (may have been overwritten by the lock note on a prior refresh).
-		var out_item: ItemData = ItemCatalog.get_item(recipe.output_id)
-		var out_name: String   = out_item.display_name if out_item != null else recipe.output_id
-
-		# Per-ingredient availability check.  Label is a plain Label (no BBCode),
-		# so we tint the whole label red when anything is missing or unaffordable.
-		var inputs: Array = recipe.inputs()
+		# Per-ingredient availability check.
 		var all_ok: bool  = true
-		var parts: Array[String] = []
-		for inp in inputs:
-			var in_id: String     = String(inp["id"])
-			var in_cnt: int       = int(inp["count"])
-			var in_item: ItemData = ItemCatalog.get_item(in_id)
-			var in_name: String   = in_item.display_name if in_item != null else in_id
-			if not Stash.has(in_id, in_cnt):
+		for inp in recipe.inputs():
+			if not Stash.has(String(inp["id"]), int(inp["count"])):
 				all_ok = false
-			parts.append("%d× %s" % [in_cnt, in_name])
+				break
 
-		var cost_suffix: String = ("  +  %d CR" % recipe.cost) if recipe.cost > 0 else ""
-		var currency_ok: bool   = recipe.cost <= 0 or MetaProgression.currency >= recipe.cost
-		var can_make: bool      = all_ok and currency_ok
+		var currency_ok: bool = recipe.cost <= 0 or MetaProgression.currency >= recipe.cost
+		var can_make: bool    = all_ok and currency_ok
 
-		lbl.text = "%s ×%d  ←  %s%s" % [
-			out_name,
-			maxi(1, recipe.output_count),
-			"  +  ".join(parts),
-			cost_suffix,
-		]
-		# Color the whole row: white when all ingredients present, red when not.
-		lbl.add_theme_color_override("font_color", COL_WHITE if can_make else COL_RED)
+		if recipe.cost > 0:
+			lbl.text = "CR %d" % recipe.cost
+		else:
+			lbl.text = "READY" if can_make else "MISSING"
+		# Amber/READY when craftable, red when missing inputs or unaffordable.
+		lbl.add_theme_color_override("font_color", COL_AMBER if can_make else COL_RED)
 
 		btn.disabled = not can_make
 

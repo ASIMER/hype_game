@@ -41,11 +41,11 @@ const COL_GREEN := Color(0.4, 0.85, 0.4, 1.0)
 
 # ── Node refs (assigned by _build_layout; no @onready — tree is built in code) ─
 var _currency_label: Label       = null
-var _item_rows: VBoxContainer    = null
+var _item_rows: GridContainer    = null
 var _blueprint_rows: VBoxContainer = null
 var _no_blueprints_label: Label  = null
 
-## Per-stock-row UI references: item id -> { buy_btn: Button, price_lbl: Label }
+## Per-stock-cell UI references: item id -> { buy_btn: Button, price_lbl: Label }
 var _item_ui: Dictionary = {}
 ## Per-blueprint-row UI references: bp id -> { buy_btn: Button, status_lbl: Label }
 var _blueprint_ui: Dictionary = {}
@@ -130,10 +130,12 @@ func _build_layout() -> void:
 	var items_panel := _make_panel()
 	body.add_child(items_panel)
 
-	_item_rows = VBoxContainer.new()
+	_item_rows = GridContainer.new()
 	_item_rows.name = "ItemRows"
+	_item_rows.columns = 5
 	_item_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_item_rows.add_theme_constant_override("separation", 8)
+	_item_rows.add_theme_constant_override("h_separation", 12)
+	_item_rows.add_theme_constant_override("v_separation", 12)
 	items_panel.add_child(_item_rows)
 
 	_build_item_rows()
@@ -168,7 +170,8 @@ func _build_layout() -> void:
 	_build_blueprint_rows()
 
 
-## Builds one static row per STOCK entry inside _item_rows.
+## Builds one compact icon cell per STOCK entry inside the _item_rows grid:
+## an icon cell (40px) above the item name, a price caption, and a small BUY button.
 func _build_item_rows() -> void:
 	_item_ui.clear()
 	for id in STOCK:
@@ -176,58 +179,51 @@ func _build_item_rows() -> void:
 		var item: ItemData     = ItemCatalog.get_item(id)
 		var display: String    = item.display_name if item != null else id
 
-		var row := HBoxContainer.new()
-		row.name = "Row_" + id
-		row.add_theme_constant_override("separation", 10)
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Vertical cell: [icon] [name] [price] [BUY]
+		var cell := VBoxContainer.new()
+		cell.name = "Cell_" + id
+		cell.add_theme_constant_override("separation", 4)
+		cell.size_flags_horizontal = Control.SIZE_FILL
+		cell.tooltip_text = "%s\nCR %d" % [display, price]
 
-		# Icon or colored-box fallback.
-		var icon_tex: Texture2D = AssetRegistry.get_icon(id)
-		if icon_tex != null:
-			var tex := TextureRect.new()
-			tex.name = "Icon"
-			tex.texture = icon_tex
-			tex.custom_minimum_size = Vector2(32, 32)
-			tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tex.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(tex)
-		else:
-			var box := ColorRect.new()
-			box.name = "IconFallback"
-			box.custom_minimum_size = Vector2(32, 32)
-			box.color = AssetRegistry.get_color(id)
-			box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(box)
+		# Icon cell (clickable shortcut to buy).
+		var icon := _icon_cell(id, 0, 56)
+		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		icon.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_on_buy_item(id, price))
+		cell.add_child(icon)
 
-		# Display name.
+		# Display name (small, centered, wrapping).
 		var name_lbl := Label.new()
 		name_lbl.name = "NameLbl"
-		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_lbl.text = display
+		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_lbl.custom_minimum_size = Vector2(72, 0)
 		name_lbl.add_theme_color_override("font_color", COL_WHITE)
-		row.add_child(name_lbl)
+		name_lbl.add_theme_font_size_override("font_size", 12)
+		cell.add_child(name_lbl)
 
-		# Price label.
+		# Price caption (recolors red when unaffordable in _refresh).
 		var price_lbl := Label.new()
 		price_lbl.name = "PriceLbl"
 		price_lbl.text = "CR %d" % price
-		price_lbl.custom_minimum_size = Vector2(70, 0)
-		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		price_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		price_lbl.add_theme_color_override("font_color", COL_AMBER)
-		price_lbl.add_theme_font_size_override("font_size", 14)
-		row.add_child(price_lbl)
+		price_lbl.add_theme_font_size_override("font_size", 13)
+		cell.add_child(price_lbl)
 
-		# BUY button.
+		# Compact BUY button.
 		var buy_btn := Button.new()
 		buy_btn.name = "BuyBtn"
 		buy_btn.text = "BUY"
-		buy_btn.custom_minimum_size = Vector2(64, 32)
+		buy_btn.custom_minimum_size = Vector2(72, 26)
 		buy_btn.focus_mode = Control.FOCUS_NONE
 		buy_btn.pressed.connect(func() -> void: _on_buy_item(id, price))
-		row.add_child(buy_btn)
+		cell.add_child(buy_btn)
 
-		_item_rows.add_child(row)
+		_item_rows.add_child(cell)
 		_item_ui[id] = { "buy_btn": buy_btn, "price_lbl": price_lbl }
 
 
@@ -240,6 +236,7 @@ func _build_blueprint_rows() -> void:
 
 	# Collect unique blueprint ids (each bp may be referenced by multiple recipes).
 	var seen_bps: Dictionary = {}       # bp id -> display_name
+	var bp_output: Dictionary = {}      # bp id -> output item id (for the icon)
 	for recipe in Crafting.all_recipes():
 		var cr := recipe as CraftRecipe
 		if cr == null:
@@ -249,6 +246,7 @@ func _build_blueprint_rows() -> void:
 		if cr.blueprint in seen_bps:
 			continue
 		seen_bps[cr.blueprint] = cr.display_name
+		bp_output[cr.blueprint] = cr.output_id
 
 	if seen_bps.is_empty():
 		_no_blueprints_label.visible = true
@@ -267,13 +265,11 @@ func _build_blueprint_rows() -> void:
 		row.add_theme_constant_override("separation", 10)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-		# Blueprint icon (generic — no per-blueprint icon in AssetRegistry).
-		var box := ColorRect.new()
-		box.name = "BpIcon"
-		box.custom_minimum_size = Vector2(32, 32)
-		box.color = Color(0.247, 0.71, 0.79, 0.7)   # teal placeholder
-		box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(box)
+		# Blueprint icon: the recipe's OUTPUT item icon-cell (what the bp lets you build).
+		var out_id: String = String(bp_output.get(bp_id, ""))
+		var bp_icon := _icon_cell(out_id, 0, 40)
+		bp_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(bp_icon)
 
 		# Display name.
 		var name_lbl := Label.new()
@@ -357,6 +353,64 @@ func _make_section_header(title: String) -> PanelContainer:
 	return pc
 
 
+## Arc-style icon cell: a fixed-size Panel with a rarity-colored border holding an
+## icon TextureRect (or colored-box fallback) + an optional count badge.
+## Modeled on inventory_ui.gd::_make_slot. `id` may be an ItemData id (border uses
+## rarity_color) or any other id (border uses a neutral teal).
+func _icon_cell(id: String, count: int, cell_size: int) -> Panel:
+	var slot := Panel.new()
+	slot.custom_minimum_size = Vector2(cell_size, cell_size)
+	slot.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	sb.set_border_width_all(2)
+	var item: ItemData = ItemCatalog.get_item(id)
+	sb.border_color = item.rarity_color() if item != null else COL_TEAL
+	sb.set_corner_radius_all(4)
+	slot.add_theme_stylebox_override("panel", sb)
+
+	var icon := AssetRegistry.get_icon(id)
+	if icon != null:
+		var tex := TextureRect.new()
+		tex.texture = icon
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tex.offset_left = 6
+		tex.offset_top = 6
+		tex.offset_right = -6
+		tex.offset_bottom = -6
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(tex)
+	else:
+		var box := ColorRect.new()
+		box.color = AssetRegistry.get_color(id)
+		box.set_anchors_preset(Control.PRESET_FULL_RECT)
+		box.offset_left = 8
+		box.offset_top = 8
+		box.offset_right = -8
+		box.offset_bottom = -8
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(box)
+
+	if count > 1:
+		var badge := Label.new()
+		badge.text = "x%d" % count
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		badge.set_anchors_preset(Control.PRESET_FULL_RECT)
+		badge.offset_right = -3
+		badge.offset_bottom = -1
+		badge.add_theme_color_override("font_color", Color.WHITE)
+		badge.add_theme_color_override("font_outline_color", Color.BLACK)
+		badge.add_theme_constant_override("outline_size", 4)
+		badge.add_theme_font_size_override("font_size", 13)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(badge)
+	return slot
+
+
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
 ## Full affordability refresh — called on _ready and after any purchase signal.
@@ -380,7 +434,10 @@ func _refresh_item_buttons() -> void:
 		var price: int  = int(STOCK.get(id, 0))
 		var ui: Dictionary = _item_ui[id]
 		var buy_btn: Button = ui["buy_btn"]
-		buy_btn.disabled = MetaProgression.currency < price
+		var price_lbl: Label = ui["price_lbl"]
+		var affordable: bool = MetaProgression.currency >= price
+		buy_btn.disabled = not affordable
+		price_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
 
 
 ## Sync blueprint rows: show LEARNED / update BUY affordability.

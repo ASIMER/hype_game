@@ -233,8 +233,14 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 	slot_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(slot_lbl)
 
-	# Currently-equipped name + stat delta.
+	# Currently-equipped attachment icon cell (empty placeholder when none).
 	var cur_id: String = String(equipped.get(slot_id, ""))
+	var icon_cell := _icon_cell(cur_id, 44)
+	icon_cell.name = "SlotIcon"
+	icon_cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon_cell)
+
+	# Currently-equipped name + stat delta.
 	var cur_lbl := Label.new()
 	cur_lbl.name = "CurLbl"
 	cur_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -285,7 +291,11 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 		var display_name: String = att_id
 		if raw_it != null:
 			display_name = raw_it.display_name
-		opt.add_item(display_name, i)
+		var opt_icon: Texture2D = AssetRegistry.get_icon(att_id)
+		if opt_icon != null:
+			opt.add_icon_item(opt_icon, display_name, i)
+		else:
+			opt.add_item(display_name, i)
 		opt.set_item_metadata(i + 1, att_id)
 
 	# Pre-select the currently equipped one.
@@ -498,6 +508,66 @@ func _make_section_header(title: String) -> PanelContainer:
 	lbl.add_theme_font_size_override("font_size", 15)
 	pc.add_child(lbl)
 	return pc
+
+
+## Arc-style icon cell: a fixed-size Panel with a rarity-colored border holding an
+## icon TextureRect (or colored-box fallback). Modeled on inventory_ui.gd::_make_slot.
+## `id` may be empty (renders a dim empty-slot placeholder), an ItemData id (border =
+## rarity_color), or any other id (border = neutral teal).
+func _icon_cell(id: String, cell_size: int) -> Panel:
+	var slot := Panel.new()
+	slot.custom_minimum_size = Vector2(cell_size, cell_size)
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(4)
+
+	if id.is_empty():
+		# Empty slot: dim dashed-look placeholder.
+		sb.border_color = COL_DIM
+		slot.add_theme_stylebox_override("panel", sb)
+		var dash := Label.new()
+		dash.text = "—"
+		dash.set_anchors_preset(Control.PRESET_FULL_RECT)
+		dash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		dash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		dash.add_theme_color_override("font_color", COL_DIM)
+		dash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(dash)
+		return slot
+
+	var item: ItemData = ItemCatalog.get_item(id)
+	sb.border_color = item.rarity_color() if item != null else COL_TEAL
+	slot.add_theme_stylebox_override("panel", sb)
+	if item != null:
+		slot.tooltip_text = item.display_name
+
+	var icon := AssetRegistry.get_icon(id)
+	if icon != null:
+		var tex := TextureRect.new()
+		tex.texture = icon
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tex.offset_left = 5
+		tex.offset_top = 5
+		tex.offset_right = -5
+		tex.offset_bottom = -5
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(tex)
+	else:
+		var box := ColorRect.new()
+		box.color = AssetRegistry.get_color(id)
+		box.set_anchors_preset(Control.PRESET_FULL_RECT)
+		box.offset_left = 7
+		box.offset_top = 7
+		box.offset_right = -7
+		box.offset_bottom = -7
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(box)
+	return slot
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────

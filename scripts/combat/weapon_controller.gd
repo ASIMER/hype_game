@@ -37,6 +37,13 @@ var _cooldown: float = 0.0        # time until the next shot is allowed (1/fire_
 var _semi_latched: bool = false   # semi-auto: true once we've fired for the current hold
 var _since_fire_call: float = 1.0 # seconds since try_fire() was last called (release detect)
 
+# ADS state of THIS controller's owning player. Tracked off Events.ads_changed
+# (only honored for our own player node) so the authoritative shot path and the
+# crosshair can both fold the ADS spread multiplier in without reaching into the
+# player's private `_ads`. The owning player body is cached lazily.
+var _ads: bool = false
+var _owner_player: Node = null
+
 func _ready() -> void:
 	_weapon = get_node_or_null("Weapon") as Weapon
 	_model_holder = get_node_or_null("ModelHolder") as Node3D
@@ -44,10 +51,39 @@ func _ready() -> void:
 		_model_holder = Node3D.new()
 		_model_holder.name = "ModelHolder"
 		add_child(_model_holder)
+	if not Events.ads_changed.is_connected(_on_ads_changed):
+		Events.ads_changed.connect(_on_ads_changed)
 	_load_weapons()
 	_refresh_model()
 	# Broadcast the starting weapon + ammo so the HUD shows it immediately.
 	_emit_switched()
+
+## Tracks the owning player's ADS state. Only the event for OUR player matters
+## (co-op: every controller hears every peer's ads_changed) — match by body.
+func _on_ads_changed(who: Node, a: bool) -> void:
+	if who == _owner_body():
+		_ads = bool(a)
+
+## The CharacterBody3D player that owns this controller (cached). Walks up the
+## node tree from this controller — the controller lives deep under Player.tscn.
+func _owner_body() -> Node:
+	if is_instance_valid(_owner_player):
+		return _owner_player
+	var n := get_parent()
+	while n != null:
+		if n is CharacterBody3D or n is RigidBody3D:
+			_owner_player = n
+			return n
+		n = n.get_parent()
+	return null
+
+## The owning player's stance spread multiplier (crouch/stand/move/sprint/slide),
+## or 1.0 if the player doesn't expose the API (Lane A adds it in parallel).
+func _stance_mult() -> float:
+	var p := _owner_body()
+	if p != null and p.has_method("stance_spread_mult"):
+		return float(p.stance_spread_mult())
+	return 1.0
 
 func _load_weapons() -> void:
 	_weapons.clear()
@@ -146,7 +182,10 @@ func try_fire(from_node: Node3D) -> bool:
 	if int(_ammo.get(data.id, 0)) <= 0:
 		_begin_reload()
 		return false
-	if not _weapon.fire_with(from_node, data):
+	# Effective spread folds in the owning player's stance/movement and ADS. Pass it
+	# to the weapon (which resolves the shot server-authoritatively, so a co-op client
+	# can't bypass it — the spread is applied where the authoritative dir is computed).
+	if not _weapon.fire_with(from_node, data, _effective_spread(data)):
 		return false
 	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
 	_semi_latched = true
@@ -155,6 +194,25 @@ func try_fire(from_node: Node3D) -> bool:
 	if int(_ammo[data.id]) <= 0:
 		_begin_reload()
 	return true
+
+## Effective fire spread (degrees) for a given weapon, given the owning player's
+## current stance/movement and ADS state. base × stance_mult × (ADS ? SPREAD_MULT_ADS : 1).
+func _effective_spread(data: WeaponData) -> float:
+	if data == null:
+		return 0.0
+	var s: float = data.spread_deg * _stance_mult()
+	if _ads:
+		s *= Settings.SPREAD_MULT_ADS
+	return maxf(0.0, s)
+
+## Live effective spread (degrees) for the EQUIPPED weapon — base × stance × ADS.
+## Read by the dynamic crosshair so the reticle shows the real shot cone. Returns a
+## small default when no weapon is loaded so the crosshair never reads garbage.
+func current_spread_deg() -> float:
+	var d := current_weapon()
+	if d == null:
+		return 1.0
+	return _effective_spread(d)
 
 ## Per-weapon zoomed FOV (read by the camera when aiming).
 func current_ads_fov() -> float:

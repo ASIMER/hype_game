@@ -44,6 +44,11 @@ func _ready() -> void:
 	Events.final_wave_started.connect(_on_final_wave_started)
 
 	extract_panel.visible = false
+	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
+	# interaction prompt (interaction_prompt.gd sits at offset_top=-158..bottom=-120).
+	# Authored at -110..-84; lowering to -96..-70 leaves a ~24px gap above the prompt.
+	extract_panel.offset_top = -96.0
+	extract_panel.offset_bottom = -70.0
 	banner.visible = false
 	_set_health(Settings.PLAYER_MAX_HEALTH, Settings.PLAYER_MAX_HEALTH)
 	_update_wave_label(GameState.current_wave)
@@ -83,7 +88,8 @@ func _build_hud_widgets() -> void:
 	_timer_label = Label.new()
 	_timer_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_timer_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_timer_label.offset_top = 34.0
+	# Sit clear of the top-centre compass strip (its bottom edge is ~y=38).
+	_timer_label.offset_top = 46.0
 	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_timer_label.add_theme_font_size_override("font_size", 22)

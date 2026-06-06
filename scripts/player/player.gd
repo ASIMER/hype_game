@@ -33,6 +33,19 @@ var _sprint_locked: bool = false      # true after exhausting stamina, until it 
 var _interact_target: Node = null     # nearest interactable (for the "[E]" prompt)
 var _interact_timer: float = 0.0
 
+# --- Stance state machine (authority only) ---
+## Movement stance. PUBLIC so the combat lane can read it (stance_spread_mult()).
+enum Stance { STAND, CROUCH, SLIDE }
+var stance: int = Stance.STAND
+var _slide_timer: float = 0.0          # counts down during a SLIDE
+var _slide_dir: Vector3 = Vector3.ZERO # locked horizontal entry direction of the slide
+var _cam_base_y: float = 1.5           # CameraPivot's base local Y (cached once in _ready)
+
+# --- View toggle + camera-from-settings (authority only) ---
+var _first_person: bool = false        # init from Settings.default_first_person in _ready
+var _cam_distance_scale: float = 1.0   # cached Settings.camera_distance_scale
+var _cam_shoulder_scale: float = 1.0   # cached Settings.camera_shoulder_scale
+
 # --- Water immersion (LOCAL/cosmetic, authority-only) ---
 enum Water { DRY, WADING, SUBMERGED }
 var _water_state: int = Water.DRY
@@ -87,8 +100,18 @@ func _ready() -> void:
 	# Initialise camera from Settings (fov is settings-driven) so ADS/peek lerps have
 	# a known baseline.
 	camera.fov = Settings.fov
-	spring_arm.spring_length = Settings.DEFAULT_SPRING_LENGTH
-	spring_arm.position.x = Settings.SHOULDER_OFFSET
+	# Cache the camera pivot's authored base height (crouch/slide lerp down from this).
+	_cam_base_y = camera_pivot.position.y
+	# Read player-tunable camera distance/shoulder + the spawn view from Settings.
+	_read_camera_settings()
+	_first_person = Settings.default_first_person
+	spring_arm.spring_length = _third_person_len()
+	spring_arm.position.x = _shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale
+	# Anti-cheat: the spring arm pulls the camera in against world geometry (layer 1, where
+	# buildings live) so you can't see through walls. A small margin avoids clipping thin
+	# geometry. NEVER disable this collision.
+	spring_arm.collision_mask = spring_arm.collision_mask | 1
+	spring_arm.margin = 0.2
 
 	# The weapon controller only reads switch/reload input for the local player.
 	if _weapon_controller and _weapon_controller.has_method("set_enabled"):
@@ -111,6 +134,11 @@ func _ready() -> void:
 		_ensure_camera_current.call_deferred()
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		Events.item_use_requested.connect(_on_item_use)
+		# Re-read camera distance/shoulder when the player changes them in Settings.
+		if not Events.camera_settings_changed.is_connected(_read_camera_settings):
+			Events.camera_settings_changed.connect(_read_camera_settings)
+		# Hide the local body in first-person so the camera isn't inside the mesh.
+		_apply_view_visibility()
 		Events.local_player_spawned.emit(self)
 	else:
 		# Remote avatars: their camera/input must never run on this machine.
@@ -176,19 +204,44 @@ func _physics_process(delta: float) -> void:
 		if move_dir.length_squared() > 0.0:
 			move_dir = move_dir.normalized()
 
-	var speed := Settings.PLAYER_MOVE_SPEED
 	var wants_sprint := AgentBridge.sprint if AgentBridge.active else Input.is_action_pressed("sprint")
 	var moving := move_dir.length_squared() > 0.01
-	var sprinting := _input_enabled and wants_sprint and moving and not _sprint_locked and _stamina > 0.0
-	if sprinting:
-		speed = Settings.PLAYER_SPRINT_SPEED
-	_update_stamina(delta, sprinting)
-	# Wading/swimming slows movement (sluggish in water).
-	if _water_state != Water.DRY:
-		speed *= WATER_SLOW
 
-	velocity.x = move_dir.x * speed
-	velocity.z = move_dir.z * speed
+	# --- Stance: crouch / slide vs stand --------------------------------------
+	# A slide locks steering and decays its own velocity, so resolve it first.
+	var crouch_held := _input_enabled and Input.is_action_pressed("crouch")
+	var sprinting := false
+	if stance == Stance.SLIDE:
+		sprinting = false
+		_update_slide(delta, move_dir, crouch_held)
+	else:
+		# Enter a slide: TAP crouch while sprint-moving on the floor.
+		if _input_enabled and is_on_floor() and moving and wants_sprint \
+				and not _sprint_locked and _stamina > 0.0 \
+				and Input.is_action_just_pressed("crouch"):
+			_begin_slide(move_dir)
+			_update_slide(delta, move_dir, crouch_held)
+		else:
+			# Crouch (hold) while standing on the floor; can't sprint while crouched.
+			if crouch_held and is_on_floor():
+				stance = Stance.CROUCH
+			else:
+				stance = Stance.STAND
+			var speed := Settings.PLAYER_MOVE_SPEED
+			if stance == Stance.CROUCH:
+				speed = Settings.PLAYER_CROUCH_SPEED
+			else:
+				sprinting = _input_enabled and wants_sprint and moving \
+					and not _sprint_locked and _stamina > 0.0
+				if sprinting:
+					speed = Settings.PLAYER_SPRINT_SPEED
+			# Wading/swimming slows movement (sluggish in water).
+			if _water_state != Water.DRY:
+				speed *= WATER_SLOW
+			velocity.x = move_dir.x * speed
+			velocity.z = move_dir.z * speed
+
+	_update_stamina(delta, sprinting)
 
 	move_and_slide()
 
@@ -238,10 +291,23 @@ func _update_camera(delta: float) -> void:
 		Events.ads_changed.emit(self, _ads)
 
 	var target_fov := (_ads_fov() if _ads else Settings.fov)
-	var target_len := (Settings.ADS_SPRING_LENGTH if _ads else Settings.DEFAULT_SPRING_LENGTH)
-	var base_off := _shoulder_sign * Settings.SHOULDER_OFFSET * (0.65 if _ads else 1.0)
+	# Spring length: ADS overrides everything; else first-person vs settings-scaled
+	# third-person distance.
+	var target_len: float
+	if _ads:
+		target_len = Settings.ADS_SPRING_LENGTH
+	elif _first_person:
+		target_len = Settings.FP_SPRING_LENGTH
+	else:
+		target_len = _third_person_len()
+	var base_off := _shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale * (0.65 if _ads else 1.0)
 	var target_off := base_off + _compute_peek()
-	var target_y := 1.5 + (0.18 if _ads else 0.0)
+	# Base camera height (+ small ADS raise), then drop for crouch / slide.
+	var target_y := _cam_base_y + (0.18 if _ads else 0.0)
+	if stance == Stance.SLIDE:
+		target_y -= Settings.SLIDE_CAMERA_DROP
+	elif stance == Stance.CROUCH:
+		target_y -= Settings.CROUCH_CAMERA_DROP
 
 	var t := clampf(delta * Settings.AIM_TWEEN_SPEED, 0.0, 1.0)
 	camera.fov = lerpf(camera.fov, target_fov, t)
@@ -252,7 +318,9 @@ func _update_camera(delta: float) -> void:
 		camera.fov += _camfx.fov_offset()
 	spring_arm.spring_length = lerpf(spring_arm.spring_length, target_len, t)
 	spring_arm.position.x = lerpf(spring_arm.position.x, target_off, t)
-	camera_pivot.position.y = lerpf(camera_pivot.position.y, target_y, t)
+	# Camera height eases at the dedicated crouch lerp speed (snappier stance feel).
+	var ty := clampf(delta * Settings.CROUCH_CAMERA_LERP, 0.0, 1.0)
+	camera_pivot.position.y = lerpf(camera_pivot.position.y, target_y, ty)
 
 
 ## Per-weapon ADS FOV once the controller is wired; default until then.
@@ -282,6 +350,87 @@ func _compute_peek() -> float:
 	return 0.0
 
 
+## STANCE API (FROZEN — read by the combat lane). Returns the spread multiplier for
+## the current stance/motion. ADS is NOT applied here (the weapon applies it).
+func stance_spread_mult() -> float:
+	if stance == Stance.SLIDE:
+		return Settings.SPREAD_MULT_SLIDE
+	if stance == Stance.CROUCH:
+		return Settings.SPREAD_MULT_CROUCH
+	var hspeed := Vector2(velocity.x, velocity.z).length()
+	# Sprinting is only meaningful while actually moving; gate on horizontal speed too.
+	var sprinting := (AgentBridge.sprint if AgentBridge.active else Input.is_action_pressed("sprint"))
+	if sprinting and not _sprint_locked and hspeed > 0.3:
+		return Settings.SPREAD_MULT_SPRINT
+	if hspeed > 0.3:
+		return Settings.SPREAD_MULT_MOVE
+	return Settings.SPREAD_MULT_STAND
+
+
+## Begin a slide: lock the entry direction, set velocity to the slide-speed burst.
+func _begin_slide(move_dir: Vector3) -> void:
+	stance = Stance.SLIDE
+	_slide_timer = Settings.SLIDE_TIME
+	var d := move_dir
+	d.y = 0.0
+	if d.length_squared() < 0.0001:
+		# Slide straight ahead if there was no input vector (rare).
+		d = -global_transform.basis.z
+		d.y = 0.0
+	_slide_dir = d.normalized()
+	velocity.x = _slide_dir.x * Settings.SLIDE_SPEED
+	velocity.z = _slide_dir.z * Settings.SLIDE_SPEED
+
+
+## Advance an in-progress slide: decay velocity toward crouch speed along the locked
+## entry direction (reduced steering), resolve to CROUCH/STAND when it ends or stops.
+func _update_slide(delta: float, move_dir: Vector3, crouch_held: bool) -> void:
+	_slide_timer -= delta
+	# Progress 0→1 over the slide; speed eases from SLIDE_SPEED down to crouch speed.
+	var frac := clampf(1.0 - (_slide_timer / Settings.SLIDE_TIME), 0.0, 1.0)
+	var spd := lerpf(Settings.SLIDE_SPEED, Settings.PLAYER_CROUCH_SPEED, frac)
+	# Locked steering: mostly the entry direction, a little late input authority.
+	var steer := move_dir
+	steer.y = 0.0
+	var dir := _slide_dir
+	if steer.length_squared() > 0.0001:
+		dir = (_slide_dir * 0.85 + steer.normalized() * 0.15)
+		if dir.length_squared() > 0.0001:
+			dir = dir.normalized()
+		else:
+			dir = _slide_dir
+	if _water_state != Water.DRY:
+		spd *= WATER_SLOW
+	velocity.x = dir.x * spd
+	velocity.z = dir.z * spd
+	# End the slide when the timer expires or the player has slowed to a stop / left the
+	# floor → resolve to CROUCH (if still held) or STAND.
+	if _slide_timer <= 0.0 or not is_on_floor():
+		stance = Stance.CROUCH if (crouch_held and is_on_floor()) else Stance.STAND
+
+
+## Third-person spring length, scaled by the player's camera-distance setting.
+func _third_person_len() -> float:
+	return Settings.DEFAULT_SPRING_LENGTH * _cam_distance_scale
+
+
+## Re-read the player-tunable camera distance/shoulder scales from Settings. Connected to
+## Events.camera_settings_changed so live edits apply (the lerp in _update_camera eases to
+## the new target). Safe to call as a 0-arg signal handler.
+func _read_camera_settings() -> void:
+	_cam_distance_scale = Settings.camera_distance_scale
+	_cam_shoulder_scale = Settings.camera_shoulder_scale
+
+
+## Show/hide the LOCAL body mesh for first/third-person. Only the authority toggles its own
+## visibility — a remote peer's body must stay visible to everyone else.
+func _apply_view_visibility() -> void:
+	if not is_multiplayer_authority():
+		return
+	if model_root:
+		model_root.visible = not _first_person
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
 		return
@@ -305,6 +454,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Instant over-the-shoulder flip to peek the other side (camera only; the
 		# converged shot keeps the same impact point).
 		_shoulder_sign = -_shoulder_sign
+	elif event.is_action_pressed("toggle_view"):
+		# Flip between third- and first-person. The spring-length target folds into the
+		# ADS lerp in _update_camera; the local body is hidden in first-person.
+		_first_person = not _first_person
+		_apply_view_visibility()
 	elif event.is_action_pressed("heal"):
 		_try_heal()
 	elif event.is_action_pressed("grenade"):

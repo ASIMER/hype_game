@@ -53,6 +53,10 @@ const DEFAULTS := {
 	"ui_edge_margin": 0.0,        # 0.0..0.2 pull edge-anchored UI in toward center (frac of width)
 	"ui_top_margin": 0.0,         # 0.0..0.2 vertical inset for top/bottom-anchored UI (frac of height)
 	"hud_scale": 1.0,             # 0.8..1.4 global UI scale (Window.content_scale_factor)
+	# Camera (third-person rig — also in the Interface tab).
+	"camera_distance": 1.0,       # 0.6..1.4 × default third-person spring length
+	"camera_shoulder": 1.0,       # 0.0..1.0 × over-the-shoulder side offset
+	"default_view": 0,            # 0 third-person, 1 first-person (on spawn)
 	# Audio (linear 0..1)
 	"master_volume": 0.9,
 	"sfx_volume": 0.9,
@@ -257,6 +261,7 @@ func apply(key: String) -> void:
 		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
 		"ui_edge_margin", "ui_top_margin": _apply_ui_margins()
 		"hud_scale": _apply_hud_scale(float(v))
+		"camera_distance", "camera_shoulder", "default_view": _apply_camera()
 		"master_volume": _apply_master(float(v))
 		"sfx_volume": Settings.sfx_volume = clampf(float(v), 0.0, 1.0)
 		"mute": _apply_mute(bool(v))
@@ -342,6 +347,13 @@ func _apply_stats_overlay() -> void:
 		bool(get_value("show_fps")),
 		bool(get_value("show_detailed_stats")),
 		int(get_value("stats_display_mode")))
+
+## Mirror the camera prefs into Settings + tell the player rig to re-read them.
+func _apply_camera() -> void:
+	Settings.camera_distance_scale = clampf(float(get_value("camera_distance")), 0.6, 1.4)
+	Settings.camera_shoulder_scale = clampf(float(get_value("camera_shoulder")), 0.0, 1.0)
+	Settings.default_first_person = int(get_value("default_view")) == 1
+	Events.camera_settings_changed.emit()
 
 ## Mirror the HUD edge-inset fractions into Settings + tell edge-anchored UI to re-inset.
 func _apply_ui_margins() -> void:
