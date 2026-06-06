@@ -51,6 +51,11 @@ func _ready() -> void:
 	Events.arena_build_progress.emit(0.82, "Reflections")
 	await get_tree().process_frame
 	_build_reflection_probes()
+	# Localized FogVolume mist pools (render-only, per-peer cosmetic; appear when global
+	# volumetric fog is on). Placed at the POIs after structures exist; headless skips inside.
+	Events.arena_build_progress.emit(0.86, "Fog zones")
+	await get_tree().process_frame
+	_build_fog_zones()
 	Events.arena_build_progress.emit(0.90, "Navmesh")
 	await get_tree().process_frame
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
@@ -137,6 +142,20 @@ func _build_reflection_probes() -> void:
 	# Experimental VoxelGI (off by default; gated inside on Settings.voxelgi_enabled).
 	if script.has_method("build_voxelgi"):
 		script.build_voxelgi(self, Vector3(80.0, 24.0, 80.0))
+
+## Localized FogVolume mist pools at a few POIs + river-valley spots. GUARDED (load-by-path)
+## so the arena runs even without the file; the builder early-returns on headless and when
+## Settings.local_fog_enabled is off. Render-only + deterministic (placement from POI markers
+## + fixed river points), so it never touches the navmesh/collision/netcode. The zones only
+## render when the active Environment's volumetric fog is on (driven by the quality setting).
+func _build_fog_zones() -> void:
+	var path := "res://scripts/visual/procedural_fog_zones.gd"
+	if not ResourceLoader.exists(path):
+		return
+	var script: GDScript = load(path)
+	if script == null:
+		return
+	script.build(self, poi_markers)
 
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a

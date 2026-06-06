@@ -312,6 +312,30 @@
       "norm_label": "python"
     },
     {
+      "label": "AGENT_HOST",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "env_var"
+      },
+      "id": "env_var_agent_host",
+      "community": 18,
+      "norm_label": "agent_host"
+    },
+    {
+      "label": "AGENT_PORT",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "env_var"
+      },
+      "id": "env_var_agent_port",
+      "community": 18,
+      "norm_label": "agent_port"
+    },
+    {
       "label": "main.py",
       "file_type": "code",
       "source_file": "main.py",
@@ -344,88 +368,97 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L1",
       "id": "agent_mcp_server",
-      "community": 6,
+      "community": 8,
       "norm_label": "mcp_server.py"
+    },
+    {
+      "label": "_resolve_agent_port()",
+      "file_type": "code",
+      "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L29",
+      "id": "agent_mcp_server_resolve_agent_port",
+      "community": 8,
+      "norm_label": "_resolve_agent_port()"
     },
     {
       "label": "log()",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L158",
+      "source_location": "L178",
       "id": "agent_mcp_server_log",
-      "community": 6,
+      "community": 8,
       "norm_label": "log()"
     },
     {
       "label": "_public_tool()",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L163",
+      "source_location": "L183",
       "id": "agent_mcp_server_public_tool",
-      "community": 6,
+      "community": 8,
       "norm_label": "_public_tool()"
     },
     {
       "label": "_result()",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L168",
+      "source_location": "L188",
       "id": "agent_mcp_server_result",
-      "community": 6,
+      "community": 8,
       "norm_label": "_result()"
     },
     {
       "label": "_error()",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L172",
+      "source_location": "L192",
       "id": "agent_mcp_server_error",
-      "community": 6,
+      "community": 8,
       "norm_label": "_error()"
     },
     {
       "label": "handle_request()",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L176",
+      "source_location": "L196",
       "id": "agent_mcp_server_handle_request",
-      "community": 6,
+      "community": 8,
       "norm_label": "handle_request()"
     },
     {
       "label": "main()",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L243",
+      "source_location": "L263",
       "id": "agent_mcp_server_main",
-      "community": 6,
+      "community": 8,
       "norm_label": "main()"
     },
     {
       "label": "Write a diagnostic line to stderr (never stdout).",
       "file_type": "rationale",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L159",
-      "id": "agent_mcp_server_rationale_159",
-      "community": 6,
+      "source_location": "L179",
+      "id": "agent_mcp_server_rationale_179",
+      "community": 8,
       "norm_label": "write a diagnostic line to stderr (never stdout)."
     },
     {
       "label": "Strip internal keys (_build) before advertising a tool.",
       "file_type": "rationale",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L164",
-      "id": "agent_mcp_server_rationale_164",
-      "community": 6,
+      "source_location": "L184",
+      "id": "agent_mcp_server_rationale_184",
+      "community": 8,
       "norm_label": "strip internal keys (_build) before advertising a tool."
     },
     {
       "label": "Dispatch a single JSON-RPC request; return a response dict or None.      None",
       "file_type": "rationale",
       "source_file": "tools/agent/mcp_server.py",
-      "source_location": "L177",
-      "id": "agent_mcp_server_rationale_177",
-      "community": 6,
+      "source_location": "L197",
+      "id": "agent_mcp_server_rationale_197",
+      "community": 8,
       "norm_label": "dispatch a single json-rpc request; return a response dict or none.      none"
     },
     {
@@ -1806,13 +1839,49 @@
       "norm_label": "registration"
     },
     {
+      "label": "Parallel development across git worktrees",
+      "file_type": "document",
+      "source_file": "tools/agent/README.md",
+      "source_location": "L178",
+      "id": "agent_readme_parallel_development_across_git_worktrees",
+      "community": 57,
+      "norm_label": "parallel development across git worktrees"
+    },
+    {
       "label": "Quick manual test (no game)",
       "file_type": "document",
       "source_file": "tools/agent/README.md",
-      "source_location": "L168",
+      "source_location": "L216",
       "id": "agent_readme_quick_manual_test_no_game",
       "community": 57,
       "norm_label": "quick manual test (no game)"
+    },
+    {
+      "label": "Write a diagnostic line to stderr (never stdout).",
+      "file_type": "rationale",
+      "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L159",
+      "community": 8,
+      "norm_label": "write a diagnostic line to stderr (never stdout).",
+      "id": "agent_mcp_server_rationale_159"
+    },
+    {
+      "label": "Strip internal keys (_build) before advertising a tool.",
+      "file_type": "rationale",
+      "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L164",
+      "community": 8,
+      "norm_label": "strip internal keys (_build) before advertising a tool.",
+      "id": "agent_mcp_server_rationale_164"
+    },
+    {
+      "label": "Dispatch a single JSON-RPC request; return a response dict or None.      None",
+      "file_type": "rationale",
+      "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L177",
+      "community": 8,
+      "norm_label": "dispatch a single json-rpc request; return a response dict or none.      none",
+      "id": "agent_mcp_server_rationale_177"
     },
     {
       "label": "Slow low-tension pad/pulse loop (a few seconds, loopable).     Layered detuned",
@@ -2001,7 +2070,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -2014,7 +2083,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 69,
       "norm_label": "agentbridge._screenshot",
       "id": "agentbridge_screenshot"
     },
@@ -2183,7 +2252,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 70,
       "norm_label": "crafting.learn_items (item to blueprint map)",
       "id": "crafting_learn_items"
     },
@@ -2196,7 +2265,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 70,
       "norm_label": "crafting.buy_blueprint",
       "id": "crafting_buy_blueprint"
     },
@@ -2209,7 +2278,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "events (global signal bus)",
       "id": "events_events"
     },
@@ -2222,7 +2291,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -2235,7 +2304,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "extractiondirector._apply_windows",
       "id": "extractiondirector_apply_windows"
     },
@@ -2248,7 +2317,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "gamestate (match-level shared state)",
       "id": "gamestate_gamestate"
     },
@@ -2261,7 +2330,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -2417,7 +2486,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 70,
       "norm_label": "quests.claim (grant reward once)",
       "id": "quests_claim"
     },
@@ -2469,7 +2538,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -2482,7 +2551,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 70,
       "norm_label": "raidmanager._deposit",
       "id": "raidmanager_deposit"
     },
@@ -2508,7 +2577,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 4,
       "norm_label": "metaprogression.player_mods",
       "id": "metaprogression_player_mods"
     },
@@ -2521,7 +2590,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 69,
       "norm_label": "metaprogression.save_profile / load_profile",
       "id": "metaprogression_save_profile"
     },
@@ -2560,7 +2629,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 70,
       "norm_label": "metaprogression.learn_blueprint",
       "id": "metaprogression_learn_blueprint"
     },
@@ -2573,7 +2642,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -2612,7 +2681,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "networkmanager.notify_loaded (load gate)",
       "id": "networkmanager_notify_loaded"
     },
@@ -2625,7 +2694,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "networkmanager.begin_match",
       "id": "networkmanager_begin_match"
     },
@@ -2651,7 +2720,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "networkmanager.broadcast_shot",
       "id": "networkmanager_broadcast_shot"
     },
@@ -2677,7 +2746,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "networkmanager.sync_match_timer / sync_wave",
       "id": "networkmanager_sync_match_timer"
     },
@@ -2716,7 +2785,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "serverbrowser.scan_lan",
       "id": "serverbrowser_scan_lan"
     },
@@ -2755,7 +2824,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 69,
       "norm_label": "serverbrowser.load_config (version-safe save)",
       "id": "serverbrowser_load_config"
     },
@@ -2768,7 +2837,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "settings (tunable constants)",
       "id": "settings_settings"
     },
@@ -2781,7 +2850,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "settings.enemy_stats (per-archetype table)",
       "id": "settings_enemy_stats"
     },
@@ -2794,7 +2863,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "settings.difficulty_mods / difficulty_mods",
       "id": "settings_difficulty_mods"
     },
@@ -2807,7 +2876,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 69,
       "norm_label": "settings.user_path (per-instance saves)",
       "id": "settings_user_path"
     },
@@ -2820,7 +2889,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 69,
       "norm_label": "version-stamped resilient configfile saves",
       "id": "version_safe_saves_pattern"
     },
@@ -3574,7 +3643,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "robotgunner._fire_hitscan",
       "id": "enemies_robot_gunner_fire_hitscan"
     },
@@ -3587,7 +3656,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "robotgunner._strike",
       "id": "enemies_robot_gunner_strike"
     },
@@ -3600,7 +3669,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "robotgunner._spawn_tracer",
       "id": "enemies_robot_gunner_spawn_tracer"
     },
@@ -3626,7 +3695,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -3639,7 +3708,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 68,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -3717,7 +3786,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "camerafx._on_hit_stop",
       "id": "fx_camera_fx_on_hit_stop"
     },
@@ -3769,7 +3838,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "explosion",
       "id": "fx_explosion_explosion"
     },
@@ -3782,7 +3851,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "impact",
       "id": "fx_impact_impact"
     },
@@ -3795,7 +3864,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "muzzleflash",
       "id": "fx_muzzle_flash_muzzleflash"
     },
@@ -3808,7 +3877,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "remoteshotfx",
       "id": "fx_remote_shot_fx_remoteshotfx"
     },
@@ -3821,7 +3890,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "remoteshotfx._on_remote_shot",
       "id": "fx_remote_shot_fx_on_remote_shot"
     },
@@ -3834,7 +3903,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "robotdebris",
       "id": "fx_robot_debris_robotdebris"
     },
@@ -3847,7 +3916,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "tracer",
       "id": "fx_tracer_tracer"
     },
@@ -4016,7 +4085,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "grenade._explode",
       "id": "items_grenade_explode"
     },
@@ -4198,7 +4267,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 8,
+      "community": 4,
       "norm_label": "local visual-only fx",
       "id": "concept_local_visual_fx"
     },
@@ -5204,6 +5273,26 @@
       "target": "mcp_mcp_server_hype_game"
     },
     {
+      "relation": "requires_env",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "mcp_mcp_server_hype_game",
+      "target": "env_var_agent_host"
+    },
+    {
+      "relation": "requires_env",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "mcp_mcp_server_hype_game",
+      "target": "env_var_agent_port"
+    },
+    {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
@@ -5278,6 +5367,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "agent_mcp_server",
+      "target": "agent_mcp_server_resolve_agent_port",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/mcp_server.py",
       "source_location": "L168",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -5306,6 +5405,16 @@
       "target": "agent_mcp_server_log"
     },
     {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L179",
+      "weight": 1.0,
+      "source": "agent_mcp_server_rationale_179",
+      "target": "agent_mcp_server_log",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -5325,6 +5434,16 @@
       "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_164",
       "target": "agent_mcp_server_public_tool"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L184",
+      "weight": 1.0,
+      "source": "agent_mcp_server_rationale_184",
+      "target": "agent_mcp_server_public_tool",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -5390,6 +5509,16 @@
       "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_177",
       "target": "agent_mcp_server_handle_request"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/mcp_server.py",
+      "source_location": "L197",
+      "weight": 1.0,
+      "source": "agent_mcp_server_rationale_197",
+      "target": "agent_mcp_server_handle_request",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -8203,6 +8332,16 @@
       "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
       "target": "agent_readme_mcp_server"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/README.md",
+      "source_location": "L178",
+      "weight": 1.0,
+      "source": "agent_readme_hype_game_agent_harness",
+      "target": "agent_readme_parallel_development_across_git_worktrees",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -11419,5 +11558,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "54b4255f914172bf025ade58644a83c9f8eec9f7"
+  "built_at_commit": "401b09ddf07a222ddd2f6fdc0ee8fb5714b38c44"
 }
