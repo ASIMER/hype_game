@@ -24,6 +24,16 @@ signal player_healed(player: Node, amount: float)
 # --- Player ---
 signal local_player_spawned(player: Node)
 signal player_health_changed(player: Node, current: float, max_health: float)
+## Co-op downed/revive loop. A player entered the DOWNED state (bleedout, crawl, awaiting
+## revive) — `by` is the killer/source. Revived = brought back up (by a teammate or self).
+## bleedout = the downed timer expired → true death. All server-authoritative; HUD + AI listen.
+signal player_downed(player: Node, by: Node)
+signal player_revived(player: Node, by: Node)
+signal player_bleedout(player: Node)
+## A squad ping was placed (comms). kind: 0 generic/go-here, 1 enemy, 2 loot, 3 extraction,
+## 4 help/danger, 5 thanks, 6 regroup. world_pos = marker location; target_path = pinged node (optional).
+signal ping_placed(peer_id: int, kind: int, world_pos: Vector3, target_path: NodePath)
+
 ## The LOCAL player's water submersion state changed (cosmetic, authority-only — emitted
 ## only by the authority player so a remote peer wading never tints YOUR screen).
 ## state: 0 DRY, 1 WADING (feet/legs in water, head above), 2 SUBMERGED (camera underwater).

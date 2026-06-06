@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cpingsystem0ui"]
+
+[ext_resource type="Script" path="res://scripts/ui/ping_system.gd" id="1_pingsys"]
+
+[node name="PingSystem" type="CanvasLayer"]
+script = ExtResource("1_pingsys")

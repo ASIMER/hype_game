@@ -41,6 +41,11 @@ var peers: Dictionary = {}
 var kills: Dictionary = {}
 var deaths: Dictionary = {}
 var mobs_killed: int = 0
+## Co-op downed/revive (server-authoritative). `downed[pid]=true` while a peer is bleeding
+## out (not yet truly dead). `revives[pid]` = how many teammates THIS peer has picked up
+## (the cohesion/reputation stat shown on the scoreboard).
+var downed: Dictionary = {}
+var revives: Dictionary = {}
 
 ## Record one mob kill by `peer_id` (server-side). Returns nothing; caller broadcasts.
 func record_kill(peer_id: int) -> void:
@@ -50,6 +55,26 @@ func record_kill(peer_id: int) -> void:
 func record_death(peer_id: int) -> void:
 	deaths[peer_id] = int(deaths.get(peer_id, 0)) + 1
 
+## Mark/clear a peer's DOWNED (bleedout) state — server-authoritative.
+func set_downed(peer_id: int, value: bool) -> void:
+	downed[peer_id] = value
+
+func is_downed(peer_id: int) -> bool:
+	return bool(downed.get(peer_id, false))
+
+## Credit `peer_id` with a successful teammate revive (the reputation stat).
+func record_revive(peer_id: int) -> void:
+	revives[peer_id] = int(revives.get(peer_id, 0)) + 1
+
+## True if at least one peer is still UP (alive, not downed, not extracted) — i.e. the squad
+## can still revive/fight. The match is lost only when NO ONE is up and no one extracted.
+func any_player_up() -> bool:
+	for id in peers:
+		var p: Dictionary = peers[id]
+		if p["alive"] and not p["extracted"] and not is_downed(id):
+			return true
+	return false
+
 func reset_match() -> void:
 	current_wave = 0
 	match_time_left = match_duration
@@ -57,6 +82,8 @@ func reset_match() -> void:
 	kills.clear()
 	deaths.clear()
 	mobs_killed = 0
+	downed.clear()
+	revives.clear()
 	for id in peers:
 		peers[id]["alive"] = true
 		peers[id]["extracted"] = false

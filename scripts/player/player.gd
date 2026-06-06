@@ -21,6 +21,24 @@ class_name Player
 
 var _input_enabled: bool = true
 
+# --- Co-op DOWNED / REVIVE / CARRY (server-authoritative; authority drives its own) ---
+## Synced (Player.tscn MultiplayerSynchronizer): every peer renders a teammate as downed.
+var downed: bool = false
+## The peer id currently carrying THIS downed player (0 = not carried). Synced so all peers
+## see the body follow its carrier.
+var _carried_by_peer: int = 0
+var _bleedout: float = 0.0            # seconds left before true death while downed (authority)
+var _downed_resolved: bool = false    # guards true-death from firing twice
+var _shield_charges: float = 0.0      # remaining knockdown-shield absorb while downed
+var _self_revives: int = 0            # SELF_REVIVE_ITEM count from the bring-list
+var _shields: int = 0                 # KNOCKDOWN_SHIELD_ITEM count from the bring-list
+const DOWNED_HEALTH: float = 30.0     # nominal HP pool while downed (drained by finish damage)
+# Reviver side (authority): the downed teammate we're channeling a revive on + progress.
+var _revive_target: Node = null
+var _revive_progress: float = 0.0
+# Carry side (authority): the downed teammate we are carrying.
+var _carry_target: Node = null
+
 # Camera / aim state (authority only).
 var _ads: bool = false                # aim-down-sights active
 var _ads_toggled: bool = false        # latched ADS when Settings.ads_toggle
@@ -166,6 +184,12 @@ func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		return
 
+	# DOWNED: crawl-only physics, no combat/stance; bleedout + self-revive handled inside.
+	if downed:
+		_downed_physics(delta)
+		_check_water(delta)
+		return
+
 	# Gravity (uses the project's configured gravity vector).
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -256,15 +280,20 @@ func _physics_process(delta: float) -> void:
 	# ADS zoom, shoulder offset, and dynamic peek/lean around walls.
 	_update_camera(delta)
 
-	# Nearby-loot "[E]" interaction prompt (throttled).
-	_interact_timer -= delta
-	if _interact_timer <= 0.0:
-		_interact_timer = 0.15
-		_update_interaction()
+	# Co-op: a downed teammate in range takes priority (revive / carry). When none is in
+	# range this falls through to the normal loot prompt.
+	_update_coop_interaction(delta)
+	if _revive_target == null and _carry_target == null:
+		# Nearby-loot "[E]" interaction prompt (throttled).
+		_interact_timer -= delta
+		if _interact_timer <= 0.0:
+			_interact_timer = 0.15
+			_update_interaction()
 
-	# Held-to-fire (cooldown handled by the weapon/controller).
+	# Held-to-fire (cooldown handled by the weapon/controller). Carrying a buddy locks you
+	# to a sidearm and blocks ADS (Lane note: enforced here as a fire block while carrying).
 	var firing := AgentBridge.fire if AgentBridge.active else Input.is_action_pressed("fire")
-	if _input_enabled and firing:
+	if _input_enabled and firing and not is_carrying():
 		_fire_current()
 
 
@@ -280,7 +309,9 @@ func _fire_current() -> void:
 ## shoulder side — so the player can see/aim around building corners.
 func _update_camera(delta: float) -> void:
 	var want_ads: bool
-	if AgentBridge.active:
+	if is_carrying():
+		want_ads = false   # carrying a buddy can't ADS
+	elif AgentBridge.active:
 		want_ads = AgentBridge.ads
 	elif Settings.ads_toggle:
 		want_ads = _ads_toggled
@@ -460,9 +491,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_first_person = not _first_person
 		_apply_view_visibility()
 	elif event.is_action_pressed("heal"):
-		_try_heal()
+		# While downed the heal key triggers a SELF-REVIVE (if you brought one); the crawl
+		# loop also polls this, so just route there and skip medkit healing.
+		if downed:
+			_self_revive()
+		else:
+			_try_heal()
 	elif event.is_action_pressed("grenade"):
-		_throw_grenade()
+		if not downed:
+			_throw_grenade()
 
 
 ## Consume a medkit to restore HP (instant). Authority-gated by the caller.
@@ -736,6 +773,9 @@ func _on_item_use(item_id: String) -> void:
 			_try_heal()
 		"loot_grenade", "grenade":
 			_throw_grenade()
+		Settings.SELF_REVIVE_ITEM, "self_revive":
+			if downed:
+				_self_revive()
 
 
 ## This peer's own player configures its STARTING consumables from its OWN profile's
@@ -746,6 +786,8 @@ func apply_loadout() -> void:
 	var brought := MetaProgression.get_bring()
 	_medkits = int(brought.get("loot_medkit", 0))
 	_grenades = int(brought.get("loot_grenade", 0))
+	_self_revives = int(brought.get(Settings.SELF_REVIVE_ITEM, 0))
+	_shields = int(brought.get(Settings.KNOCKDOWN_SHIELD_ITEM, 0))
 
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
 ## unused medkits/grenades come back out with you (and are lost if you die).
@@ -758,21 +800,334 @@ func extracted_consumables() -> Array:
 	return out
 
 
+var _last_hp: float = -1.0
 func _on_health_changed(current: float, max_health: float) -> void:
+	# Finish-damage while downed: a drop in HP drains the downed pool / bleedout faster
+	# (authority only; the synced `downed` flag is set on the authority).
+	if downed and is_multiplayer_authority() and _last_hp >= 0.0 and current < _last_hp:
+		_on_downed_damage(_last_hp, current)
+	_last_hp = current
 	Events.player_health_changed.emit(self, current, max_health)
 
 
-func _on_died(_killer: Node) -> void:
-	# Stop driving the body and report the death to the server, which decides the
-	# loss (all players dead) and broadcasts match_lost to every peer.
+## Health hit 0. Instead of dying outright we ENTER THE DOWNED state (a teammate can
+## revive, or a self-revive item / bleedout resolves it). Only the authority drives this
+## for its own player. A second `died` while already downed (the finish-damage path drains
+## downed HP and re-triggers `_die`) means true death.
+func _on_died(killer: Node) -> void:
+	if not is_multiplayer_authority():
+		return
+	if downed:
+		# Already down and Health hit 0 again → finish them (true death).
+		_true_death()
+		return
+	_enter_downed(killer)
+
+## Begin the DOWNED state on the authority: crawl-only, camera dropped, bleedout running.
+## Clears Health.is_dead so heal/revive work, and tells the server to own GameState.downed.
+func _enter_downed(killer: Node) -> void:
+	downed = true
+	_downed_resolved = false
+	_bleedout = Settings.BLEEDOUT_TIME
+	velocity = Vector3.ZERO
+	# A brought knockdown shield soaks the first chunk of finish-damage while downed.
+	if _shields > 0:
+		_shields -= 1
+		_shield_charges = Settings.KNOCKDOWN_SHIELD_ABSORB
+	else:
+		_shield_charges = 0.0
+	# Reset Health to a small downed pool so heal()/revive work and finish-damage can drain it.
+	health.is_dead = false
+	health.current = DOWNED_HEALTH
+	health.health_changed.emit(health.current, health.max_health)
+	# Stop ADS / firing; the cursor stays captured so you can still crawl + ping.
+	_ads = false
+	_ads_toggled = false
+	# Drop the carrying side if we were carrying someone (can't carry while downed).
+	_drop_carry()
+	Events.player_downed.emit(self, killer)
+	var pid := str(name).to_int()
+	if GameState.is_local_authority_server():
+		NetworkManager.broadcast_downed(pid, true)
+	else:
+		_report_downed.rpc_id(1, pid, true)
+
+## Authority → server: my player entered (true) / left downed. The SERVER owns
+## GameState.downed + broadcasts it to everyone (drives the loss check + remote HUD/AI).
+@rpc("any_peer", "call_remote", "reliable")
+func _report_downed(pid: int, value: bool) -> void:
+	if GameState.is_local_authority_server():
+		NetworkManager.broadcast_downed(pid, value)
+
+## Per-frame bleedout countdown while downed (authority only). At 0 → true death.
+func _tick_downed(delta: float) -> void:
+	if _downed_resolved:
+		return
+	_bleedout -= delta
+	if _bleedout <= 0.0:
+		_bleedout = 0.0
+		_true_death()
+
+## Resolve a downed player to TRUE death: emit bleedout, then the original death
+## resolution (mark_dead + loss check), and clear the synced downed flag.
+func _true_death() -> void:
+	if _downed_resolved:
+		return
+	_downed_resolved = true
+	downed = false
+	_drop_carry()
 	_input_enabled = false
 	velocity = Vector3.ZERO
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	Events.player_bleedout.emit(self)
 	var pid := str(name).to_int()
 	if GameState.is_local_authority_server():
 		_server_handle_death(pid)
 	else:
 		_report_death.rpc_id(1, pid)
+
+## SERVER: revive this downed player (called by NetworkManager.request_revive after it
+## validates the reviver). Clears downed, heals to a fraction, restores control + camera.
+func server_revive(by: Node) -> void:
+	if not GameState.is_local_authority_server():
+		return
+	if not downed:
+		return
+	_apply_revive()
+	GameState.set_downed(str(name).to_int(), false)
+	NetworkManager.broadcast_downed(str(name).to_int(), false)
+	Events.player_revived.emit(self, by)
+	# Tell the OWNING client to come out of its local downed state (input/camera/Health).
+	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
+		var owner := str(name).to_int()
+		if owner != 1:
+			_revived_owner.rpc_id(owner, _peer_of(by))
+
+## Owner-side notification that the SERVER revived this player (the owner restores its
+## own local input/camera/Health, which the server can't drive remotely).
+@rpc("any_peer", "call_remote", "reliable")
+func _revived_owner(by_peer: int) -> void:
+	if not is_multiplayer_authority():
+		return
+	var by: Node = _player_for_peer(by_peer) if by_peer > 0 else self
+	_apply_revive()
+	Events.player_revived.emit(self, by)
+
+## Shared revive effect (runs on whoever owns the relevant state): clear downed,
+## un-flag Health, heal to the configured fraction, restore input.
+func _apply_revive() -> void:
+	downed = false
+	_downed_resolved = false
+	_bleedout = 0.0
+	_shield_charges = 0.0
+	health.is_dead = false
+	health.current = maxf(1.0, Settings.REVIVE_HEALTH_FRAC * health.max_health)
+	health.health_changed.emit(health.current, health.max_health)
+	if is_multiplayer_authority():
+		_input_enabled = true
+		if AgentBridge.active or Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _peer_of(n: Node) -> int:
+	if n == null:
+		return 0
+	return str(n.name).to_int()
+
+## Local lookup of the player node owned by `peer_id` (the NetworkManager one is private).
+func _player_for_peer(peer_id: int) -> Node:
+	for p in get_tree().get_nodes_in_group("players"):
+		if str(p.name).to_int() == peer_id:
+			return p
+	return null
+
+# =========================================================== DOWNED finish-damage / movement
+## Damage taken WHILE downed drains the downed HP pool faster (and shortens bleedout). A
+## knockdown shield soaks the first KNOCKDOWN_SHIELD_ABSORB before the pool is touched.
+## Connected to Health.health_changed so we react to any take_damage while down.
+func _on_downed_damage(prev: float, now: float) -> void:
+	if not downed or _downed_resolved or now >= prev:
+		return
+	var dmg := prev - now
+	if _shield_charges > 0.0:
+		var soaked: float = minf(_shield_charges, dmg)
+		_shield_charges -= soaked
+		dmg -= soaked
+		# Refund the soaked portion back into the downed pool so the shield truly absorbs it.
+		health.current = minf(DOWNED_HEALTH, health.current + soaked)
+	_last_hp = health.current   # re-baseline after any shield refund
+	if dmg <= 0.0:
+		return
+	# Finish damage also bleeds the clock down faster.
+	_bleedout = maxf(0.0, _bleedout - dmg * 0.15)
+	if health.current <= 0.0 or _bleedout <= 0.0:
+		_true_death()
+
+## Crawl movement while downed (authority): slow, no jump/sprint/slide/ADS/fire. Still
+## allows the look/yaw from _unhandled_input + ping. Drives the camera down by the drop.
+func _downed_physics(delta: float) -> void:
+	if not is_on_floor():
+		velocity += get_gravity() * delta
+	var move_dir := Vector3.ZERO
+	if _input_enabled:
+		var strafe: float
+		var fwd_amt: float
+		if AgentBridge.active:
+			strafe = AgentBridge.move.x
+			fwd_amt = AgentBridge.move.y
+		else:
+			strafe = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+			fwd_amt = Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+		var basis := camera_pivot.global_transform.basis
+		var forward := -basis.z
+		var right := basis.x
+		forward.y = 0.0
+		right.y = 0.0
+		move_dir = right.normalized() * strafe + forward.normalized() * fwd_amt
+		if move_dir.length_squared() > 0.0:
+			move_dir = move_dir.normalized()
+	# A carried downed player follows its carrier's anchor instead of crawling (its OWN
+	# authority moves it, so the synced position replicates to everyone).
+	if _carried_by_peer > 0 and _carry_anchor != Vector3.INF:
+		var to_anchor := _carry_anchor - global_position
+		to_anchor.y = 0.0
+		velocity.x = to_anchor.x * 8.0
+		velocity.z = to_anchor.z * 8.0
+	elif _carried_by_peer > 0:
+		velocity.x = 0.0
+		velocity.z = 0.0
+	else:
+		velocity.x = move_dir.x * Settings.DOWNED_MOVE_SPEED
+		velocity.z = move_dir.z * Settings.DOWNED_MOVE_SPEED
+	move_and_slide()
+	camera_pivot.rotation.y = 0.0
+	# Camera lerps down to (base - drop) while downed.
+	var target_y := _cam_base_y - Settings.DOWNED_CAMERA_DROP
+	var ty := clampf(delta * Settings.CROUCH_CAMERA_LERP, 0.0, 1.0)
+	camera_pivot.position.y = lerpf(camera_pivot.position.y, target_y, ty)
+	_tick_downed(delta)
+
+## Consume a SELF_REVIVE_ITEM to revive yourself (solo lifeline). Routes through the server
+## so GameState.downed is cleared authoritatively; offline/host applies it directly.
+func _self_revive() -> void:
+	if _self_revives <= 0 or not downed:
+		return
+	_self_revives -= 1
+	if GameState.is_local_authority_server():
+		server_revive(self)
+	else:
+		# Client self-revive: apply locally for responsiveness + tell the server to clear downed.
+		_apply_revive()
+		Events.player_revived.emit(self, self)
+		_report_downed.rpc_id(1, str(name).to_int(), false)
+
+# =========================================================== REVIVER side (channel) + CARRY
+## Authority per-frame: find the nearest DOWNED teammate in range, surface the revive
+## prompt, run the hold-E channel, and handle carry (hold F). Loot/extraction prompts
+## yield to a downed teammate when one is in range.
+func _update_coop_interaction(delta: float) -> void:
+	var target := _nearest_downed_teammate()
+	# --- Carry (hold F) ---
+	if _carry_target != null and (not is_instance_valid(_carry_target) \
+			or not _carry_target.get("downed") or not Input.is_action_pressed("carry")):
+		_drop_carry()
+	if _carry_target == null and target != null and Input.is_action_pressed("carry"):
+		_begin_carry(target)
+	if _carry_target != null:
+		# While carrying, keep the body glued to a point in front of us.
+		_update_carry_follow()
+		# Carrying suppresses the revive channel + prompt.
+		_revive_target = null
+		_revive_progress = 0.0
+		Events.interaction_available.emit("Carrying [release F]", _carry_target)
+		return
+	# --- Revive (hold E) ---
+	if target == null:
+		if _revive_target != null:
+			_revive_target = null
+			_revive_progress = 0.0
+		return
+	# A downed teammate takes priority over loot — show the revive prompt.
+	Events.interaction_available.emit("Revive / Carry [hold E / F]", target)
+	if Input.is_action_pressed("interact"):
+		if target != _revive_target:
+			_revive_target = target
+			_revive_progress = 0.0
+		_revive_progress += delta
+		if _revive_progress >= Settings.REVIVE_CHANNEL_TIME:
+			_revive_progress = 0.0
+			var tp := str(target.name).to_int()
+			NetworkManager.request_revive(tp)
+			_revive_target = null
+	else:
+		_revive_target = null
+		_revive_progress = 0.0
+
+## Nearest downed-and-not-yet-revived teammate within INTERACT_RANGE (excludes self).
+func _nearest_downed_teammate() -> Node:
+	var best: Node = null
+	var best_d := Settings.INTERACT_RANGE
+	for p in get_tree().get_nodes_in_group("players"):
+		if p == self or not (p is Node3D):
+			continue
+		if not GameState.is_downed(str(p.name).to_int()):
+			continue
+		var d := global_position.distance_to((p as Node3D).global_position)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
+
+func _begin_carry(target: Node) -> void:
+	_carry_target = target
+	_tell_carried(target, str(name).to_int())
+
+func _update_carry_follow() -> void:
+	if _carry_target == null or not (_carry_target is Node3D):
+		return
+	# Push a follow point to the carried player's OWNER so ITS authority moves the synced
+	# body (a non-authority writing global_position wouldn't replicate). The owner pulls
+	# toward this point in its own _downed_physics.
+	var ahead := global_position - global_transform.basis.z * 0.9
+	ahead.y = global_position.y
+	if _carry_target.has_method("set_carry_anchor"):
+		_carry_target.set_carry_anchor(ahead)
+
+func _drop_carry() -> void:
+	if _carry_target != null and is_instance_valid(_carry_target):
+		_tell_carried(_carry_target, 0)
+	_carry_target = null
+
+## Tell `target`'s OWNER who is carrying it (so its authority drives the synced follow).
+func _tell_carried(target: Node, carrier_peer: int) -> void:
+	var owner := str(target.name).to_int()
+	if not multiplayer.has_multiplayer_peer() or NetworkManager.is_offline or owner == GameState.local_peer_id():
+		target.set_carried_by(carrier_peer)
+	else:
+		target._set_carried_rpc.rpc_id(owner, carrier_peer)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _set_carried_rpc(peer_id: int) -> void:
+	set_carried_by(peer_id)
+
+## Set/clear who is carrying THIS player (runs on the carried player's OWNER → the synced
+## flag replicates from here).
+func set_carried_by(peer_id: int) -> void:
+	_carried_by_peer = peer_id
+	if peer_id == 0:
+		_carry_anchor = Vector3.INF
+
+var _carry_anchor: Vector3 = Vector3.INF
+## The carrier feeds a target world point; THIS player's authority eases its body toward it.
+func set_carry_anchor(p: Vector3) -> void:
+	_carry_anchor = p
+
+## PUBLIC: HUD / other lanes query downed state.
+func is_downed() -> bool:
+	return downed
+
+## True if the local player can only use a sidearm / can't ADS (carrying a buddy).
+func is_carrying() -> bool:
+	return _carry_target != null
 
 ## Client -> server: "my player died". Server-only resolution below.
 @rpc("any_peer", "call_remote", "reliable")
@@ -782,5 +1137,9 @@ func _report_death(pid: int) -> void:
 
 func _server_handle_death(pid: int) -> void:
 	GameState.mark_dead(pid)
-	if GameState.all_players_dead():
+	GameState.set_downed(pid, false)
+	NetworkManager.broadcast_downed(pid, false)
+	# Loss only when NO ONE is still up (alive, not downed, not extracted) — a downed
+	# teammate alone is NOT a loss while someone can still revive them.
+	if not GameState.any_player_up():
 		NetworkManager.broadcast_match_lost()

@@ -14,6 +14,7 @@ const ITEMS: PackedStringArray = [
 	"res://resources/items/energy_cell.tres",
 	"res://resources/items/grenade_mk2.tres",
 	"res://resources/items/grenade.tres",
+	"res://resources/items/knockdown_shield.tres",
 	"res://resources/items/medkit.tres",
 	"res://resources/items/plastic.tres",
 	"res://resources/items/rifle.tres",
@@ -24,6 +25,7 @@ const ITEMS: PackedStringArray = [
 	"res://resources/items/schematic_stim.tres",
 	"res://resources/items/schematic_suppressor.tres",
 	"res://resources/items/scrap.tres",
+	"res://resources/items/self_revive.tres",
 	"res://resources/items/stim.tres",
 ]
 

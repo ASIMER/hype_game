@@ -1194,7 +1194,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L78",
+      "source_location": "L80",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1203,7 +1203,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L92",
+      "source_location": "L94",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1212,7 +1212,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L95",
+      "source_location": "L97",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -11558,5 +11558,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "5e0c9fe02e5e1e9b0742ff0df767e44438415489"
+  "built_at_commit": "789a5a69758a870afe0df94fd173aa1c99e34f98"
 }
