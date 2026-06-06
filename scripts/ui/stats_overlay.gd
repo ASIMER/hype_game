@@ -7,7 +7,8 @@ extends CanvasLayer
 ##       live ROLLING GRAPHS.
 ##
 ## Driven entirely by the frozen `Events.stats_overlay_changed(show_fps, show_detailed,
-## mode)` signal (mode 0=Numeric, 1=Graphs); initial state read from SettingsManager.
+## mode)` signal (mode 0=Numeric, 1=Graphs, 2=Graphs+Numbers); initial state read from
+## SettingsManager.
 ## NOTHING captures input: every Control uses MOUSE_FILTER_IGNORE. Network metrics only
 ## appear when the active peer is an ENetMultiplayerPeer (single-player uses an
 ## OfflineMultiplayerPeer — must be hard-guarded).
@@ -18,11 +19,16 @@ const FRAME_HISTORY_CAP := 120
 const PING_HISTORY_CAP := 120
 const GRAPH_W := 220.0
 const GRAPH_H := 60.0
+# Authored top-left anchor for the three corner widgets; the ultrawide inset shifts them
+# right/down from here. Fallback graph stack height (mode 2) when the live size is 0.
+const BASE_X := 10.0
+const BASE_Y := 8.0
+const GRAPH_STACK_H_FALLBACK := 200.0
 
 # --- Config state (mirrors the persisted SettingsManager values).
 var _show_fps: bool = false
 var _show_detailed: bool = false
-var _mode: int = 0   # 0 Numeric, 1 Graphs
+var _mode: int = 0   # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
 
 # --- Sampling throttle.
 var _accum: float = 0.0
@@ -60,6 +66,12 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 128
 	_build_ui()
+	_apply_hud_inset()
+	if not Events.ui_layout_changed.is_connected(_apply_hud_inset):
+		Events.ui_layout_changed.connect(_apply_hud_inset)
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
+		vp.size_changed.connect(_apply_hud_inset)
 	Events.stats_overlay_changed.connect(_on_config)
 	# Initial state from the persisted settings.
 	var sf: bool = bool(SettingsManager.get_value("show_fps"))
@@ -81,7 +93,7 @@ func _build_ui() -> void:
 	_fps_label = Label.new()
 	_fps_label.name = "FpsLabel"
 	_fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fps_label.position = Vector2(10, 8)
+	_fps_label.position = Vector2(BASE_X, BASE_Y)
 	_fps_label.add_theme_color_override("font_color", Color(0.7, 1.0, 0.75, 0.95))
 	_fps_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
 	_fps_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -95,7 +107,7 @@ func _build_ui() -> void:
 	_numeric_panel = PanelContainer.new()
 	_numeric_panel.name = "NumericPanel"
 	_numeric_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_numeric_panel.position = Vector2(10, 8)
+	_numeric_panel.position = Vector2(BASE_X, BASE_Y)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.02, 0.03, 0.05, 0.45)
 	sb.set_corner_radius_all(4)
@@ -124,7 +136,7 @@ func _build_ui() -> void:
 	_graph_ctrl.name = "GraphPanel"
 	_graph_ctrl.owner_overlay = self
 	_graph_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_graph_ctrl.position = Vector2(10, 8)
+	_graph_ctrl.position = Vector2(BASE_X, BASE_Y)
 	_graph_ctrl.custom_minimum_size = Vector2(GRAPH_W + 16.0, 0.0)
 	_graph_ctrl.visible = false
 	_root.add_child(_graph_ctrl)
@@ -148,15 +160,45 @@ func _apply_config() -> void:
 	# panel (the detailed panel carries its own FPS row first).
 	if _fps_label != null:
 		_fps_label.visible = _show_fps and not _show_detailed
+	# Mode 0 → numeric only; 1 → graphs only; 2 → BOTH (graphs on top, numbers stacked
+	# directly below so they never overlap).
 	if _numeric_panel != null:
-		_numeric_panel.visible = _show_detailed and _mode == 0
+		_numeric_panel.visible = _show_detailed and (_mode == 0 or _mode == 2)
 	if _graph_ctrl != null:
-		_graph_ctrl.visible = _show_detailed and _mode == 1
+		_graph_ctrl.visible = _show_detailed and (_mode == 1 or _mode == 2)
+	# Re-inset (also positions the numeric panel under the graph in mode 2).
+	_apply_hud_inset()
 	# Force an immediate refresh so a freshly-toggled view isn't blank until the next
 	# throttle tick.
 	if _is_anything_visible():
 		_sample()
 		_refresh_views()
+
+
+## Pull the three top-left widgets in toward center (ultrawide comfort) from their
+## authored (BASE_X, BASE_Y) anchor, and — in mode 2 — stack the numeric panel directly
+## below the graph control. Recomputed from base every call so it's idempotent; at
+## margin 0 (ex=ty=0) positions are byte-identical to the authored (10, 8).
+func _apply_hud_inset() -> void:
+	var sz: Vector2 = get_viewport().get_visible_rect().size
+	var ex: float = UILayout.edge_px(sz.x)
+	var ty: float = UILayout.top_px(sz.y)
+	var bx: float = BASE_X + ex
+	var by: float = BASE_Y + ty
+	if _fps_label != null:
+		_fps_label.position = Vector2(bx, by)
+	if _graph_ctrl != null:
+		_graph_ctrl.position = Vector2(bx, by)
+	if _numeric_panel != null:
+		if _mode == 2:
+			# Stack the numbers directly under the graph stack (use its live height, or a
+			# sensible fallback before it has been laid out).
+			var gh: float = _graph_ctrl.size.y if _graph_ctrl != null else 0.0
+			if gh <= 0.0:
+				gh = GRAPH_STACK_H_FALLBACK
+			_numeric_panel.position = Vector2(bx, by + gh + 8.0)
+		else:
+			_numeric_panel.position = Vector2(bx, by)
 
 
 func _is_anything_visible() -> bool:

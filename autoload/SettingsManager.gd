@@ -48,7 +48,11 @@ const DEFAULTS := {
 	# Diagnostics overlay
 	"show_fps": false,            # minimal FPS counter
 	"show_detailed_stats": false, # full perf + network panel
-	"stats_display_mode": 0,      # 0 Numeric, 1 Graphs
+	"stats_display_mode": 0,      # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
+	# Interface / HUD layout (ultrawide comfort — lives in the Interface settings tab).
+	"ui_edge_margin": 0.0,        # 0.0..0.2 pull edge-anchored UI in toward center (frac of width)
+	"ui_top_margin": 0.0,         # 0.0..0.2 vertical inset for top/bottom-anchored UI (frac of height)
+	"hud_scale": 1.0,             # 0.8..1.4 global UI scale (Window.content_scale_factor)
 	# Audio (linear 0..1)
 	"master_volume": 0.9,
 	"sfx_volume": 0.9,
@@ -61,6 +65,60 @@ const DEFAULTS := {
 
 const RES_OPTIONS := ["1280x720", "1600x900", "1920x1080", "2560x1440", "960x540"]
 const SHADOW_SIZES := [1024, 2048, 4096, 8192]
+
+## Curated resolutions across aspect ratios (16:9 / 16:10+MacBook / 21:9 / 32:9). The actual
+## dropdown is built at runtime from this, FILTERED to the monitor's native size — so a 32:9 or
+## 16:10/MacBook panel gets the right modes, not a fixed 16:9 list.
+const RES_CANDIDATES := [
+	# 16:9
+	"1280x720", "1600x900", "1920x1080", "2560x1440", "3840x2160",
+	# 16:10 / MacBook (incl. notched ~1.54 panels)
+	"1280x800", "1440x900", "1680x1050", "1920x1200", "2560x1600", "2880x1800",
+	"2560x1664", "3024x1964", "3456x2234",
+	# 21:9 ultrawide
+	"2560x1080", "3440x1440", "3840x1600",
+	# 32:9 super-ultrawide
+	"3840x1080", "5120x1440", "5120x2160",
+]
+
+## Builds the resolution dropdown list at runtime: the curated candidates that fit within the
+## monitor's native size, plus the native resolution itself (so any panel — ultrawide, 16:10,
+## MacBook — is selectable), plus the currently-saved value (so a res saved on another monitor
+## stays selectable). Sorted by area. Headless falls back to RES_OPTIONS.
+func build_resolution_list() -> Array:
+	if _headless():
+		return RES_OPTIONS.duplicate()
+	var native := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+	var seen := {}
+	var out: Array = []
+	# Candidates that fit the native panel.
+	for r in RES_CANDIDATES:
+		var s := _parse_res(r)
+		if s.x <= native.x and s.y <= native.y and not seen.has(r):
+			seen[r] = true
+			out.append(r)
+	# Always include the exact native + the saved value.
+	var native_str := "%dx%d" % [native.x, native.y]
+	if not seen.has(native_str):
+		seen[native_str] = true
+		out.append(native_str)
+	var saved := str(get_value("resolution"))
+	if saved != "" and not seen.has(saved):
+		seen[saved] = true
+		out.append(saved)
+	# Sort by pixel area so the list reads small→large.
+	out.sort_custom(func(a, b):
+		var sa := _parse_res(a)
+		var sb := _parse_res(b)
+		return sa.x * sa.y < sb.x * sb.y)
+	return out
+
+## "WxH" → Vector2i (0,0 on a malformed string).
+func _parse_res(res: String) -> Vector2i:
+	var parts := res.split("x")
+	if parts.size() != 2:
+		return Vector2i.ZERO
+	return Vector2i(int(parts[0]), int(parts[1]))
 
 ## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra → 4 Ultra+RT). Ultra =
 ## the hand-tuned look; Ultra+RT = Ultra plus the raster "RT-style" reflection/GI stack
@@ -197,6 +255,8 @@ func apply(key: String) -> void:
 		"dof", "terrain_parallax":
 			_apply_quality_lever()
 		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
+		"ui_edge_margin", "ui_top_margin": _apply_ui_margins()
+		"hud_scale": _apply_hud_scale(float(v))
 		"master_volume": _apply_master(float(v))
 		"sfx_volume": Settings.sfx_volume = clampf(float(v), 0.0, 1.0)
 		"mute": _apply_mute(bool(v))
@@ -282,6 +342,20 @@ func _apply_stats_overlay() -> void:
 		bool(get_value("show_fps")),
 		bool(get_value("show_detailed_stats")),
 		int(get_value("stats_display_mode")))
+
+## Mirror the HUD edge-inset fractions into Settings + tell edge-anchored UI to re-inset.
+func _apply_ui_margins() -> void:
+	Settings.ui_edge_margin = clampf(float(get_value("ui_edge_margin")), 0.0, 0.2)
+	Settings.ui_top_margin = clampf(float(get_value("ui_top_margin")), 0.0, 0.2)
+	Events.ui_layout_changed.emit()
+
+## Global UI scale via the root window's content scale factor (all canvas_items UI). Headless-safe.
+func _apply_hud_scale(v: float) -> void:
+	if _headless():
+		return
+	var w := get_window()
+	if w != null:
+		w.content_scale_factor = clampf(v, 0.8, 1.4)
 
 ## Apply a whole quality tier (0 Low → 3 Ultra) from QUALITY_PRESETS in one batch: write
 ## every lever, push the immediate ones to the engine, mirror the rebuild-bound ones, and

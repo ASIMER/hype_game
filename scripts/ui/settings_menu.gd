@@ -10,10 +10,13 @@ signal closed
 @onready var _tab_graphics: Button = $Panel/Root/Tabs/GraphicsTab
 @onready var _tab_audio: Button = $Panel/Root/Tabs/AudioTab
 @onready var _tab_controls: Button = $Panel/Root/Tabs/ControlsTab
+@onready var _tab_interface: Button = $Panel/Root/Tabs/InterfaceTab
 
 @onready var _page_graphics: Control = $Panel/Root/Content/GraphicsPage
 @onready var _page_audio: Control = $Panel/Root/Content/AudioPage
 @onready var _page_controls: Control = $Panel/Root/Content/ControlsPage
+@onready var _page_interface: Control = $Panel/Root/Content/InterfacePage
+@onready var _interface_v: VBoxContainer = $Panel/Root/Content/InterfacePage/V
 
 # --- graphics controls ---
 @onready var _window_mode: OptionButton = $Panel/Root/Content/GraphicsPage/V/WindowRow/WindowMode
@@ -60,10 +63,21 @@ var _toggle_god_rays: CheckButton
 var _toggle_dof: CheckButton
 var _toggle_terrain_parallax: CheckButton
 
-# --- stats overlay controls (built programmatically) ---
+# --- stats overlay controls (built programmatically, on the Interface page) ---
 var _show_fps: CheckButton
 var _show_detailed: CheckButton
 var _stats_mode: OptionButton
+
+# --- interface / HUD-layout controls (built programmatically) ---
+var _ui_edge_margin: HSlider
+var _ui_edge_margin_value: Label
+var _ui_top_margin: HSlider
+var _ui_top_margin_value: Label
+var _hud_scale: HSlider
+var _hud_scale_value: Label
+
+# Dynamic resolution list for the current monitor (built in _populate_options).
+var _res_list: Array = []
 
 # --- audio controls ---
 @onready var _master: HSlider = $Panel/Root/Content/AudioPage/MasterRow/Master
@@ -95,6 +109,7 @@ var _syncing := false
 func _ready() -> void:
 	_populate_options()
 	_build_quality_rows()
+	_build_interface_rows()
 	_populate_keybinds()
 	_wire()
 	sync_from_settings()
@@ -120,8 +135,9 @@ func _populate_options() -> void:
 		_window_mode.add_item(s)
 
 	_resolution.clear()
-	for r in SettingsManager.RES_OPTIONS:
-		_resolution.add_item(r)
+	_res_list = SettingsManager.build_resolution_list()
+	for r in _res_list:
+		_resolution.add_item(str(r))
 
 	_vsync.clear()
 	for s in ["Off", "On", "Adaptive"]:
@@ -250,11 +266,17 @@ func _build_quality_rows() -> void:
 	_toggle_dof = _add_toggle_row("Depth of Field", "dof", "")
 	_toggle_terrain_parallax = _add_toggle_row("Terrain Parallax (POM)", "terrain_parallax", "(applies next raid; heavy)")
 
-	# --- Statistics overlay section ---
-	_graphics_v.add_child(_make_header("STATISTICS OVERLAY", accent))
 
-	_show_fps = _add_toggle_row("Show FPS", "show_fps", "")
-	_show_detailed = _add_toggle_row("Detailed Stats", "show_detailed_stats", "")
+# Builds the INTERFACE page: the moved statistics-overlay section + HUD-layout sliders,
+# appending to the interface page VBox (inside a ScrollContainer).
+func _build_interface_rows() -> void:
+	var accent := Color(0.247, 0.71, 0.79, 1)
+
+	# --- Statistics overlay section (moved here from the graphics page) ---
+	_interface_v.add_child(_make_header("STATISTICS OVERLAY", accent))
+
+	_show_fps = _add_interface_toggle_row("Show FPS", "show_fps", "")
+	_show_detailed = _add_interface_toggle_row("Detailed Stats", "show_detailed_stats", "")
 	# Detailed toggle also drives the display-mode dropdown's enabled state.
 	_show_detailed.toggled.connect(func(p): _stats_mode.disabled = not p)
 
@@ -265,12 +287,51 @@ func _build_quality_rows() -> void:
 	sm_label.custom_minimum_size = Vector2(220, 0)
 	_stats_mode = OptionButton.new()
 	_stats_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for s in ["Numeric", "Graphs"]:
+	for s in ["Numeric", "Graphs", "Graphs + Numbers"]:
 		_stats_mode.add_item(s)
 	_stats_mode.item_selected.connect(func(i): _apply_setting("stats_display_mode", i))
 	sm_row.add_child(sm_label)
 	sm_row.add_child(_stats_mode)
-	_graphics_v.add_child(sm_row)
+	_interface_v.add_child(sm_row)
+
+	# --- HUD layout (ultrawide-friendly insets + global scale) ---
+	_interface_v.add_child(_make_header("HUD LAYOUT (ULTRAWIDE)", accent))
+
+	var edge_row := _make_slider_row("UI Horizontal Offset", 0.0, 0.2, 0.01)
+	_ui_edge_margin = edge_row[1]
+	_ui_edge_margin_value = edge_row[2]
+	_ui_edge_margin.value_changed.connect(_on_ui_edge_margin)
+	_interface_v.add_child(edge_row[0])
+
+	var top_row := _make_slider_row("UI Vertical Offset", 0.0, 0.2, 0.01)
+	_ui_top_margin = top_row[1]
+	_ui_top_margin_value = top_row[2]
+	_ui_top_margin.value_changed.connect(_on_ui_top_margin)
+	_interface_v.add_child(top_row[0])
+
+	var scale_row := _make_slider_row("HUD Scale", 0.8, 1.4, 0.05)
+	_hud_scale = scale_row[1]
+	_hud_scale_value = scale_row[2]
+	_hud_scale.value_changed.connect(_on_hud_scale)
+	_interface_v.add_child(scale_row[0])
+
+
+# Like _add_toggle_row but appends to the interface page and does NOT touch the preset
+# label (these toggles are not part of the graphics quality preset).
+func _add_interface_toggle_row(text: String, key: String, note: String) -> CheckButton:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(220, 0)
+	var cb := CheckButton.new()
+	cb.toggled.connect(func(p): _apply_setting(key, p))
+	row.add_child(label)
+	row.add_child(cb)
+	if not note.is_empty():
+		row.add_child(_make_note(note))
+	_interface_v.add_child(row)
+	return cb
 
 
 # Builds a labelled CheckButton row, wires it to apply `key` + refresh the preset label,
@@ -338,9 +399,10 @@ func _wire() -> void:
 	_tab_graphics.pressed.connect(_show_page.bind(0))
 	_tab_audio.pressed.connect(_show_page.bind(1))
 	_tab_controls.pressed.connect(_show_page.bind(2))
+	_tab_interface.pressed.connect(_show_page.bind(3))
 
 	_window_mode.item_selected.connect(func(i): _apply_setting("window_mode", i))
-	_resolution.item_selected.connect(func(i): _apply_setting("resolution", SettingsManager.RES_OPTIONS[i]))
+	_resolution.item_selected.connect(func(i): _apply_setting("resolution", str(_res_list[i])))
 	_vsync.item_selected.connect(func(i): _apply_setting("vsync", i))
 	_msaa.item_selected.connect(func(i):
 		_apply_setting("msaa", i)
@@ -368,9 +430,11 @@ func _show_page(index: int) -> void:
 	_tab_graphics.set_pressed_no_signal(index == 0)
 	_tab_audio.set_pressed_no_signal(index == 1)
 	_tab_controls.set_pressed_no_signal(index == 2)
+	_tab_interface.set_pressed_no_signal(index == 3)
 	_page_graphics.visible = index == 0
 	_page_audio.visible = index == 1
 	_page_controls.visible = index == 2
+	_page_interface.visible = index == 3
 
 
 # ---------------------------------------------------------------- value sync
@@ -379,7 +443,7 @@ func sync_from_settings() -> void:
 	var g := SettingsManager
 
 	_window_mode.select(int(g.get_value("window_mode")))
-	_resolution.select(maxi(0, SettingsManager.RES_OPTIONS.find(str(g.get_value("resolution")))))
+	_resolution.select(maxi(0, _res_list.find(str(g.get_value("resolution")))))
 	_vsync.select(int(g.get_value("vsync")))
 	_msaa.select(int(g.get_value("msaa")))
 	_shadows.select(int(g.get_value("shadows")))
@@ -435,6 +499,17 @@ func sync_from_settings() -> void:
 	_show_detailed.button_pressed = detailed
 	_stats_mode.select(int(g.get_value("stats_display_mode")))
 	_stats_mode.disabled = not detailed
+
+	# Interface / HUD layout.
+	var edge_margin: float = float(g.get_value("ui_edge_margin"))
+	_ui_edge_margin.value = edge_margin
+	_ui_edge_margin_value.text = "%d%%" % roundi(edge_margin * 100.0)
+	var top_margin: float = float(g.get_value("ui_top_margin"))
+	_ui_top_margin.value = top_margin
+	_ui_top_margin_value.text = "%d%%" % roundi(top_margin * 100.0)
+	var hud_scale: float = float(g.get_value("hud_scale"))
+	_hud_scale.value = hud_scale
+	_hud_scale_value.text = "%d%%" % roundi(hud_scale * 100.0)
 
 	_master.value = float(g.get_value("master_volume"))
 	_master_value.text = "%d%%" % roundi(_master.value * 100.0)
@@ -514,6 +589,20 @@ func _on_dof_amount(v: float) -> void:
 	_dof_amount_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("dof_amount", v)
 	_refresh_preset_label()
+
+
+# Interface / HUD-layout sliders — not part of the graphics preset, so no preset refresh.
+func _on_ui_edge_margin(v: float) -> void:
+	_ui_edge_margin_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("ui_edge_margin", v)
+
+func _on_ui_top_margin(v: float) -> void:
+	_ui_top_margin_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("ui_top_margin", v)
+
+func _on_hud_scale(v: float) -> void:
+	_hud_scale_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("hud_scale", v)
 
 
 # Sets the preset dropdown to the matching tier 0..4, or Custom (index 5) when diverged.

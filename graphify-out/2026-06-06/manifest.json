@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1780765225.650838,
-    "ast_hash": "8c31b53b4eeaab606b1ed5fa5a344f90",
+    "mtime": 1780767413.2905455,
+    "ast_hash": "6189fa18e29d8a3995e377a8c4862083",
     "semantic_hash": ""
   },
   "README.md": {
@@ -495,8 +495,8 @@
     "semantic_hash": "a7fc298b0eacc38fab841816d569e749"
   },
   ".claude/settings.local.json": {
-    "mtime": 1780755872.0029304,
-    "ast_hash": "f9aed496b371689eb1250a935efbc783",
+    "mtime": 1780766587.0720189,
+    "ast_hash": "f505b5116d8216b400eebe9f696ac5f2",
     "semantic_hash": ""
   },
   "addons/sky_3d/LICENSE.txt": {

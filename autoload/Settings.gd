@@ -171,6 +171,10 @@ var fov: float = DEFAULT_FOV            # camera FOV (player.gd reads this)
 var sfx_volume: float = 0.9             # 0..1, applied to AudioManager
 var invert_y: bool = false
 var ads_toggle: bool = false            # false = hold to aim, true = toggle
+# HUD layout (ultrawide comfort): edge-anchored UI insets toward center by these fractions
+# of the viewport (0 = at the screen edge). Read by minimap/killfeed/hud/stats_overlay.
+var ui_edge_margin: float = 0.0         # horizontal inset (fraction of viewport width)
+var ui_top_margin: float = 0.0          # vertical inset (fraction of viewport height)
 # Graphics-quality scale for rebuild-bound levers (set by SettingsManager from the quality
 # preset; read at arena build, so a change applies on the NEXT raid). 1.0 = Ultra ceiling.
 var grass_density_scale: float = 1.0    # multiplies the near/far grass caps in procedural_flora
