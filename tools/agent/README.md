@@ -8,6 +8,14 @@ play it via self-play. Two entry points share one wire protocol:
 
 Everything is stdlib-only (no `pip install`).
 
+> **Authoritative command + `state` reference:** the full, current list of wire
+> commands and the complete `state` JSON schema live in **`docs/TESTING.md`
+> §2–§3**. This file documents the transport and the core verbs; consult
+> TESTING.md for the rest (debug hooks like `spawn`/`tp`/`godmode`/`render`, the
+> `ui`/`stash`/`net`/`ready`/`deploy` co-op JSON commands driven via
+> `tools/agent/raw.py`, multi-instance `--agent-port N`, etc.) so this README
+> can't drift.
+
 ## How the game exposes control
 
 When the game runs in **agent mode** it starts an in-game TCP control server on

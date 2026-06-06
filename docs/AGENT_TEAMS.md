@@ -35,6 +35,15 @@ Historical P1 lanes (when the core loop was first built): `player-dev` (controll
 4. **Play-test (lead, harness)** — drive the game (`--agent`), screenshot, fix integration bugs (this is where the camera/movement/weapon bugs were caught).
 5. **Optional read-only review** — spawn `ui-review` + `logic-review` to audit for latent bugs; lead fixes what they find.
 
+## Worked examples (the co-op batches built this way)
+Recent multiplayer/UI pushes followed the **frozen-foundation → parallel lanes → integrate → harness-test** pattern exactly. Concrete lane splits, for reference:
+
+- **Co-op depth** (server-auth combat, inventory mirror, leaderboard, item sharing, version-safe saves, 8 players): the **lead** froze the spine first — `Settings.MAX_PLAYERS=8`, the `Events` signals (`remote_shot`/`scoreboard_changed`/`item_received`), the `scoreboard`/`trade` input actions, and the server-auth helpers on `NetworkManager` (`request_hit`/`broadcast_shot`/`transfer_item`/`request_split`/`nearest_teammate`) + `GameState.kills/deaths` + the inventory `_push_to_owner` mirror + `arena.gd` spawn spread + `AgentBridge` QA hooks. Then 4 disjoint lanes against those frozen interfaces: `inventory-dev` (`inventory_ui.gd` GIVE/SPLIT), `trade-dev` (NEW `TradeUI.tscn`+`trade_ui.gd`), `leaderboard-dev` (NEW `Scoreboard.tscn`+`scoreboard.gd`), `persistence-dev` (`MetaProgression`/`Stash`/`SettingsManager` `save_version`). Lead wired the new UIs into `main.gd` and ran the 2-then-4-instance harness tests.
+- **Server browser** (favorites + LAN discovery + hub roster): lead froze the `ServerBrowser` autoload API + `favorites.cfg` + `Settings.DISCOVERY_PORT` + the `Events` LAN signals; then 2 disjoint lanes — `serverbrowser-ui` (NEW `ServerBrowser.tscn`+`server_browser.gd`) and `hub-roster` (`hub.gd` bottom-strip status dots) — while the lead wired `main_menu._join` + the SERVERS button and tested direct-connect / LAN `discover` / WAN-hairpin.
+- **Documentation** (this kind of pass): docs merge poorly, so parallelize **one doc file per agent** (`docs/ARCHITECTURE.md`, `docs/TESTING.md`, the friend/harness READMEs) and have the lead fact-check every named symbol against the code with `grep`.
+
+The recurring gotcha: a lane that assigns a different node type to a typed `var` (e.g. `HBoxContainer` to a `VBoxContainer` field) is a **lazy parse error** `--headless --import` does NOT catch — surface it by runtime-smoking the screen (open the Hub via the harness). See CLAUDE.md gotcha #10–#12.
+
 ## How to spawn
 ```
 TeamCreate({ team_name: "arc-raiders" })
@@ -71,7 +80,7 @@ Agent({ team_name:"arc-raiders", name:"enemies-dev", subagent_type:"general-purp
 ```
 
 **Test isolation: one game instance per agent, on its own port.** The harness is per-instance: launch with `--agent-port N` (instance i → **24700 + i**), and the control port + every shared `user://` write are namespaced by it (`Settings.user_path` / `Settings.instance_tag`):
-- control server → `127.0.0.1:<port>` · screenshots → `user://agent/<port>/` · saves → `user://profile_<port>.cfg` / `settings_<port>.cfg`
+- control server → `127.0.0.1:<port>` · screenshots → `user://agent/<port>/` · saves → `user://{profile,stash,settings,favorites}_<port>.cfg`
 - drive with `python tools/agent/play.py --port <port> <cmd>`; MCP via the `AGENT_PORT` env var.
 - helper: `pwsh tools/agent/launch_agents.ps1 -Count <N>`. Full reference: **`docs/TESTING.md` §7**.
 

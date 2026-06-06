@@ -131,19 +131,36 @@ HOW TO PLAY
     - SINGLE PLAYER : play solo.
     - HOST CO-OP    : you host. Configure your loadout, then DEPLOY.
     - JOIN CO-OP    : type the HOST's IP address, then JOIN, then DEPLOY.
+    - SERVERS       : open the server browser (see below).
   Everyone must DEPLOY from the lobby for the match to begin.
+  Up to 8 players per match. If a connection doesn't go through, the menu
+  shows a clear "Join failed" message — double-check the IP/port and that
+  the host is up.
+
+SERVERS MENU (the easy way to connect)
+  The SERVERS button opens a browser with:
+    - DIRECT CONNECT : type an IP (or ip:port) and connect.
+    - FAVORITES      : save servers you play on often.
+    - RECENT         : your last few connections, one click to rejoin.
+    - SCAN LAN       : auto-find hosts on your SAME local network.
+  NOTE: SCAN LAN only finds servers on the same local network (LAN / same
+  Wi-Fi). It does NOT reach across the internet — to play online, use the
+  host's PUBLIC IP in DIRECT CONNECT (see below).
 
 PLAYING WITH FRIENDS
-  The host shares their IP; friends type it into the JOIN field.
+  The host shares their IP; friends type it into JOIN or DIRECT CONNECT.
     - HOST: find your IP by opening Command Prompt and running:  ipconfig
             (use the "IPv4 Address" of your active adapter).
     - The game uses UDP PORT 24565 — allow HypeRaiders.exe through the
       Windows Firewall (a prompt usually appears on first host).
+    - LAN discovery (SCAN LAN) uses UDP 24566 on the local network only.
+      For INTERNET play you only need to forward UDP 24565 — NOT 24566.
 
-  SAME NETWORK (LAN / same Wi-Fi): the host's local IPv4 works directly.
+  SAME NETWORK (LAN / same Wi-Fi): the host's local IPv4 works directly,
+    or friends just hit SCAN LAN to find the host automatically.
   OVER THE INTERNET: either
     (a) the host forwards UDP port 24565 to their PC in their router, and
-        friends use the host's PUBLIC IP (whatismyip.com); OR
+        friends use the host's PUBLIC IP (whatismyip.com) in DIRECT CONNECT; OR
     (b) everyone installs a free LAN-over-internet VPN (Radmin VPN /
         ZeroTier / Hamachi) and uses the VPN IP — no router setup needed.
         This is the easiest option.
@@ -151,12 +168,15 @@ PLAYING WITH FRIENDS
 CONTROLS
   WASD move · Shift sprint · Space jump · LMB fire · RMB aim · R reload
   E interact/loot · I inventory · M map · 1-5 / wheel weapon · G grenade · H heal
+  TAB scoreboard (kills) · T trade with a nearby teammate
 
 NOTES
   - Requires a Vulkan-capable GPU (virtually all Windows 10/11 PCs).
   - First launch may show a Windows SmartScreen warning because the build
     is unsigned — click "More info" -> "Run anyway".
   - Saves live in:  %APPDATA%\Godot\app_userdata\Hype Raiders\
+    Your progression (stash / loadout / favorites) is saved locally and
+    survives game updates — each player keeps their own on their own PC.
 
 Have fun — and extract before the storm.
 "@
