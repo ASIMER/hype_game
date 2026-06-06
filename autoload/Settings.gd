@@ -20,6 +20,27 @@ const NET_DEBUG: bool = false
 # listens when the game is launched with --agent (see AgentBridge / main.gd).
 const AGENT_PORT: int = 24700
 
+# Terrain / world visuals (ALL world-gen must stay deterministic for co-op — every
+# peer builds its own arena locally, so geometry derives ONLY from these constants).
+const TERRAIN_SEED: int = 1337            # the one seed all terrain noise derives from
+const TERRAIN_CELL: float = 1.0           # heightmap grid step (m); 1 m = smooth river banks
+const TERRAIN_HILL_AMP: float = 3.5       # max rolling-hill height (m); keep slopes well under 47°
+const TERRAIN_RIM_HEIGHT: float = 7.0     # rocky berm height near the perimeter walls
+const RIVER_WIDTH: float = 5.0            # river channel width (m)
+const RIVER_DEPTH: float = 0.45           # ≤ navmesh agent_max_climb 0.5 → walkable ford everywhere
+# Flora budgets (MultiMesh where possible; trees/boulders are individual nodes)
+const FLORA_TREES: int = 80
+const FLORA_BUSHES: int = 60
+const FLORA_GRASS_PATCHES: int = 14000    # near grass layer (MultiMesh; fine dense blades)
+const FLORA_GRASS_FAR: int = 3000         # sparse far grass layer (larger tufts)
+const GRASS_VIS_RANGE: float = 45.0       # near-layer visibility_range_end (m)
+const GRASS_FAR_RANGE: float = 90.0       # far-layer visibility_range_end (m)
+const FLORA_STONES: int = 400             # small render-only stones (MultiMesh)
+const FLORA_BOULDERS: int = 14            # big collidable cover rocks
+# Building interior lighting (shadowless warm omnis; budget ≤ ~14 lights map-wide)
+const INTERIOR_LIGHT_ENERGY: float = 2.6
+const INTERIOR_LIGHT_RANGE: float = 10.0
+
 # Player
 const PLAYER_MAX_HEALTH: float = 100.0
 const PLAYER_MOVE_SPEED: float = 5.5

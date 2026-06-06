@@ -290,6 +290,44 @@ func _handle_line(line: String) -> void:
 			var dto := float(json.get("timeout", 1.5))
 			ServerBrowser.scan_lan(dto)
 			_send({ "ok": true, "scanning": true, "timeout": dto })
+		"meshes":
+			# Debug forensics: list every visible MeshInstance3D under the arena's
+			# NavigationRegion3D (and its top children) with world Y-range + material hint —
+			# for hunting mystery surfaces that cover the terrain.
+			var sc_root := get_tree().current_scene
+			var out: Array = []
+			if sc_root:
+				_collect_meshes(sc_root, out, 0)
+			_send({ "ok": true, "meshes": out })
+		"hide":
+			# Debug forensics: toggle visibility of a node by absolute path substring match
+			# under the current scene. {path:"TerrainMesh", on:false} hides it.
+			var hpat := str(json.get("path", ""))
+			var hon := bool(json.get("on", false))
+			var hits: Array = []
+			_hide_matching(get_tree().current_scene, hpat, hon, hits)
+			_send({ "ok": true, "matched": hits })
+		"probe":
+			# Debug: raycast straight down at world {x,z} → ground height + collider name.
+			# The terrain QA tool: placement checks + cross-instance DETERMINISM proof
+			# (every co-op peer must generate byte-identical terrain collision).
+			var px := float(json.get("x", 0.0))
+			var pz := float(json.get("z", 0.0))
+			var vp := get_viewport()
+			if vp == null or vp.world_3d == null:
+				_send({ "ok": false, "error": "no world" })
+			else:
+				var pq := PhysicsRayQueryParameters3D.create(
+					Vector3(px, 100.0, pz), Vector3(px, -50.0, pz))
+				pq.collision_mask = 1
+				var phit := vp.world_3d.direct_space_state.intersect_ray(pq)
+				if phit:
+					var pcol: Object = phit.get("collider")
+					var pname: String = pcol.name if pcol is Node else "?"
+					var ppos: Vector3 = phit.get("position")
+					_send({ "ok": true, "y": ppos.y, "collider": pname })
+				else:
+					_send({ "ok": true, "y": null, "collider": "" })
 		"ui":
 			# Debug: open/close menus for screenshot verification.
 			_send({ "ok": _ui_action(str(json.get("action", ""))) })
@@ -455,6 +493,37 @@ func _agent_open_client_hub() -> void:
 
 
 ## Debug: open/close menu overlays so the harness can screenshot them.
+## Recursive helper for the `meshes` forensics cmd: big visible meshes only (XZ > 20 m),
+## including MultiMeshInstance3D (whose AABB spans all instances).
+func _collect_meshes(node: Node, out: Array, depth: int) -> void:
+	if depth > 8 or out.size() > 80:
+		return
+	if (node is MeshInstance3D or node is MultiMeshInstance3D) and (node as GeometryInstance3D).visible:
+		var mi := node as GeometryInstance3D
+		var aabb := mi.get_aabb()
+		var gx := mi.global_transform * aabb
+		if gx.size.x > 20.0 and gx.size.z > 20.0:
+			var mat_hint := "none"
+			if mi.material_override != null:
+				mat_hint = "override:" + mi.material_override.get_class()
+				if mi.material_override is BaseMaterial3D:
+					var c: Color = (mi.material_override as BaseMaterial3D).albedo_color
+					mat_hint += " albedo=(%.2f,%.2f,%.2f) tex=%s" % [c.r, c.g, c.b,
+						str((mi.material_override as BaseMaterial3D).albedo_texture != null)]
+			out.append({ "path": str(mi.get_path()).right(80), "y0": gx.position.y,
+				"y1": gx.position.y + gx.size.y, "sx": gx.size.x, "sz": gx.size.z, "mat": mat_hint })
+	for c in node.get_children():
+		_collect_meshes(c, out, depth + 1)
+
+func _hide_matching(node: Node, pat: String, on: bool, hits: Array) -> void:
+	if hits.size() > 20 or pat == "":
+		return
+	if node is Node3D and pat in node.name:
+		(node as Node3D).visible = on
+		hits.append(str(node.get_path()).right(60))
+	for c in node.get_children():
+		_hide_matching(c, pat, on, hits)
+
 func _ui_action(action: String) -> bool:
 	var scene := get_tree().current_scene
 	if scene == null:

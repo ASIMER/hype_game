@@ -258,7 +258,11 @@ environment = ExtResource("2_env")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 40, 0)
+light_color = Color(1, 0.96, 0.88, 1)
+light_energy = 1.35
 shadow_enabled = true
+shadow_blur = 1.2
+directional_shadow_max_distance = 140.0
 
 [node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("NavMesh_1")
