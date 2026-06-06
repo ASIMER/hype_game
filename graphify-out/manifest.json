@@ -35,13 +35,13 @@
     "semantic_hash": "d09b3924d69e9c983a42aaa9f00d888f"
   },
   "tools/audio/gen_audio.py": {
-    "mtime": 1780664941.237389,
-    "ast_hash": "1eec238d9f498e42c177d9f01c8cfc55",
-    "semantic_hash": "1eec238d9f498e42c177d9f01c8cfc55"
+    "mtime": 1780756361.6702454,
+    "ast_hash": "05072b574f8665c8bd179aaaec2eb6c8",
+    "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1780752718.9716556,
-    "ast_hash": "fc3f8acf4d96caba3d5c3cc9a7a234f7",
+    "mtime": 1780758377.509275,
+    "ast_hash": "f6eed6299671597eac7d613e7b71fef4",
     "semantic_hash": ""
   },
   "README.md": {
@@ -495,72 +495,72 @@
     "semantic_hash": "a7fc298b0eacc38fab841816d569e749"
   },
   ".claude/settings.local.json": {
-    "mtime": 1780750224.7266872,
-    "ast_hash": "50eb19b9d28853f576ed45159530c90a",
+    "mtime": 1780755872.0029304,
+    "ast_hash": "f9aed496b371689eb1250a935efbc783",
     "semantic_hash": ""
   },
   "addons/sky_3d/LICENSE.txt": {
-    "mtime": 1780750456.5209713,
+    "mtime": 1780755872.5772822,
     "ast_hash": "80f9a3252eeb484158a2a38630472d52",
     "semantic_hash": ""
   },
   "addons/sky_3d/README.md": {
-    "mtime": 1780750456.5219705,
+    "mtime": 1780755872.578282,
     "ast_hash": "13b58798ffb185f40a75f19d4172e177",
     "semantic_hash": ""
   },
   "addons/sky_3d/ThirdParty.md": {
-    "mtime": 1780750456.5219705,
+    "mtime": 1780755872.578282,
     "ast_hash": "462dc30259eb315bc2c2cecf48383c22",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/thirdparty/textures/milkyway/LICENSE.md": {
-    "mtime": 1780750456.536478,
+    "mtime": 1780755872.5885553,
     "ast_hash": "445c2b9c244280391d2209fed7058f20",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/thirdparty/textures/moon/LICENSE.md": {
-    "mtime": 1780750456.5439844,
+    "mtime": 1780755872.6060085,
     "ast_hash": "096a87019285551a6275d35630651124",
     "semantic_hash": ""
   },
   "docs/ASSETS.md": {
-    "mtime": 1780750305.8532045,
-    "ast_hash": "2a259c0e76c9a39f60476e7b5d66c6c9",
+    "mtime": 1780758350.9562821,
+    "ast_hash": "19da4c431ca559847247f1e1dc3452ae",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/SkyIcon.png": {
-    "mtime": 1780750456.5269701,
+    "mtime": 1780755872.5812833,
     "ast_hash": "e3530550652023cf16bbdac13053a03e",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/noise.jpg": {
-    "mtime": 1780750456.5289702,
+    "mtime": 1780755872.5837927,
     "ast_hash": "c74c2e92b40c2b0760e6e4f567cb2d58",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/noise2.png": {
-    "mtime": 1780750456.5314775,
+    "mtime": 1780755872.585297,
     "ast_hash": "f16fdb4d5af98165b56746b81b4ee55e",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/noiseClouds.png": {
-    "mtime": 1780750456.5334773,
+    "mtime": 1780755872.5875523,
     "ast_hash": "53fb4187ffd418f0808b6aad44234f71",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/thirdparty/textures/milkyway/Milkyway.jpg": {
-    "mtime": 1780750456.539477,
+    "mtime": 1780755872.6033714,
     "ast_hash": "693be5f5b70d9a21ae9895ac126d879d",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/thirdparty/textures/milkyway/StarField.jpg": {
-    "mtime": 1780750456.5419874,
+    "mtime": 1780755872.6043732,
     "ast_hash": "14a672bb389003437aeaeb8e0c581408",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/thirdparty/textures/moon/MoonMap.png": {
-    "mtime": 1780750456.5489845,
+    "mtime": 1780755872.6218097,
     "ast_hash": "1c919ff550a6e3d79e17a64a072346cc",
     "semantic_hash": ""
   },
@@ -570,107 +570,107 @@
     "semantic_hash": ""
   },
   "assets/models/flora/Bark_DeadTree.png": {
-    "mtime": 1780750475.253482,
+    "mtime": 1780755872.6650872,
     "ast_hash": "465cb57590fe9fdccdd122368bc2ea17",
     "semantic_hash": ""
   },
   "assets/models/flora/Bark_DeadTree_Normal.png": {
-    "mtime": 1780750475.2802415,
+    "mtime": 1780755872.6802914,
     "ast_hash": "a40bc2c9d62774a7a7c481d4f84f9961",
     "semantic_hash": ""
   },
   "assets/models/flora/Bark_NormalTree.png": {
-    "mtime": 1780750475.1728828,
+    "mtime": 1780755872.6910245,
     "ast_hash": "59f6e2874a87035eea5089fac7d810c8",
     "semantic_hash": ""
   },
   "assets/models/flora/Bark_NormalTree_Normal.png": {
-    "mtime": 1780750475.1990197,
+    "mtime": 1780755872.7017272,
     "ast_hash": "c85a0bd0e451b16dcadbdceb366ebfc1",
     "semantic_hash": ""
   },
   "assets/models/flora/Bark_TwistedTree.png": {
-    "mtime": 1780750475.3072171,
+    "mtime": 1780755872.7184038,
     "ast_hash": "09ec73e2b09d2ce735075d4bb613dd7a",
     "semantic_hash": ""
   },
   "assets/models/flora/Bark_TwistedTree_Normal.png": {
-    "mtime": 1780750475.336037,
+    "mtime": 1780755872.73507,
     "ast_hash": "a40bc2c9d62774a7a7c481d4f84f9961",
     "semantic_hash": ""
   },
   "assets/models/flora/Flowers.png": {
-    "mtime": 1780750484.7018292,
+    "mtime": 1780755872.75118,
     "ast_hash": "bbdbf2071e3c54bb6e0508c595e7b734",
     "semantic_hash": ""
   },
   "assets/models/flora/Leaf_Pine_C.png": {
-    "mtime": 1780750475.3890476,
+    "mtime": 1780755872.7526839,
     "ast_hash": "8905d00249da052adc37f5504bd19c0a",
     "semantic_hash": ""
   },
   "assets/models/flora/Leaves_NormalTree_C.png": {
-    "mtime": 1780750475.2249806,
+    "mtime": 1780755872.7536874,
     "ast_hash": "4761d9780e45a5ae95d02b0138a467c4",
     "semantic_hash": ""
   },
   "assets/models/flora/Leaves_TwistedTree_C.png": {
-    "mtime": 1780750475.363418,
+    "mtime": 1780755872.7556896,
     "ast_hash": "d97ec3308cc6d22d4a85cef33c34deee",
     "semantic_hash": ""
   },
   "assets/models/flora/Rocks_Diffuse.png": {
-    "mtime": 1780750475.4161415,
+    "mtime": 1780755872.7701826,
     "ast_hash": "2d111c33d4f7866d73bdb6fdcfecf02a",
     "semantic_hash": ""
   },
   "assets/models/weapons/Textures/colormap.png": {
-    "mtime": 1780750539.5058632,
+    "mtime": 1780755872.775196,
     "ast_hash": "d399396bd54b6d062c41eaf42b99ac44",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground003_Color.jpg": {
-    "mtime": 1780750450.6877646,
+    "mtime": 1780755872.7873137,
     "ast_hash": "121e40b999f9917f998f4818d34ec191",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground003_NormalGL.jpg": {
-    "mtime": 1780750450.7132971,
+    "mtime": 1780755872.7944317,
     "ast_hash": "20d0181994db4e533d993dd1beb11e75",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground003_Roughness.jpg": {
-    "mtime": 1780750450.7409062,
+    "mtime": 1780755872.7974343,
     "ast_hash": "97899e7fc90817a5c67fcb7ea77d0d97",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground054_Color.jpg": {
-    "mtime": 1780750450.7654324,
+    "mtime": 1780755872.8024342,
     "ast_hash": "462824c9bb532043e7ee8cb47f425a30",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground054_NormalGL.jpg": {
-    "mtime": 1780750450.7909627,
+    "mtime": 1780755872.806941,
     "ast_hash": "36c696b4974d7acb623aec173d518802",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground054_Roughness.jpg": {
-    "mtime": 1780750450.8214982,
+    "mtime": 1780755872.8096135,
     "ast_hash": "c333d7efc5ab99b551b5d37897bb229d",
     "semantic_hash": ""
   },
   "assets/textures/ground/Rock029_Color.jpg": {
-    "mtime": 1780750450.8460214,
+    "mtime": 1780755872.8148825,
     "ast_hash": "1885a98cf5de79aa17b404263353acc4",
     "semantic_hash": ""
   },
   "assets/textures/ground/Rock029_NormalGL.jpg": {
-    "mtime": 1780750450.8730538,
+    "mtime": 1780755872.8218808,
     "ast_hash": "040fbe7de2c01b39431451c98296cd84",
     "semantic_hash": ""
   },
   "assets/textures/ground/Rock029_Roughness.jpg": {
-    "mtime": 1780750450.9065742,
+    "mtime": 1780755872.8250155,
     "ast_hash": "10be876b0fdae547b91f87a405b85fd9",
     "semantic_hash": ""
   },
@@ -740,7 +740,7 @@
     "semantic_hash": ""
   },
   "assets/audio/ambient.ogg": {
-    "mtime": 1780750534.7312758,
+    "mtime": 1780755872.6358893,
     "ast_hash": "d94b4c22d78ea682ddab9466c7e9e6b6",
     "semantic_hash": ""
   },
@@ -750,37 +750,37 @@
     "semantic_hash": ""
   },
   "assets/audio/extract_beep.ogg": {
-    "mtime": 1780750534.4057512,
+    "mtime": 1780755872.6373951,
     "ast_hash": "4c063b519fe0b43ffb7c6555aa8ad22d",
     "semantic_hash": ""
   },
   "assets/audio/extract_cancel.ogg": {
-    "mtime": 1780750534.4580727,
+    "mtime": 1780755872.6380308,
     "ast_hash": "48e561761e8706e3be4a804dbe97b468",
     "semantic_hash": ""
   },
   "assets/audio/extract_done.ogg": {
-    "mtime": 1780750534.4308753,
+    "mtime": 1780755872.6390374,
     "ast_hash": "c78792d47b805c726b2fb1ad5f03c81d",
     "semantic_hash": ""
   },
   "assets/audio/footstep1.ogg": {
-    "mtime": 1780750534.5590835,
+    "mtime": 1780755872.6400375,
     "ast_hash": "1a54419c397fd9c1bdb087bf0fff7919",
     "semantic_hash": ""
   },
   "assets/audio/footstep2.ogg": {
-    "mtime": 1780750534.5835977,
+    "mtime": 1780755872.641037,
     "ast_hash": "26fc6ee64072ac9e564297c61d8ee9be",
     "semantic_hash": ""
   },
   "assets/audio/footstep3.ogg": {
-    "mtime": 1780750534.6093352,
+    "mtime": 1780755872.641037,
     "ast_hash": "9ea5a861dc000861f60b26f47cdd9988",
     "semantic_hash": ""
   },
   "assets/audio/heartbeat.ogg": {
-    "mtime": 1780750534.7075,
+    "mtime": 1780755872.6435456,
     "ast_hash": "b9a6cb17b6ced4158ddeaf5ced6f083f",
     "semantic_hash": ""
   },
@@ -790,22 +790,22 @@
     "semantic_hash": ""
   },
   "assets/audio/lose.ogg": {
-    "mtime": 1780750534.534244,
+    "mtime": 1780755872.6445494,
     "ast_hash": "22f0607ddea30651210fdfde3b043eb4",
     "semantic_hash": ""
   },
   "assets/audio/music.ogg": {
-    "mtime": 1780750534.7561078,
+    "mtime": 1780755872.646547,
     "ast_hash": "9a4c3c5709fef7dbb9eed87fa6e3853e",
     "semantic_hash": ""
   },
   "assets/audio/player_death.ogg": {
-    "mtime": 1780750534.3810067,
+    "mtime": 1780755872.646547,
     "ast_hash": "d80b3c0f2ec66801751a87ed8fc49901",
     "semantic_hash": ""
   },
   "assets/audio/reload.ogg": {
-    "mtime": 1780750534.634467,
+    "mtime": 1780755872.6490562,
     "ast_hash": "db6a280350ee8c4e296dde06a8fc24df",
     "semantic_hash": ""
   },
@@ -815,23 +815,33 @@
     "semantic_hash": ""
   },
   "assets/audio/ui_click.ogg": {
-    "mtime": 1780750534.6838665,
+    "mtime": 1780755872.6500554,
     "ast_hash": "594234cc27bcfb903fdafc49cb728bc9",
     "semantic_hash": ""
   },
   "assets/audio/wave_alert.ogg": {
-    "mtime": 1780750534.4833531,
+    "mtime": 1780755872.651058,
     "ast_hash": "67615848347f77578865f9867c7433f2",
     "semantic_hash": ""
   },
   "assets/audio/weapon_switch.ogg": {
-    "mtime": 1780750534.6600783,
+    "mtime": 1780755872.6525667,
     "ast_hash": "4649a947a5b042ac8d2a03c25c52185b",
     "semantic_hash": ""
   },
   "assets/audio/win.ogg": {
-    "mtime": 1780750534.5084815,
+    "mtime": 1780755872.6532078,
     "ast_hash": "d5ab0aa9c6d7ab8425a4ea7ab66664dc",
+    "semantic_hash": ""
+  },
+  "assets/audio/underwater.ogg": {
+    "mtime": 1780756370.4119375,
+    "ast_hash": "daabdb1e3857ba89f4ee35328bd51a4c",
+    "semantic_hash": ""
+  },
+  "assets/audio/water_splash.ogg": {
+    "mtime": 1780756370.159456,
+    "ast_hash": "7e4a3f4dc95fec964bf70e5a3a3441a6",
     "semantic_hash": ""
   }
 }

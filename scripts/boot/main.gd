@@ -196,6 +196,10 @@ func load_arena() -> void:
 			ui_layer.add_child((load("res://scenes/ui/MapUI.tscn") as PackedScene).instantiate())
 		if ResourceLoader.exists("res://scenes/ui/HitMarker.tscn"):
 			ui_layer.add_child((load("res://scenes/ui/HitMarker.tscn") as PackedScene).instantiate())
+		# Underwater post-processing overlay (blue-green tint + wobble while the LOCAL
+		# player wades/submerges in the river). Self-shows on Events.water_state_changed.
+		if ResourceLoader.exists("res://scenes/fx/UnderwaterOverlay.tscn"):
+			ui_layer.add_child((load("res://scenes/fx/UnderwaterOverlay.tscn") as PackedScene).instantiate())
 		# Co-op TAB leaderboard (synced kills) + teammate trade UI. Self-show on their
 		# own input/Events; harmless in single-player (the table just shows you).
 		if ResourceLoader.exists("res://scenes/ui/Scoreboard.tscn"):

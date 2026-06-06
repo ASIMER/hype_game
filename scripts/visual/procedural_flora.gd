@@ -604,7 +604,10 @@ static func _build_stones(root: Node3D, seed: int) -> void:
 		var sz: float = s * _hrange(hcell + 7, 0.8, 1.3)
 		var sy: float = s * _hrange(hcell + 8, 0.35, 0.6)
 		var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sx, sy, sz))
-		var xf := Transform3D(basis, Vector3(px, gy + sy * 0.4, pz))
+		# Stone mesh is a unit sphere centred on its origin (half-height = 0.5*sy). Sit it
+		# low so it stays embedded in / flush with the ground on slopes rather than perched
+		# on a flat-ground assumption (the old +0.4*sy floated on relief).
+		var xf := Transform3D(basis, Vector3(px, gy + sy * 0.15, pz))
 		# Deterministic 50/50 shade split.
 		if (_h(hcell + 5) % 2) == 0:
 			xforms_a.append(xf)
@@ -718,6 +721,9 @@ static func _place_boulder(colliders: Node3D, buckets: Array, hseed: int,
 	# Rock_Medium models are ~1.4 m radius before scale; hug it a touch under the visual.
 	sh.radius = maxf(1.3 * sc, 0.6)
 	col.shape = sh
-	# Centre the sphere at ~rock mid-height so the navmesh routes around the base.
-	col.position = Vector3(0.0, sh.radius * 0.7, 0.0)
+	# Sit the sphere low so its BASE rests at/just-below the ground at the placement
+	# point (mesh origin ≈ rock base). A high centre (0.7×r) left the sphere floating
+	# on downhill slopes; 0.4×r keeps the base firmly grounded while the top still
+	# covers the rock body for the navmesh bake.
+	col.position = Vector3(0.0, sh.radius * 0.4, 0.0)
 	body.add_child(col)

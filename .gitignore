@@ -31,3 +31,6 @@ desktop.ini
 
 # Asset research scratch (downloads + screenshots; not shipped)
 /asset-research/
+
+# Debug screenshots (local)
+/debug_screens/

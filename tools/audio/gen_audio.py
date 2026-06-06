@@ -415,6 +415,56 @@ def gen_heartbeat() -> list[float]:
     return _fade(raw, 0.005, 0.01)
 
 
+def gen_water_splash() -> list[float]:
+    """Entering-water splash: a bright filtered-noise burst with a quick wet decay,
+    plus a low 'gloop' body so it reads as a heavy splash rather than static."""
+    dur = 0.55
+    # bright spray: bandpassed noise (highpass then lowpass) with fast decay
+    spray = _noise(dur, amp=1.0, seed=200)
+    spray = _highpass(spray, 600)
+    spray = _lowpass(spray, 6000)
+    spray = _adsr(spray, 0.003, 0.18, 0.12, 0.36)
+    # mid body: a quick downward 'gloop'
+    n = int(SAMPLE_RATE * dur)
+    gloop = []
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        f = 380 * math.exp(-t * 7)
+        gloop.append(0.5 * math.sin(2 * math.pi * f * i / SAMPLE_RATE))
+    gloop = _adsr(gloop, 0.002, 0.10, 0.0, 0.44)
+    # low sub thump on entry
+    sub = _noise(dur, amp=0.5, seed=201)
+    sub = _lowpass(sub, 220)
+    sub = _adsr(sub, 0.002, 0.08, 0.0, 0.46)
+    mixed = _mix(spray, gloop, sub)
+    return _fade(mixed, 0.002, 0.05)
+
+
+def gen_underwater() -> list[float]:
+    """Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,
+    everything lowpassed hard so it sounds like being underwater."""
+    dur = 4.0
+    n = int(SAMPLE_RATE * dur)
+    # deep rumble at ~45 Hz with slow wobble
+    rumble = []
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        mod = 0.5 * math.sin(2 * math.pi * 0.3 * t)
+        f = 45 + 5 * mod
+        rumble.append(0.5 * math.sin(2 * math.pi * f * i / SAMPLE_RATE))
+    # slow muffled noise surge (water moving past the ears)
+    surge = _noise(dur, amp=0.5, seed=210)
+    surge = _lowpass(surge, 350)
+    surge = _lowpass(surge, 350)   # extra pole — heavier muffle
+    # very slow amplitude swell on the surge
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        surge[i] *= 0.5 + 0.5 * (0.5 + 0.5 * math.sin(2 * math.pi * 0.18 * t))
+    sub = _sine(28, dur, amp=0.22)
+    mixed = _mix(rumble, surge, sub)
+    return _fade(mixed, 0.2, 0.2)
+
+
 def gen_ambient() -> list[float]:
     """
     Quiet evolving low drone/wind bed (loopable).
@@ -511,6 +561,9 @@ def main() -> None:
         ("heartbeat.wav",      gen_heartbeat),
         ("ambient.wav",        gen_ambient),
         ("music.wav",          gen_music),
+        # Water immersion (Lane B)
+        ("water_splash.wav",   gen_water_splash),
+        ("underwater.wav",     gen_underwater),
     ]
 
     generated = 0

@@ -189,18 +189,56 @@ static func _river_dist(x: float, z: float) -> float:
 			best = dprj
 	return best
 
-## River channel weight in [0,1]: 1 at the centerline, smoothstep to 0 across a ~3 m
-## bank. Used both to lower the bed (relative to the local banks, so the ford stays a
-## shallow RIVER_DEPTH step regardless of the underlying hills) and to color the bed.
+# ---------------------------------------------------------------- DEEP CHANNEL
+## Real DEEP river channel (Lane A overhaul). The river is no longer a flat 0.45 m ford —
+## it carves a genuine ~2.5 m channel (deep enough that a wading player's HEAD submerges →
+## the underwater camera fires) with WALKABLE ~33° banks so a CharacterBody3D wades DOWN into
+## it and back UP the far side (banks must NOT be cliffs → the player/AI can't cross the deep
+## middle, which is why the STONE ARCH bridge is the crossing).
+# 2.7 m NOMINAL so the REALIZED bed clears ≥2.0 m even after the discrete 1 m terrain grid
+# samples the curved centerline off-true (the nearest grid cell can sit ~0.5-0.7 m off the
+# true centerline, where the profile has already shed some depth). The flat-bottom band in
+# `_river_profile` keeps the very centre at FULL depth so a wading player's FEET land ≥2.0 m
+# below the water surface → head (feet+1.5) goes clearly UNDER → the underwater camera fires.
+const RIVER_MAX_DEPTH: float = 2.7          # channel depth at the centerline (m)
+# Horizontal run from centerline → channel edge over which the full RIVER_MAX_DEPTH drop
+# happens. The walkable BANK runs from the flat-bottom edge (RIVER_FLAT_HALF=1.2) to the
+# channel edge: run = 5.4 - 1.2 = 4.2 m, drop = 2.7 m ⇒ slope 0.643 ⇒ atan ≈ 32.7° banks
+# (walkable by a CharacterBody3D, < the 45° climb limit — players wade DOWN the near bank and
+# UP the far one, never cliff-stuck). Widened from 3.0 → 5.4 to keep the now-deeper banks ≤33°.
+const RIVER_CHANNEL_HALF: float = 5.4       # centerline → where the channel meets dry bank
+
+## Width of the FLAT BOTTOM band (each side of the centerline) held at FULL depth so the very
+## centre isn't rounded/V'd away — this is what guarantees a player standing anywhere within
+## ~1.4 m of the centerline gets the full RIVER_MAX_DEPTH drop (and survives the 1 m grid
+## sampling: the nearest grid cell to the true centre still lands inside the flat band).
+const RIVER_FLAT_HALF: float = 1.2
+
+## Cross-channel depth PROFILE in [0,1]: 1 across the FLAT-BOTTOM band (deepest), then a LINEAR
+## ramp 1→0 from the flat-band edge to the channel edge = constant-slope walkable banks. PURE.
+static func _river_profile(dist: float) -> float:
+	var ch: float = RIVER_CHANNEL_HALF
+	if dist >= ch:
+		return 0.0
+	# Flat bottom: full depth out to RIVER_FLAT_HALF so the bed is a real basin, not a V — a
+	# player standing within the band has feet at the full depth.
+	if dist <= RIVER_FLAT_HALF:
+		return 1.0
+	# Linear ramp 1→0 from the flat-band edge to the channel edge = constant-slope banks. The
+	# bank run is (ch - RIVER_FLAT_HALF); slope = RIVER_MAX_DEPTH / that run (see header math).
+	return 1.0 - (dist - RIVER_FLAT_HALF) / (ch - RIVER_FLAT_HALF)
+
+## River channel weight in [0,1]: how much (x,z) is "in the channel" — 1 in the deep
+## centre, smoothstep to 0 just past the channel edge. Used to blend terrain toward the
+## carved bed and to color the wet bed. Distinct from the DEPTH profile above.
 static func _river_t(x: float, z: float) -> float:
 	var dist: float = _river_dist(x, z)
-	var halfw: float = Settings.RIVER_WIDTH * 0.5
-	var bank: float = 3.0
-	return 1.0 - smoothstep(halfw, halfw + bank, dist)
+	return 1.0 - smoothstep(RIVER_CHANNEL_HALF - 0.6, RIVER_CHANNEL_HALF, dist)
 
-## Effective carve depth at (x,z) (for COLORING the wet bed only).
+## Effective carve depth at (x,z) in METRES below the local banks (used for COLORING the
+## wet bed and the riverbed material bands). PURE.
 static func _river_carve(x: float, z: float) -> float:
-	return Settings.RIVER_DEPTH * _river_t(x, z)
+	return RIVER_MAX_DEPTH * _river_profile(_river_dist(x, z))
 
 # ---------------------------------------------------------------- height field
 ## PURE height function. Other systems sample this; the mesh uses the identical math.
@@ -229,16 +267,61 @@ static func height_at(x: float, z: float) -> float:
 		var rock: float = _fbm(x * 0.18, z * 0.18) * 1.4
 		berm = ramp * (Settings.TERRAIN_RIM_HEIGHT + rock)
 	var raw: float = hills + berm
-	# --- river: lower the bed to RIVER_DEPTH BELOW the immediate banks (lerp toward
-	# `hills - RIVER_DEPTH`), so the channel is always a shallow walkable step relative to
-	# the surrounding ground — never a deep pit where the hills already dip. The berm is
-	# excluded from the bank baseline (the river never reaches the perimeter interior).
-	var rt: float = _river_t(x, z)
-	if rt > 0.0:
-		var bed: float = hills - Settings.RIVER_DEPTH
-		raw = lerp(raw, bed, rt)
+	# --- DEEP river channel: carve a real ~1.5 m channel BELOW the immediate banks, with
+	# walkable ~28° banks. The carve is the cross-channel depth profile (deepest at the
+	# centerline, 0 at the channel edge) subtracted from the *bank baseline* (`hills` — the
+	# berm is excluded, the river never reaches the perimeter). Because the profile is the
+	# local depth below the banks, the channel tracks the rolling hills instead of becoming
+	# a pit where the hills dip. Pads still win via the `open` blend below → the channel
+	# never crosses a building/extraction pad (it flattens to PAD_Y there).
+	var depth: float = RIVER_MAX_DEPTH * _river_profile(_river_dist(x, z))
+	if depth > 0.0:
+		raw = hills - depth + berm
 	var h: float = lerp(PAD_Y, raw, open)
 	return h
+
+# ---------------------------------------------------------------- water surface
+## How far the water plane sits BELOW the local bank top. The channel is ~2.7 m deep, so a
+## ~0.22 m freeboard fills it nearly to the surrounding ground level → you SEE deep water
+## in the channel (head-submerging at the centre), with the wet banks breaking the surface
+## at the waterline.
+const WATER_FREEBOARD: float = 0.22
+
+## Bank-baseline height at (x,z): the dry-ground level the river channel is carved BELOW,
+## i.e. `height_at` with the channel carve removed (hills + berm + pad blend). This is the
+## top of the channel banks, so the water plane is derived from it. PURE.
+static func _bank_top(x: float, z: float) -> float:
+	if not _pads_ready:
+		_collect_pads({})
+	var pad: float = _pad_w(x, z)
+	var open: float = 1.0 - pad
+	const PAD_Y := -0.05
+	if open <= 0.0001:
+		return PAD_Y
+	var freq: float = 1.0 / 32.0
+	var hills: float = _fbm(x * freq, z * freq) * Settings.TERRAIN_HILL_AMP
+	var edge: float = max(abs(x), abs(z))
+	var berm: float = 0.0
+	if edge > RIM_INNER:
+		var ramp: float = smoothstep(RIM_INNER, RIM_OUTER, edge)
+		var rock: float = _fbm(x * 0.18, z * 0.18) * 1.4
+		berm = ramp * (Settings.TERRAIN_RIM_HEIGHT + rock)
+	return lerp(PAD_Y, hills + berm, open)
+
+## FROZEN CONTRACT (Lane B consumes this). Returns the world-Y of the WATER PLANE where
+## (x,z) is over the river channel, else NAN. The plane sits WATER_FREEBOARD below the
+## local bank top so the carved channel reads as filled with deep water up to ~ground
+## level. Consistent with the water mesh built in _build_water. PURE — no time/random.
+static func water_surface_at(x: float, z: float) -> float:
+	# Only over the channel (within the channel half-extent + a hair for the waterline).
+	if _river_dist(x, z) >= RIVER_CHANNEL_HALF:
+		return NAN
+	# The river never crosses a pad — if a pad fully flattens here, there's no channel.
+	if not _pads_ready:
+		_collect_pads({})
+	if _pad_w(x, z) > 0.6:
+		return NAN
+	return _bank_top(x, z) - WATER_FREEBOARD
 
 # ---------------------------------------------------------------- vertex color
 ## Returns the authored palette blend in **sRGB** space (the natural countryside colors).
@@ -248,15 +331,15 @@ static func height_at(x: float, z: float) -> float:
 ## path (kept for any caller), but the rendered ground uses the texture.
 static func _color_srgb(x: float, z: float, h: float, slope: float) -> Color:
 	var carve: float = _river_carve(x, z)
-	# Riverbed → wet dark.
-	if carve > 0.20:
-		return C_WET.lerp(C_DIRT, clamp(1.0 - carve / Settings.RIVER_DEPTH, 0.0, 1.0))
-	# Narrow WET PEBBLE band at the waterline edge (carve ~0.05-0.20 m): the damp,
-	# darker grey-brown shoreline where the channel meets the dry bank — kills the hard
-	# colour seam («провалы в текстурах на границе реки») the old code showed.
-	if carve > 0.05:
-		var bandw: float = smoothstep(0.05, 0.13, carve) * (1.0 - smoothstep(0.16, 0.20, carve))
-		var grass_edge: Color = C_GRASS.lerp(C_PEBBLE, smoothstep(0.05, 0.10, carve))
+	# Submerged riverbed → wet dark. The bed is now ~1.5 m deep: darkest/wettest at the
+	# centre, grading to the damp pebble band as it shallows toward the waterline.
+	if carve > 0.30:
+		return C_WET.lerp(C_PEBBLE, clamp(1.0 - (carve - 0.30) / 1.0, 0.0, 1.0))
+	# Damp WET PEBBLE shoreline (carve ~0.06-0.30 m): the band the water laps where the
+	# channel meets the dry bank — kills the hard colour seam at the river edge.
+	if carve > 0.06:
+		var bandw: float = smoothstep(0.06, 0.16, carve)
+		var grass_edge: Color = C_GRASS.lerp(C_PEBBLE, smoothstep(0.06, 0.14, carve))
 		return grass_edge.lerp(C_PEBBLE, clamp(bandw, 0.0, 1.0))
 	var c: Color = C_GRASS
 	# Mid elevation → dirt, but only on genuinely RAISED ground (hilltops > ~3 m), so the
@@ -682,17 +765,18 @@ static func _resample_centerline() -> Array[Vector2]:
 	return out
 
 static func _build_water(root: Node3D) -> void:
-	# A ribbon following a Catmull-Rom-smoothed river centerline at y≈-0.12, sampled
-	# every ~2.5 m with MITERED joints (no fold gaps at corners) and UVs (U across,
-	# V = arclength/3) so the shader can flow water downstream. Render-only (no collision).
+	# A ribbon following a Catmull-Rom-smoothed river centerline that FILLS the deep carved
+	# channel: every vertex sits at water_surface_at (≈ local bank top − WATER_FREEBOARD),
+	# spanning the full channel half-extent so the surface meets the wet banks at the
+	# waterline. Sampled every ~2.5 m with MITERED joints (no fold gaps at corners) and UVs
+	# (U across, V = arclength/3) so the shader flows water downstream. Render-only.
 	var shader: Shader = load("res://shaders/water.gdshader")
 	var smat := ShaderMaterial.new()
 	if shader != null:
 		smat.shader = shader
-	# Half-width 2.9 m: edge sits where the carve still has ~0.3 m of depth, never over
-	# the dry bank (the old 3.1 overhang made floating water).
-	var off_edge: float = 2.9
-	var off_mid: float = 1.2
+	# Half-width = the channel half-extent so the plane reaches the waterline on the banks.
+	var off_edge: float = RIVER_CHANNEL_HALF
+	var off_mid: float = RIVER_CHANNEL_HALF * 0.42
 	var samples: Array[Vector2] = _resample_centerline()
 	var ns: int = samples.size()
 
@@ -735,19 +819,20 @@ static func _build_water(root: Node3D) -> void:
 	var offs: Array[float] = [-off_edge, -off_mid, off_mid, off_edge]
 	var us: Array[float] = [0.0, (off_edge - off_mid) / (2.0 * off_edge),
 		(off_edge + off_mid) / (2.0 * off_edge), 1.0]
-	# Edge verts y=-0.10, center verts y=-0.14 (subtle camber). |U-0.5| → camber.
+	# The water plane Y comes from the FROZEN water_surface_at contract so the mesh and the
+	# pure function agree exactly. The flat plane is sampled at the CENTERLINE (one Y per
+	# section) so the surface is a level pool filling the channel — the edges meet the wet
+	# banks at the waterline rather than tilting with the cross-section.
 	# section vertex cache: store the 4 world verts per section so we stitch quads.
 	var sect: Array = []   # Array of Array[Vector3] (4 each)
 	for i in range(ns):
+		var cy: float = _bank_top(samples[i].x, samples[i].y) - WATER_FREEBOARD
 		var row: Array[Vector3] = []
 		for j in range(4):
 			var o: float = offs[j] * miters[i]
 			var wx: float = samples[i].x + perps[i].x * o
 			var wz: float = samples[i].y + perps[i].y * o
-			# Camber: edges (-0.10) → center (-0.14). U=0/1 → edge, U=0.5 → center.
-			var camber: float = 1.0 - abs(us[j] - 0.5) * 2.0   # 0 at edge, 1 at center
-			var wy: float = lerp(-0.10, -0.14, camber)
-			row.append(Vector3(wx, wy, wz))
+			row.append(Vector3(wx, cy, wz))
 		sect.append(row)
 
 	# Stitch 3 quads between consecutive sections (CW-from-above winding for Godot front
@@ -873,12 +958,15 @@ static func _build_river_props(root: Node3D) -> void:
 		flow = Vector2(0.0, 1.0)
 	var span_dir := Vector2(-flow.y, flow.x)
 	var ang_deg: float = rad_to_deg(atan2(span_dir.y, span_dir.x))
-	_build_bridge(container, Vector3(cross.x, 0.0, cross.y), ang_deg)
+	# Anchor the bridge at the local bank-top Y so its ramps meet the dry banks and its arch
+	# clears the water surface in the channel below.
+	var bridge_y: float = _bank_top(cross.x, cross.y)
+	_build_bridge(container, Vector3(cross.x, bridge_y, cross.y), ang_deg, span_dir)
 
 	# --- stepping stones at a ford further down (~z = 38).
 	var ford := Vector2(16.0, 38.0)
 	var plank_mat := StandardMaterial3D.new()
-	plank_mat.albedo_color = Color(0.36, 0.36, 0.38)
+	plank_mat.albedo_color = Color(0.50, 0.50, 0.52)   # weathered grey stone
 	plank_mat.roughness = 0.95
 	# Perpendicular row of 4 stones across the channel.
 	var fidx: int = 0
@@ -893,43 +981,114 @@ static func _build_river_props(root: Node3D) -> void:
 	if fflow.length() < 0.01:
 		fflow = Vector2(0.0, 1.0)
 	var fperp := Vector2(-fflow.y, fflow.x)
-	for s in range(4):
-		var off: float = (float(s) - 1.5) * (Settings.RIVER_WIDTH / 3.2)
+	# Water surface at the ford → stones are tall blocks rising from the deep bed and
+	# breaking ~0.35 m above the surface so they're a real (if precarious) 2nd crossing.
+	var ford_surf: float = _bank_top(ford.x, ford.y) - WATER_FREEBOARD
+	var stone_top: float = ford_surf + 0.35
+	var stone_h: float = 3.2   # tall enough to rise from the now ~2.7 m-deep bed and break the surface
+	for s in range(5):
+		var off: float = (float(s) - 2.0) * (RIVER_CHANNEL_HALF * 2.0 / 4.6)
 		var sp: Vector2 = ford + fperp * off
-		var sy: float = -Settings.RIVER_DEPTH + 0.10   # just breaking the surface
-		_solid_box(container, Vector3(1.4, 0.5, 1.4), plank_mat,
-			Vector3(sp.x, sy, sp.y))
+		_solid_box(container, Vector3(1.4, stone_h, 1.4), plank_mat,
+			Vector3(sp.x, stone_top - stone_h * 0.5, sp.y))
 
-## Collidable footbridge — deck planks + two side rails, centered at `pos`, rotated
-## `ang_deg` about Y so it spans the river. Uses a local _solid_box copy (Procedural
-## Buildings._solid not imported to keep this lane self-contained).
-static func _build_bridge(parent: Node3D, pos: Vector3, ang_deg: float) -> void:
+## STONE ARCH bridge — replaces the flat wooden footbridge. A raised arched deck of stone
+## blocks rises in an arc above the water with low parapet walls and GENTLE RAMP APPROACHES
+## from both banks up to the crown, so the navmesh bakes a continuous walkable path
+## bank→crown→bank (the ONLY AI crossing of the deep channel). Centered at `pos` (the local
+## bank top), rotated `ang_deg` about Y so local +Z spans the river. `span_world` is the
+## world-XZ span unit vector, used to anchor each ramp end to its bank's real ground height.
+static func _build_bridge(parent: Node3D, pos: Vector3, ang_deg: float, span_world: Vector2) -> void:
 	var bridge := Node3D.new()
-	bridge.name = "Footbridge"
+	bridge.name = "StoneArchBridge"
 	bridge.transform = Transform3D(Basis.from_euler(Vector3(0.0, deg_to_rad(ang_deg), 0.0)), pos)
 	parent.add_child(bridge)
 
-	var wood := StandardMaterial3D.new()
-	wood.albedo_color = Color(0.30, 0.22, 0.14)
-	wood.roughness = 0.95
-	var wood_dark := StandardMaterial3D.new()
-	wood_dark.albedo_color = Color(0.20, 0.15, 0.10)
-	wood_dark.roughness = 0.95
+	# Weathered grey stone (ProcMaterials gives noise/triplanar relief). Fallback-safe: if
+	# the helper is unavailable the call still returns a StandardMaterial3D.
+	var stone: StandardMaterial3D = ProcMaterials.weathered(Color(0.50, 0.50, 0.52), 0.0, 0.9, 0.6)
+	var stone_dark: StandardMaterial3D = ProcMaterials.weathered(Color(0.40, 0.40, 0.43), 0.0, 0.92, 0.7)
 
-	var length: float = Settings.RIVER_WIDTH + 5.0   # spans the channel + banks
-	var width: float = 2.4
-	var deck_y: float = 0.18
-	# Deck (single solid slab so AI/raycasts treat it as ground).
-	_solid_box(bridge, Vector3(width, 0.25, length), wood, Vector3(0.0, deck_y, 0.0))
-	# Two side rails (posts + top rail).
+	var width: float = 3.2                 # deck width (generous so AI paths cross easily)
+	var half_len: float = 8.0              # local Z ∈ [-8, +8] — ramps reach onto both banks
+	var crown_rise: float = 1.15           # crown height above `pos.y` (≈ bank top)
+	var seg_len: float = 1.6               # deck segment length along the span
+	var deck_th: float = 0.45              # deck slab thickness
+
+	# Arch height profile along local Z (parabola): 0 at the ends (bank level), crown_rise at
+	# the centre. Rise 1.15 m over 8 m run ⇒ max ramp slope ≈ atan(2*1.15/8)=16° (≤30°, no
+	# steps > 0.5 m) so the deck is one continuous walkable surface bank→crown→bank.
+	# Anchor each END to its bank's real ground height so the ramp foot meets the terrain.
+	var end_a_world: Vector2 = Vector2(pos.x, pos.z) - span_world * half_len
+	var end_b_world: Vector2 = Vector2(pos.x, pos.z) + span_world * half_len
+	var drop_a: float = _bank_top(end_a_world.x, end_a_world.y) - pos.y   # bank height vs centre
+	var drop_b: float = _bank_top(end_b_world.x, end_b_world.y) - pos.y
+
+	# Lay overlapping deck segments. Each segment is tilted to follow the local arch slope so
+	# the top faces form a smooth continuous ramp (collidable layer-1 blocks → navmesh bakes).
+	var n_seg: int = int(round((half_len * 2.0) / seg_len))
+	for s in range(n_seg):
+		var z0: float = -half_len + float(s) * seg_len
+		var z1: float = z0 + seg_len
+		var zc: float = (z0 + z1) * 0.5
+		var y0: float = _arch_y(z0, half_len, crown_rise, drop_a, drop_b)
+		var y1: float = _arch_y(z1, half_len, crown_rise, drop_a, drop_b)
+		var yc: float = (y0 + y1) * 0.5
+		var dy: float = y1 - y0
+		var seg_pitch: float = atan2(dy, seg_len)         # tilt to follow the slope
+		# Segment slightly longer than seg_len so consecutive blocks overlap (no gap seam the
+		# navmesh could reject). Box centred at (0, yc, zc), pitched about local X.
+		var bm := BoxMesh.new()
+		bm.size = Vector3(width, deck_th, seg_len * 1.18)
+		var mi := MeshInstance3D.new()
+		mi.mesh = bm
+		mi.material_override = stone
+		var body := StaticBody3D.new()
+		body.collision_layer = 1
+		body.collision_mask = 0
+		body.transform = Transform3D(Basis.from_euler(Vector3(-seg_pitch, 0.0, 0.0)),
+			Vector3(0.0, yc, zc))
+		mi.transform = Transform3D.IDENTITY
+		body.add_child(mi)
+		var col := CollisionShape3D.new()
+		var sh := BoxShape3D.new()
+		sh.size = bm.size
+		col.shape = sh
+		body.add_child(col)
+		bridge.add_child(body)
+
+	# Two ABUTMENT/PILLAR blocks dropping into the channel under the crown — pure look (and
+	# they read as a stone arch's supports). Taller now (3.8 m) so they reach the deeper
+	# ~2.7 m bed instead of floating above it.
+	for pzc in [-half_len * 0.45, half_len * 0.45]:
+		var py: float = _arch_y(pzc, half_len, crown_rise, drop_a, drop_b)
+		_solid_box(bridge, Vector3(width * 0.7, 3.8, 1.1), stone_dark,
+			Vector3(0.0, py - deck_th * 0.5 - 1.9, pzc))
+	# A central keystone pier under the crown for the classic arch silhouette — extended down
+	# to the deep bed (crown ≈ +1.15 above bank, bed ≈ -2.7 below ⇒ ~4.4 m of pier).
+	_solid_box(bridge, Vector3(width * 0.55, 4.4, 1.4), stone_dark,
+		Vector3(0.0, crown_rise - deck_th * 0.5 - 2.2, 0.0))
+
+	# Low parapet walls on BOTH sides, following the arch so they ride the deck. Built from
+	# short segments so they curve with the crown and never block the walkable top.
 	for sgn in [-1.0, 1.0]:
-		var rx: float = sgn * (width * 0.5 - 0.1)
-		_solid_box(bridge, Vector3(0.12, 0.9, length), wood_dark,
-			Vector3(rx, deck_y + 0.55, 0.0))
-		# A couple of vertical posts for silhouette.
-		for pz in [-length * 0.3, 0.0, length * 0.3]:
-			_solid_box(bridge, Vector3(0.16, 0.9, 0.16), wood_dark,
-				Vector3(rx, deck_y + 0.55, pz))
+		var rx: float = sgn * (width * 0.5 - 0.18)
+		for s in range(n_seg):
+			var z0p: float = -half_len + float(s) * seg_len
+			var zcp: float = z0p + seg_len * 0.5
+			var yp: float = _arch_y(zcp, half_len, crown_rise, drop_a, drop_b)
+			_solid_box(bridge, Vector3(0.36, 0.7, seg_len * 1.05), stone_dark,
+				Vector3(rx, yp + deck_th * 0.5 + 0.35, zcp))
+
+## Arch height profile (local Z → local Y) for the stone bridge. Parabola peaking at the
+## crown (z=0), descending to each bank end's real ground height (drop_a/drop_b at z=∓len).
+## PURE. The slope stays ≤ ~16° given crown_rise≈1.15 over len≈8 ⇒ walkable for AI + player.
+static func _arch_y(z: float, half_len: float, crown_rise: float, drop_a: float, drop_b: float) -> float:
+	var t: float = clamp(abs(z) / half_len, 0.0, 1.0)
+	var arch: float = crown_rise * (1.0 - t * t)        # parabola: crown at z=0, 0 at ends
+	# Blend the end anchor (so the ramp foot sits on the actual bank) toward the arch crown.
+	var end_drop: float = drop_b if z >= 0.0 else drop_a
+	return arch + end_drop * (t * t)
 
 ## Local copy of the ProceduralBuildings `_solid` idiom: a box that BOTH renders and
 ## collides (StaticBody3D + BoxShape3D on layer 1) so the navmesh bakes around it.
