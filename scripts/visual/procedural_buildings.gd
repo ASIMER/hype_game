@@ -28,23 +28,27 @@ class_name ProceduralBuildings
 ## stains run down; `weathered()` (broad grime mask) for slabs/roofs/horizontals.
 
 ## Light worn concrete — broad grime, fully matte. Used for general walls/piers.
+## Fine normal map + boosted relief (last arg) for crisp, detailed up-close concrete.
 static func mat_concrete(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.40, 0.40, 0.42), 0.0, 0.92, 0.5, sid * 7 + 3)
+	return ProcMaterials.streaked(Color(0.40, 0.40, 0.42), 0.0, 0.92, 0.5,
+		sid * 7 + 3, 0.7, true)
 
-## Darker concrete for slabs/floors/roofs — horizontal grime (not streaked).
+## Darker concrete for slabs/floors/roofs — horizontal grime (not streaked) + relief.
 static func mat_concrete_dark(sid: int = 0) -> StandardMaterial3D:
 	return ProcMaterials.weathered(Color(0.27, 0.28, 0.30), 0.0, 0.94, 0.45,
-		sid * 13 + 5, Vector3(0.14, 0.14, 0.14), true)
+		sid * 13 + 5, Vector3(0.13, 0.13, 0.13), true, 0.7, true)
 
-## Stained warehouse concrete — heavier dirt streaks.
+## Stained warehouse concrete — heavier dirt streaks + relief.
 static func mat_concrete_stained(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.33, 0.32, 0.30), 0.05, 0.9, 0.38, sid * 17 + 9)
+	return ProcMaterials.streaked(Color(0.33, 0.32, 0.30), 0.05, 0.9, 0.38,
+		sid * 17 + 9, 0.7, true)
 
 ## Mottled rust — broad noise so the corrosion patches read as blotchy, not striped.
-## Moderate metallic + mid roughness so SDFGI reflections still catch.
+## Moderate metallic + mid roughness so SDFGI reflections still catch. Strong normal
+## relief for pitted, corroded depth (heightmap POM is unavailable on triplanar).
 static func mat_rust(sid: int = 0) -> StandardMaterial3D:
 	return ProcMaterials.weathered(Color(0.46, 0.26, 0.16), 0.3, 0.6, 0.4,
-		sid * 23 + 1, Vector3(0.12, 0.12, 0.12), true)
+		sid * 23 + 1, Vector3(0.12, 0.12, 0.12), true, 0.8, true)
 
 ## Dirtier structural metal — kept semi-reflective (metallic ~0.45, roughness ~0.55)
 ## so it reads as worn steel and SDFGI bounces off it.
@@ -58,10 +62,11 @@ static func mat_metal_dark(sid: int = 0) -> StandardMaterial3D:
 		sid * 31 + 2, Vector3(0.10, 0.10, 0.10), true)
 
 static func mat_glass() -> StandardMaterial3D:
-	# Dark window glass with a faint cold emission so windows read at dusk. Kept flat
-	# (no grime) via _mat so the emission path is preserved.
-	return ProceduralModels._mat(Color(0.07, 0.09, 0.12), 0.6, 0.15,
-		Color(0.10, 0.16, 0.22), 0.5)
+	# Cool reflective window glass that READS as a window in daylight from outside:
+	# lighter cool albedo + low roughness/moderate metallic for sky reflection, plus a
+	# faint cold emission so panes still glow at dusk. Kept flat (no grime) via _mat.
+	return ProceduralModels._mat(Color(0.35, 0.45, 0.55), 0.4, 0.1,
+		Color(0.12, 0.18, 0.24), 0.6)
 
 static func mat_container(sid: int) -> StandardMaterial3D:
 	# Pick a faded shipping-container color deterministically from seed, then weather
@@ -75,7 +80,8 @@ static func mat_container(sid: int) -> StandardMaterial3D:
 	]
 	var idx: int = _h(sid) % palette.size()
 	var c: Color = palette[idx]
-	return ProcMaterials.streaked(c, 0.2, 0.7, 0.42, sid * 37 + 6)
+	# Corrugated baked normal/albedo ribs (vertical, ~8 cm pitch) with rust streaks.
+	return ProcMaterials.corrugated(c, sid * 37 + 6)
 
 # ---------------------------------------------------------------- seed helper
 ## Cheap deterministic positive hash of an int → big positive int.
@@ -120,6 +126,27 @@ static func _decor(parent: Node3D, size: Vector3, mat: StandardMaterial3D,
 		offset: Vector3, rot_deg: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	return ProceduralModels._part(parent, ProceduralModels._box(size), mat, offset, rot_deg)
 
+## A warm interior ceiling lamp at `pos`: a render-only fixture (dark housing disc +
+## an emissive warm-glowing disc) PLUS a real OmniLight3D so robots indoors are clearly
+## lit/readable. No collision (pure render + light node). `sid` only varies the housing
+## grime seed; placement is fully deterministic from the caller.
+static func _light_fixture(parent: Node3D, pos: Vector3, sid: int) -> void:
+	# Dark housing (thin flat cylinder) hanging at the ceiling.
+	var housing := mat_metal_dark(sid * 3 + 1)
+	ProceduralModels._part(parent, ProceduralModels._cyl(0.32, 0.12), housing, pos)
+	# Emissive warm disc just below the housing (the visible "bulb").
+	var glow := ProcMaterials.emissive(Color(1.0, 0.85, 0.55), 2.6)
+	ProceduralModels._part(parent, ProceduralModels._cyl(0.24, 0.06), glow,
+		pos + Vector3(0.0, -0.08, 0.0))
+	# The actual light source.
+	var light := OmniLight3D.new()
+	light.position = pos + Vector3(0.0, -0.1, 0.0)
+	light.shadow_enabled = false
+	light.light_color = Color(1.0, 0.86, 0.6)
+	light.light_energy = Settings.INTERIOR_LIGHT_ENERGY
+	light.omni_range = Settings.INTERIOR_LIGHT_RANGE
+	parent.add_child(light)
+
 # ================================================================ LOW-LEVEL PIECES
 
 ## A wall PANEL of given length (X) × height (Y) × thickness (Z), built feet-up so
@@ -145,10 +172,17 @@ static func wall(length: float, height: float, thickness: float, mat: StandardMa
 		if lintel_h > 0.05:
 			_solid(root, Vector3(dw, lintel_h, thickness), mat,
 				Vector3(0.0, dh + lintel_h * 0.5, 0.0))
+		# Small emissive door lamp beside the door (render-only, no OmniLight) so the
+		# entrance reads at night/storm. Sits just outside the wall face, +X side.
+		var lamp_mat := ProcMaterials.emissive(Color(1.0, 0.82, 0.5), 2.4)
+		_decor(root, Vector3(0.18, 0.3, 0.12), lamp_mat,
+			Vector3(dw * 0.5 + 0.35, dh * 0.85, thickness * 0.5 + 0.06))
 	elif with_window:
-		# Window band: sill (0.0..1.0), opening (1.0..2.0), header (2.0..height).
-		var sill_h: float = min(1.0, height * 0.35)
-		var win_h: float = min(1.1, max(0.4, height - sill_h - 0.6))
+		# Window band: low sill, a TALL opening, slim header. Lowered sill + raised max
+		# opening height so windows read clearly from outside and let far more sky/sun
+		# light in (every opening is a genuine hole → more SDFGI/sun bounce indoors).
+		var sill_h: float = min(0.9, height * 0.3)
+		var win_h: float = min(1.4, max(0.4, height - sill_h - 0.5))
 		var head_y: float = sill_h + win_h
 		var ww: float = min(length * 0.5, 1.6)
 		var pier: float = (length - ww) * 0.5
@@ -280,7 +314,9 @@ static func build_tower(footprint: Vector2) -> Node3D:
 	_place(root, floor_slab(w, d, conc_d), Vector3(0, 0.0, 0))
 	for s in range(storeys):
 		var y: float = s * sh
-		var win: bool = s > 0
+		# Every storey (incl. the ground floor) gets windows now → daylight reaches the
+		# interior and the ground floor no longer reads as a dark box.
+		var win := true
 		# Per-storey concrete so the grime streaks differ band-to-band.
 		var conc := mat_concrete(s * 5 + 1)
 		# Four perimeter walls per storey (front has a door on storey 0).
@@ -289,6 +325,8 @@ static func build_tower(footprint: Vector2) -> Node3D:
 		_place_wall(root, w, sh, th, conc, Vector3(0, y, d * 0.5 - th * 0.5), 0.0, win, false)
 		_place_wall(root, d, sh, th, conc, Vector3(-w * 0.5 + th * 0.5, y, 0), 90.0, win, false)
 		_place_wall(root, d, sh, th, conc, Vector3(w * 0.5 - th * 0.5, y, 0), 90.0, win, false)
+		# Warm ceiling lamp per storey, centered just under this storey's ceiling slab.
+		_light_fixture(root, Vector3(0.0, y + sh - 0.35, 0.0), 100 + s)
 		# Floor slab above each storey (the next storey's floor / final roof handled after).
 		if s < storeys - 1:
 			_place(root, floor_slab(w - 0.4, d - 0.4, conc_d), Vector3(0, (s + 1) * sh, 0))
@@ -325,8 +363,17 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 			_place_wall(root, seg, h, th, conc, Vector3(-w * 0.5 + th * 0.5, 0, cz), 90.0, true, false)
 			_place_wall(root, seg, h, th, conc, Vector3(w * 0.5 - th * 0.5, 0, cz), 90.0, true, false)
 			# Roof wing only over the closed (north) portion, leaving center open.
+			var wing_cz: float = -COURT_CLEAR - (d * 0.5 - COURT_CLEAR) * 0.5 + 0.25
 			_place(root, roof(w, d * 0.5 - COURT_CLEAR + 0.5, mat_metal_dark(int(w))),
-				Vector3(0, h, -COURT_CLEAR - (d * 0.5 - COURT_CLEAR) * 0.5 + 0.25))
+				Vector3(0, h, wing_cz))
+			# Two hanging warm lamps under the roof wing (thin rod + fixture) so the
+			# covered back of the shed is readable. Rod drops ~0.6 m from the roof.
+			var rod := mat_metal_dark(int(w) + 71)
+			var lz: Array[float] = [wing_cz - 2.0, wing_cz + 2.0]
+			for i in range(lz.size()):
+				var lx: float = (float(i) - 0.5) * w * 0.3
+				_decor(root, Vector3(0.08, 0.6, 0.08), rod, Vector3(lx, h - 0.5, lz[i]))
+				_light_fixture(root, Vector3(lx, h - 0.85, lz[i]), 300 + i)
 		# Stacked containers along the back as cover (clear of center).
 		_place(root, container(3.0, 2.6, 6.0, mat_container(7)),
 			Vector3(-w * 0.5 + 2.0, 0, -d * 0.5 + 4.0))
@@ -369,6 +416,10 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 			_place(root, floor_slab(w - 0.2, wing_d, conc_d), Vector3(0, sh, wing_cz))
 			_place_wall(root, w, sh, th, brick, Vector3(0, sh, -d * 0.5 + th * 0.5), 0.0, true, false)
 			_place(root, roof(w, wing_d, conc_d), Vector3(0, sh * 2.0, wing_cz))
+			# Lamp under the upper-wing ceiling (lights the closed back room).
+			_light_fixture(root, Vector3(0.0, sh * 2.0 - 0.35, wing_cz), 220)
+		# Ground-floor lamp toward the closed (back) side so the open shell is lit.
+		_light_fixture(root, Vector3(0.0, sh - 0.35, -COURT_CLEAR * 0.6), 221)
 	else:
 		_place_wall(root, d, sh, th, brick, Vector3(-w * 0.5 + th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, d, sh, th, brick, Vector3(w * 0.5 - th * 0.5, 0, 0), 90.0, true, false)
@@ -382,6 +433,9 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 		# Stepped roof (pitched look).
 		_place(root, roof(w, d, conc_d), Vector3(0, sh * 2.0, 0))
 		_place(root, roof(w * 0.6, d * 0.6, conc_d), Vector3(0, sh * 2.0 + 0.4, 0))
+		# One warm lamp per floor (ground + upper).
+		_light_fixture(root, Vector3(0.0, sh - 0.35, 0.0), 222)
+		_light_fixture(root, Vector3(0.0, sh * 2.0 - 0.35, 0.0), 223)
 	return root
 
 ## PLAZA cover: a low open-air structure for the central plaza — a cluster of waist/
@@ -450,6 +504,13 @@ static func build_container_yard(footprint: Vector2, courtyard: bool = true) -> 
 				Vector3(cx + jitter, lv * ch, cz))
 	# A couple of rubble piles in open corners for ground detail (clear of center).
 	_place(root, rubble_pile(sd_seed(1)), Vector3(-ed_x * 0.4, 0, ed_z * 0.6))
+	# A pole lamp lighting the container area (3 m pole + fixture), placed just OUTSIDE
+	# the keep-clear square so the evac zone stays open. Render-only pole + OmniLight.
+	var pole_x: float = COURT_CLEAR + 1.5
+	var pole_z: float = COURT_CLEAR + 1.5
+	var pole_mat := mat_metal_dark(int(w + d) + 41)
+	_decor(root, Vector3(0.16, 3.0, 0.16), pole_mat, Vector3(pole_x, 1.5, pole_z))
+	_light_fixture(root, Vector3(pole_x, 3.0, pole_z), 400)
 	return root
 
 ## Tiny deterministic seed source so rubble varies per call site.

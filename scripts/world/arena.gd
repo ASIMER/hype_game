@@ -23,10 +23,15 @@ func _ready() -> void:
 	# Discoverable by the map UI (which is nested elsewhere and can't reach us via
 	# current_scene) for POI/zone-of-interest labels.
 	add_to_group("arena")
+	# Procedural TERRAIN first (hills/river/perimeter cliffs replace the flat Ground
+	# plane) so buildings sit on its flat y=0 pads and the navmesh bakes the relief.
+	_build_terrain()
 	# Replace the crude hand-placed cube "buildings" with procedural modular
 	# structures BEFORE baking so the navmesh routes around the new geometry.
 	_build_poi_structures()
 	_enrich_ground()
+	# Flora (trees/grass/boulders) after structures; collidable pieces join the bake.
+	_build_flora()
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
 	_bake_navmesh.call_deferred()
 	# Wave director (server-only logic guarded inside the script). Child of Arena
@@ -57,6 +62,42 @@ func _on_enemy_replicated(node: Node) -> void:
 		return
 	print("[net] enemy '%s' present under Net/Enemies on peer %d" % [
 		node.name, multiplayer.get_unique_id()])
+
+# ------------------------------------------------- procedural terrain + flora hooks
+## Both builders are GUARDED (load-by-path, no class_name reference) so the arena
+## runs before/without those workstreams landing. CONTRACT with the lanes:
+##   ProceduralTerrain.build(parent, poi_defs) -> Node3D  (static; adds itself under
+##     parent; ALL pads — POI footprints / extraction zones / spawn cluster / plaza /
+##     scatter spots — blend to EXACTLY y=0 so markers, zones and buildings keep their
+##     authored heights; deterministic from Settings.TERRAIN_SEED only)
+##   ProceduralTerrain.height_at(x, z) -> float           (static, pure)
+##   ProceduralFlora.build(parent) -> Node3D               (static; deterministic;
+##     reads height_at itself; collidable pieces on layer 1 so the bake parses them)
+func _build_terrain() -> void:
+	var path := "res://scripts/visual/procedural_terrain.gd"
+	if not ResourceLoader.exists(path):
+		return
+	var script: GDScript = load(path)
+	if script == null:
+		return
+	var terrain: Node3D = script.build(nav_region, _POI_DEFS)
+	if terrain == null:
+		return
+	# The terrain REPLACES the flat Ground plane (render + collision). Remove the old
+	# plane from the tree immediately so the deferred navmesh bake never parses it.
+	var ground := nav_region.get_node_or_null("Ground")
+	if ground:
+		nav_region.remove_child(ground)
+		ground.queue_free()
+
+func _build_flora() -> void:
+	var path := "res://scripts/visual/procedural_flora.gd"
+	if not ResourceLoader.exists(path):
+		return
+	var script: GDScript = load(path)
+	if script == null:
+		return
+	script.build(nav_region)
 
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a
