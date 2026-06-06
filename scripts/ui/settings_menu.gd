@@ -24,6 +24,23 @@ signal closed
 @onready var _fov: HSlider = $Panel/Root/Content/GraphicsPage/V/FovRow/Fov
 @onready var _fov_value: Label = $Panel/Root/Content/GraphicsPage/V/FovRow/FovValue
 @onready var _preset: OptionButton = $Panel/Root/Content/GraphicsPage/V/PresetRow/Preset
+@onready var _graphics_v: VBoxContainer = $Panel/Root/Content/GraphicsPage/V
+
+# --- quality lever controls (built programmatically in _build_quality_rows) ---
+var _render_scale: HSlider
+var _render_scale_value: Label
+var _toggle_sdfgi: CheckButton
+var _toggle_ssao: CheckButton
+var _toggle_glow: CheckButton
+var _toggle_clouds: CheckButton
+var _toggle_water: CheckButton
+var _grass_density: HSlider
+var _grass_density_value: Label
+
+# --- stats overlay controls (built programmatically) ---
+var _show_fps: CheckButton
+var _show_detailed: CheckButton
+var _stats_mode: OptionButton
 
 # --- audio controls ---
 @onready var _master: HSlider = $Panel/Root/Content/AudioPage/MasterRow/Master
@@ -54,6 +71,7 @@ var _syncing := false
 
 func _ready() -> void:
 	_populate_options()
+	_build_quality_rows()
 	_populate_keybinds()
 	_wire()
 	sync_from_settings()
@@ -95,7 +113,7 @@ func _populate_options() -> void:
 		_shadows.add_item(s)
 
 	_preset.clear()
-	for s in ["Low", "Medium", "High"]:
+	for s in ["Low", "Medium", "High", "Ultra", "Custom"]:
 		_preset.add_item(s)
 
 	_aim_mode.clear()
@@ -120,6 +138,120 @@ func _populate_keybinds() -> void:
 		_keybinds.add_child(row)
 
 
+# Builds the manual quality-lever rows + the stats-overlay section programmatically,
+# appending to the graphics page VBox (which already lives inside a ScrollContainer).
+func _build_quality_rows() -> void:
+	var accent := Color(0.247, 0.71, 0.79, 1)
+	var next_raid := "(applies next raid)"
+
+	# Section header for the manual levers.
+	_graphics_v.add_child(_make_header("ADVANCED QUALITY", accent))
+
+	# Render Scale slider.
+	var rs_row := _make_slider_row("Render Scale", 0.5, 1.0, 0.05)
+	_render_scale = rs_row[1]
+	_render_scale_value = rs_row[2]
+	_render_scale.value_changed.connect(_on_render_scale)
+	_graphics_v.add_child(rs_row[0])
+
+	# Per-lever toggles.
+	_toggle_sdfgi = _add_toggle_row("Global Illumination (SDFGI)", "sdfgi", "")
+	_toggle_ssao = _add_toggle_row("Ambient Occlusion (SSAO)", "ssao", "")
+	_toggle_glow = _add_toggle_row("Bloom / Glow", "glow", "")
+	_toggle_clouds = _add_toggle_row("Volumetric Clouds", "clouds", "")
+	_toggle_water = _add_toggle_row("Water Refraction", "water_refraction", next_raid)
+
+	# Grass Density slider (applies next raid).
+	var gd_row := _make_slider_row("Grass Density", 0.3, 1.0, 0.05, next_raid)
+	_grass_density = gd_row[1]
+	_grass_density_value = gd_row[2]
+	_grass_density.value_changed.connect(_on_grass_density)
+	_graphics_v.add_child(gd_row[0])
+
+	# --- Statistics overlay section ---
+	_graphics_v.add_child(_make_header("STATISTICS OVERLAY", accent))
+
+	_show_fps = _add_toggle_row("Show FPS", "show_fps", "")
+	_show_detailed = _add_toggle_row("Detailed Stats", "show_detailed_stats", "")
+	# Detailed toggle also drives the display-mode dropdown's enabled state.
+	_show_detailed.toggled.connect(func(p): _stats_mode.disabled = not p)
+
+	var sm_row := HBoxContainer.new()
+	sm_row.add_theme_constant_override("separation", 16)
+	var sm_label := Label.new()
+	sm_label.text = "Stats Display"
+	sm_label.custom_minimum_size = Vector2(220, 0)
+	_stats_mode = OptionButton.new()
+	_stats_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for s in ["Numeric", "Graphs"]:
+		_stats_mode.add_item(s)
+	_stats_mode.item_selected.connect(func(i): _apply_setting("stats_display_mode", i))
+	sm_row.add_child(sm_label)
+	sm_row.add_child(_stats_mode)
+	_graphics_v.add_child(sm_row)
+
+
+# Builds a labelled CheckButton row, wires it to apply `key` + refresh the preset label,
+# appends it, and returns the CheckButton. `note` (if non-empty) adds a dim trailing hint.
+func _add_toggle_row(text: String, key: String, note: String) -> CheckButton:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(220, 0)
+	var cb := CheckButton.new()
+	cb.toggled.connect(func(p):
+		_apply_setting(key, p)
+		_refresh_preset_label())
+	row.add_child(label)
+	row.add_child(cb)
+	if not note.is_empty():
+		row.add_child(_make_note(note))
+	_graphics_v.add_child(row)
+	return cb
+
+
+# Builds a labelled HSlider row [HBox, HSlider, value Label]; optional dim note.
+func _make_slider_row(text: String, mn: float, mx: float, step: float, note := "") -> Array:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(220, 0)
+	var slider := HSlider.new()
+	slider.custom_minimum_size = Vector2(0, 24)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slider.min_value = mn
+	slider.max_value = mx
+	slider.step = step
+	var value_l := Label.new()
+	value_l.custom_minimum_size = Vector2(56, 0)
+	value_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(label)
+	row.add_child(slider)
+	row.add_child(value_l)
+	if not note.is_empty():
+		row.add_child(_make_note(note))
+	return [row, slider, value_l]
+
+
+func _make_header(text: String, accent: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", accent)
+	l.add_theme_font_size_override("font_size", 14)
+	return l
+
+
+func _make_note(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
+	l.add_theme_font_size_override("font_size", 11)
+	return l
+
+
 func _wire() -> void:
 	_tab_graphics.pressed.connect(_show_page.bind(0))
 	_tab_audio.pressed.connect(_show_page.bind(1))
@@ -128,8 +260,12 @@ func _wire() -> void:
 	_window_mode.item_selected.connect(func(i): _apply_setting("window_mode", i))
 	_resolution.item_selected.connect(func(i): _apply_setting("resolution", SettingsManager.RES_OPTIONS[i]))
 	_vsync.item_selected.connect(func(i): _apply_setting("vsync", i))
-	_msaa.item_selected.connect(func(i): _apply_setting("msaa", i))
-	_shadows.item_selected.connect(func(i): _apply_setting("shadows", i))
+	_msaa.item_selected.connect(func(i):
+		_apply_setting("msaa", i)
+		_refresh_preset_label())
+	_shadows.item_selected.connect(func(i):
+		_apply_setting("shadows", i)
+		_refresh_preset_label())
 	_fov.value_changed.connect(_on_fov)
 	_preset.item_selected.connect(_on_preset)
 
@@ -167,6 +303,27 @@ func sync_from_settings() -> void:
 	_shadows.select(int(g.get_value("shadows")))
 	_fov.value = float(g.get_value("fov"))
 	_fov_value.text = "%d" % int(_fov.value)
+
+	# Quality preset + manual levers.
+	var preset: int = g.current_preset_or_custom()
+	_preset.select(4 if preset < 0 else preset)
+
+	_render_scale.value = float(g.get_value("render_scale"))
+	_render_scale_value.text = "%d%%" % roundi(_render_scale.value * 100.0)
+	_toggle_sdfgi.button_pressed = bool(g.get_value("sdfgi"))
+	_toggle_ssao.button_pressed = bool(g.get_value("ssao"))
+	_toggle_glow.button_pressed = bool(g.get_value("glow"))
+	_toggle_clouds.button_pressed = bool(g.get_value("clouds"))
+	_toggle_water.button_pressed = bool(g.get_value("water_refraction"))
+	_grass_density.value = float(g.get_value("grass_density"))
+	_grass_density_value.text = "%d%%" % roundi(_grass_density.value * 100.0)
+
+	# Stats overlay.
+	_show_fps.button_pressed = bool(g.get_value("show_fps"))
+	var detailed: bool = bool(g.get_value("show_detailed_stats"))
+	_show_detailed.button_pressed = detailed
+	_stats_mode.select(int(g.get_value("stats_display_mode")))
+	_stats_mode.disabled = not detailed
 
 	_master.value = float(g.get_value("master_volume"))
 	_master_value.text = "%d%%" % roundi(_master.value * 100.0)
@@ -206,16 +363,32 @@ func _on_sens(v: float) -> void:
 	_apply_setting("sensitivity", v)
 
 
+func _on_render_scale(v: float) -> void:
+	_render_scale_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("render_scale", v)
+	_refresh_preset_label()
+
+func _on_grass_density(v: float) -> void:
+	_grass_density_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("grass_density", v)
+	_refresh_preset_label()
+
+
+# Sets the preset dropdown to the matching tier 0..3, or Custom (index 4) when diverged.
+func _refresh_preset_label() -> void:
+	if _syncing:
+		return
+	var p: int = SettingsManager.current_preset_or_custom()
+	_preset.select(4 if p < 0 else p)
+
+
 func _on_preset(index: int) -> void:
 	if _syncing:
 		return
-	# Low -> msaa0/shadows0, Med -> msaa2/shadows2, High -> msaa3/shadows3.
-	var levels := [0, 2, 3]
-	var v: int = levels[index]
-	SettingsManager.set_value("msaa", v)
-	SettingsManager.set_value("shadows", v)
-	# Re-sync so the MSAA/Shadow dropdowns reflect the preset.
-	sync_from_settings()
+	# Index 4 ("Custom") is a display-only state — never an action.
+	if index <= 3:
+		SettingsManager.apply_quality_preset(index)
+		sync_from_settings()
 
 
 func _on_reset() -> void:

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://cl0adscreen0ui"]
+
+[ext_resource type="Script" path="res://scripts/ui/loading_screen.gd" id="1_loadscreen"]
+
+[node name="LoadingScreen" type="CanvasLayer"]
+layer = 200
+process_mode = 3
+script = ExtResource("1_loadscreen")

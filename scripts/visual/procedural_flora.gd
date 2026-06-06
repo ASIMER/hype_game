@@ -372,7 +372,10 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	# per tile). visibility_range stays at GRASS_VIS_RANGE so only the ~45 m bubble draws —
 	# tiling means the global count barely matters for per-frame cost; on-screen tile draw
 	# cost is what the perf gate measures and that's bounded by the visible-tile area.
-	var near_target: int = NEAR_GRASS_CAP
+	# Graphics-quality scale (set by SettingsManager from the quality preset; read here at
+	# build, so a quality change applies on the next raid). 1.0 = Ultra ceiling.
+	var q: float = clampf(Settings.grass_density_scale, 0.1, 1.0)
+	var near_target: int = maxi(1, int(NEAR_GRASS_CAP * q))
 	var near_xforms: Array[Transform3D] = _grass_transforms(
 		seed, near_target, NEAR_GRASS_GRID, 4099, 1.0, true)
 	var near_root := Node3D.new()
@@ -383,7 +386,7 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 
 	# FAR layer: fewer, larger tufts, picks up where near begins to drop out. Tiled too —
 	# its AABB is otherwise also map-wide, so without tiling it'd never cull either.
-	var far_target: int = mini(Settings.FLORA_GRASS_FAR, 2000)
+	var far_target: int = maxi(1, int(mini(Settings.FLORA_GRASS_FAR, 2000) * q))
 	var far_xforms: Array[Transform3D] = _grass_transforms(
 		seed, far_target, 2.2, 5557, 1.6, false)
 	var far_root := Node3D.new()

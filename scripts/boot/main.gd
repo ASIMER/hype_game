@@ -17,6 +17,9 @@ const WORKSHOP_PATH := "res://scenes/ui/Workshop.tscn"   # legacy fallback hub
 const RAID_SUMMARY := "res://scenes/ui/RaidSummary.tscn"
 const HAUL_MANAGER := "res://scenes/ui/HaulManager.tscn"
 
+const STATS_OVERLAY := "res://scenes/ui/StatsOverlay.tscn"
+const LOADING_SCREEN := "res://scenes/ui/LoadingScreen.tscn"
+
 @onready var ui_layer: Node = $UILayer
 @onready var world_root: Node = $WorldRoot
 
@@ -24,12 +27,17 @@ var _pause_menu: Node = null
 var _raid_summary: Node = null
 var _paused: bool = false
 var _deploy_mode: String = "solo"   # "solo" | "host" | "client" — set when opening the hub
+# Persistent overlays (children of Main, NOT ui_layer — they must survive the ui_layer
+# wipe on every menu/arena transition): the diagnostics overlay + the loading screen.
+var _stats_overlay: Node = null
+var _loading: Node = null
 
 func _ready() -> void:
 	# Main + the UI layer keep processing while the tree is paused; the WORLD pauses.
 	# This lets the pause/HUD UI stay live without the engine running gameplay.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	world_root.process_mode = Node.PROCESS_MODE_PAUSABLE
+	_build_persistent_overlays()
 	Events.match_started.connect(_on_match_started)
 	# Synchronized co-op deploy: the leader's START broadcasts begin_deploy to all
 	# peers, and each runs its local deploy here on the same tick.
@@ -45,7 +53,15 @@ func _ready() -> void:
 	elif "--agent" in all_args:
 		_start_agent("--menu" in all_args)
 	else:
-		_show_menu()
+		# Normal player boot: run the shader/icon prewarm behind the loading screen (visible
+		# progress instead of a first-frame hitch), then show the menu. Async fire-and-forget.
+		_boot_prewarm_then_menu()
+
+## Boot prewarm → menu (real player launch only; headless/server/agent/client skip it).
+func _boot_prewarm_then_menu() -> void:
+	if _loading != null and _loading.has_method("prewarm"):
+		await _loading.prewarm()
+	_show_menu()
 
 ## Pulls the IP that follows `--client` on the command line, falling back to the
 ## configured default (e.g. for a bare `--client` with no argument).
@@ -57,6 +73,25 @@ func _parse_client_ip(args: PackedStringArray) -> String:
 		if not candidate.begins_with("--"):
 			return candidate
 	return Settings.DEFAULT_IP
+
+## Instance the overlays that must persist across menu↔arena transitions (the ui_layer is
+## wiped on each). Both are CanvasLayers so they render regardless of parent. Skipped on a
+## headless/dedicated server (no rendering). The StatsOverlay reflects the persisted settings
+## immediately; the LoadingScreen drives itself off Events.arena_build_progress.
+func _build_persistent_overlays() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if ResourceLoader.exists(STATS_OVERLAY):
+		_stats_overlay = (load(STATS_OVERLAY) as PackedScene).instantiate()
+		add_child(_stats_overlay)
+		if _stats_overlay.has_method("set_config"):
+			_stats_overlay.set_config(
+				bool(SettingsManager.get_value("show_fps")),
+				bool(SettingsManager.get_value("show_detailed_stats")),
+				int(SettingsManager.get_value("stats_display_mode")))
+	if ResourceLoader.exists(LOADING_SCREEN):
+		_loading = (load(LOADING_SCREEN) as PackedScene).instantiate()
+		add_child(_loading)
 
 func _show_menu() -> void:
 	for c in ui_layer.get_children():
@@ -167,6 +202,11 @@ func _start_client(ip: String) -> void:
 ## Loads the arena under WorldRoot on this peer. Each peer calls this; once the
 ## scene is ready it tells the server via NetworkManager.notify_loaded().
 func load_arena() -> void:
+	# Show the loading screen immediately so raid entry shows progress, not a frozen window.
+	# (The arena's phased build also drives the bar via Events.arena_build_progress; this just
+	# guarantees the screen is up before the first phase emit.)
+	if _loading != null and _loading.has_method("show_screen"):
+		_loading.show_screen("ENTERING RAID…")
 	for c in ui_layer.get_children():
 		c.queue_free()
 	for c in world_root.get_children():
@@ -227,8 +267,25 @@ func load_arena() -> void:
 		# would exceed capacity on deposit).
 		if ResourceLoader.exists(HAUL_MANAGER):
 			ui_layer.add_child((load(HAUL_MANAGER) as PackedScene).instantiate())
-	# Networked: run the load->ready handshake. Offline (incl. the OfflineMultiplayerPeer
-	# used by single-player/--agent) has a peer but needs no handshake — start directly.
+	# The arena build is now PHASED (an async coroutine). Gate the load→match handshake on
+	# the build reporting complete (arena_build_progress == 1.0), so notify_loaded /
+	# match_started never fire into a half-built world (players/enemies would otherwise spawn
+	# before terrain + navmesh exist). _finish_arena_load runs deferred so the WaveManager
+	# (added at the tail of arena._ready) exists before match_started is emitted.
+	if not Events.arena_build_progress.is_connected(_on_arena_built):
+		Events.arena_build_progress.connect(_on_arena_built)
+
+## Fires for every arena build phase; acts only once the build is complete, then detaches.
+func _on_arena_built(frac: float, _label: String) -> void:
+	if frac < 1.0:
+		return
+	Events.arena_build_progress.disconnect(_on_arena_built)
+	_finish_arena_load.call_deferred()
+
+## The load→ready handshake, deferred until after arena._ready has fully returned. Offline
+## (incl. the OfflineMultiplayerPeer used by single-player/--agent) has a peer but needs no
+## handshake — start directly; networked tells the server this peer finished loading.
+func _finish_arena_load() -> void:
 	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
 		NetworkManager.notify_loaded.rpc_id(1)
 	else:

@@ -23,17 +23,34 @@ func _ready() -> void:
 	# Discoverable by the map UI (which is nested elsewhere and can't reach us via
 	# current_scene) for POI/zone-of-interest labels.
 	add_to_group("arena")
+	# The build below is synchronous + heavy (it used to freeze the window). We now
+	# PHASE it: each step emits arena_build_progress (the LoadingScreen advances its bar)
+	# and yields a frame so the bar actually repaints between phases. Making _ready a
+	# coroutine via these awaits is safe — the node is never freed mid-build, and the
+	# deferred navmesh-bake / match-start calls below still run in their original order
+	# AFTER the build completes.
 	# Procedural TERRAIN first (hills/river/perimeter cliffs replace the flat Ground
 	# plane) so buildings sit on its flat y=0 pads and the navmesh bakes the relief.
+	Events.arena_build_progress.emit(0.05, "Terrain")
+	await get_tree().process_frame
 	_build_terrain()
 	# Replace the crude hand-placed cube "buildings" with procedural modular
 	# structures BEFORE baking so the navmesh routes around the new geometry.
+	Events.arena_build_progress.emit(0.30, "Structures")
+	await get_tree().process_frame
 	_build_poi_structures()
+	Events.arena_build_progress.emit(0.55, "Ground detail")
+	await get_tree().process_frame
 	_enrich_ground()
 	# Flora (trees/grass/boulders) after structures; collidable pieces join the bake.
+	Events.arena_build_progress.emit(0.75, "Flora")
+	await get_tree().process_frame
 	_build_flora()
+	Events.arena_build_progress.emit(0.90, "Navmesh")
+	await get_tree().process_frame
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
 	_bake_navmesh.call_deferred()
+	Events.arena_build_progress.emit(1.0, "Ready")
 	# Wave director (server-only logic guarded inside the script). Child of Arena
 	# so its parent-walk finds get_enemy_spawn_point().
 	var wm: Node = (load("res://scripts/waves/wave_manager.gd") as Script).new()

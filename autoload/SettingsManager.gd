@@ -18,6 +18,19 @@ const DEFAULTS := {
 	"msaa": 2,              # 0 off, 1 2x, 2 4x, 3 8x
 	"shadows": 2,          # 0 1024, 1 2048, 2 4096, 3 8192
 	"fov": 60.0,           # 60..100
+	# Graphics quality (Godot does NOT auto-scale to hardware — these presets do it).
+	"graphics_quality": 3,    # 0 Low, 1 Medium, 2 High, 3 Ultra (default = current look)
+	"render_scale": 1.0,      # 0.5..1.0 viewport 3D render scale (FSR-style upscale; cheapest lever)
+	"sdfgi": true,            # global illumination (heavy)
+	"ssao": true,             # ambient occlusion
+	"glow": true,             # bloom
+	"clouds": true,           # Sky3D volumetric cumulus
+	"water_refraction": true, # screen-space refractive water (vs flat cheap water)
+	"grass_density": 1.0,     # 0.3..1.0 grass-cap multiplier (rebuild-bound; applies next raid)
+	# Diagnostics overlay
+	"show_fps": false,            # minimal FPS counter
+	"show_detailed_stats": false, # full perf + network panel
+	"stats_display_mode": 0,      # 0 Numeric, 1 Graphs
 	# Audio (linear 0..1)
 	"master_volume": 0.9,
 	"sfx_volume": 0.9,
@@ -30,6 +43,22 @@ const DEFAULTS := {
 
 const RES_OPTIONS := ["1280x720", "1600x900", "1920x1080", "2560x1440", "960x540"]
 const SHADOW_SIZES := [1024, 2048, 4096, 8192]
+
+## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra). Ultra = the current
+## (hand-tuned) look. apply_quality_preset() writes each of these into the live settings,
+## then the per-lever apply functions + Events.graphics_quality_changed carry them to the
+## viewport / Environment / sky / grass / water. Order: Low, Medium, High, Ultra.
+const QUALITY_PRESETS := {
+	"render_scale":     [0.6,  0.75, 0.9,  1.0],
+	"msaa":             [0,    1,    2,    2],     # off / 2x / 4x / 4x
+	"shadows":          [0,    1,    2,    2],     # 1024 / 2048 / 4096 / 4096
+	"sdfgi":            [false, false, true, true],
+	"ssao":             [false, false, true, true],
+	"glow":             [true,  true,  true, true],
+	"clouds":           [false, true,  true, true],
+	"water_refraction": [false, false, true, true],
+	"grass_density":    [0.3,  0.6,  0.85, 1.0],
+}
 
 var _values: Dictionary = {}
 
@@ -122,6 +151,11 @@ func apply(key: String) -> void:
 		"msaa": _apply_msaa(int(v))
 		"shadows": _apply_shadows(int(v))
 		"fov": Settings.fov = clampf(float(v), 50.0, 110.0)
+		"graphics_quality": Events.graphics_quality_changed.emit(int(v))
+		"render_scale": _apply_render_scale(float(v))
+		"sdfgi", "ssao", "glow", "clouds", "water_refraction", "grass_density":
+			_apply_quality_lever()
+		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
 		"master_volume": _apply_master(float(v))
 		"sfx_volume": Settings.sfx_volume = clampf(float(v), 0.0, 1.0)
 		"mute": _apply_mute(bool(v))
@@ -174,6 +208,64 @@ func _apply_msaa(level: int) -> void:
 func _apply_shadows(level: int) -> void:
 	var size: int = SHADOW_SIZES[clampi(level, 0, 3)]
 	RenderingServer.directional_shadow_atlas_set_size(size, true)
+
+## Viewport 3D render scale — the cheapest big perf lever. <1.0 renders 3D at a lower
+## internal resolution and upscales (bilinear), leaving UI crisp. Headless-safe.
+func _apply_render_scale(scale: float) -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = clampf(scale, 0.5, 1.0)
+
+## Mirror the rebuild-bound levers (grass/water) into Settings (read at next arena build)
+## and broadcast graphics_quality_changed so scene-side render levers (Environment SDFGI/
+## SSAO/glow, Sky3D clouds — applied by world_atmosphere) re-read the live settings.
+func _apply_quality_lever() -> void:
+	Settings.grass_density_scale = clampf(float(get_value("grass_density")), 0.1, 1.0)
+	Settings.water_refraction = 0.12 if bool(get_value("water_refraction")) else 0.0
+	Events.graphics_quality_changed.emit(int(get_value("graphics_quality")))
+
+## Push the current overlay config to the StatsOverlay (instanced in main.gd).
+func _apply_stats_overlay() -> void:
+	Events.stats_overlay_changed.emit(
+		bool(get_value("show_fps")),
+		bool(get_value("show_detailed_stats")),
+		int(get_value("stats_display_mode")))
+
+## Apply a whole quality tier (0 Low → 3 Ultra) from QUALITY_PRESETS in one batch: write
+## every lever, push the immediate ones to the engine, mirror the rebuild-bound ones, and
+## emit the scene-side signal ONCE. Persists. The settings menu calls this from the preset
+## dropdown; individual set_value() calls afterward override one lever ("Custom").
+func apply_quality_preset(level: int) -> void:
+	level = clampi(level, 0, 3)
+	for key in QUALITY_PRESETS:
+		_values[key] = QUALITY_PRESETS[key][level]
+	_values["graphics_quality"] = level
+	_apply_render_scale(float(_values["render_scale"]))
+	_apply_msaa(int(_values["msaa"]))
+	_apply_shadows(int(_values["shadows"]))
+	_apply_quality_lever()
+	save()
+	settings_changed.emit("graphics_quality", level)
+
+## Returns the preset index (0..3) whose lever bundle exactly matches the live settings, or
+## -1 if the user has diverged ("Custom"). Lets the menu label the preset dropdown honestly.
+func current_preset_or_custom() -> int:
+	for level in 4:
+		var match_all := true
+		for key in QUALITY_PRESETS:
+			if not _values_equal(get_value(key), QUALITY_PRESETS[key][level]):
+				match_all = false
+				break
+		if match_all:
+			return level
+	return -1
+
+func _values_equal(a: Variant, b: Variant) -> bool:
+	if a is float or b is float:
+		return is_equal_approx(float(a), float(b))
+	return a == b
 
 func _apply_master(v: float) -> void:
 	AudioServer.set_bus_volume_db(0, linear_to_db(clampf(v, 0.0001, 1.0)))

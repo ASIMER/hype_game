@@ -344,7 +344,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L1",
       "id": "agent_mcp_server",
-      "community": 10,
+      "community": 6,
       "norm_label": "mcp_server.py"
     },
     {
@@ -353,7 +353,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L158",
       "id": "agent_mcp_server_log",
-      "community": 10,
+      "community": 6,
       "norm_label": "log()"
     },
     {
@@ -362,7 +362,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L163",
       "id": "agent_mcp_server_public_tool",
-      "community": 10,
+      "community": 6,
       "norm_label": "_public_tool()"
     },
     {
@@ -371,7 +371,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L168",
       "id": "agent_mcp_server_result",
-      "community": 10,
+      "community": 6,
       "norm_label": "_result()"
     },
     {
@@ -380,7 +380,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L172",
       "id": "agent_mcp_server_error",
-      "community": 10,
+      "community": 6,
       "norm_label": "_error()"
     },
     {
@@ -389,7 +389,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L176",
       "id": "agent_mcp_server_handle_request",
-      "community": 10,
+      "community": 6,
       "norm_label": "handle_request()"
     },
     {
@@ -398,7 +398,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L243",
       "id": "agent_mcp_server_main",
-      "community": 10,
+      "community": 6,
       "norm_label": "main()"
     },
     {
@@ -407,7 +407,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L159",
       "id": "agent_mcp_server_rationale_159",
-      "community": 10,
+      "community": 6,
       "norm_label": "write a diagnostic line to stderr (never stdout)."
     },
     {
@@ -416,7 +416,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L164",
       "id": "agent_mcp_server_rationale_164",
-      "community": 10,
+      "community": 6,
       "norm_label": "strip internal keys (_build) before advertising a tool."
     },
     {
@@ -425,7 +425,7 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L177",
       "id": "agent_mcp_server_rationale_177",
-      "community": 10,
+      "community": 6,
       "norm_label": "dispatch a single json-rpc request; return a response dict or none.      none"
     },
     {
@@ -816,10 +816,28 @@
       "norm_label": "gen_heartbeat()"
     },
     {
-      "label": "gen_ambient()",
+      "label": "gen_water_splash()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L418",
+      "id": "audio_gen_audio_gen_water_splash",
+      "community": 0,
+      "norm_label": "gen_water_splash()"
+    },
+    {
+      "label": "gen_underwater()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L443",
+      "id": "audio_gen_audio_gen_underwater",
+      "community": 0,
+      "norm_label": "gen_underwater()"
+    },
+    {
+      "label": "gen_ambient()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L468",
       "id": "audio_gen_audio_gen_ambient",
       "community": 0,
       "norm_label": "gen_ambient()"
@@ -828,7 +846,7 @@
       "label": "gen_music()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L446",
+      "source_location": "L496",
       "id": "audio_gen_audio_gen_music",
       "community": 0,
       "norm_label": "gen_music()"
@@ -837,7 +855,7 @@
       "label": "main()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L488",
+      "source_location": "L538",
       "id": "audio_gen_audio_main",
       "community": 0,
       "norm_label": "main()"
@@ -1050,11 +1068,29 @@
       "norm_label": "low dull thud (meant to loop).  two-pulse cardiac shape.     keep start/end at"
     },
     {
-      "label": "Quiet evolving low drone/wind bed (loopable).     Low filtered noise + slow sin",
+      "label": "Entering-water splash: a bright filtered-noise burst with a quick wet decay,",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L419",
       "id": "audio_gen_audio_rationale_419",
+      "community": 0,
+      "norm_label": "entering-water splash: a bright filtered-noise burst with a quick wet decay,"
+    },
+    {
+      "label": "Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L444",
+      "id": "audio_gen_audio_rationale_444",
+      "community": 0,
+      "norm_label": "muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,"
+    },
+    {
+      "label": "Quiet evolving low drone/wind bed (loopable).     Low filtered noise + slow sin",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L469",
+      "id": "audio_gen_audio_rationale_469",
       "community": 0,
       "norm_label": "quiet evolving low drone/wind bed (loopable).     low filtered noise + slow sin"
     },
@@ -1062,8 +1098,8 @@
       "label": "Slow low-tension pad/pulse loop (a few seconds, loopable).     Layered detuned",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L447",
-      "id": "audio_gen_audio_rationale_447",
+      "source_location": "L497",
+      "id": "audio_gen_audio_rationale_497",
       "community": 0,
       "norm_label": "slow low-tension pad/pulse loop (a few seconds, loopable).     layered detuned"
     },
@@ -1521,7 +1557,7 @@
       "label": "Deferred (planned, not this batch)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L29",
+      "source_location": "L30",
       "id": "docs_assets_deferred_planned_not_this_batch",
       "community": 60,
       "norm_label": "deferred (planned, not this batch)"
@@ -1530,7 +1566,7 @@
       "label": "Rejected",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L40",
+      "source_location": "L41",
       "id": "docs_assets_rejected",
       "community": 60,
       "norm_label": "rejected"
@@ -1539,7 +1575,7 @@
       "label": "Other vetted sources (for future searches)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L52",
+      "source_location": "L53",
       "id": "docs_assets_other_vetted_sources_for_future_searches",
       "community": 60,
       "norm_label": "other vetted sources (for future searches)"
@@ -1548,7 +1584,7 @@
       "label": "Credits",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L68",
+      "source_location": "L69",
       "id": "docs_assets_credits",
       "community": 60,
       "norm_label": "credits"
@@ -1777,6 +1813,15 @@
       "id": "agent_readme_quick_manual_test_no_game",
       "community": 57,
       "norm_label": "quick manual test (no game)"
+    },
+    {
+      "label": "Slow low-tension pad/pulse loop (a few seconds, loopable).     Layered detuned",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L447",
+      "community": 0,
+      "norm_label": "slow low-tension pad/pulse loop (a few seconds, loopable).     layered detuned",
+      "id": "audio_gen_audio_rationale_447"
     },
     {
       "label": "hype-game MCP Server config",
@@ -2827,7 +2872,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "settingsmanager.load_config",
       "id": "settingsmanager_load_config"
     },
@@ -2840,7 +2885,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "settingsmanager._cmp_version",
       "id": "settingsmanager_cmp_version"
     },
@@ -2866,7 +2911,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "stash.total_weight",
       "id": "stash_total_weight"
     },
@@ -2905,7 +2950,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "stash.load_stash",
       "id": "stash_load_stash"
     },
@@ -2918,7 +2963,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main.gd entry point",
       "id": "main_main"
     },
@@ -2931,7 +2976,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main.load_arena",
       "id": "main_load_arena"
     },
@@ -2944,7 +2989,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main._do_deploy",
       "id": "main_do_deploy"
     },
@@ -2957,7 +3002,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main._on_hub_deploy",
       "id": "main_on_hub_deploy"
     },
@@ -2970,7 +3015,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main.open_hub",
       "id": "main_open_hub"
     },
@@ -2983,7 +3028,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main._start_agent",
       "id": "main_start_agent"
     },
@@ -3009,7 +3054,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main_menu._join",
       "id": "main_menu_join"
     },
@@ -3022,7 +3067,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "main_menu._on_single_player",
       "id": "main_menu_on_single_player"
     },
@@ -3087,7 +3132,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "weaponcontroller._load_weapons",
       "id": "combat_weapon_controller_load_weapons"
     },
@@ -3113,7 +3158,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "weaponcontroller._apply_attachments",
       "id": "combat_weapon_controller_apply_attachments"
     },
@@ -3191,7 +3236,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "attachmentdata.apply_to",
       "id": "combat_attachment_data_apply_to"
     },
@@ -3204,7 +3249,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "weapondata resource",
       "id": "combat_weapon_data_weapondata"
     },
@@ -3217,7 +3262,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "craftrecipe resource",
       "id": "crafting_craft_recipe_craftrecipe"
     },
@@ -3347,7 +3392,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "resourceindex (generated paths)",
       "id": "resource_index_resourceindex"
     },
@@ -3399,7 +3444,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "co-op netcode model",
       "id": "docs_architecture_coop_netcode"
     },
@@ -3425,7 +3470,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "inventory server-to-owner mirror",
       "id": "docs_architecture_inventory_mirror"
     },
@@ -3438,7 +3483,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "lobby/deploy synchronized handshake",
       "id": "docs_architecture_lobby_handshake"
     },
@@ -3451,7 +3496,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 10,
       "norm_label": "version-safe configfile saves",
       "id": "docs_architecture_persistence_versioning"
     },
@@ -3477,7 +3522,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "self-play harness (--agent)",
       "id": "docs_testing_self_play_harness"
     },
@@ -3490,7 +3535,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 3,
       "norm_label": "agentbridge command protocol",
       "id": "docs_testing_command_protocol"
     },
@@ -4782,7 +4827,7 @@
       "label": "ProceduralBuildings._solid",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "proceduralbuildings._solid",
       "id": "visual_procedural_buildings_solid"
     },
@@ -4790,7 +4835,7 @@
       "label": "ProceduralBuildings.build_tower",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "proceduralbuildings.build_tower",
       "id": "visual_procedural_buildings_build_tower"
     },
@@ -4798,7 +4843,7 @@
       "label": "ProceduralBuildings.build_warehouse",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "proceduralbuildings.build_warehouse",
       "id": "visual_procedural_buildings_build_warehouse"
     },
@@ -4806,7 +4851,7 @@
       "label": "ProceduralBuildings.build_house",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "proceduralbuildings.build_house",
       "id": "visual_procedural_buildings_build_house"
     },
@@ -4814,7 +4859,7 @@
       "label": "ProceduralBuildings.build_container_yard",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "proceduralbuildings.build_container_yard",
       "id": "visual_procedural_buildings_build_container_yard"
     },
@@ -4830,7 +4875,7 @@
       "label": "ProceduralModels.build",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "proceduralmodels.build",
       "id": "visual_procedural_models_build"
     },
@@ -4838,7 +4883,7 @@
       "label": "ProceduralModels._part",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "proceduralmodels._part",
       "id": "visual_procedural_models_part"
     },
@@ -4918,7 +4963,7 @@
       "label": "Arena._build_poi_structures",
       "file_type": "code",
       "source_file": "scripts/world/arena.gd",
-      "community": 2,
+      "community": 56,
       "norm_label": "arena._build_poi_structures",
       "id": "world_arena_build_poi_structures"
     },
@@ -5134,9 +5179,9 @@
       "source_file": ".claude/settings.local.json",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_settings_local",
-      "target": "claude_settings_local_permissions",
-      "confidence_score": 1.0
+      "target": "claude_settings_local_permissions"
     },
     {
       "relation": "contains",
@@ -5144,9 +5189,9 @@
       "source_file": ".claude/settings.local.json",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_settings_local_permissions",
-      "target": "claude_settings_local_permissions_allow",
-      "confidence_score": 1.0
+      "target": "claude_settings_local_permissions_allow"
     },
     {
       "relation": "contains",
@@ -5662,6 +5707,26 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L443",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_underwater",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L418",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_water_splash",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L296",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -6044,6 +6109,28 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L443",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_underwater",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L418",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_water_splash",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L296",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -6275,6 +6362,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L463",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_underwater",
+      "target": "audio_gen_audio_sine",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L298",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -6412,6 +6510,28 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_ui_click",
       "target": "audio_gen_audio_noise"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L456",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_underwater",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L423",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_water_splash",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6572,6 +6692,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L426",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_water_splash",
+      "target": "audio_gen_audio_adsr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L301",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -6708,6 +6839,28 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_ui_click",
       "target": "audio_gen_audio_mix"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L464",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_underwater",
+      "target": "audio_gen_audio_mix",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L439",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_water_splash",
+      "target": "audio_gen_audio_mix",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6873,6 +7026,28 @@
       "target": "audio_gen_audio_lowpass"
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L457",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_underwater",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L425",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_water_splash",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
@@ -6936,6 +7111,17 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_ui_click",
       "target": "audio_gen_audio_highpass"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L424",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_water_splash",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -7111,6 +7297,28 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_ui_click",
       "target": "audio_gen_audio_fade"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L465",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_underwater",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L440",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_water_splash",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -7322,9 +7530,39 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L419",
       "weight": 1.0,
+      "source": "audio_gen_audio_rationale_419",
+      "target": "audio_gen_audio_gen_water_splash",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L444",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_444",
+      "target": "audio_gen_audio_gen_underwater",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L419",
+      "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_419",
       "target": "audio_gen_audio_gen_ambient"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L469",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_469",
+      "target": "audio_gen_audio_gen_ambient",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -7337,14 +7575,24 @@
       "target": "audio_gen_audio_gen_music"
     },
     {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L497",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_497",
+      "target": "audio_gen_audio_gen_music",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude",
-      "target": "claude_hype_raiders_project_guide_read_me_first",
-      "confidence_score": 1.0
+      "target": "claude_hype_raiders_project_guide_read_me_first"
     },
     {
       "relation": "contains",
@@ -7352,9 +7600,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L49",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_architecture_at_a_glance",
-      "confidence_score": 1.0
+      "target": "claude_architecture_at_a_glance"
     },
     {
       "relation": "contains",
@@ -7362,9 +7610,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_graphify",
-      "confidence_score": 1.0
+      "target": "claude_graphify"
     },
     {
       "relation": "contains",
@@ -7372,9 +7620,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L85",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_parallel_work_with_agent_teams",
-      "confidence_score": 1.0
+      "target": "claude_parallel_work_with_agent_teams"
     },
     {
       "relation": "contains",
@@ -7382,9 +7630,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_release_packaging_portable_windows_build",
-      "confidence_score": 1.0
+      "target": "claude_release_packaging_portable_windows_build"
     },
     {
       "relation": "contains",
@@ -7392,9 +7640,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_run_test_validate_most_important_for_a_new_session",
-      "confidence_score": 1.0
+      "target": "claude_run_test_validate_most_important_for_a_new_session"
     },
     {
       "relation": "contains",
@@ -7402,9 +7650,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_self_play_harness_in_6_lines_how_to_actually_test_gameplay",
-      "confidence_score": 1.0
+      "target": "claude_self_play_harness_in_6_lines_how_to_actually_test_gameplay"
     },
     {
       "relation": "contains",
@@ -7412,9 +7660,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_top_conventions_gotchas",
-      "confidence_score": 1.0
+      "target": "claude_top_conventions_gotchas"
     },
     {
       "relation": "contains",
@@ -7422,9 +7670,9 @@
       "source_file": "README.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "readme",
-      "target": "readme_hype_raiders",
-      "confidence_score": 1.0
+      "target": "readme_hype_raiders"
     },
     {
       "relation": "contains",
@@ -7432,9 +7680,9 @@
       "source_file": "README.md",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "readme_hype_raiders",
-      "target": "readme_build_a_portable_windows_exe",
-      "confidence_score": 1.0
+      "target": "readme_build_a_portable_windows_exe"
     },
     {
       "relation": "contains",
@@ -7442,9 +7690,9 @@
       "source_file": "README.md",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "readme_hype_raiders",
-      "target": "readme_docs",
-      "confidence_score": 1.0
+      "target": "readme_docs"
     },
     {
       "relation": "contains",
@@ -7452,9 +7700,9 @@
       "source_file": "README.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "readme_hype_raiders",
-      "target": "readme_run",
-      "confidence_score": 1.0
+      "target": "readme_run"
     },
     {
       "relation": "contains",
@@ -7462,9 +7710,9 @@
       "source_file": "addons/sky_3d/README.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sky_3d_readme",
-      "target": "sky_3d_readme_sky3d",
-      "confidence_score": 1.0
+      "target": "sky_3d_readme_sky3d"
     },
     {
       "relation": "contains",
@@ -7472,9 +7720,9 @@
       "source_file": "addons/sky_3d/ThirdParty.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sky_3d_thirdparty",
-      "target": "sky_3d_thirdparty_attribution_for_third_party_assets",
-      "confidence_score": 1.0
+      "target": "sky_3d_thirdparty_attribution_for_third_party_assets"
     },
     {
       "relation": "contains",
@@ -7482,9 +7730,9 @@
       "source_file": "addons/sky_3d/assets/thirdparty/textures/milkyway/LICENSE.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "milkyway_license",
-      "target": "milkyway_license_attribution",
-      "confidence_score": 1.0
+      "target": "milkyway_license_attribution"
     },
     {
       "relation": "contains",
@@ -7492,9 +7740,9 @@
       "source_file": "addons/sky_3d/assets/thirdparty/textures/milkyway/LICENSE.md",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "milkyway_license_attribution",
-      "target": "milkyway_license_license",
-      "confidence_score": 1.0
+      "target": "milkyway_license_license"
     },
     {
       "relation": "contains",
@@ -7502,9 +7750,9 @@
       "source_file": "addons/sky_3d/assets/thirdparty/textures/milkyway/LICENSE.md",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "milkyway_license_attribution",
-      "target": "milkyway_license_relevant_faqs",
-      "confidence_score": 1.0
+      "target": "milkyway_license_relevant_faqs"
     },
     {
       "relation": "contains",
@@ -7512,9 +7760,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams",
-      "target": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_agent_teams_expected_structure_ownership"
     },
     {
       "relation": "contains",
@@ -7522,9 +7770,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_build_phase_pattern_how_a_feature_push_runs",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_build_phase_pattern_how_a_feature_push_runs"
     },
     {
       "relation": "contains",
@@ -7532,9 +7780,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_canonical_roles_workstreams_and_their_file_lanes",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_canonical_roles_workstreams_and_their_file_lanes"
     },
     {
       "relation": "contains",
@@ -7542,9 +7790,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_coordination_cross_deps",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_coordination_cross_deps"
     },
     {
       "relation": "contains",
@@ -7552,9 +7800,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_how_to_spawn",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_how_to_spawn"
     },
     {
       "relation": "contains",
@@ -7562,9 +7810,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_team",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_team"
     },
     {
       "relation": "contains",
@@ -7572,9 +7820,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_the_core_rule_spine_vs_lanes_no_two_agents_edit_the_same_file",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_the_core_rule_spine_vs_lanes_no_two_agents_edit_the_same_file"
     },
     {
       "relation": "contains",
@@ -7582,9 +7830,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_worked_examples_the_co_op_batches_built_this_way",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_worked_examples_the_co_op_batches_built_this_way"
     },
     {
       "relation": "contains",
@@ -7592,9 +7840,9 @@
       "source_file": "docs/AGENT_TEAMS.md",
       "source_location": "L72",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_agent_teams_agent_teams_expected_structure_ownership",
-      "target": "docs_agent_teams_worktree_isolation_per_instance_testing_running_2_4_in_parallel",
-      "confidence_score": 1.0
+      "target": "docs_agent_teams_worktree_isolation_per_instance_testing_running_2_4_in_parallel"
     },
     {
       "relation": "contains",
@@ -7602,9 +7850,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture",
-      "target": "docs_architecture_architecture_reference_hype_raiders",
-      "confidence_score": 1.0
+      "target": "docs_architecture_architecture_reference_hype_raiders"
     },
     {
       "relation": "contains",
@@ -7612,9 +7860,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L148",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_10_server_browser_lan_discovery_autoload_serverbrowser_gd",
-      "confidence_score": 1.0
+      "target": "docs_architecture_10_server_browser_lan_discovery_autoload_serverbrowser_gd"
     },
     {
       "relation": "contains",
@@ -7622,9 +7870,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_1_autoloads_registered_in_project_godot_autoload_in_this_order_17_total",
-      "confidence_score": 1.0
+      "target": "docs_architecture_1_autoloads_registered_in_project_godot_autoload_in_this_order_17_total"
     },
     {
       "relation": "contains",
@@ -7632,9 +7880,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L33",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_2_events_bus_autoload_events_gd_full_signatures",
-      "confidence_score": 1.0
+      "target": "docs_architecture_2_events_bus_autoload_events_gd_full_signatures"
     },
     {
       "relation": "contains",
@@ -7642,9 +7890,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_3_settings_autoload_settings_gd_values",
-      "confidence_score": 1.0
+      "target": "docs_architecture_3_settings_autoload_settings_gd_values"
     },
     {
       "relation": "contains",
@@ -7652,9 +7900,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L83",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_4_input_map_project_godot_input",
-      "confidence_score": 1.0
+      "target": "docs_architecture_4_input_map_project_godot_input"
     },
     {
       "relation": "contains",
@@ -7662,9 +7910,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_5_physics_layers_layer_names",
-      "confidence_score": 1.0
+      "target": "docs_architecture_5_physics_layers_layer_names"
     },
     {
       "relation": "contains",
@@ -7672,9 +7920,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_6_key_scene_trees_abbreviated",
-      "confidence_score": 1.0
+      "target": "docs_architecture_6_key_scene_trees_abbreviated"
     },
     {
       "relation": "contains",
@@ -7682,9 +7930,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L112",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_7_gameplay_systems_traces",
-      "confidence_score": 1.0
+      "target": "docs_architecture_7_gameplay_systems_traces"
     },
     {
       "relation": "contains",
@@ -7692,9 +7940,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L123",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_8_co_op_netcode_autoload_networkmanager_gd_per_system_hooks",
-      "confidence_score": 1.0
+      "target": "docs_architecture_8_co_op_netcode_autoload_networkmanager_gd_per_system_hooks"
     },
     {
       "relation": "contains",
@@ -7702,9 +7950,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L136",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_9_persistence_versioning",
-      "confidence_score": 1.0
+      "target": "docs_architecture_9_persistence_versioning"
     },
     {
       "relation": "contains",
@@ -7712,9 +7960,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_1_autoloads_registered_in_project_godot_autoload_in_this_order_17_total",
-      "target": "docs_architecture_key_public_apis",
-      "confidence_score": 1.0
+      "target": "docs_architecture_key_public_apis"
     },
     {
       "relation": "contains",
@@ -7722,9 +7970,9 @@
       "source_file": "docs/ASSETS.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_assets",
-      "target": "docs_assets_asset_catalog_credits_hype_raiders",
-      "confidence_score": 1.0
+      "target": "docs_assets_asset_catalog_credits_hype_raiders"
     },
     {
       "relation": "contains",
@@ -7732,9 +7980,9 @@
       "source_file": "docs/ASSETS.md",
       "source_location": "L68",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_assets_asset_catalog_credits_hype_raiders",
-      "target": "docs_assets_credits",
-      "confidence_score": 1.0
+      "target": "docs_assets_credits"
     },
     {
       "relation": "contains",
@@ -7742,9 +7990,9 @@
       "source_file": "docs/ASSETS.md",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_assets_asset_catalog_credits_hype_raiders",
-      "target": "docs_assets_deferred_planned_not_this_batch",
-      "confidence_score": 1.0
+      "target": "docs_assets_deferred_planned_not_this_batch"
     },
     {
       "relation": "contains",
@@ -7752,9 +8000,9 @@
       "source_file": "docs/ASSETS.md",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_assets_asset_catalog_credits_hype_raiders",
-      "target": "docs_assets_integrated_this_batch_feat_asset_integration",
-      "confidence_score": 1.0
+      "target": "docs_assets_integrated_this_batch_feat_asset_integration"
     },
     {
       "relation": "contains",
@@ -7762,9 +8010,9 @@
       "source_file": "docs/ASSETS.md",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_assets_asset_catalog_credits_hype_raiders",
-      "target": "docs_assets_license_posture",
-      "confidence_score": 1.0
+      "target": "docs_assets_license_posture"
     },
     {
       "relation": "contains",
@@ -7772,9 +8020,9 @@
       "source_file": "docs/ASSETS.md",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_assets_asset_catalog_credits_hype_raiders",
-      "target": "docs_assets_other_vetted_sources_for_future_searches",
-      "confidence_score": 1.0
+      "target": "docs_assets_other_vetted_sources_for_future_searches"
     },
     {
       "relation": "contains",
@@ -7782,9 +8030,9 @@
       "source_file": "docs/ASSETS.md",
       "source_location": "L40",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_assets_asset_catalog_credits_hype_raiders",
-      "target": "docs_assets_rejected",
-      "confidence_score": 1.0
+      "target": "docs_assets_rejected"
     },
     {
       "relation": "contains",
@@ -7792,9 +8040,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing",
-      "target": "docs_testing_testing_self_play_harness_hype_raiders",
-      "confidence_score": 1.0
+      "target": "docs_testing_testing_self_play_harness_hype_raiders"
     },
     {
       "relation": "contains",
@@ -7802,9 +8050,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_1_how_agent_mode_works",
-      "confidence_score": 1.0
+      "target": "docs_testing_1_how_agent_mode_works"
     },
     {
       "relation": "contains",
@@ -7812,9 +8060,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_2_command_protocol",
-      "confidence_score": 1.0
+      "target": "docs_testing_2_command_protocol"
     },
     {
       "relation": "contains",
@@ -7822,9 +8070,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L72",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_3_state_json_schema",
-      "confidence_score": 1.0
+      "target": "docs_testing_3_state_json_schema"
     },
     {
       "relation": "contains",
@@ -7832,9 +8080,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L119",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_4_driving_it",
-      "confidence_score": 1.0
+      "target": "docs_testing_4_driving_it"
     },
     {
       "relation": "contains",
@@ -7842,9 +8090,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L124",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_5_validation_commands_run_after_every_change",
-      "confidence_score": 1.0
+      "target": "docs_testing_5_validation_commands_run_after_every_change"
     },
     {
       "relation": "contains",
@@ -7852,9 +8100,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L134",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_6_qa_workflow_test_matrix",
-      "confidence_score": 1.0
+      "target": "docs_testing_6_qa_workflow_test_matrix"
     },
     {
       "relation": "contains",
@@ -7862,9 +8110,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L148",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
-      "confidence_score": 1.0
+      "target": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together"
     },
     {
       "relation": "contains",
@@ -7872,9 +8120,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L205",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_testing_self_play_harness_hype_raiders",
-      "target": "docs_testing_8_parallel_testing_2_4_instances_at_once",
-      "confidence_score": 1.0
+      "target": "docs_testing_8_parallel_testing_2_4_instances_at_once"
     },
     {
       "relation": "contains",
@@ -7882,9 +8130,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L177",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
-      "target": "docs_testing_co_op_checks_worth_running",
-      "confidence_score": 1.0
+      "target": "docs_testing_co_op_checks_worth_running"
     },
     {
       "relation": "contains",
@@ -7892,9 +8140,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L163",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
-      "target": "docs_testing_host_join_ready_deploy_sequence",
-      "confidence_score": 1.0
+      "target": "docs_testing_host_join_ready_deploy_sequence"
     },
     {
       "relation": "contains",
@@ -7902,9 +8150,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L185",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
-      "target": "docs_testing_lan_discovery_test",
-      "confidence_score": 1.0
+      "target": "docs_testing_lan_discovery_test"
     },
     {
       "relation": "contains",
@@ -7912,9 +8160,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L201",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
-      "target": "docs_testing_per_instance_save_isolation",
-      "confidence_score": 1.0
+      "target": "docs_testing_per_instance_save_isolation"
     },
     {
       "relation": "contains",
@@ -7922,9 +8170,9 @@
       "source_file": "docs/TESTING.md",
       "source_location": "L194",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
-      "target": "docs_testing_wan_hairpin_test",
-      "confidence_score": 1.0
+      "target": "docs_testing_wan_hairpin_test"
     },
     {
       "relation": "contains",
@@ -7932,9 +8180,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme",
-      "target": "agent_readme_hype_game_agent_harness",
-      "confidence_score": 1.0
+      "target": "agent_readme_hype_game_agent_harness"
     },
     {
       "relation": "contains",
@@ -7942,9 +8190,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
-      "target": "agent_readme_how_the_game_exposes_control",
-      "confidence_score": 1.0
+      "target": "agent_readme_how_the_game_exposes_control"
     },
     {
       "relation": "contains",
@@ -7952,9 +8200,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L121",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
-      "target": "agent_readme_mcp_server",
-      "confidence_score": 1.0
+      "target": "agent_readme_mcp_server"
     },
     {
       "relation": "contains",
@@ -7962,9 +8210,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
-      "target": "agent_readme_play_py_cli",
-      "confidence_score": 1.0
+      "target": "agent_readme_play_py_cli"
     },
     {
       "relation": "contains",
@@ -7972,9 +8220,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L168",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
-      "target": "agent_readme_quick_manual_test_no_game",
-      "confidence_score": 1.0
+      "target": "agent_readme_quick_manual_test_no_game"
     },
     {
       "relation": "contains",
@@ -7982,9 +8230,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
-      "target": "agent_readme_wire_protocol",
-      "confidence_score": 1.0
+      "target": "agent_readme_wire_protocol"
     },
     {
       "relation": "contains",
@@ -7992,9 +8240,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L110",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_play_py_cli",
-      "target": "agent_readme_importable",
-      "confidence_score": 1.0
+      "target": "agent_readme_importable"
     },
     {
       "relation": "contains",
@@ -8002,9 +8250,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_play_py_cli",
-      "target": "agent_readme_typical_self_play_loop",
-      "confidence_score": 1.0
+      "target": "agent_readme_typical_self_play_loop"
     },
     {
       "relation": "contains",
@@ -8012,9 +8260,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L147",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_mcp_server",
-      "target": "agent_readme_registration",
-      "confidence_score": 1.0
+      "target": "agent_readme_registration"
     },
     {
       "relation": "conceptually_related_to",
@@ -11171,5 +11419,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "221968658af53d16cd9878eb09634a94a36b8262"
+  "built_at_commit": "bb65d6f5fd15645d4544c5ecf30a5ed3c28f6c08"
 }

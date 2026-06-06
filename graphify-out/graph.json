@@ -1161,7 +1161,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L71",
+      "source_location": "L72",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1170,7 +1170,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L85",
+      "source_location": "L86",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1179,7 +1179,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L88",
+      "source_location": "L89",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -5709,9 +5709,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L443",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_underwater",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_underwater"
     },
     {
       "relation": "contains",
@@ -5719,9 +5719,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L418",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_water_splash",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_water_splash"
     },
     {
       "relation": "contains",
@@ -6111,9 +6111,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L443",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_underwater",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -6122,9 +6122,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L418",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_water_splash",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -6364,9 +6364,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L463",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_underwater",
-      "target": "audio_gen_audio_sine",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_sine"
     },
     {
       "relation": "calls",
@@ -6518,9 +6518,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L456",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_underwater",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -6529,9 +6529,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L423",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_water_splash",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -6694,9 +6694,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L426",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_water_splash",
-      "target": "audio_gen_audio_adsr",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_adsr"
     },
     {
       "relation": "calls",
@@ -6847,9 +6847,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L464",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_underwater",
-      "target": "audio_gen_audio_mix",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_mix"
     },
     {
       "relation": "calls",
@@ -6858,9 +6858,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L439",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_water_splash",
-      "target": "audio_gen_audio_mix",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_mix"
     },
     {
       "relation": "calls",
@@ -7032,9 +7032,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L457",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_underwater",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -7043,9 +7043,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L425",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_water_splash",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "rationale_for",
@@ -7119,9 +7119,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L424",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_water_splash",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -7305,9 +7305,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L465",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_underwater",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -7316,9 +7316,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L440",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_water_splash",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -7530,9 +7530,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L419",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_419",
-      "target": "audio_gen_audio_gen_water_splash",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_water_splash"
     },
     {
       "relation": "rationale_for",
@@ -7540,9 +7540,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L444",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_444",
-      "target": "audio_gen_audio_gen_underwater",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_underwater"
     },
     {
       "relation": "rationale_for",
@@ -7560,9 +7560,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L469",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_469",
-      "target": "audio_gen_audio_gen_ambient",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_ambient"
     },
     {
       "relation": "rationale_for",
@@ -7580,9 +7580,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L497",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_497",
-      "target": "audio_gen_audio_gen_music",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_music"
     },
     {
       "relation": "contains",
@@ -11419,5 +11419,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "bb65d6f5fd15645d4544c5ecf30a5ed3c28f6c08"
+  "built_at_commit": "54b4255f914172bf025ade58644a83c9f8eec9f7"
 }
