@@ -75,6 +75,14 @@ var _terrain_checked: bool = false
 var _bubbles: GPUParticles3D = null   # rising bubbles while submerged (lazy)
 var _ripple: GPUParticles3D = null    # feet ripple while wading (lazy)
 
+# --- Audible movement noise (sound stealth; read by the server-side enemy AI) ---
+# Planar speed observed from the SYNCED position on EVERY peer, so the server can
+# derive a remote client's footstep loudness without syncing velocity. noise_radius()
+# maps (stance + this speed) to an audible radius in metres.
+var _noise_last_pos: Vector3 = Vector3.ZERO
+var _noise_speed: float = 0.0
+var _noise_inited: bool = false
+
 const GRENADE_SCENE := "res://scenes/items/Grenade.tscn"
 
 
@@ -1124,6 +1132,43 @@ func set_carry_anchor(p: Vector3) -> void:
 ## PUBLIC: HUD / other lanes query downed state.
 func is_downed() -> bool:
 	return downed
+
+# --- Audible movement noise (sound stealth) ---------------------------------
+## Observe planar speed from the SYNCED position on every peer (runs on server AND
+## clients), so the server-side enemy perception can hear a remote client's footsteps
+## without syncing velocity. Cheap; lightly smoothed against single-frame jitter.
+func _process(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	if not _noise_inited:
+		_noise_last_pos = global_position
+		_noise_inited = true
+		return
+	var d := global_position - _noise_last_pos
+	d.y = 0.0
+	var inst := d.length() / delta
+	_noise_last_pos = global_position
+	_noise_speed = lerpf(_noise_speed, inst, clampf(delta * 10.0, 0.0, 1.0))
+
+## Audible radius (metres) of this player's movement, for the server-side enemy AI.
+## Crouch-walking is quiet, sprinting is loud, standing still is a faint hum; a downed
+## (crawling) player is nearly silent. Pure read — safe on any peer.
+func noise_radius() -> float:
+	if downed:
+		return Settings.NOISE_IDLE * 0.5
+	var spd := _noise_speed
+	if spd < 0.4:
+		return Settings.NOISE_IDLE
+	var loud: float
+	if spd >= Settings.PLAYER_MOVE_SPEED + 0.4:
+		loud = Settings.NOISE_SPRINT     # running
+	else:
+		loud = Settings.NOISE_WALK       # walking
+	if stance == Stance.CROUCH:
+		loud *= Settings.NOISE_CROUCH_MULT
+	elif stance == Stance.SLIDE:
+		loud = Settings.NOISE_WALK       # a slide scrapes — moderately loud
+	return loud
 
 ## True if the local player can only use a sidearm / can't ADS (carrying a buddy).
 func is_carrying() -> bool:

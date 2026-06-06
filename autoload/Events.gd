@@ -63,6 +63,18 @@ signal match_timer_changed(left: float, total: float)
 ## The match timer expired → the final overwhelming "storm" wave begins.
 signal final_wave_started()
 
+# --- AI perception / stealth (Batch 2 "Living threat") ---
+## A noise was made in the world that nearby enemies can HEAR (server-authoritative —
+## clients route loud events via NetworkManager.report_noise so the SERVER's AI hears
+## them). `loudness` is the audible RADIUS in metres; `kind` 0 footstep, 1 gunfire,
+## 2 grenade. Non-hunter enemies within `loudness` of `world_pos` go INVESTIGATE (or
+## CHASE if a confirmed-close spike). Footsteps are NOT reported here — the server derives
+## them per-frame from each player's synced velocity+stance (see robot_enemy perception).
+signal noise_emitted(world_pos: Vector3, loudness: float, kind: int)
+## A caller/alarm fired (the Snitch archetype, or a loud alarm) — the AIDirector may
+## summon reinforcements toward `world_pos`. `level` scales the response (1.0 = normal).
+signal enemy_alerted(world_pos: Vector3, level: float)
+
 # --- Extraction windows ---
 ## A zone opened/closed its timed extraction window. `remaining` = seconds in the
 ## current state. Map + minimap + HUD read this. (Per-zone, server-auth.)
