@@ -59,3 +59,13 @@ func ids_of_kind(kind: int) -> Array:
 		if (_by_id[id] as ItemData).kind == kind:
 			out.append(id)
 	return out
+
+## Catalog ids whose ItemData.rarity is within [min_r, max_r] (inclusive). Used by the
+## risk-tier loot tables to roll tier-appropriate drops (Rarity: 0 COMMON … 4 LEGENDARY).
+func ids_of_rarity(min_r: int, max_r: int = 4) -> Array:
+	var out: Array = []
+	for id in _by_id:
+		var r: int = (_by_id[id] as ItemData).rarity
+		if r >= min_r and r <= max_r:
+			out.append(id)
+	return out
