@@ -11,7 +11,7 @@ const DEFAULT_IP: String = "127.0.0.1"
 const DISCOVERY_PORT: int = 24566
 ## Game build version (canonical = the VERSION file at the repo root). Stamped into
 ## save files so loads survive game updates (see MetaProgression/Stash version checks).
-const GAME_VERSION: String = "0.2.0"
+const GAME_VERSION: String = "0.3.0"
 # When true, the netcode emits [net]/[arena]/[client] diagnostic prints (connection,
 # roster sync, spawn/replication). Off for normal play; flip on to debug co-op.
 const NET_DEBUG: bool = false
@@ -176,6 +176,88 @@ const ALARM_COOLDOWN: float = 12.0
 # Between-wave patrols: spawn this many NON-hunter enemies during intermission (and
 # pre-first-wave) so the map feels inhabited + stealth has something to sneak past.
 const PATROL_COUNT: int = 3
+
+# --- Risk tiers (Batch 3 "Live raid") ---------------------------------------
+# Each POI is tiered 1 (low) … 3 (high). Higher tier = tougher event guards + rarer
+# loot (rarity-weighted) + more world-loot caches. Keyed by the POI names in
+# arena.gd::_POI_DEFS. arena.get_poi_tier() reads this; the map shades by tier.
+const POI_RISK_TIERS := {
+	"POI_NorthTower":   3,
+	"POI_EastWarehouse": 1,
+	"POI_Plaza":        2,
+	"POI_SWHouse":      1,
+	"POI_SouthYard":    2,
+	"POI_EastYard":     3,
+}
+# Per-tier loot rarity band [min, max] (ItemData.Rarity: 0 COMMON…4 LEGENDARY). The
+# loot_tables roll picks within the band, weighted toward the lower (commoner) end.
+const RISK_TIER_LOOT := {
+	1: [0, 1],   # COMMON–UNCOMMON
+	2: [1, 2],   # UNCOMMON–RARE
+	3: [2, 3],   # RARE–EPIC
+}
+# How many world-loot pickups to scatter near a POI of each tier (at arena build).
+const RISK_TIER_CACHE_COUNT := { 1: 2, 2: 3, 3: 4 }
+# Map shading per tier (low green → high red).
+const RISK_TIER_COLORS := {
+	1: Color(0.45, 0.85, 0.5),
+	2: Color(0.95, 0.8, 0.35),
+	3: Color(0.95, 0.4, 0.35),
+}
+
+# --- Dynamic world events (Batch 3) -----------------------------------------
+# The WorldEventDirector fires the first event after FIRST_DELAY, then every
+# INTERVAL ± JITTER seconds, picking a random enabled kind. Suspended during the storm.
+const WORLD_EVENT_FIRST_DELAY: float = 60.0
+const WORLD_EVENT_INTERVAL: float = 90.0
+const WORLD_EVENT_JITTER: float = 25.0
+const SUPPLY_CACHE_HOLD_TIME: float = 8.0     # seconds a player must hold the cache to crack it
+const SUPPLY_CACHE_GUARDS: int = 3            # defenders spawned around a cache
+const SUPPLY_CACHE_LOOT: int = 5              # loot pickups dropped when cracked
+const MINIBOSS_REWARD_CURRENCY: int = 150     # bonus on the mini-boss kill
+const CONTESTED_POI_DURATION: float = 45.0    # how long a POI stays "hot"
+const CONTESTED_POI_GUARDS: int = 4
+const SURGE_DURATION: float = 25.0            # enemy-surge / sensor-blackout window
+
+# --- Progression: Raider Level + XP (Batch 3) --------------------------------
+# Account XP curve: xp needed to go from level n→n+1 = BASE * GROWTH^(n-1).
+const XP_CURVE_BASE: float = 1000.0
+const XP_CURVE_GROWTH: float = 1.35
+const SKILL_POINTS_PER_LEVEL: int = 1
+const XP_PER_KILL: int = 30
+const XP_PER_EXTRACT: int = 500
+const XP_PER_EVENT: int = 250                 # completing a world event
+const XP_PER_RARE_LOOT: int = 60              # per RARE+ item in the extracted haul
+# Account skill tree. key -> { name, desc, max, mult_field (a player_mods key), per }.
+# Skills fold MULTIPLICATIVELY into MetaProgression.player_mods() alongside upgrades.
+const SKILLS := {
+	"vitality":  { "name": "Vitality", "desc": "+6% max health / level", "max": 5, "field": "health_mult", "per": 0.06 },
+	"scavenger": { "name": "Scavenger", "desc": "+8% loot value / level", "max": 5, "field": "loot_mult", "per": 0.08 },
+	"endurance": { "name": "Endurance", "desc": "+8% stamina / level", "max": 5, "field": "stamina_mult", "per": 0.08 },
+	"gunner":    { "name": "Gunner", "desc": "+4% weapon damage / level", "max": 5, "field": "damage_mult", "per": 0.04 },
+}
+
+# --- Progression: Vendor Reputation (Batch 3) --------------------------------
+# Cumulative rep thresholds per tier (index = tier; rep >= threshold → that tier).
+const REP_TIER_THRESHOLDS := [0, 300, 800, 1600, 2800]
+# Reward granted when a NEW tier is reached: currency + an optional blueprint to learn.
+const REP_TIER_REWARDS := {
+	1: { "currency": 200, "blueprint": "" },
+	2: { "currency": 400, "blueprint": "bp_suppressor" },
+	3: { "currency": 700, "blueprint": "bp_stim" },
+	4: { "currency": 1200, "blueprint": "bp_drum_mag" },
+}
+# Shop price discount fraction per rep tier (tier 0 = none … tier 4 = 20% off).
+const REP_TIER_DISCOUNT := { 0: 0.0, 1: 0.05, 2: 0.10, 3: 0.15, 4: 0.20 }
+const REP_PER_EXTRACT: int = 50
+const REP_PER_CONTRACT: int = 120             # claiming a quest
+const REP_PER_HIGH_TIER_HAUL: int = 80        # extracting RARE+ loot
+
+# --- Progression: Weapon Mastery (Batch 3) -----------------------------------
+# Per-weapon mastery XP from use (kills/damage). Level n→n+1 needs BASE*n mastery xp.
+const WEAPON_MASTERY_BASE: float = 8.0        # ~8 kills for level 1, scaling up
+const WEAPON_MASTERY_MAX: int = 10
+const WEAPON_MASTERY_XP_PER_KILL: int = 1
 
 # Camera / ADS / peek
 const DEFAULT_FOV: float = 60.0

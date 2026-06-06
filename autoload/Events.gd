@@ -75,6 +75,31 @@ signal noise_emitted(world_pos: Vector3, loudness: float, kind: int)
 ## summon reinforcements toward `world_pos`. `level` scales the response (1.0 = normal).
 signal enemy_alerted(world_pos: Vector3, level: float)
 
+# --- Dynamic world events (Batch 3 "Live raid") ---
+## A mid-raid world event began (server-auth, synced). `kind`: 0 supply_cache,
+## 1 miniboss, 2 contested_poi, 3 surge. `world_pos` = marker location; `label` = HUD text.
+## The map/minimap draw nodes in the "world_events" group; the HUD shows a banner.
+signal world_event_started(kind: int, world_pos: Vector3, label: String)
+## A world event resolved. `success` = the squad completed it (cracked the cache / killed
+## the mini-boss) vs it expired/failed.
+signal world_event_ended(kind: int, success: bool)
+## A world event's fill/countdown progressed (cache hold, contested timer). ratio 0..1.
+signal world_event_progress(kind: int, ratio: float)
+## An environmental surge toggled. `kind`: 0 enemy-surge (extra spawns), 1 sensor-blackout
+## (the minimap is disabled). The HUD/minimap read this; server-auth + synced.
+signal environmental_surge_changed(active: bool, kind: int)
+
+# --- Progression: Raider Level / Reputation / Weapon Mastery (Batch 3) ---
+## XP was awarded (per-peer LOCAL — drives the Raider Level). `source`: "kill"/"extract"/
+## "event"/"loot" etc. (for the RaidSummary breakdown).
+signal xp_gained(amount: int, source: String)
+## The Raider Level increased. `skill_points` = the total unspent points now available.
+signal raider_level_up(new_level: int, skill_points: int)
+## Vendor reputation changed (and possibly crossed a tier). `tier` = the new tier index.
+signal reputation_changed(rep: int, tier: int)
+## A weapon's mastery level increased (per-weapon, use-driven).
+signal weapon_mastery_changed(weapon_id: String, level: int)
+
 # --- Extraction windows ---
 ## A zone opened/closed its timed extraction window. `remaining` = seconds in the
 ## current state. Map + minimap + HUD read this. (Per-zone, server-auth.)

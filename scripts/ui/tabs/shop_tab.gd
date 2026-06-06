@@ -56,6 +56,7 @@ func _ready() -> void:
 	_build_layout()
 	Events.currency_changed.connect(_on_currency_changed)
 	Events.blueprint_learned.connect(_on_blueprint_learned)
+	Events.reputation_changed.connect(_on_reputation_changed)
 	_refresh()
 
 
@@ -64,6 +65,8 @@ func _exit_tree() -> void:
 		Events.currency_changed.disconnect(_on_currency_changed)
 	if Events.blueprint_learned.is_connected(_on_blueprint_learned):
 		Events.blueprint_learned.disconnect(_on_blueprint_learned)
+	if Events.reputation_changed.is_connected(_on_reputation_changed):
+		Events.reputation_changed.disconnect(_on_reputation_changed)
 
 
 # ── Layout construction ───────────────────────────────────────────────────────
@@ -429,22 +432,27 @@ func _refresh_currency_label() -> void:
 
 
 ## Enable / disable each stock BUY button based on current currency.
+## Displayed price reflects the current rep-tier discount.
 func _refresh_item_buttons() -> void:
 	for id in _item_ui:
-		var price: int  = int(STOCK.get(id, 0))
-		var ui: Dictionary = _item_ui[id]
-		var buy_btn: Button = ui["buy_btn"]
+		var base_price: int  = int(STOCK.get(id, 0))
+		var price: int       = _discounted_price(base_price)
+		var ui: Dictionary   = _item_ui[id]
+		var buy_btn: Button  = ui["buy_btn"]
 		var price_lbl: Label = ui["price_lbl"]
 		var affordable: bool = MetaProgression.currency >= price
 		buy_btn.disabled = not affordable
+		price_lbl.text = "CR %d" % price
 		price_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
 
 
 ## Sync blueprint rows: show LEARNED / update BUY affordability.
+## Displayed price reflects the current rep-tier discount.
 func _refresh_blueprint_buttons() -> void:
 	for bp_id in _blueprint_ui:
-		var price: int     = int(BLUEPRINT_PRICE.get(bp_id, BLUEPRINT_PRICE_DEFAULT))
-		var ui: Dictionary = _blueprint_ui[bp_id]
+		var base_price: int = int(BLUEPRINT_PRICE.get(bp_id, BLUEPRINT_PRICE_DEFAULT))
+		var price: int      = _discounted_price(base_price)
+		var ui: Dictionary  = _blueprint_ui[bp_id]
 		var buy_btn:    Button = ui["buy_btn"]
 		var status_lbl: Label  = ui["status_lbl"]
 
@@ -472,20 +480,36 @@ func _on_blueprint_learned(_bp: String) -> void:
 	_refresh_blueprint_buttons()
 
 
+func _on_reputation_changed(_rep: int, _tier: int) -> void:
+	## Rep tier changed — prices may have changed; full refresh.
+	_refresh()
+
+
+# ── Rep discount helper ───────────────────────────────────────────────────────
+
+## Returns the effective (discounted) price for a base price using the current
+## vendor reputation tier discount (0% … 20%). Always >= 1.
+func _discounted_price(base_price: int) -> int:
+	var discount: float = MetaProgression.rep_discount()
+	return maxi(1, int(round(float(base_price) * (1.0 - discount))))
+
+
 # ── Purchase actions ──────────────────────────────────────────────────────────
 
-## Attempt to buy 1 unit of a stock item. Deducts currency, adds to stash.
-func _on_buy_item(id: String, price: int) -> void:
+## Attempt to buy 1 unit of a stock item. Deducts the discounted price, adds to stash.
+func _on_buy_item(id: String, base_price: int) -> void:
+	var price: int = _discounted_price(base_price)
 	if not MetaProgression.spend(price):
 		return
 	Stash.add(id, 1)
 	# currency_changed fires from spend(); _refresh() runs via _on_currency_changed.
 
 
-## Attempt to buy a crafting blueprint. Crafting.buy_blueprint handles spend + learn.
-func _on_buy_blueprint(bp_id: String, price: int) -> void:
+## Attempt to buy a crafting blueprint at the discounted price.
+func _on_buy_blueprint(bp_id: String, base_price: int) -> void:
 	# Guard: already learned (button should be disabled, but be defensive).
 	if MetaProgression.is_blueprint_known(bp_id):
 		return
+	var price: int = _discounted_price(base_price)
 	Crafting.buy_blueprint(bp_id, price)
 	# currency_changed + blueprint_learned fire automatically; UI refreshes.

@@ -229,6 +229,8 @@ static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> 
 		return null
 	pickup.item_id = id
 	pickup.count = count
-	parent.add_child(pickup)
+	# `true` = force a readable unique name; REQUIRED when `parent` is watched by a
+	# MultiplayerSpawner (Net/Loot) — without it the auto-spawn rejects the node.
+	parent.add_child(pickup, true)
 	pickup.global_position = pos
 	return pickup

@@ -48,6 +48,10 @@ func _ready() -> void:
 	Events.player_revived.connect(_on_player_revived)
 	Events.player_bleedout.connect(_on_player_bleedout)
 
+	# World events + environmental surge.
+	Events.world_event_started.connect(_on_world_event_started)
+	Events.environmental_surge_changed.connect(_on_surge_changed)
+
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
 	# interaction prompt (interaction_prompt.gd sits at offset_top=-158..bottom=-120).
@@ -71,6 +75,13 @@ var _current_weapon_name: String = "RIFLE"
 var _timer_label: Label
 var _storm_banner: Label
 var _storm_banner_t: float = 0.0
+# World-event banner — stacked 44px below the storm banner (offset_top -76 vs -120).
+var _event_banner: Label
+var _event_banner_t: float = 0.0
+# Surge vignette — a subtle colour-rect pulse while a sensor-blackout surge is active.
+var _surge_vignette: ColorRect
+var _surge_active: bool = false
+var _surge_pulse: float = 0.0
 
 # Edge-anchored widgets that re-inset toward center for ultrawide comfort, each paired
 # with its cached AUTHORED offsets so the inset is idempotent (recomputed from base,
@@ -119,6 +130,35 @@ func _build_hud_widgets() -> void:
 	_storm_banner.text = "⚠ STORM INCOMING — EXTRACT"
 	_storm_banner.visible = false
 	$Root.add_child(_storm_banner)
+
+	# World-event banner — placed 44px below the storm banner so the two never overlap.
+	# Storm banner sits at offset_top -120; event banner at -76, giving a clear gap.
+	# Both are centred horizontally so they don't fight the killfeed (top-left) or the
+	# wave/timer labels (top-centre above y=46). The banner auto-fades after ~4s.
+	_event_banner = Label.new()
+	_event_banner.set_anchors_preset(Control.PRESET_CENTER)
+	_event_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_event_banner.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_event_banner.offset_top = -76.0
+	_event_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_event_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_event_banner.add_theme_font_size_override("font_size", 24)
+	_event_banner.add_theme_color_override("font_color", Color(0.95, 0.75, 0.25))
+	_event_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_event_banner.add_theme_constant_override("outline_size", 4)
+	_event_banner.text = ""
+	_event_banner.visible = false
+	$Root.add_child(_event_banner)
+
+	# Sensor-surge vignette — a very faint orange/green tint at the screen edges while
+	# the blackout is active. Kept subtle (max alpha 0.12) so it reads as ambience
+	# rather than damage. Uses MOUSE_FILTER_IGNORE so it never eats input.
+	_surge_vignette = ColorRect.new()
+	_surge_vignette.color = Color(0.05, 0.3, 0.05, 0.0)
+	_surge_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_surge_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_surge_vignette.visible = false
+	add_child(_surge_vignette)
 
 	# UX overlay components (authored by hud-dev). Guarded so the HUD works whether
 	# or not they exist yet; each is a self-contained Control that listens to Events.
@@ -356,6 +396,59 @@ func _process(delta: float) -> void:
 		# Keep a steady pulse while it lingers, then hide.
 		if _storm_banner_t <= 0.0:
 			_storm_banner.visible = false
+	# Fade the world-event banner.
+	if _event_banner and _event_banner.visible:
+		_event_banner_t -= delta
+		_event_banner.modulate.a = clampf(_event_banner_t / 1.0, 0.0, 1.0) if _event_banner_t < 1.0 else 1.0
+		if _event_banner_t <= 0.0:
+			_event_banner.visible = false
+	# Pulse the surge vignette while active.
+	if _surge_active and _surge_vignette != null:
+		_surge_pulse += delta
+		var p: float = 0.5 + 0.5 * sin(_surge_pulse * 2.0)
+		_surge_vignette.color.a = 0.04 + 0.08 * p   # 0.04..0.12 — subtle
+
+# --- World events + environmental surge ------------------------------------
+
+func _on_world_event_started(kind: int, _pos: Vector3, label: String) -> void:
+	if _event_banner == null:
+		return
+	# Pick a colour per event kind matching the map accent colours.
+	var col: Color
+	match kind:
+		0: col = Color(0.95, 0.75, 0.25)   # supply_cache — amber
+		1: col = Color(0.95, 0.30, 0.95)   # miniboss — magenta
+		2: col = Color(0.30, 0.80, 0.95)   # contested_poi — cyan
+		3: col = Color(1.00, 0.55, 0.15)   # surge — orange
+		_: col = Color(1.00, 1.00, 1.00)
+	_event_banner.text = "⚠ %s" % label.to_upper()
+	_event_banner.add_theme_color_override("font_color", col)
+	_event_banner.visible = true
+	_event_banner.modulate.a = 1.0
+	_event_banner_t = 4.0
+
+func _on_surge_changed(active: bool, kind: int) -> void:
+	# Only the sensor-blackout surge (kind 1) triggers the vignette.
+	if kind != 1:
+		return
+	_surge_active = active
+	if _surge_vignette == null:
+		return
+	if active:
+		_surge_vignette.visible = true
+		_surge_pulse = 0.0
+	else:
+		_surge_vignette.visible = false
+		_surge_vignette.color.a = 0.0
+
+func _exit_tree() -> void:
+	# Disconnect signals connected in _ready that are NOT connected via lambda (lambdas
+	# are auto-freed with the node). Named callbacks need explicit disconnection to avoid
+	# lingering references when the HUD is removed mid-session.
+	if Events.world_event_started.is_connected(_on_world_event_started):
+		Events.world_event_started.disconnect(_on_world_event_started)
+	if Events.environmental_surge_changed.is_connected(_on_surge_changed):
+		Events.environmental_surge_changed.disconnect(_on_surge_changed)
 
 # --- Match timer / storm warning -------------------------------------------
 

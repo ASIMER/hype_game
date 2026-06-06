@@ -71,6 +71,18 @@ var weapon_perks: Dictionary = {}
 var last_daily_date: String = ""
 var daily_quest_ids: Array[String] = []
 
+# --- Batch 3 progression (per-peer LOCAL; driven by autoload Progression) ----
+## Account XP + Raider Level. xp = cumulative lifetime XP; raider_level derived but
+## stored so spent skill points stay independent; skill_points = unspent; skills = key→level.
+var xp: int = 0
+var raider_level: int = 1
+var skill_points: int = 0
+var skills: Dictionary = {}
+## Vendor reputation (cumulative) — drives the rep tier (shop unlocks + discount).
+var vendor_rep: int = 0
+## Per-weapon mastery: weapon_id -> { "xp": int, "level": int } (use-driven).
+var weapon_mastery: Dictionary = {}
+
 ## Set once if a save from a NEWER game version was loaded this session (so the
 ## version-mismatch toast fires at most once per file per session).
 var _warned_newer := false
@@ -290,16 +302,153 @@ func buy_weapon_perk(weapon_id: String, perk: String) -> bool:
 	Events.weapon_perk_changed.emit(weapon_id)
 	return true
 
+# ---------------------------------------------------------------- Raider Level / XP
+## XP needed to advance FROM `level` to level+1 (level >= 1).
+func xp_to_advance(level: int) -> int:
+	return int(round(Settings.XP_CURVE_BASE * pow(Settings.XP_CURVE_GROWTH, maxi(0, level - 1))))
+
+## Cumulative XP required to BE at `level` (level 1 = 0).
+func _total_xp_for_level(level: int) -> int:
+	var t := 0
+	for n in range(1, level):
+		t += xp_to_advance(n)
+	return t
+
+## Award account XP (from kills/extract/events/loot). Rolls level-ups, granting skill
+## points, and persists. Emits xp_gained always + raider_level_up on a level change.
+func add_xp(amount: int, source: String = "") -> void:
+	if amount <= 0:
+		return
+	xp += amount
+	Events.xp_gained.emit(amount, source)
+	var new_level := 1
+	while xp >= _total_xp_for_level(new_level + 1):
+		new_level += 1
+	if new_level > raider_level:
+		skill_points += (new_level - raider_level) * Settings.SKILL_POINTS_PER_LEVEL
+		raider_level = new_level
+		Events.raider_level_up.emit(raider_level, skill_points)
+	save_profile()
+
+## UI helper: { level, into (xp into current level), need (xp to next), total }.
+func level_progress() -> Dictionary:
+	var base := _total_xp_for_level(raider_level)
+	return {
+		"level": raider_level,
+		"into": xp - base,
+		"need": xp_to_advance(raider_level),
+		"total": xp,
+	}
+
+# ---------------------------------------------------------------- skills
+func skill_level(key: String) -> int:
+	return int(skills.get(key, 0))
+
+func skill_max(key: String) -> int:
+	return int(Settings.SKILLS.get(key, {}).get("max", 0))
+
+## Spend one skill point on `key` (if available + not maxed). Returns true on success.
+func buy_skill(key: String) -> bool:
+	if not Settings.SKILLS.has(key):
+		return false
+	if skill_points <= 0 or skill_level(key) >= skill_max(key):
+		return false
+	skill_points -= 1
+	skills[key] = skill_level(key) + 1
+	save_profile()
+	return true
+
+## Combined multiplicative factor a skill contributes to its player_mods field.
+func _skill_factor(key: String) -> float:
+	var per := float(Settings.SKILLS.get(key, {}).get("per", 0.0))
+	return 1.0 + per * skill_level(key)
+
+# ---------------------------------------------------------------- vendor reputation
+## The rep tier for the current vendor_rep (index into REP_TIER_THRESHOLDS).
+func rep_tier() -> int:
+	var t := 0
+	for i in Settings.REP_TIER_THRESHOLDS.size():
+		if vendor_rep >= int(Settings.REP_TIER_THRESHOLDS[i]):
+			t = i
+	return t
+
+## Rep toward the NEXT tier: { tier, into, need } (need 0 = max tier).
+func rep_progress() -> Dictionary:
+	var t := rep_tier()
+	var base := int(Settings.REP_TIER_THRESHOLDS[t])
+	var nxt := t + 1
+	if nxt >= Settings.REP_TIER_THRESHOLDS.size():
+		return { "tier": t, "into": 0, "need": 0 }
+	var ceiling := int(Settings.REP_TIER_THRESHOLDS[nxt])
+	return { "tier": t, "into": vendor_rep - base, "need": ceiling - base }
+
+## Award reputation; on crossing a tier, grant its reward (currency + blueprint). Emits
+## reputation_changed. (earn()/learn_blueprint() each persist.)
+func grant_rep(amount: int) -> void:
+	if amount <= 0:
+		return
+	var before := rep_tier()
+	vendor_rep += amount
+	var after := rep_tier()
+	if after > before:
+		for tier in range(before + 1, after + 1):
+			var rw: Dictionary = Settings.REP_TIER_REWARDS.get(tier, {})
+			var cur := int(rw.get("currency", 0))
+			if cur > 0:
+				earn(cur)
+			var bp := String(rw.get("blueprint", ""))
+			if bp != "":
+				learn_blueprint(bp)
+	save_profile()
+	Events.reputation_changed.emit(vendor_rep, after)
+
+## Shop price discount fraction from the current rep tier (0.0 … 0.20).
+func rep_discount() -> float:
+	return float(Settings.REP_TIER_DISCOUNT.get(rep_tier(), 0.0))
+
+# ---------------------------------------------------------------- weapon mastery
+func weapon_mastery_level(weapon_id: String) -> int:
+	return int((weapon_mastery.get(weapon_id, {}) as Dictionary).get("level", 0))
+
+func weapon_mastery_xp(weapon_id: String) -> int:
+	return int((weapon_mastery.get(weapon_id, {}) as Dictionary).get("xp", 0))
+
+## Mastery XP to advance FROM `level` to level+1.
+func mastery_to_advance(level: int) -> int:
+	return int(round(Settings.WEAPON_MASTERY_BASE * float(level + 1)))
+
+## Add mastery XP to a weapon (from kills/use). Rolls level-ups (capped at MAX),
+## persists, emits weapon_mastery_changed on a level change.
+func add_weapon_mastery(weapon_id: String, amount: int) -> void:
+	if weapon_id == "" or amount <= 0:
+		return
+	var m: Dictionary = (weapon_mastery.get(weapon_id, {}) as Dictionary).duplicate()
+	var lvl := int(m.get("level", 0))
+	var mxp := int(m.get("xp", 0)) + amount
+	var leveled := false
+	while lvl < Settings.WEAPON_MASTERY_MAX and mxp >= mastery_to_advance(lvl):
+		mxp -= mastery_to_advance(lvl)
+		lvl += 1
+		leveled = true
+	m["xp"] = mxp
+	m["level"] = lvl
+	weapon_mastery[weapon_id] = m
+	save_profile()
+	if leveled:
+		Events.weapon_mastery_changed.emit(weapon_id, lvl)
+
 # ---------------------------------------------------------------- effects
-## Stat multipliers from the current upgrade levels, read at match start by the
-## player (health/stamina) and weapon controller (damage/reload). reload_mult < 1
-## means faster reloads.
+## Stat multipliers from the current upgrade levels + Batch-3 account skills (folded
+## multiplicatively), read at match start by the player (health/stamina) and weapon
+## controller (damage/reload). reload_mult < 1 means faster reloads. loot_mult scales
+## the extraction reward (applied in RaidManager).
 func player_mods() -> Dictionary:
 	return {
-		"health_mult": 1.0 + UPGRADES["player_health"]["effect"] * upgrade_level("player_health"),
+		"health_mult": (1.0 + UPGRADES["player_health"]["effect"] * upgrade_level("player_health")) * _skill_factor("vitality"),
 		"reload_mult": 1.0 - UPGRADES["reload_speed"]["effect"] * upgrade_level("reload_speed"),
-		"stamina_mult": 1.0 + UPGRADES["stamina"]["effect"] * upgrade_level("stamina"),
-		"damage_mult": 1.0 + UPGRADES["weapon_damage"]["effect"] * upgrade_level("weapon_damage"),
+		"stamina_mult": (1.0 + UPGRADES["stamina"]["effect"] * upgrade_level("stamina")) * _skill_factor("endurance"),
+		"damage_mult": (1.0 + UPGRADES["weapon_damage"]["effect"] * upgrade_level("weapon_damage")) * _skill_factor("gunner"),
+		"loot_mult": _skill_factor("scavenger"),
 	}
 
 # ---------------------------------------------------------------- persistence
@@ -319,6 +468,13 @@ func save_profile() -> void:
 	cfg.set_value("meta", "last_daily_date", last_daily_date)
 	cfg.set_value("meta", "daily_quest_ids", daily_quest_ids)
 	cfg.set_value("meta", "difficulty", GameState.difficulty)
+	# Batch 3 progression.
+	cfg.set_value("meta", "xp", xp)
+	cfg.set_value("meta", "raider_level", raider_level)
+	cfg.set_value("meta", "skill_points", skill_points)
+	cfg.set_value("meta", "skills", skills)
+	cfg.set_value("meta", "vendor_rep", vendor_rep)
+	cfg.set_value("meta", "weapon_mastery", weapon_mastery)
 	cfg.save(_save_path())
 
 func load_profile() -> void:
@@ -370,3 +526,12 @@ func load_profile() -> void:
 	for did in raw_dq:
 		daily_quest_ids.append(String(did))
 	GameState.difficulty = int(cfg.get_value("meta", "difficulty", GameState.Difficulty.NORMAL))
+	# Batch 3 progression (default cleanly for pre-0.3.0 saves).
+	xp = int(cfg.get_value("meta", "xp", 0))
+	raider_level = maxi(1, int(cfg.get_value("meta", "raider_level", 1)))
+	skill_points = int(cfg.get_value("meta", "skill_points", 0))
+	var raw_skills: Variant = cfg.get_value("meta", "skills", {})
+	skills = raw_skills if raw_skills is Dictionary else {}
+	vendor_rep = int(cfg.get_value("meta", "vendor_rep", 0))
+	# weapon_mastery is weapon_id -> { xp, level } (inner dicts) — _load_nested_dict validates.
+	weapon_mastery = _load_nested_dict(cfg.get_value("meta", "weapon_mastery", {}))
