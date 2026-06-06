@@ -28,3 +28,6 @@ desktop.ini
 /.smoke*
 
 # NOTE: *.import and *.uid ARE committed (Godot resource metadata), as is assets/.
+
+# Asset research scratch (downloads + screenshots; not shipped)
+/asset-research/

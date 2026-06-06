@@ -30,9 +30,11 @@ const CATALOG := {
 		"prim": Prim.BOX, "size": Vector3(1.4, 1.8, 1.4), "color": Color(0.6, 0.15, 0.15),
 		"model_scale": 0.36, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.9, 0) },
 	# Kenney Starter-Kit-FPS blaster.glb (CC0). ~1.6m long down +Z; shrink to a held weapon.
+	# Weapons: Kenney Blaster Kit (CC0) glTF view-models. Barrel faces +Z so held guns
+	# rotate 180° to point -Z; share Textures/colormap.png. See docs/ASSETS.md.
 	"rifle": { "model": "res://assets/models/weapons/rifle.glb", "icon": "res://assets/ui/icons/rifle.png",
 		"prim": Prim.BOX, "size": Vector3(0.12, 0.18, 0.8), "color": Color(0.2, 0.2, 0.22),
-		"model_scale": 0.45 },
+		"model_scale": 0.55, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, 0) },
 	# Khronos glTF-Sample-Assets Box.glb (CC0). Unit cube centred at origin; shrink to
 	# 0.6m. The sample box is a plain red cube, so retint untextured faces to crate tan.
 	"crate": { "model": "res://assets/models/environment/crate.glb", "icon": "res://assets/ui/icons/crate.png",
@@ -43,17 +45,19 @@ const CATALOG := {
 	"loot_cell": { "model": "", "icon": "",
 		"prim": Prim.CYLINDER, "size": Vector3(0.3, 0.5, 0.3), "color": Color(0.3, 0.9, 0.5) },
 
-	# --- Expansion: weapons (BOX placeholders; weapons-dev may add CC0 .glb later) ---
-	# Weapons: .glb path cleared → procedural gun view-models (ProceduralWeapons). The
-	# size/color stays as the primitive fallback; PNG icons (weapons keep theirs) win.
-	"smg": { "model": "", "icon": "res://assets/ui/icons/smg.png",
-		"prim": Prim.BOX, "size": Vector3(0.1, 0.16, 0.55), "color": Color(0.18, 0.18, 0.2) },
-	"shotgun": { "model": "", "icon": "res://assets/ui/icons/shotgun.png",
-		"prim": Prim.BOX, "size": Vector3(0.12, 0.16, 0.9), "color": Color(0.25, 0.16, 0.1) },
-	"pistol": { "model": "", "icon": "res://assets/ui/icons/pistol.png",
-		"prim": Prim.BOX, "size": Vector3(0.08, 0.18, 0.35), "color": Color(0.2, 0.2, 0.22) },
-	"dmr": { "model": "", "icon": "res://assets/ui/icons/dmr.png",
-		"prim": Prim.BOX, "size": Vector3(0.1, 0.16, 1.1), "color": Color(0.15, 0.17, 0.2) },
+	# --- Weapons: Kenney Blaster Kit (CC0) glTF view-models (was procedural). ---
+	"smg": { "model": "res://assets/models/weapons/smg.glb", "icon": "res://assets/ui/icons/smg.png",
+		"prim": Prim.BOX, "size": Vector3(0.1, 0.16, 0.55), "color": Color(0.18, 0.18, 0.2),
+		"model_scale": 0.95, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, 0) },
+	"shotgun": { "model": "res://assets/models/weapons/shotgun.glb", "icon": "res://assets/ui/icons/shotgun.png",
+		"prim": Prim.BOX, "size": Vector3(0.12, 0.16, 0.9), "color": Color(0.25, 0.16, 0.1),
+		"model_scale": 0.95, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, 0) },
+	"pistol": { "model": "res://assets/models/weapons/pistol.glb", "icon": "res://assets/ui/icons/pistol.png",
+		"prim": Prim.BOX, "size": Vector3(0.08, 0.18, 0.35), "color": Color(0.2, 0.2, 0.22),
+		"model_scale": 0.67, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, 0) },
+	"dmr": { "model": "res://assets/models/weapons/dmr.glb", "icon": "res://assets/ui/icons/dmr.png",
+		"prim": Prim.BOX, "size": Vector3(0.1, 0.16, 1.1), "color": Color(0.15, 0.17, 0.2),
+		"model_scale": 0.52, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.02, -0.15) },
 
 	# --- Expansion: enemy archetypes (primitive fallbacks; enemies-dev may swap glbs) ---
 	"robot_tick": { "model": "", "icon": "",

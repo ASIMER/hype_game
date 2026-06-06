@@ -378,42 +378,20 @@ static func _build_ground(root: Node3D) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "TerrainMesh"
 	mi.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	# BAKED COLOR TEXTURE path (bulletproof). The texture is authored in sRGB (the natural
-	# palette WITHOUT manual linearization — the renderer sRGB-decodes the albedo texture
-	# automatically). albedo_color stays WHITE so the texture carries the full palette;
-	# linear texture filtering blends grass↔dirt↔rock smoothly across cells for free.
-	# Sample the height field ONCE at quarter-cell (481×481) — shared by BOTH the albedo and
-	# the normal bake so we don't pay the (~50-pad + river + fbm) height_at cost 9× per texel.
-	var tex_n: int = n * 4 + 1                   # 481 for n=80
-	var tstep: float = cell * 0.25               # quarter-cell sample step
-	var th := PackedFloat32Array()
-	th.resize(tex_n * tex_n)
-	for ty in range(tex_n):
-		var zz: float = -HALF + float(ty) * tstep
-		for tx in range(tex_n):
-			th[ty * tex_n + tx] = height_at(-HALF + float(tx) * tstep, zz)
-	mat.albedo_texture = _bake_ground_texture(th, tex_n, tstep)
-	mat.albedo_color = Color.WHITE
-	mat.roughness = 1.0
-	mat.metallic = 0.0
-	mat.metallic_specular = 0.0   # kills the grazing-angle sky-specular sheen on flat ground
-	# Baked tangent-space NORMAL map (481×481 from the SAME height grid, central differences)
-	# → relief under raking light so the hills/banks read as surface, not flat shading. RAW
-	# (NOT srgb_to_linear'd — a normal map is data, not colour).
-	mat.normal_enabled = true
-	mat.normal_texture = _bake_ground_normal(th, tex_n, tstep)
-	mat.normal_scale = 0.7
-	# High-freq DETAIL albedo (small tiling noise) for close-up crispness so a 1.5 m
-	# camera-down shot shows grain instead of a blurry low-res wash.
-	mat.detail_enabled = true
-	mat.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MIX
-	mat.detail_albedo = _ground_detail_texture()
-	mat.detail_uv_layer = BaseMaterial3D.DETAIL_UV_1
-	mi.material_override = mat
+	# REAL CC0 PBR SURFACE (детализированная текстура земли). A triplanar splat
+	# ShaderMaterial samples 3 ambientCG 1K sets — Ground003 (grass-dirt) low/flat,
+	# Ground054 (dirt) mid elevation, Rock029 (warm cliff) steep slopes / high berm —
+	# blended by world-Y (height) + the surface up-dot (slope). World-space triplanar
+	# avoids UV stretch on slopes and keeps the 1K detail crisp under the close-up
+	# camera-down shot. RENDER-ONLY: the mesh still owns relief/collision/height_at/river.
+	mi.material_override = _build_ground_material()
+	root.add_child(_make_ground_body(mesh, mi, faces))
 
-	# Collision: ConcavePolygonShape3D from the explicit face soup, on a StaticBody3D,
-	# layer 1 (the navmesh bakes layer 1), mask 0.
+
+## Builds the ground StaticBody3D (collision unchanged) wrapping the mesh + material.
+## Split out only so _build_ground stays readable after the material swap; the collision
+## shape / layers / backface flag are byte-identical to the original inline path.
+static func _make_ground_body(mesh: ArrayMesh, mi: MeshInstance3D, faces: PackedVector3Array) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = "Terrain"
 	body.collision_layer = 1
@@ -421,14 +399,153 @@ static func _build_ground(root: Node3D) -> void:
 	var col := CollisionShape3D.new()
 	var shape := ConcavePolygonShape3D.new()
 	shape.set_faces(faces)
-	# Collide from both sides so a downward ray/falling body registers regardless of the
-	# triangle winding (default backface_collision=false ignores a ray hitting the back
-	# face → bodies fall through / probes miss). This is the fix for the no-collider bug.
 	shape.backface_collision = true
 	col.shape = shape
 	body.add_child(col)
 	body.add_child(mi)
-	root.add_child(body)
+	return body
+
+# ---------------------------------------------------------------- PBR ground material
+## The triplanar height/slope splat material. Loads the 3 ambientCG CC0 sets and feeds them
+## to a custom spatial shader. sRGB handling: the _Color.jpg albedos are imported sRGB and
+## the GPU sRGB-decodes them on sample → use them as linear albedo directly (NO manual
+## convert — the documented trap). NormalGL + Roughness are imported LINEAR (their .import
+## sidecars set srgb=0 / normal-map mode) so they sample as raw data.
+const _GTEX_DIR := "res://assets/textures/ground/"
+static func _gload(name: String) -> Texture2D:
+	var t: Texture2D = load(_GTEX_DIR + name)
+	if t == null:
+		push_warning("[terrain] missing ground texture: " + name)
+	return t
+
+static func _build_ground_material() -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = _GROUND_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	# Layer 0 = low/flat grass-dirt, 1 = mid dirt, 2 = steep warm rock.
+	m.set_shader_parameter("tex0_albedo", _gload("Ground003_Color.jpg"))
+	m.set_shader_parameter("tex0_normal", _gload("Ground003_NormalGL.jpg"))
+	m.set_shader_parameter("tex0_rough", _gload("Ground003_Roughness.jpg"))
+	m.set_shader_parameter("tex1_albedo", _gload("Ground054_Color.jpg"))
+	m.set_shader_parameter("tex1_normal", _gload("Ground054_NormalGL.jpg"))
+	m.set_shader_parameter("tex1_rough", _gload("Ground054_Roughness.jpg"))
+	m.set_shader_parameter("tex2_albedo", _gload("Rock029_Color.jpg"))
+	m.set_shader_parameter("tex2_normal", _gload("Rock029_NormalGL.jpg"))
+	m.set_shader_parameter("tex2_rough", _gload("Rock029_Roughness.jpg"))
+	# World-space tiling (metres per texture repeat). ~3.5 m grass, ~4 m dirt, ~5 m rock.
+	m.set_shader_parameter("scale0", 0.285)   # 1/3.5
+	m.set_shader_parameter("scale1", 0.25)    # 1/4
+	m.set_shader_parameter("scale2", 0.20)    # 1/5
+	# Height blend (world-Y, metres). Grass below ~2.5 m, dirt fades in by ~5 m.
+	m.set_shader_parameter("dirt_lo", 2.5)
+	m.set_shader_parameter("dirt_hi", 5.5)
+	# Slope blend: rock fades in as the surface up-dot drops below ~0.86 (~31°) to ~0.66 (~49°).
+	m.set_shader_parameter("rock_slope_lo", 0.66)
+	m.set_shader_parameter("rock_slope_hi", 0.86)
+	m.set_shader_parameter("normal_strength", 0.85)
+	return m
+
+# Embedded triplanar splat shader (kept in this file to keep Lane C self-contained — owns
+# exactly this one .gd + the texture dir; no new .gdshader file added). World-space triplanar
+# sampling (no UVs needed) blends 3 PBR sets by world height + slope. Deterministic / render-
+# only: identical on every peer, no time/random input.
+const _GROUND_SHADER := """
+shader_type spatial;
+render_mode cull_back;
+
+uniform sampler2D tex0_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex0_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex0_rough : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex1_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex1_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex1_rough : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex2_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex2_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex2_rough : hint_default_white, filter_linear_mipmap, repeat_enable;
+
+uniform float scale0 = 0.285;
+uniform float scale1 = 0.25;
+uniform float scale2 = 0.20;
+uniform float dirt_lo = 2.5;
+uniform float dirt_hi = 5.5;
+uniform float rock_slope_lo = 0.66;
+uniform float rock_slope_hi = 0.86;
+uniform float normal_strength = 0.85;
+
+varying vec3 v_wpos;
+varying vec3 v_wnrm;
+
+void vertex() {
+	v_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	v_wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+
+// World-space triplanar albedo for one set.
+vec3 tri_albedo(sampler2D t, vec3 wpos, vec3 bw, float s) {
+	vec3 cx = texture(t, wpos.zy * s).rgb;
+	vec3 cy = texture(t, wpos.xz * s).rgb;
+	vec3 cz = texture(t, wpos.xy * s).rgb;
+	return cx * bw.x + cy * bw.y + cz * bw.z;
+}
+
+float tri_rough(sampler2D t, vec3 wpos, vec3 bw, float s) {
+	float rx = texture(t, wpos.zy * s).r;
+	float ry = texture(t, wpos.xz * s).r;
+	float rz = texture(t, wpos.xy * s).r;
+	return rx * bw.x + ry * bw.y + rz * bw.z;
+}
+
+// Triplanar tangent-space normal -> world-space (whiteout blend), then re-expressed in the
+// fragment's TANGENT/BINORMAL frame for NORMAL output.
+vec3 tri_normal_world(sampler2D t, vec3 wpos, vec3 wn, vec3 bw, float s) {
+	vec3 nx = texture(t, wpos.zy * s).xyz * 2.0 - 1.0;
+	vec3 ny = texture(t, wpos.xz * s).xyz * 2.0 - 1.0;
+	vec3 nz = texture(t, wpos.xy * s).xyz * 2.0 - 1.0;
+	// Reorient each axis sample into world space (UDN-style) around the geometric normal.
+	vec3 wnx = normalize(vec3(nx.xy + wn.zy, abs(wn.x)));
+	vec3 wny = normalize(vec3(ny.xy + wn.xz, abs(wn.y)));
+	vec3 wnz = normalize(vec3(nz.xy + wn.xy, abs(wn.z)));
+	// Swizzle back to world axes per projection plane.
+	vec3 worldN = wnx.zyx * bw.x + wny.xzy * bw.y + wnz.xyz * bw.z;
+	return normalize(mix(wn, worldN, normal_strength));
+}
+
+void fragment() {
+	vec3 wn = normalize(v_wnrm);
+	// Triplanar blend weights from the geometric normal (sharpened).
+	vec3 bw = pow(abs(wn), vec3(4.0));
+	bw /= (bw.x + bw.y + bw.z + 1e-5);
+
+	// Layer weights. Grass(0) -> dirt(1) by world height; rock(2) overrides on slope.
+	float wy = v_wpos.y;
+	float dirt_w = smoothstep(dirt_lo, dirt_hi, wy);
+	float rock_w = 1.0 - smoothstep(rock_slope_lo, rock_slope_hi, wn.y); // 1 = steep
+
+	vec3 a0 = tri_albedo(tex0_albedo, v_wpos, bw, scale0);
+	vec3 a1 = tri_albedo(tex1_albedo, v_wpos, bw, scale1);
+	vec3 a2 = tri_albedo(tex2_albedo, v_wpos, bw, scale2);
+	vec3 base = mix(a0, a1, dirt_w);
+	base = mix(base, a2, rock_w);
+
+	float r0 = tri_rough(tex0_rough, v_wpos, bw, scale0);
+	float r1 = tri_rough(tex1_rough, v_wpos, bw, scale1);
+	float r2 = tri_rough(tex2_rough, v_wpos, bw, scale2);
+	float rough = mix(mix(r0, r1, dirt_w), r2, rock_w);
+
+	vec3 n0 = tri_normal_world(tex0_normal, v_wpos, wn, bw, scale0);
+	vec3 n1 = tri_normal_world(tex1_normal, v_wpos, wn, bw, scale1);
+	vec3 n2 = tri_normal_world(tex2_normal, v_wpos, wn, bw, scale2);
+	vec3 worldN = normalize(mix(mix(n0, n1, dirt_w), n2, rock_w));
+
+	ALBEDO = base;
+	ROUGHNESS = clamp(rough, 0.04, 1.0);
+	METALLIC = 0.0;
+	SPECULAR = 0.35;
+	// Convert the world-space perturbed normal into the view-space NORMAL the shader expects.
+	NORMAL = normalize((VIEW_MATRIX * vec4(worldN, 0.0)).xyz);
+}
+"""
 
 # ---------------------------------------------------------------- ground texture bake
 ## Bakes the authored sRGB palette (grass/dirt/rock/wet) into an albedo TEXTURE that maps
