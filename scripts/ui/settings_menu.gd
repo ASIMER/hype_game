@@ -34,6 +34,10 @@ var _toggle_ssao: CheckButton
 var _toggle_glow: CheckButton
 var _toggle_clouds: CheckButton
 var _toggle_water: CheckButton
+var _toggle_ssr: CheckButton
+var _toggle_ssil: CheckButton
+var _toggle_reflection_probes: CheckButton
+var _toggle_voxelgi: CheckButton
 var _grass_density: HSlider
 var _grass_density_value: Label
 
@@ -113,7 +117,7 @@ func _populate_options() -> void:
 		_shadows.add_item(s)
 
 	_preset.clear()
-	for s in ["Low", "Medium", "High", "Ultra", "Custom"]:
+	for s in ["Low", "Medium", "High", "Ultra", "Ultra+RT", "Custom"]:
 		_preset.add_item(s)
 
 	_aim_mode.clear()
@@ -160,6 +164,13 @@ func _build_quality_rows() -> void:
 	_toggle_glow = _add_toggle_row("Bloom / Glow", "glow", "")
 	_toggle_clouds = _add_toggle_row("Volumetric Clouds", "clouds", "")
 	_toggle_water = _add_toggle_row("Water Refraction", "water_refraction", next_raid)
+
+	# --- RT-style reflections (Ultra+RT tier sub-levers) ---
+	_graphics_v.add_child(_make_header("RT-STYLE REFLECTIONS", accent))
+	_toggle_ssr = _add_toggle_row("Screen-Space Reflections (SSR)", "ssr", "")
+	_toggle_ssil = _add_toggle_row("Screen-Space Indirect Light (SSIL)", "ssil", "")
+	_toggle_reflection_probes = _add_toggle_row("Reflection Probes", "reflection_probes", next_raid)
+	_toggle_voxelgi = _add_toggle_row("VoxelGI (experimental)", "voxelgi", "(experimental — applies next raid)")
 
 	# Grass Density slider (applies next raid).
 	var gd_row := _make_slider_row("Grass Density", 0.3, 1.0, 0.05, next_raid)
@@ -306,7 +317,7 @@ func sync_from_settings() -> void:
 
 	# Quality preset + manual levers.
 	var preset: int = g.current_preset_or_custom()
-	_preset.select(4 if preset < 0 else preset)
+	_preset.select(5 if preset < 0 else preset)
 
 	_render_scale.value = float(g.get_value("render_scale"))
 	_render_scale_value.text = "%d%%" % roundi(_render_scale.value * 100.0)
@@ -315,6 +326,10 @@ func sync_from_settings() -> void:
 	_toggle_glow.button_pressed = bool(g.get_value("glow"))
 	_toggle_clouds.button_pressed = bool(g.get_value("clouds"))
 	_toggle_water.button_pressed = bool(g.get_value("water_refraction"))
+	_toggle_ssr.button_pressed = bool(g.get_value("ssr"))
+	_toggle_ssil.button_pressed = bool(g.get_value("ssil"))
+	_toggle_reflection_probes.button_pressed = bool(g.get_value("reflection_probes"))
+	_toggle_voxelgi.button_pressed = bool(g.get_value("voxelgi"))
 	_grass_density.value = float(g.get_value("grass_density"))
 	_grass_density_value.text = "%d%%" % roundi(_grass_density.value * 100.0)
 
@@ -374,19 +389,19 @@ func _on_grass_density(v: float) -> void:
 	_refresh_preset_label()
 
 
-# Sets the preset dropdown to the matching tier 0..3, or Custom (index 4) when diverged.
+# Sets the preset dropdown to the matching tier 0..4, or Custom (index 5) when diverged.
 func _refresh_preset_label() -> void:
 	if _syncing:
 		return
 	var p: int = SettingsManager.current_preset_or_custom()
-	_preset.select(4 if p < 0 else p)
+	_preset.select(5 if p < 0 else p)
 
 
 func _on_preset(index: int) -> void:
 	if _syncing:
 		return
-	# Index 4 ("Custom") is a display-only state — never an action.
-	if index <= 3:
+	# Index 5 ("Custom") is a display-only state — never an action.
+	if index <= 4:
 		SettingsManager.apply_quality_preset(index)
 		sync_from_settings()
 

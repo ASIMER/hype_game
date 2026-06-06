@@ -19,7 +19,7 @@ const DEFAULTS := {
 	"shadows": 2,          # 0 1024, 1 2048, 2 4096, 3 8192
 	"fov": 60.0,           # 60..100
 	# Graphics quality (Godot does NOT auto-scale to hardware — these presets do it).
-	"graphics_quality": 3,    # 0 Low, 1 Medium, 2 High, 3 Ultra (default = current look)
+	"graphics_quality": 3,    # 0 Low, 1 Medium, 2 High, 3 Ultra, 4 Ultra+RT (default = Ultra)
 	"render_scale": 1.0,      # 0.5..1.0 viewport 3D render scale (FSR-style upscale; cheapest lever)
 	"sdfgi": true,            # global illumination (heavy)
 	"ssao": true,             # ambient occlusion
@@ -27,6 +27,11 @@ const DEFAULTS := {
 	"clouds": true,           # Sky3D volumetric cumulus
 	"water_refraction": true, # screen-space refractive water (vs flat cheap water)
 	"grass_density": 1.0,     # 0.3..1.0 grass-cap multiplier (rebuild-bound; applies next raid)
+	# "RT-style" reflections/GI tier (raster — Godot 4.6.3 has NO hardware ray tracing).
+	"ssr": false,             # screen-space reflections (Forward+; water/metal/wet) — Ultra+RT only
+	"ssil": false,            # screen-space indirect lighting — Ultra+RT only
+	"reflection_probes": false, # baked ReflectionProbes at POIs (rebuild-bound; off-screen reflections)
+	"voxelgi": false,         # EXPERIMENTAL voxel GI bake (rebuild-bound; heavy — never in a preset)
 	# Diagnostics overlay
 	"show_fps": false,            # minimal FPS counter
 	"show_detailed_stats": false, # full perf + network panel
@@ -44,20 +49,27 @@ const DEFAULTS := {
 const RES_OPTIONS := ["1280x720", "1600x900", "1920x1080", "2560x1440", "960x540"]
 const SHADOW_SIZES := [1024, 2048, 4096, 8192]
 
-## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra). Ultra = the current
-## (hand-tuned) look. apply_quality_preset() writes each of these into the live settings,
-## then the per-lever apply functions + Events.graphics_quality_changed carry them to the
-## viewport / Environment / sky / grass / water. Order: Low, Medium, High, Ultra.
+## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra → 4 Ultra+RT). Ultra =
+## the hand-tuned look; Ultra+RT = Ultra plus the raster "RT-style" reflection/GI stack
+## (SSR + SSIL + reflection probes + max SDFGI). apply_quality_preset() writes each of these
+## into the live settings, then the per-lever apply functions + Events.graphics_quality_changed
+## carry them to the viewport / Environment / sky / grass / water. Order: Low, Med, High, Ultra, Ultra+RT.
 const QUALITY_PRESETS := {
-	"render_scale":     [0.6,  0.75, 0.9,  1.0],
-	"msaa":             [0,    1,    2,    2],     # off / 2x / 4x / 4x
-	"shadows":          [0,    1,    2,    2],     # 1024 / 2048 / 4096 / 4096
-	"sdfgi":            [false, false, true, true],
-	"ssao":             [false, false, true, true],
-	"glow":             [true,  true,  true, true],
-	"clouds":           [false, true,  true, true],
-	"water_refraction": [false, false, true, true],
-	"grass_density":    [0.3,  0.6,  0.85, 1.0],
+	"render_scale":     [0.6,  0.75, 0.9,  1.0,  1.0],
+	"msaa":             [0,    1,    2,    2,    2],     # off / 2x / 4x / 4x / 4x
+	"shadows":          [0,    1,    2,    2,    3],     # 1024 / 2048 / 4096 / 4096 / 8192
+	"sdfgi":            [false, false, true, true, true],
+	"ssao":             [false, false, true, true, true],
+	"glow":             [true,  true,  true, true, true],
+	"clouds":           [false, true,  true, true, true],
+	"water_refraction": [false, false, true, true, true],
+	"grass_density":    [0.3,  0.6,  0.85, 1.0,  1.0],
+	# RT-style tier (index 4 only): screen-space reflections + indirect light + baked probes.
+	# voxelgi stays false in every preset — it's an experimental manual-only toggle.
+	"ssr":               [false, false, false, false, true],
+	"ssil":              [false, false, false, false, true],
+	"reflection_probes": [false, false, false, false, true],
+	"voxelgi":           [false, false, false, false, false],
 }
 
 var _values: Dictionary = {}
@@ -153,7 +165,8 @@ func apply(key: String) -> void:
 		"fov": Settings.fov = clampf(float(v), 50.0, 110.0)
 		"graphics_quality": Events.graphics_quality_changed.emit(int(v))
 		"render_scale": _apply_render_scale(float(v))
-		"sdfgi", "ssao", "glow", "clouds", "water_refraction", "grass_density":
+		"sdfgi", "ssao", "glow", "clouds", "water_refraction", "grass_density", \
+		"ssr", "ssil", "reflection_probes", "voxelgi":
 			_apply_quality_lever()
 		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
 		"master_volume": _apply_master(float(v))
@@ -218,12 +231,15 @@ func _apply_render_scale(scale: float) -> void:
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	vp.scaling_3d_scale = clampf(scale, 0.5, 1.0)
 
-## Mirror the rebuild-bound levers (grass/water) into Settings (read at next arena build)
-## and broadcast graphics_quality_changed so scene-side render levers (Environment SDFGI/
-## SSAO/glow, Sky3D clouds — applied by world_atmosphere) re-read the live settings.
+## Mirror the rebuild-bound levers (grass/water/reflection-probes/voxelgi) into Settings
+## (read at next arena build) and broadcast graphics_quality_changed so scene-side render
+## levers (Environment SDFGI/SSAO/glow/SSR/SSIL, Sky3D clouds — applied by world_atmosphere)
+## re-read the live settings immediately.
 func _apply_quality_lever() -> void:
 	Settings.grass_density_scale = clampf(float(get_value("grass_density")), 0.1, 1.0)
 	Settings.water_refraction = 0.12 if bool(get_value("water_refraction")) else 0.0
+	Settings.reflection_probes_enabled = bool(get_value("reflection_probes"))
+	Settings.voxelgi_enabled = bool(get_value("voxelgi"))
 	Events.graphics_quality_changed.emit(int(get_value("graphics_quality")))
 
 ## Push the current overlay config to the StatsOverlay (instanced in main.gd).
@@ -238,7 +254,7 @@ func _apply_stats_overlay() -> void:
 ## emit the scene-side signal ONCE. Persists. The settings menu calls this from the preset
 ## dropdown; individual set_value() calls afterward override one lever ("Custom").
 func apply_quality_preset(level: int) -> void:
-	level = clampi(level, 0, 3)
+	level = clampi(level, 0, 4)
 	for key in QUALITY_PRESETS:
 		_values[key] = QUALITY_PRESETS[key][level]
 	_values["graphics_quality"] = level
@@ -249,10 +265,10 @@ func apply_quality_preset(level: int) -> void:
 	save()
 	settings_changed.emit("graphics_quality", level)
 
-## Returns the preset index (0..3) whose lever bundle exactly matches the live settings, or
+## Returns the preset index (0..4) whose lever bundle exactly matches the live settings, or
 ## -1 if the user has diverged ("Custom"). Lets the menu label the preset dropdown honestly.
 func current_preset_or_custom() -> int:
-	for level in 4:
+	for level in 5:
 		var match_all := true
 		for key in QUALITY_PRESETS:
 			if not _values_equal(get_value(key), QUALITY_PRESETS[key][level]):

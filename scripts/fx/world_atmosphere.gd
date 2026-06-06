@@ -103,6 +103,45 @@ func _ready() -> void:
 	_apply_graphics_quality(int(SettingsManager.get_value("graphics_quality")))
 
 # ---------------------------------------------------------------------------
+# Graphics-quality render levers (the one node that captures the live Environment +
+# SkyDome, so the scene-side levers live here). Applied on _ready + every
+# Events.graphics_quality_changed. Reads the LIVE per-lever settings (so manual toggles
+# work too), not just the preset index — `level` only drives the SDFGI/cloud detail tier.
+# Toggles are read both directions, so going Ultra+RT -> Ultra cleanly turns SSR/SSIL off.
+# ---------------------------------------------------------------------------
+func _apply_graphics_quality(level: int) -> void:
+	if _env != null:
+		# Global illumination + AO + bloom (immediate Environment flags).
+		_env.sdfgi_enabled = bool(SettingsManager.get_value("sdfgi"))
+		_env.ssao_enabled = bool(SettingsManager.get_value("ssao"))
+		_env.glow_enabled = bool(SettingsManager.get_value("glow"))
+		# Max-SDFGI for the RT tier (richer indirect bounce + sky reflections); authored
+		# values otherwise. Guarded so it only costs when SDFGI is actually on.
+		if _env.sdfgi_enabled:
+			var rt := level >= 4
+			_env.sdfgi_cascades = 6 if rt else 4
+			_env.sdfgi_use_occlusion = true
+			_env.sdfgi_bounce_feedback = 0.75 if rt else 0.5
+			_env.sdfgi_energy = 1.1 if rt else 0.9
+		# "RT-style" raster reflections: SSR (Forward+; water/metal/wet). Read both ways.
+		_env.ssr_enabled = bool(SettingsManager.get_value("ssr"))
+		if _env.ssr_enabled:
+			_env.ssr_max_steps = 96
+			_env.ssr_fade_in = 0.05
+			_env.ssr_fade_out = 4.0
+			_env.ssr_depth_tolerance = 0.2
+		# Screen-space indirect lighting.
+		_env.ssil_enabled = bool(SettingsManager.get_value("ssil"))
+		if _env.ssil_enabled:
+			_env.ssil_radius = 5.0
+			_env.ssil_intensity = 1.0
+	if _skydome != null:
+		var clouds := bool(SettingsManager.get_value("clouds"))
+		_skydome.set("cumulus_visible", clouds)
+		# Cheaper cloud march at lower tiers (clouds are off at Low anyway).
+		_skydome.set("cumulus_noise_freq", 1.5 if level <= 1 else 2.7)
+
+# ---------------------------------------------------------------------------
 # Particles
 # ---------------------------------------------------------------------------
 func _build_dust() -> void:
