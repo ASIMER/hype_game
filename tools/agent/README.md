@@ -153,7 +153,11 @@ game is not running, the call returns `isError:true` with an explanatory message
   "mcpServers": {
     "hype-game": {
       "command": "python",
-      "args": ["tools/agent/mcp_server.py"]
+      "args": ["tools/agent/mcp_server.py"],
+      "env": {
+        "AGENT_HOST": "127.0.0.1",
+        "AGENT_PORT": "${HYPE_AGENT_PORT}"
+      }
     }
   }
 }
@@ -162,8 +166,52 @@ game is not running, the call returns `isError:true` with an explanatory message
 **Restart Claude Code** to load the MCP server (it reads `.mcp.json` at
 startup). The `play.py` CLI works immediately without any restart.
 
+The MCP server resolves which game instance to drive in this order: the
+`AGENT_PORT` env (set above from `$HYPE_AGENT_PORT`), then a gitignored
+`tools/agent/.agent_port` pin file (written by `launch_agents.ps1`), then the
+`24700` default. So a worktree pins its MCP target with **zero env setup** just
+by running its launcher.
+
 > Launcher note: on this machine `python` resolves to Python 3.12. If only `py`
 > is available on yours, change `command` to `py` in `.mcp.json`.
+
+## Parallel development across git worktrees
+
+Each worktree is an independent checkout (own `.godot` import cache, own
+`export/`, own `graphify-out/`), so **code editing in parallel needs nothing
+special**. To also *run* instances from several worktrees at once without them
+clashing, three things are made per-instance (all via `launch_agents.ps1`):
+
+| Concern | Flag | Per-instance value |
+| --- | --- | --- |
+| Control port + `user://` saves + screenshots | `--agent-port N` | `N`, files suffixed `_N`, screenshots `agent/N/` |
+| ENet game port + LAN discovery | `--net-port P` | game `P`, discovery `P+1` |
+| Window-title identity | `--label L` | `Hype Raiders_<L> [a:N n:P]` |
+
+The save dir is keyed by the project name (`Hype Raiders`) and so is **shared by
+all worktrees** — the only separator is `--agent-port`, so give each worktree a
+disjoint control-port range. The **net port can't be derived from the agent
+port** (a co-op group's host + clients have different agent ports but must share
+one net port), so it's a separate per-group/per-worktree flag.
+
+Recommended convention (one row per worktree):
+
+| Worktree / branch | `-BasePort` (control) | `-NetPort` | MCP targets |
+| --- | --- | --- | --- |
+| `v0.2` (main work) | `24700` (24700-24703) | `24565` | 24700 |
+| `feat/foo` | `24710` (24710-24713) | `24665` | 24710 |
+| `feat/bar` | `24720` (24720-24723) | `24765` | 24720 |
+
+```powershell
+# In worktree feat/foo:
+./tools/agent/launch_agents.ps1 -Count 2 -Menu -BasePort 24710 -NetPort 24665
+# -> windows titled "Hype Raiders_feat-foo ...", saves settings_24710.cfg etc.,
+#    co-op hosts on 24665, and tools/agent/.agent_port pinned to 24710 so this
+#    worktree's hype-game MCP drives instance 24710.
+```
+
+`-Label` defaults to the worktree's current git branch, so the window title
+tells you which worktree/branch each running game belongs to.
 
 ## Quick manual test (no game)
 

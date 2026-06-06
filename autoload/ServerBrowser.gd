@@ -97,7 +97,7 @@ func _sanitize(raw: Variant, with_last: bool) -> Array:
 func parse_addr(text: String) -> Dictionary:
 	var t := text.strip_edges()
 	var ip := Settings.DEFAULT_IP
-	var port := Settings.DEFAULT_PORT
+	var port := Settings.net_port
 	if t != "":
 		var idx := t.rfind(":")
 		if idx > 0 and t.substr(idx + 1).is_valid_int():
@@ -165,7 +165,7 @@ func _update_responder() -> void:
 	var hosting := multiplayer.has_multiplayer_peer() and multiplayer.is_server() and not NetworkManager.is_offline
 	if hosting and _responder == null:
 		var u := PacketPeerUDP.new()
-		if u.bind(Settings.DISCOVERY_PORT, "*") == OK:
+		if u.bind(Settings.discovery_port, "*") == OK:
 			_responder = u
 	elif not hosting and _responder != null:
 		_responder.close()
@@ -180,7 +180,7 @@ func _poll_responder() -> void:
 			continue
 		var reply := JSON.stringify({
 			"name": NetworkManager.local_player_name,
-			"port": Settings.DEFAULT_PORT,
+			"port": Settings.net_port,
 			"players": GameState.peers.size(),
 			"max": Settings.MAX_PLAYERS,
 		})
@@ -201,7 +201,7 @@ func scan_lan(timeout: float = 1.5) -> void:
 	_scan_until_ms = Time.get_ticks_msec() + int(timeout * 1000.0)
 	Events.lan_scan_started.emit()
 	for addr in ["255.255.255.255", "127.0.0.1"]:
-		_scanner.set_dest_address(addr, Settings.DISCOVERY_PORT)
+		_scanner.set_dest_address(addr, Settings.discovery_port)
 		_scanner.put_packet(_DISCOVER_MSG.to_utf8_buffer())
 
 func _poll_scanner() -> void:
@@ -210,7 +210,7 @@ func _poll_scanner() -> void:
 		var from_ip := _scanner.get_packet_ip()
 		var data: Variant = JSON.parse_string(pkt.get_string_from_utf8())
 		if data is Dictionary:
-			var port: int = int(data.get("port", Settings.DEFAULT_PORT))
+			var port: int = int(data.get("port", Settings.net_port))
 			_found["%s:%d" % [from_ip, port]] = {
 				"name": String(data.get("name", "Server")),
 				"ip": from_ip,

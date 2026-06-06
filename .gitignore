@@ -13,6 +13,8 @@
 # --- Python (agent harness) ---
 __pycache__/
 *.pyc
+# Per-worktree MCP port pin (written by launch_agents.ps1; differs per worktree/machine)
+/tools/agent/.agent_port
 
 # --- OS junk ---
 .DS_Store

@@ -18,10 +18,30 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from play import send, AgentError, DEFAULT_HOST, DEFAULT_PORT  # noqa: E402
 
-# Target a specific game instance via env vars so several MCP servers can each drive
-# their own `--agent-port N` instance (parallel agent testing). Defaults to 24700.
+# Target a specific game instance so several MCP servers (e.g. one per git worktree) each
+# drive their own `--agent-port N` instance without getting confused. Port resolution, in
+# order: (1) the AGENT_PORT env var (set by .mcp.json from $HYPE_AGENT_PORT), (2) a
+# gitignored `tools/agent/.agent_port` pin file (written by launch_agents.ps1 per worktree),
+# (3) the 24700 default. The file fallback means a worktree pins its port with zero env setup.
 AGENT_HOST = os.environ.get("AGENT_HOST", DEFAULT_HOST)
-AGENT_PORT = int(os.environ.get("AGENT_PORT", DEFAULT_PORT))
+
+
+def _resolve_agent_port():
+    env = os.environ.get("AGENT_PORT", "").strip()
+    if env.isdigit():
+        return int(env)
+    pin = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".agent_port")
+    try:
+        with open(pin) as f:
+            val = f.read().strip()
+            if val.isdigit():
+                return int(val)
+    except OSError:
+        pass
+    return DEFAULT_PORT
+
+
+AGENT_PORT = _resolve_agent_port()
 
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_INFO = {"name": "hype-game", "version": "1.0.0"}

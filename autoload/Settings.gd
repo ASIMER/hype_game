@@ -176,24 +176,65 @@ var ads_toggle: bool = false            # false = hold to aim, true = toggle
 var grass_density_scale: float = 1.0    # multiplies the near/far grass caps in procedural_flora
 var water_refraction: float = 0.12      # water.gdshader refract_amt baked at water build (0 = flat/cheap)
 
-# --- Multi-instance (parallel agent testing) -------------------------------
-# To run 2–4 game instances at once (each driven by its own agent) the agent
-# control port AND the shared user:// files must be per-instance. Launch with
-# `--agent-port N`: agent_port=N and instance_tag="N". Without the flag the
-# defaults preserve single-instance behaviour (port 24700, un-suffixed user://).
-# Resolved once at startup; Settings autoloads before AgentBridge / MetaProgression
-# / SettingsManager so they can read these safely.
+# --- Multi-instance / git-worktree parallelism -----------------------------
+# To run several game instances at once (each driven by its own agent, often from a
+# separate git worktree) THREE things must be made per-instance so they never clash:
+#   1. agent control port + user:// files → `--agent-port N` (agent_port=N, instance_tag=N).
+#   2. the NETWORK ports (ENet game + LAN discovery) → `--net-port N` (net_port=N,
+#      discovery_port=N+1 unless `--discovery-port M`). All members of ONE co-op group
+#      share the same --net-port; different worktrees pick DIFFERENT --net-ports so two
+#      groups can host concurrently on one machine. (Don't derive it from agent_port — a
+#      group's host and clients have different agent_ports but must share one net_port.)
+#   3. a human-readable label (usually the worktree's branch) → `--label <text>`, folded
+#      into the window title so each process is identifiable in the OS / task manager.
+# Without any flag, single-instance defaults are preserved (un-suffixed user://, the
+# canonical 24565/24566/24700). Resolved once at startup; Settings autoloads before
+# AgentBridge / NetworkManager / MetaProgression / SettingsManager so they read these safely.
 var agent_port: int = AGENT_PORT
 var instance_tag: String = ""
+var net_port: int = DEFAULT_PORT          # ENet game port (host bind / client connect / discovery reply)
+var discovery_port: int = DISCOVERY_PORT  # LAN-discovery UDP port (defaults to net_port + 1)
+var instance_label: String = ""           # e.g. the worktree branch; shown in the window title
 
 func _ready() -> void:
 	var args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
-	var idx := args.find("--agent-port")
+	agent_port = _arg_int(args, "--agent-port", agent_port)
+	if agent_port != AGENT_PORT:
+		instance_tag = str(agent_port)
+	# Network ports: --net-port sets the game port and (by default) discovery = net_port + 1;
+	# --discovery-port overrides the discovery port explicitly.
+	net_port = _arg_int(args, "--net-port", net_port)
+	discovery_port = net_port + 1 if net_port != DEFAULT_PORT else DISCOVERY_PORT
+	discovery_port = _arg_int(args, "--discovery-port", discovery_port)
+	instance_label = _arg_str(args, "--label", instance_label)
+
+## Reads the int value following `flag` in args (guards a missing/flag-like/non-int value),
+## else returns `fallback`.
+func _arg_int(args: PackedStringArray, flag: String, fallback: int) -> int:
+	var idx := args.find(flag)
 	if idx != -1 and idx + 1 < args.size():
 		var raw := args[idx + 1]
 		if not raw.begins_with("--") and raw.is_valid_int():
-			agent_port = int(raw)
-			instance_tag = str(agent_port)
+			return int(raw)
+	return fallback
+
+## Reads the string value following `flag` in args, else returns `fallback`.
+func _arg_str(args: PackedStringArray, flag: String, fallback: String) -> String:
+	var idx := args.find(flag)
+	if idx != -1 and idx + 1 < args.size():
+		var raw := args[idx + 1]
+		if not raw.begins_with("--"):
+			return raw
+	return fallback
+
+## The window title for this instance: plain "Hype Raiders" for a normal single run, else
+## "Hype Raiders_<label>" (worktree branch) with the control/net ports appended so parallel
+## instances are tellable apart in the OS task manager / window list.
+func window_title() -> String:
+	if instance_label == "" and instance_tag == "":
+		return "Hype Raiders"
+	var tag := instance_label if instance_label != "" else instance_tag
+	return "Hype Raiders_%s [a:%d n:%d]" % [tag, agent_port, net_port]
 
 ## Per-instance user:// path. Single instance → `user://<base>.<ext>`; under
 ## `--agent-port N` → `user://<base>_N.<ext>`, so concurrent instances never clobber
