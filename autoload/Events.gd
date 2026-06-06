@@ -91,6 +91,9 @@ signal graphics_quality_changed(level: int)
 signal stats_overlay_changed(show_fps: bool, show_detailed: bool, mode: int)
 ## Arena build progress for the loading screen. frac 0..1, label = current phase name.
 signal arena_build_progress(frac: float, label: String)
+## The HUD layout settings changed (ui_edge_margin / ui_top_margin) — edge-anchored UI
+## re-insets toward center. Used for ultrawide comfort. Read Settings.ui_edge_margin/ui_top_margin.
+signal ui_layout_changed()
 
 # --- UI / UX ---
 ## A nearby interactable (loot / extraction) — HUD shows "[E] <prompt>".

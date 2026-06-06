@@ -22,6 +22,12 @@ const COL_DIM := Color(0.55, 0.6, 0.66)       # dim grey
 # Each line: { "text": String, "color": Color, "t": float }
 var _lines: Array = []
 
+# Authored (base) offsets, cached once so the ultrawide inset is idempotent.
+var _base_off_l: float = 0.0
+var _base_off_t: float = 0.0
+var _base_off_r: float = 0.0
+var _base_off_b: float = 0.0
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -33,11 +39,37 @@ func _ready() -> void:
 	offset_top = TOP
 	offset_right = LEFT + WIDTH
 	offset_bottom = TOP + LINE_H * MAX_LINES
+	# Cache base offsets, then apply the ultrawide-comfort inset (L+T edge).
+	_base_off_l = offset_left
+	_base_off_t = offset_top
+	_base_off_r = offset_right
+	_base_off_b = offset_bottom
+	_apply_hud_inset()
+	if not Events.ui_layout_changed.is_connected(_apply_hud_inset):
+		Events.ui_layout_changed.connect(_apply_hud_inset)
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
+		vp.size_changed.connect(_apply_hud_inset)
 	Events.wave_started.connect(func(w, _c): _push("WAVE %d" % w, COL_WAVE))
 	Events.wave_cleared.connect(func(w): _push("WAVE %d CLEARED" % w, COL_GOOD))
 	Events.item_picked_up.connect(_on_pickup)
 	Events.entity_died.connect(_on_entity_died)
 	Events.notify.connect(_on_notify)
+
+
+## Pull the killfeed in from the top-left corner toward center (ultrawide comfort).
+## Recomputed from cached BASE offsets so repeated calls never accumulate; at margin 0
+## (ex=ty=0) the offsets are byte-identical to the authored values.
+func _apply_hud_inset() -> void:
+	var vp: Vector2 = get_viewport_rect().size
+	var ex: float = UILayout.edge_px(vp.x)
+	var ty: float = UILayout.top_px(vp.y)
+	# LEFT edge → shift the whole box RIGHT by ex (both horizontal offsets).
+	offset_left = _base_off_l + ex
+	offset_right = _base_off_r + ex
+	# TOP edge → shift the whole box DOWN by ty (both vertical offsets).
+	offset_top = _base_off_t + ty
+	offset_bottom = _base_off_b + ty
 
 
 func _push(text: String, color: Color) -> void:

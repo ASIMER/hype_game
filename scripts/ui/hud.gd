@@ -62,6 +62,11 @@ var _timer_label: Label
 var _storm_banner: Label
 var _storm_banner_t: float = 0.0
 
+# Edge-anchored widgets that re-inset toward center for ultrawide comfort, each paired
+# with its cached AUTHORED offsets so the inset is idempotent (recomputed from base,
+# never accumulated). { node: Control, edge: String("rb"|"lb"), l/t/r/b: float }
+var _inset_widgets: Array = []
+
 func _build_hud_widgets() -> void:
 	# Replace the static dot with the dynamic spread crosshair.
 	var static_cross := $Root.get_node_or_null("Crosshair")
@@ -145,6 +150,56 @@ func _build_hud_widgets() -> void:
 	hints.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 0.7))
 	hints.text = "WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"
 	$Root.add_child(hints)
+
+	# --- Ultrawide-comfort inset: pull edge-anchored widgets toward center -----
+	# ammo box + key hints are RIGHT+BOTTOM ("rb"); the health bar (HUD.tscn) is
+	# LEFT+BOTTOM ("lb"). Cache each node's authored offsets ONCE.
+	var health: Control = $Root.get_node_or_null("Health")
+	_register_inset(ammo_box, "rb")
+	_register_inset(hints, "rb")
+	if health != null:
+		_register_inset(health, "lb")
+	_apply_hud_inset()
+	if not Events.ui_layout_changed.is_connected(_apply_hud_inset):
+		Events.ui_layout_changed.connect(_apply_hud_inset)
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
+		vp.size_changed.connect(_apply_hud_inset)
+
+## Cache a widget's authored offsets + its edge classification for the inset pass.
+func _register_inset(node: Control, edge: String) -> void:
+	if node == null:
+		return
+	_inset_widgets.append({
+		"node": node, "edge": edge,
+		"l": node.offset_left, "t": node.offset_top,
+		"r": node.offset_right, "b": node.offset_bottom,
+	})
+
+## Re-inset every registered edge widget from its cached BASE offsets (idempotent;
+## at margin 0 → ex=ty=0 → offsets unchanged). Whole box shifts on each inset axis so
+## its size is preserved.
+func _apply_hud_inset() -> void:
+	var sz: Vector2 = get_viewport().get_visible_rect().size
+	var ex: float = UILayout.edge_px(sz.x)
+	var ty: float = UILayout.top_px(sz.y)
+	for w in _inset_widgets:
+		var node: Control = w["node"]
+		if not is_instance_valid(node):
+			continue
+		var bl: float = w["l"]
+		var bt: float = w["t"]
+		var br: float = w["r"]
+		var bb: float = w["b"]
+		var edge: String = w["edge"]
+		# Horizontal: RIGHT edge → shift LEFT by ex; LEFT edge → shift RIGHT by ex.
+		var dx: float = -ex if edge.begins_with("r") else ex
+		# Vertical: both classes are BOTTOM edge → shift UP by ty.
+		var dy: float = -ty
+		node.offset_left = bl + dx
+		node.offset_right = br + dx
+		node.offset_top = bt + dy
+		node.offset_bottom = bb + dy
 
 func _on_weapon_switched(weapon_id: String, ammo: int, reserve: int) -> void:
 	_current_weapon_name = weapon_id.to_upper()
