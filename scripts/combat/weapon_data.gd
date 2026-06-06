@@ -18,3 +18,5 @@ class_name WeaponData
 @export var ads_fov: float = 42.0           # zoomed FOV when aiming this weapon
 @export var range: float = 80.0             # hitscan max distance
 @export var crit_mult: float = 2.0          # extra multiplier applied on weak-point hits
+# Audible-noise radius multiplier; suppressor lowers it. 1.0 = baseline NOISE_GUNFIRE.
+@export var noise_mult: float = 1.0

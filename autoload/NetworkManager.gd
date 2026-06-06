@@ -256,6 +256,24 @@ func broadcast_shot(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array
 func _shot_rpc(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3) -> void:
 	Events.remote_shot.emit(muzzle, hit_point, arc, enemy_hit, normal)
 
+# =========================================================== noise -> server AI
+## A loud event (gunfire / grenade) was made — route it to the SERVER so the
+## server-authoritative enemy AI can HEAR it. The host emits Events.noise_emitted
+## directly; a client RPCs the server (its own enemy copies don't run AI, so a local
+## emit would be heard by nobody). Footsteps are NOT reported through here — the server
+## derives footstep loudness from each player's synced velocity+stance every frame.
+func report_noise(world_pos: Vector3, loudness: float, kind: int) -> void:
+	if GameState.is_local_authority_server():
+		Events.noise_emitted.emit(world_pos, loudness, kind)
+	else:
+		_noise_rpc.rpc_id(1, world_pos, loudness, kind)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _noise_rpc(world_pos: Vector3, loudness: float, kind: int) -> void:
+	if not multiplayer.is_server():
+		return
+	Events.noise_emitted.emit(world_pos, loudness, kind)
+
 # =========================================================== kill leaderboard sync
 ## On the server, attribute each mob kill to the killer's peer and broadcast the
 ## full table so every client's TAB leaderboard is identical.

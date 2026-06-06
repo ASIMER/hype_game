@@ -8,7 +8,7 @@ class_name EnemyStateMachine
 ## States mirror robot_enemy.gd's State enum so the synchronizer can replicate a
 ## single int and clients can react (e.g. animation) without running the logic.
 
-enum State { PATROL, CHASE, ATTACK }
+enum State { PATROL, CHASE, ATTACK, INVESTIGATE }
 
 var enemy: Node              # the RobotEnemy (CharacterBody3D) that owns us
 var state: int = State.PATROL

@@ -149,7 +149,7 @@ func _handle_line(line: String) -> void:
 			_send({ "ok": true })
 		"spawn":
 			# Debug: spawn an enemy archetype near the local player for verification.
-			var ok := _debug_spawn(str(json.get("id", "wasp")), float(json.get("dist", 9.0)))
+			var ok := _debug_spawn(str(json.get("id", "wasp")), float(json.get("dist", 9.0)), bool(json.get("hunter", true)))
 			_send({ "ok": ok })
 		"tp":
 			# Debug: teleport the local player to a world XZ (for reaching far test spots).
@@ -457,7 +457,7 @@ func _pick_enemy(p: Node, target_name: String) -> Node3D:
 
 ## Debug: instance an enemy archetype in front of the local player (for verifying
 ## the new types). Server-authoritative; reuses the wave enemy container.
-func _debug_spawn(eid: String, dist: float) -> bool:
+func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 	if not GameState.is_local_authority_server():
 		return false
 	var scene_map := {
@@ -467,6 +467,8 @@ func _debug_spawn(eid: String, dist: float) -> bool:
 		"wasp": "res://scenes/enemies/RobotWasp.tscn",
 		"bastion": "res://scenes/enemies/RobotBastion.tscn",
 		"boss": "res://scenes/enemies/RobotBoss.tscn",
+		"caller": "res://scenes/enemies/RobotCaller.tscn",
+		"elite": "res://scenes/enemies/RobotElite.tscn",
 	}
 	var path: String = scene_map.get(eid, "")
 	if path == "" or not ResourceLoader.exists(path):
@@ -481,7 +483,7 @@ func _debug_spawn(eid: String, dist: float) -> bool:
 		return false
 	var enemy: Node = (load(path) as PackedScene).instantiate()
 	if "hunter" in enemy:
-		enemy.hunter = true
+		enemy.hunter = as_hunter
 	container.add_child(enemy, true)
 	var fwd := -(p as Node3D).global_transform.basis.z
 	(enemy as Node3D).global_position = (p as Node3D).global_position + fwd * dist + Vector3.UP * 0.5

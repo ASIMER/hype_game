@@ -135,6 +135,48 @@ const WAVE_INTERMISSION: float = 6.0
 const WAVE_MAX_CONCURRENT: int = 6      # never more than this many alive at once
 const WAVE_SPAWN_INTERVAL: float = 1.2  # seconds between trickle spawns
 
+# --- AI perception / sound stealth (Batch 2 "Living threat") ----------------
+# A noise's audible RADIUS in metres. The server's enemy perception hears any noise
+# whose radius reaches it; non-hunter enemies INVESTIGATE the source (or CHASE if very
+# close). Gunfire/grenades route through NetworkManager.report_noise; footstep loudness
+# is derived per-frame from a player's speed + stance (no RPC — server reads synced state).
+const NOISE_GUNFIRE: float = 22.0            # unsuppressed shot audible radius
+const NOISE_GRENADE: float = 34.0            # explosion audible radius (always loud)
+const NOISE_WALK: float = 8.0                # standing/walking footstep loudness
+const NOISE_SPRINT: float = 16.0             # sprinting is loud
+const NOISE_CROUCH_MULT: float = 0.4         # crouch-walking is quiet (×NOISE_WALK)
+const NOISE_IDLE: float = 2.5                # barely-moving hum (still faintly audible up close)
+# A noise this loud or louder at the enemy counts as a "spike" → CHASE straight away
+# (instead of the cautious INVESTIGATE walk-to-the-sound). Fraction of the heard radius.
+const NOISE_CHASE_FRACTION: float = 0.45
+# INVESTIGATE behaviour: move to the last-heard point at this speed mult, look around,
+# then give up after GIVEUP seconds with no confirmation and return to PATROL.
+const INVESTIGATE_SPEED_MULT: float = 0.8
+const INVESTIGATE_GIVEUP: float = 8.0        # seconds investigating before giving up
+const INVESTIGATE_ARRIVE: float = 1.8        # within this of the point = "arrived, look around"
+# Cascading alert: an enemy entering CHASE flips nearby NON-hunter enemies within this
+# radius to INVESTIGATE its target (so a firefight wakes the block). Each enemy only
+# re-alerts once per ALERT_REFRACTORY window so it can't ping-pong.
+const ALERT_CASCADE_RADIUS: float = 20.0
+const ALERT_REFRACTORY: float = 4.0
+
+# --- Reactive AI director + alarms + patrols --------------------------------
+# Camp-punish: if the whole squad stays clustered within CAMP_RADIUS for CAMP_TIME
+# during an active wave, the director spawns FLANK_COUNT enemies around/behind them.
+const DIRECTOR_CAMP_RADIUS: float = 14.0
+const DIRECTOR_CAMP_TIME: float = 10.0
+const DIRECTOR_FLANK_COUNT: int = 3
+const DIRECTOR_CAMP_COOLDOWN: float = 18.0   # min seconds between flank punishes
+# Boss-phase support adds: when the boss drops below this HP fraction, spawn a few adds (once).
+const DIRECTOR_BOSS_ADD_HP: float = 0.5
+const DIRECTOR_BOSS_ADD_COUNT: int = 3
+# Alarms: a caller/alarm (Events.enemy_alerted) summons reinforcements on a cooldown.
+const ALARM_REINFORCE_COUNT: int = 4
+const ALARM_COOLDOWN: float = 12.0
+# Between-wave patrols: spawn this many NON-hunter enemies during intermission (and
+# pre-first-wave) so the map feels inhabited + stealth has something to sneak past.
+const PATROL_COUNT: int = 3
+
 # Camera / ADS / peek
 const DEFAULT_FOV: float = 60.0
 const ADS_FOV: float = 42.0             # zoomed FOV when aiming (per-weapon may override)
@@ -166,6 +208,13 @@ const ENEMY_STATS := {
 	"robot_wasp":    { "health": 22.0,  "speed": 5.2, "damage": 6.0,  "detect": 26.0, "attack_range": 15.0, "cooldown": 1.4,  "score": 14, "flying": true, "hover": 4.5, "ranged": true },
 	"robot_bastion": { "health": 170.0, "speed": 2.2, "damage": 10.0, "detect": 28.0, "attack_range": 20.0, "cooldown": 0.25, "score": 45, "ranged": true, "burst": true },
 	"robot_boss":    { "health": 650.0, "speed": 2.6, "damage": 22.0, "detect": 45.0, "attack_range": 22.0, "cooldown": 0.4,  "score": 250, "ranged": true },
+	# Caller ("Snitch"): low HP, fast, keeps its distance and — instead of dealing
+	# damage — fires Events.enemy_alerted so the director summons reinforcements. Kill
+	# it fast or get swarmed. Behaviour lives in robot_caller.gd (caller flag).
+	"robot_caller":  { "health": 30.0,  "speed": 5.0, "damage": 0.0,  "detect": 30.0, "attack_range": 14.0, "cooldown": 6.0,  "score": 30, "caller": true },
+	# Elite grunt: a tankier, harder-hitting grunt with an exposed weak point (the
+	# WeakPoint Hurtbox Area in its scene takes ×2.5 — reward precise fire).
+	"robot_elite":   { "health": 140.0, "speed": 4.2, "damage": 15.0, "detect": 22.0, "attack_range": 2.4,  "cooldown": 1.1,  "score": 40 },
 }
 
 # Difficulty multipliers, keyed by GameState.Difficulty. enemy_health/enemy_damage

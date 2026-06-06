@@ -95,6 +95,10 @@ func fire_with(from_node: Node3D, data: WeaponData, eff_spread: float = -1.0) ->
 	var spread: float = data.spread_deg if eff_spread < 0.0 else eff_spread
 	for i in pellets:
 		_shoot(from_node, data.id, data.damage, data.range, spread, data.crit_mult, true, muzzle_v)
+	# Report gunfire noise ONCE per shot (not per pellet) so the AI hears it.
+	# report_noise routes to the server on clients, so no is_server guard needed.
+	var nm: float = data.noise_mult if "noise_mult" in data else 1.0
+	NetworkManager.report_noise(_muzzle_position(), Settings.NOISE_GUNFIRE * nm, 1)
 	return true
 
 ## One converged hitscan ray (chest-origin toward the crosshair aim point) with

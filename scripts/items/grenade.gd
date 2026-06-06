@@ -80,6 +80,9 @@ func _explode() -> void:
 	# Authoritative radial damage — server only, so clients don't double-apply.
 	if GameState.is_local_authority_server():
 		_apply_radial_damage(pos, Settings.GRENADE_DAMAGE, Settings.GRENADE_RADIUS)
+		# Grenade explosion is AI-audible; _explode is already server-auth so
+		# report_noise emits Events.noise_emitted directly (no RPC needed).
+		NetworkManager.report_noise(pos, Settings.NOISE_GRENADE, 2)
 
 	queue_free()
 
