@@ -94,6 +94,9 @@ signal arena_build_progress(frac: float, label: String)
 ## The HUD layout settings changed (ui_edge_margin / ui_top_margin) — edge-anchored UI
 ## re-insets toward center. Used for ultrawide comfort. Read Settings.ui_edge_margin/ui_top_margin.
 signal ui_layout_changed()
+## Camera settings changed (distance/shoulder/default-view) — the player rig re-reads
+## Settings.camera_distance_scale / camera_shoulder_scale.
+signal camera_settings_changed()
 
 # --- UI / UX ---
 ## A nearby interactable (loot / extraction) — HUD shows "[E] <prompt>".

@@ -9,12 +9,19 @@ var _recoil: float = 0.0
 var _ads: bool = false
 var _player: Node3D = null
 var _camera: Camera3D = null
+var _controller: Node = null      # WeaponController under the bound player (for the real cone)
 var _on_enemy: bool = false
 
 const BASE_SPREAD := 6.0
 const MOVE_SPREAD := 12.0
 const TICK_LEN := 6.0
 const TICK_W := 2.0
+
+# Degrees → pixels mapping for the REAL fire cone (current_spread_deg). The gap is
+# the minimum tick offset plus a per-degree widening, so a tight 0.6° rifle reads
+# as a near-centered reticle and a moving/sprinting/shotgun cone opens up clearly.
+const MIN_GAP := 4.0          # px gap at ~0° spread (ADS pinpoint)
+const PX_PER_DEG := 7.0       # px added per degree of effective spread
 
 
 func _ready() -> void:
@@ -29,8 +36,10 @@ func _ready() -> void:
 
 func _bind_player(p: Node) -> void:
 	_player = p as Node3D
+	_controller = null
 	if _player:
 		_camera = _player.get_node_or_null("CameraPivot/SpringArm3D/Camera3D")
+		_controller = _player.get_node_or_null("CameraPivot/SpringArm3D/Camera3D/WeaponController")
 
 
 func _find_local_player() -> Node:
@@ -42,13 +51,22 @@ func _find_local_player() -> Node:
 
 func _process(delta: float) -> void:
 	_recoil = maxf(0.0, _recoil - delta * 28.0)
-	var moving := 0.0
-	if is_instance_valid(_player):
-		var v: Vector3 = _player.velocity
-		moving = clampf(Vector2(v.x, v.z).length() / maxf(Settings.PLAYER_MOVE_SPEED, 0.1), 0.0, 1.0)
-	var target := BASE_SPREAD + moving * MOVE_SPREAD + _recoil
-	if _ads:
-		target = 2.0
+	var target: float
+	# Prefer the REAL effective cone from the weapon controller (base × stance ×
+	# movement × ADS) mapped to pixels; the recoil bump rides on top. If the
+	# controller isn't reachable (not bound yet / not the local player), fall back
+	# to the old movement-based estimate so the reticle never breaks.
+	if _controller != null and _controller.has_method("current_spread_deg"):
+		var deg: float = float(_controller.current_spread_deg())
+		target = MIN_GAP + deg * PX_PER_DEG + _recoil
+	else:
+		var moving := 0.0
+		if is_instance_valid(_player):
+			var v: Vector3 = _player.velocity
+			moving = clampf(Vector2(v.x, v.z).length() / maxf(Settings.PLAYER_MOVE_SPEED, 0.1), 0.0, 1.0)
+		target = BASE_SPREAD + moving * MOVE_SPREAD + _recoil
+		if _ads:
+			target = 2.0
 	_spread = lerpf(_spread, target, clampf(delta * 12.0, 0.0, 1.0))
 	_update_on_enemy()
 	queue_redraw()

@@ -219,6 +219,67 @@ func _make_section_header(title: String) -> PanelContainer:
 	return pc
 
 
+## Arc-style icon cell: a fixed-size Panel with a rarity-colored border holding an
+## icon TextureRect (or colored-box fallback) + an optional count badge.
+## Modeled on inventory_ui.gd::_make_slot. `id` may be an ItemData id (border uses
+## rarity_color) or any other id (border uses a neutral teal).
+func _icon_cell(id: String, count: int, cell_size: int) -> Panel:
+	var slot := Panel.new()
+	slot.custom_minimum_size = Vector2(cell_size, cell_size)
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	sb.set_border_width_all(2)
+	var item: ItemData = ItemCatalog.get_item(id)
+	sb.border_color = item.rarity_color() if item != null else COL_TEAL
+	sb.set_corner_radius_all(4)
+	slot.add_theme_stylebox_override("panel", sb)
+	if item != null:
+		slot.tooltip_text = item.display_name
+
+	var icon := AssetRegistry.get_icon(id)
+	if icon != null:
+		var tex := TextureRect.new()
+		tex.texture = icon
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tex.offset_left = 5
+		tex.offset_top = 5
+		tex.offset_right = -5
+		tex.offset_bottom = -5
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(tex)
+	else:
+		var box := ColorRect.new()
+		box.color = AssetRegistry.get_color(id)
+		box.set_anchors_preset(Control.PRESET_FULL_RECT)
+		box.offset_left = 7
+		box.offset_top = 7
+		box.offset_right = -7
+		box.offset_bottom = -7
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(box)
+
+	if count > 1:
+		var badge := Label.new()
+		badge.text = "x%d" % count
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		badge.set_anchors_preset(Control.PRESET_FULL_RECT)
+		badge.offset_right = -3
+		badge.offset_bottom = -1
+		badge.add_theme_color_override("font_color", Color.WHITE)
+		badge.add_theme_color_override("font_outline_color", Color.BLACK)
+		badge.add_theme_constant_override("outline_size", 4)
+		badge.add_theme_font_size_override("font_size", 12)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(badge)
+	return slot
+
+
 # ---------------------------------------------------------------- weapon rows
 ## Creates one static row per weapon in WEAPON_ORDER inside _weapon_rows.
 func _build_weapon_rows() -> void:
@@ -229,23 +290,8 @@ func _build_weapon_rows() -> void:
 		row.name = "Row_" + id
 		row.add_theme_constant_override("separation", 12)
 
-		# Icon (from AssetRegistry; fallback colored rect if null).
-		var icon_tex: Texture2D = AssetRegistry.get_icon(id)
-		if icon_tex:
-			var icon_rect := TextureRect.new()
-			icon_rect.name = "Icon"
-			icon_rect.texture = icon_tex
-			icon_rect.custom_minimum_size = Vector2(28, 28)
-			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(icon_rect)
-		else:
-			var fallback := ColorRect.new()
-			fallback.name = "IconFallback"
-			fallback.custom_minimum_size = Vector2(28, 28)
-			fallback.color = AssetRegistry.get_color(id)
-			fallback.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(fallback)
+		# Icon cell (40px, Arc-style rarity-bordered).
+		row.add_child(_icon_cell(id, 0, 40))
 
 		# Weapon name.
 		var name_lbl := Label.new()
@@ -320,23 +366,8 @@ func _rebuild_consumable_rows() -> void:
 		row.name = "Row_" + id
 		row.add_theme_constant_override("separation", 10)
 
-		# Icon.
-		var icon_tex: Texture2D = AssetRegistry.get_icon(id)
-		if icon_tex:
-			var icon_rect := TextureRect.new()
-			icon_rect.name = "Icon"
-			icon_rect.texture = icon_tex
-			icon_rect.custom_minimum_size = Vector2(28, 28)
-			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(icon_rect)
-		else:
-			var fallback := ColorRect.new()
-			fallback.name = "IconFallback"
-			fallback.custom_minimum_size = Vector2(28, 28)
-			fallback.color = AssetRegistry.get_color(id)
-			fallback.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(fallback)
+		# Icon cell (40px, badged with the count owned in stash).
+		row.add_child(_icon_cell(id, Stash.count_of(id), 40))
 
 		# Display name.
 		var name_lbl := Label.new()

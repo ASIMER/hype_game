@@ -28,6 +28,11 @@ var _base_off_t: float = 0.0
 var _base_off_r: float = 0.0
 var _base_off_b: float = 0.0
 
+# Extra top offset so the killfeed clears the (also top-left) diagnostics overlay
+# (stats_overlay.gd) when it is showing. Recomputed from the persisted stats config,
+# applied from the cached base each layout pass so it never accumulates.
+var _stats_clearance: float = 0.0
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -44,9 +49,13 @@ func _ready() -> void:
 	_base_off_t = offset_top
 	_base_off_r = offset_right
 	_base_off_b = offset_bottom
+	_refresh_stats_clearance()
 	_apply_hud_inset()
 	if not Events.ui_layout_changed.is_connected(_apply_hud_inset):
 		Events.ui_layout_changed.connect(_apply_hud_inset)
+	# Re-clear the diagnostics overlay whenever it is toggled / its mode changes.
+	if not Events.stats_overlay_changed.is_connected(_on_stats_overlay_changed):
+		Events.stats_overlay_changed.connect(_on_stats_overlay_changed)
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
 		vp.size_changed.connect(_apply_hud_inset)
@@ -67,9 +76,32 @@ func _apply_hud_inset() -> void:
 	# LEFT edge → shift the whole box RIGHT by ex (both horizontal offsets).
 	offset_left = _base_off_l + ex
 	offset_right = _base_off_r + ex
-	# TOP edge → shift the whole box DOWN by ty (both vertical offsets).
-	offset_top = _base_off_t + ty
-	offset_bottom = _base_off_b + ty
+	# TOP edge → shift the whole box DOWN by ty (both vertical offsets) PLUS the
+	# clearance for the top-left diagnostics overlay when it is showing.
+	offset_top = _base_off_t + ty + _stats_clearance
+	offset_bottom = _base_off_b + ty + _stats_clearance
+
+
+## Compute how far DOWN the killfeed must sit to clear the top-left stats overlay.
+## Detailed panel (numeric/graphs) is tall → +220; just the FPS line → +30; off → 0.
+func _refresh_stats_clearance() -> void:
+	var show_fps: bool = bool(SettingsManager.get_value("show_fps"))
+	var show_detailed: bool = bool(SettingsManager.get_value("show_detailed_stats"))
+	_set_stats_clearance(show_fps, show_detailed)
+
+
+func _set_stats_clearance(show_fps: bool, show_detailed: bool) -> void:
+	if show_detailed:
+		_stats_clearance = 220.0
+	elif show_fps:
+		_stats_clearance = 30.0
+	else:
+		_stats_clearance = 0.0
+
+
+func _on_stats_overlay_changed(show_fps: bool, show_detailed: bool, _mode: int) -> void:
+	_set_stats_clearance(show_fps, show_detailed)
+	_apply_hud_inset()
 
 
 func _push(text: String, color: Color) -> void:

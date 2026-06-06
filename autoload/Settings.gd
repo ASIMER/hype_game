@@ -49,6 +49,22 @@ const PLAYER_JUMP_VELOCITY: float = 7.0
 const MOUSE_SENSITIVITY: float = 0.0025
 const CAMERA_PITCH_MIN: float = -1.2
 const CAMERA_PITCH_MAX: float = 0.6
+# Crouch + slide (Arc Raiders-style stances).
+const PLAYER_CROUCH_SPEED: float = 2.6      # m/s while crouched
+const CROUCH_CAMERA_DROP: float = 0.55      # camera_pivot.y drop when crouched
+const SLIDE_SPEED: float = 9.5              # initial slide speed (decays to crouch speed)
+const SLIDE_TIME: float = 0.7               # slide duration (s)
+const SLIDE_CAMERA_DROP: float = 0.8        # camera drop during a slide
+const CROUCH_CAMERA_LERP: float = 10.0      # camera-height ease speed
+# Stance spread multipliers (applied to weapon.spread_deg at fire time — crouch < stand <
+# move < sprint, ADS tightest; the dynamic crosshair shows the resulting cone).
+const SPREAD_MULT_CROUCH: float = 0.45
+const SPREAD_MULT_STAND: float = 1.0
+const SPREAD_MULT_MOVE: float = 1.7
+const SPREAD_MULT_SPRINT: float = 2.6
+const SPREAD_MULT_SLIDE: float = 3.0
+const SPREAD_MULT_ADS: float = 0.4
+const FP_SPRING_LENGTH: float = 0.15        # spring length in first-person view
 
 # Combat
 const WEAPON_NET_REPLICATION_HZ: float = 30.0
@@ -175,6 +191,10 @@ var ads_toggle: bool = false            # false = hold to aim, true = toggle
 # of the viewport (0 = at the screen edge). Read by minimap/killfeed/hud/stats_overlay.
 var ui_edge_margin: float = 0.0         # horizontal inset (fraction of viewport width)
 var ui_top_margin: float = 0.0          # vertical inset (fraction of viewport height)
+# Camera (set by SettingsManager from the Interface tab; read by the player rig).
+var camera_distance_scale: float = 1.0  # multiplies DEFAULT_SPRING_LENGTH (third-person distance)
+var camera_shoulder_scale: float = 1.0  # multiplies SHOULDER_OFFSET (over-shoulder side offset)
+var default_first_person: bool = false  # spawn in first-person view
 # Graphics-quality scale for rebuild-bound levers (set by SettingsManager from the quality
 # preset; read at arena build, so a change applies on the NEXT raid). 1.0 = Ultra ceiling.
 var grass_density_scale: float = 1.0    # multiplies the near/far grass caps in procedural_flora

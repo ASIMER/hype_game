@@ -75,6 +75,11 @@ var _ui_top_margin: HSlider
 var _ui_top_margin_value: Label
 var _hud_scale: HSlider
 var _hud_scale_value: Label
+var _camera_distance: HSlider
+var _camera_distance_value: Label
+var _camera_shoulder: HSlider
+var _camera_shoulder_value: Label
+var _default_view: OptionButton
 
 # Dynamic resolution list for the current monitor (built in _populate_options).
 var _res_list: Array = []
@@ -315,6 +320,44 @@ func _build_interface_rows() -> void:
 	_hud_scale.value_changed.connect(_on_hud_scale)
 	_interface_v.add_child(scale_row[0])
 
+	# --- Camera (third-person rig) ---
+	_interface_v.add_child(_make_header("CAMERA", accent))
+
+	var dist_row := _make_slider_row("Camera Distance", 0.6, 1.4, 0.05)
+	_camera_distance = dist_row[1]
+	_camera_distance_value = dist_row[2]
+	_camera_distance.value_changed.connect(_on_camera_distance)
+	_interface_v.add_child(dist_row[0])
+
+	var sh_row := _make_slider_row("Camera Shoulder", 0.0, 1.0, 0.05)
+	_camera_shoulder = sh_row[1]
+	_camera_shoulder_value = sh_row[2]
+	_camera_shoulder.value_changed.connect(_on_camera_shoulder)
+	_interface_v.add_child(sh_row[0])
+
+	var view_row := HBoxContainer.new()
+	view_row.add_theme_constant_override("separation", 16)
+	var view_label := Label.new()
+	view_label.text = "Default View"
+	view_label.custom_minimum_size = Vector2(220, 0)
+	_default_view = OptionButton.new()
+	_default_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for s in ["Third Person", "First Person"]:
+		_default_view.add_item(s)
+	_default_view.item_selected.connect(func(i): _apply_setting("default_view", i))
+	view_row.add_child(view_label)
+	view_row.add_child(_default_view)
+	_interface_v.add_child(view_row)
+	_interface_v.add_child(_make_note("(toggle in-game with V)"))
+
+func _on_camera_distance(v: float) -> void:
+	_camera_distance_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("camera_distance", v)
+
+func _on_camera_shoulder(v: float) -> void:
+	_camera_shoulder_value.text = "%d%%" % roundi(v * 100.0)
+	_apply_setting("camera_shoulder", v)
+
 
 # Like _add_toggle_row but appends to the interface page and does NOT touch the preset
 # label (these toggles are not part of the graphics quality preset).
@@ -510,6 +553,13 @@ func sync_from_settings() -> void:
 	var hud_scale: float = float(g.get_value("hud_scale"))
 	_hud_scale.value = hud_scale
 	_hud_scale_value.text = "%d%%" % roundi(hud_scale * 100.0)
+	var cam_dist: float = float(g.get_value("camera_distance"))
+	_camera_distance.value = cam_dist
+	_camera_distance_value.text = "%d%%" % roundi(cam_dist * 100.0)
+	var cam_sh: float = float(g.get_value("camera_shoulder"))
+	_camera_shoulder.value = cam_sh
+	_camera_shoulder_value.text = "%d%%" % roundi(cam_sh * 100.0)
+	_default_view.select(int(g.get_value("default_view")))
 
 	_master.value = float(g.get_value("master_volume"))
 	_master_value.text = "%d%%" % roundi(_master.value * 100.0)

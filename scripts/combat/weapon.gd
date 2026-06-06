@@ -77,7 +77,12 @@ func try_fire(from_node: Node3D) -> bool:
 ## hits on entities in group "enemies". The caller owns the cooldown/ammo — this
 ## method does NOT gate on _cooldown so a controller can manage rate-of-fire, but
 ## it does refresh _cooldown for compatibility with anything polling this node.
-func fire_with(from_node: Node3D, data: WeaponData) -> bool:
+## `eff_spread` (degrees, < 0 = "use the weapon's own spread_deg") is the
+## controller-computed effective cone (base × stance/movement × ADS). It is applied
+## HERE, on the authoritative shot-resolution path inside _shoot, so co-op clients
+## can't bypass stance/ADS spread. The shotgun pellet loop uses the SAME eff_spread
+## per pellet.
+func fire_with(from_node: Node3D, data: WeaponData, eff_spread: float = -1.0) -> bool:
 	if from_node == null or data == null:
 		return false
 	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
@@ -87,8 +92,9 @@ func fire_with(from_node: Node3D, data: WeaponData) -> bool:
 	var muzzle_v: float = 0.0
 	if "muzzle_velocity" in data:
 		muzzle_v = float(data.muzzle_velocity)
+	var spread: float = data.spread_deg if eff_spread < 0.0 else eff_spread
 	for i in pellets:
-		_shoot(from_node, data.id, data.damage, data.range, data.spread_deg, data.crit_mult, true, muzzle_v)
+		_shoot(from_node, data.id, data.damage, data.range, spread, data.crit_mult, true, muzzle_v)
 	return true
 
 ## One converged hitscan ray (chest-origin toward the crosshair aim point) with
