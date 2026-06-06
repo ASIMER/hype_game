@@ -91,7 +91,7 @@ func _on_noise_emitted(world_pos: Vector3, loudness: float, kind: int) -> void:
 	if kind != 2:
 		return
 	# Must be loud enough to count as an alarm-level event.
-	if loudness < 20.0:
+	if loudness < Settings.ALARM_GRENADE_MIN_LOUDNESS:
 		return
 	if _noise_alarm_cooldown > 0.0:
 		return

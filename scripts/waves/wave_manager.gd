@@ -411,6 +411,12 @@ func _on_all_waves_survived() -> void:
 # Public API for AIDirector
 # ---------------------------------------------------------------------------
 
+## How many more enemies can be spawned before hitting the hard alive ceiling. The
+## WorldEventDirector reads this to avoid firing a guard-needing event (cache/contested/
+## mini-boss) that would spawn ZERO guards (an undefended event reads as broken).
+func reinforcement_capacity() -> int:
+	return maxi(0, Settings.FINAL_WAVE_CONCURRENT - (_alive_enemies.size() + _patrols.size()))
+
 ## Spawn `count` hunter (or non-hunter) enemies at markers nearest `near_pos`.
 ## Called by AIDirector for alarm reinforcements and camp-punish flanks.
 ## Respects FINAL_WAVE_CONCURRENT as a hard alive-count ceiling so it can't

@@ -105,6 +105,7 @@ func _load_weapons() -> void:
 				w.reload_time = maxf(0.1, w.reload_time * reload_mult)
 				_apply_perks(w)         # permanent per-weapon perks (never lost)
 				_apply_attachments(w)   # at-risk equipped attachments (lost on death)
+				_apply_mastery(w)       # passive "veteran" ramp from weapon mastery level
 				_weapons.append(w)
 	# Initialise ammo/reserve for every loaded weapon (full mag + full reserve).
 	for w in _weapons:
@@ -127,6 +128,17 @@ func _apply_perks(w: WeaponData) -> void:
 			"recoil": w.recoil = maxf(0.0, w.recoil * (1.0 - eff))
 			"reload": w.reload_time = maxf(0.1, w.reload_time * (1.0 - eff))
 			"mag":    w.mag_size = maxi(1, w.mag_size + int(eff))
+
+## Apply the per-weapon MASTERY ramp (per-peer LOCAL): the more you use a gun, the better
+## it handles — a small recoil/spread/reload reduction scaling with its mastery level. This
+## is the passive counterpart to the bought perks (damage/mag). Multiplicative on the dup.
+func _apply_mastery(w: WeaponData) -> void:
+	var lvl: int = MetaProgression.weapon_mastery_level(w.id)
+	if lvl <= 0:
+		return
+	w.recoil = maxf(0.0, w.recoil * (1.0 - Settings.WEAPON_MASTERY_RECOIL_PER * lvl))
+	w.spread_deg = maxf(0.0, w.spread_deg * (1.0 - Settings.WEAPON_MASTERY_SPREAD_PER * lvl))
+	w.reload_time = maxf(0.1, w.reload_time * (1.0 - Settings.WEAPON_MASTERY_RELOAD_PER * lvl))
 
 ## Apply this weapon's equipped AT-RISK attachments (committed from the stash at deploy)
 ## to the dup'd data. AttachmentData extends ItemData and lives in ItemCatalog.

@@ -746,6 +746,7 @@ func _snapshot() -> Dictionary:
 		"cam_yaw": cam_pivot.rotation.y if cam_pivot else 0.0,
 		"cam_pitch": spring.rotation.x if spring else 0.0,
 		"alive": (not hp.is_dead) if hp else false,
+		"downed": p.is_downed() if p.has_method("is_downed") else false,
 		"weapon": wid,
 		"ammo": _ammo,
 		"reserve": _reserve,

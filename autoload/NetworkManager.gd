@@ -292,10 +292,25 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 	var peer := _peer_of(killer)
 	if peer > 0:
 		GameState.record_kill(peer)
+		# Credit PROGRESSION (XP + weapon mastery) on the KILLER's own machine. entity_died
+		# fires server-only (enemies are server-auth), so a client never sees its own kill —
+		# we route the credit to the killer peer here (the same server-auth attribution the
+		# scoreboard uses). Host kill → local; client kill → rpc to that peer only. This is
+		# why a client earned no kill-XP before. Exactly one path fires → no double credit.
+		if is_offline or peer == multiplayer.get_unique_id():
+			Progression.credit_kill()
+		else:
+			_credit_kill_rpc.rpc_id(peer)
 	else:
 		GameState.mobs_killed += 1   # unattributed (environment/explosion) still counts to the team
 	_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
 	Events.scoreboard_changed.emit()
+
+## Server → the killer peer: credit your own kill locally (XP + this machine's active
+## weapon's mastery). Runs on the killer's machine so it reads that peer's own profile + gun.
+@rpc("authority", "call_remote", "reliable")
+func _credit_kill_rpc() -> void:
+	Progression.credit_kill()
 
 ## Walk up from a node (hurtbox/weapon/player) to the owning player and return its
 ## peer id (the player node is named str(peer_id)). 0 = no player owner.
@@ -338,7 +353,16 @@ func _do_revive(target_peer: int, reviver_peer: int) -> void:
 	var target := _player_for_peer(target_peer)
 	if target == null or not target.has_method("server_revive"):
 		return
-	target.server_revive(_player_for_peer(reviver_peer))   # player clears downed + heals (synced)
+	# Validate the reviver server-side (defense in depth — the client only sends this when
+	# prompted, but never trust it): the reviver must exist, be UP (not downed), and be
+	# within interaction range of the downed target. Blocks a downed-squad loop-revive +
+	# out-of-range revives.
+	var reviver := _player_for_peer(reviver_peer)
+	if reviver == null or reviver_peer == target_peer or GameState.is_downed(reviver_peer):
+		return
+	if (reviver as Node3D).global_position.distance_to((target as Node3D).global_position) > Settings.INTERACT_RANGE * 1.5:
+		return
+	target.server_revive(reviver)   # player clears downed + heals (synced)
 	if reviver_peer > 0 and reviver_peer != target_peer:
 		GameState.record_revive(reviver_peer)
 		_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)

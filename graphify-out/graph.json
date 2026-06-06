@@ -1194,7 +1194,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L82",
+      "source_location": "L83",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1203,7 +1203,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L96",
+      "source_location": "L97",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1212,7 +1212,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L99",
+      "source_location": "L100",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -2031,7 +2031,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "agentbridge._handle_line (command dispatch)",
       "id": "agentbridge_handle_line"
     },
@@ -2044,7 +2044,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 71,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -2057,7 +2057,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "agentbridge._aim_at (converging camera aim)",
       "id": "agentbridge_aim_at"
     },
@@ -2070,7 +2070,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -2096,7 +2096,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "agentbridge._ui_action (menu open/close)",
       "id": "agentbridge_ui_action"
     },
@@ -2291,7 +2291,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -2330,7 +2330,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 67,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -2538,7 +2538,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 70,
+      "community": 68,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -2642,7 +2642,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 70,
+      "community": 68,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -2772,7 +2772,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 71,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -2811,7 +2811,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 71,
       "norm_label": "serverbrowser.add_favorite / record_connect",
       "id": "serverbrowser_add_favorite"
     },
@@ -3695,7 +3695,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 70,
+      "community": 68,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -3708,7 +3708,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 70,
+      "community": 68,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -11558,5 +11558,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "db253c8ac4e56cb489f5ca948f2b869a7083ce3b"
+  "built_at_commit": "faec8f1fa574ddcd9e7739b7ba4da0d11c078744"
 }
