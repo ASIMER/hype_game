@@ -1,15 +1,15 @@
-[gd_scene load_steps=7 format=3 uid="uid://b0arcrobotheavy1"]
+[gd_scene load_steps=7 format=3 uid="uid://b0arcrobotelite1"]
 
 [ext_resource type="Script" path="res://scripts/enemies/robot_enemy.gd" id="1_robot"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
 [ext_resource type="Script" path="res://scripts/combat/hurtbox.gd" id="3_hurtbox"]
 
 [sub_resource type="CapsuleShape3D" id="Capsule_body"]
-radius = 0.65
-height = 1.9
+radius = 0.45
+height = 1.6
 
 [sub_resource type="SphereShape3D" id="Sphere_weak"]
-radius = 0.32
+radius = 0.28
 
 [sub_resource type="SceneReplicationConfig" id="ReplConfig_1"]
 properties/0/path = NodePath(".:position")
@@ -25,28 +25,28 @@ properties/3/path = NodePath("Health:current")
 properties/3/spawn = true
 properties/3/replication_mode = 1
 
-[node name="RobotHeavy" type="CharacterBody3D"]
+[node name="RobotElite" type="CharacterBody3D"]
 collision_layer = 4
 collision_mask = 7
 script = ExtResource("1_robot")
-enemy_id = "robot_heavy"
+enemy_id = "robot_elite"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("Capsule_body")
 
 [node name="ModelRoot" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
 path_desired_distance = 0.6
-target_desired_distance = 1.2
-radius = 0.7
-height = 1.9
+target_desired_distance = 1.0
+radius = 0.5
+height = 1.6
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2_health")
-max_health = 95.0
+max_health = 140.0
 
 [node name="Hurtbox" type="Area3D" parent="."]
 collision_layer = 64
@@ -55,7 +55,7 @@ script = ExtResource("3_hurtbox")
 health_path = NodePath("../Health")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("Capsule_body")
 
 [node name="WeakPoint" type="Area3D" parent="."]
@@ -63,15 +63,15 @@ collision_layer = 64
 collision_mask = 0
 script = ExtResource("3_hurtbox")
 health_path = NodePath("../Health")
-damage_multiplier = 2.0
+damage_multiplier = 2.5
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WeakPoint"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.82, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
 shape = SubResource("Sphere_weak")
 
 [node name="LineOfSight" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-target_position = Vector3(0, 0, -18)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+target_position = Vector3(0, 0, -22)
 collision_mask = 1
 collide_with_areas = false
 collide_with_bodies = true

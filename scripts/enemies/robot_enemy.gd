@@ -40,7 +40,7 @@ const SEPARATION_STRENGTH: float = 3.2
 
 # Mirror of EnemyStateMachine.State so the synchronizer replicates a plain int
 # and clients can map it to animation without the helper class.
-enum State { PATROL, CHASE, ATTACK }
+enum State { PATROL, CHASE, ATTACK, INVESTIGATE }
 
 @export var enemy_id: String = "robot_grunt"
 @export var patrol_radius: float = 10.0
@@ -151,6 +151,20 @@ var current_state: int = State.PATROL
 # map instead of idling at their nest. Set by the wave manager on spawn.
 var hunter: bool = false
 
+# --- Perception / INVESTIGATE state -----------------------------------------
+# Last-heard world position the enemy is walking toward while investigating.
+var _investigate_point: Vector3 = Vector3.ZERO
+var _investigate_timer: float = 0.0   # counts DOWN from INVESTIGATE_GIVEUP
+var _investigate_arrived: bool = false # true once within INVESTIGATE_ARRIVE
+
+# Cascading alert refractory: monotonic counter decremented each physics tick.
+# Guards alert_to() from ping-ponging (each enemy fires once per ALERT_REFRACTORY s).
+var _last_alert_time: float = 0.0
+
+# Track whether we were chasing last tick so we detect the edge PATROL→CHASE
+# for cascading alerts.
+var _was_chasing: bool = false
+
 func _ready() -> void:
 	add_to_group("enemies")
 	_home = global_position
@@ -188,6 +202,13 @@ func _ready() -> void:
 
 	_agent.path_desired_distance = 0.6
 	_agent.target_desired_distance = maxf(1.0, _stat_attack_range * 0.6)
+
+	# Connect to loud noise events (gunfire/grenades). Only the authority runs
+	# AI, so we gate the connection to the server — enemies are server-spawned
+	# so is_multiplayer_authority() is valid in _ready here.
+	if is_multiplayer_authority():
+		if not Events.noise_emitted.is_connected(_on_noise_emitted):
+			Events.noise_emitted.connect(_on_noise_emitted)
 
 	Events.enemy_spawned.emit(self)
 
@@ -232,10 +253,20 @@ func _physics_process(delta: float) -> void:
 
 	if _attack_cooldown > 0.0:
 		_attack_cooldown -= delta
+
+	# Decay the cascading-alert refractory timer.
+	if _last_alert_time > 0.0:
+		_last_alert_time -= delta
+		if _last_alert_time < 0.0:
+			_last_alert_time = 0.0
+
 	_retarget_timer -= delta
 	if _retarget_timer <= 0.0:
 		_retarget_timer = 0.4
 		_target = _find_nearest_player()
+		# Non-hunter footstep perception (piggyback on the 0.4s retarget cadence).
+		if not hunter:
+			_check_footstep_perception()
 
 	var dist := INF
 	var has_los := false
@@ -249,8 +280,21 @@ func _physics_process(delta: float) -> void:
 	# leave their nest and close in; they still ATTACK only inside attack range.
 	if hunter and _target != null:
 		current_state = _fsm.evaluate(_target, dist, true, 1.0e9, _stat_attack_range)
-	else:
+	elif current_state != State.INVESTIGATE:
 		current_state = _fsm.evaluate(_target, dist, has_los, _stat_detect, _stat_attack_range)
+	else:
+		# While investigating, promote to CHASE/ATTACK the moment LOS is confirmed
+		# within detect. evaluate() has no INVESTIGATE case (it would return INVESTIGATE
+		# unchanged), so seed the FSM into CHASE first, then let evaluate resolve
+		# CHASE→ATTACK (or back to PATROL if the gap reopens). Falls through to cascade.
+		if _target != null and has_los and dist <= _stat_detect:
+			_fsm.state = State.CHASE
+			current_state = _fsm.evaluate(_target, dist, has_los, _stat_detect, _stat_attack_range)
+
+	# Cascading alert edge detection: the moment we enter CHASE, wake nearby non-hunters.
+	if current_state == State.CHASE and not _was_chasing:
+		_cascade_alert()
+	_was_chasing = (current_state == State.CHASE)
 
 	match current_state:
 		State.PATROL:
@@ -259,6 +303,8 @@ func _physics_process(delta: float) -> void:
 			_do_chase(delta)
 		State.ATTACK:
 			_do_attack(delta)
+		State.INVESTIGATE:
+			_do_investigate(delta)
 
 	_update_stuck(delta)
 
@@ -324,6 +370,8 @@ func _update_animation() -> void:
 			desired = _anim_run if _anim_run != "" else _anim_walk
 		State.ATTACK:
 			desired = _anim_attack if _anim_attack != "" else _anim_idle
+		State.INVESTIGATE:
+			desired = _anim_walk if _anim_walk != "" else _anim_idle
 	if desired != "" and desired != _current_anim:
 		_play_anim(desired)
 
@@ -600,6 +648,141 @@ func _do_attack(delta: float) -> void:
 		_strike(_target)
 		_attack_cooldown = _next_cooldown()
 
+## Investigate the last-heard/seen point. Navigate there at reduced speed; look
+## around on arrival; give up after INVESTIGATE_GIVEUP seconds with no confirmed LOS.
+func _do_investigate(delta: float) -> void:
+	_investigate_timer -= delta
+	if _investigate_timer <= 0.0:
+		# Give-up: return to patrol.
+		current_state = State.PATROL
+		_fsm.state = State.PATROL
+		_investigate_arrived = false
+		return
+
+	var dist_to_point := global_position.distance_to(_investigate_point)
+	if dist_to_point <= Settings.INVESTIGATE_ARRIVE:
+		# Arrived — rotate slowly in place to "look around".
+		_investigate_arrived = true
+		rotation.y += delta * 1.2
+		_apply_movement(Vector3.ZERO, delta)
+	else:
+		_investigate_arrived = false
+		# Navigate at INVESTIGATE_SPEED_MULT of normal speed.
+		_agent.set_target_position(_investigate_point)
+		# Temporarily scale speed, navigate, then restore.
+		var base_speed := _stat_speed
+		_stat_speed = base_speed * Settings.INVESTIGATE_SPEED_MULT
+		_navigate_to_agent(delta)
+		_stat_speed = base_speed
+
+## Begin investigating a world position. Resets the give-up timer.
+## Called internally by perception and externally by alert_to().
+func _start_investigate(world_pos: Vector3) -> void:
+	_investigate_point = world_pos
+	_investigate_timer = Settings.INVESTIGATE_GIVEUP
+	_investigate_arrived = false
+	current_state = State.INVESTIGATE
+	_fsm.state = State.INVESTIGATE
+	_fsm.clear_patrol_target()
+
+## Public cascading-alert entry point. Another enemy (or the caller) tells this
+## enemy to INVESTIGATE a position. Respects the refractory window and skips
+## hunters / dead / already-chasing enemies. Called on the server only.
+func alert_to(world_pos: Vector3) -> void:
+	if hunter:
+		return
+	if _dying or (_health != null and _health.is_dead):
+		return
+	if current_state == State.CHASE or current_state == State.ATTACK:
+		return
+	if _last_alert_time > 0.0:
+		return
+	_last_alert_time = Settings.ALERT_REFRACTORY
+	_start_investigate(world_pos)
+
+## Footstep perception: called every ~0.4s for non-hunter enemies.
+## Checks all players and reacts to noise_radius() audible footsteps.
+func _check_footstep_perception() -> void:
+	var loudest_dist := INF
+	var loudest_player: Node3D = null
+	var loudest_radius: float = 0.0
+
+	for p in get_tree().get_nodes_in_group("players"):
+		if p == null or not is_instance_valid(p) or not (p is Node3D):
+			continue
+		# Skip dead players.
+		var ph := (p as Node3D).get_node_or_null("Health")
+		if ph and ph is Health and (ph as Health).is_dead:
+			continue
+		# Guard: only call noise_radius if the method exists.
+		if not p.has_method("noise_radius"):
+			continue
+		var heard_radius: float = float(p.call("noise_radius"))
+		if heard_radius <= 0.0:
+			continue
+		var d := global_position.distance_to((p as Node3D).global_position)
+		if d <= heard_radius and d < loudest_dist:
+			loudest_dist = d
+			loudest_player = p as Node3D
+			loudest_radius = heard_radius
+
+	if loudest_player == null:
+		return
+	# Already chasing this target? Skip (don't downgrade a confirmed chase).
+	if (current_state == State.CHASE or current_state == State.ATTACK) and _target == loudest_player:
+		return
+
+	if loudest_dist <= loudest_radius * Settings.NOISE_CHASE_FRACTION:
+		# Very close/loud — go straight to CHASE.
+		_target = loudest_player
+		current_state = State.CHASE
+		_fsm.state = State.CHASE
+		_fsm.clear_patrol_target()
+	else:
+		# Heard but not immediate — investigate the player's position.
+		_start_investigate(loudest_player.global_position)
+
+## Cascade: on entering CHASE, alert nearby non-hunter enemies to investigate
+## the current target position.
+func _cascade_alert() -> void:
+	if _target == null or not is_instance_valid(_target):
+		return
+	var target_pos := _target.global_position
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e == self or e == null or not is_instance_valid(e):
+			continue
+		if not e.has_method("alert_to"):
+			continue
+		if not (e is Node3D):
+			continue
+		if global_position.distance_to((e as Node3D).global_position) <= Settings.ALERT_CASCADE_RADIUS:
+			e.call("alert_to", target_pos)
+
+## Noise event handler (gunfire / grenades from Events.noise_emitted).
+## Only runs on the authority (connected in _ready only when authority).
+func _on_noise_emitted(world_pos: Vector3, loudness: float, _kind: int) -> void:
+	if hunter:
+		return
+	if _dying or (_health != null and _health.is_dead):
+		return
+	var d := global_position.distance_to(world_pos)
+	if d > loudness:
+		return
+	# Already chasing something nearby? Don't downgrade.
+	if current_state == State.CHASE or current_state == State.ATTACK:
+		return
+	if d <= loudness * Settings.NOISE_CHASE_FRACTION:
+		# Very loud up close — go to CHASE toward the noise origin and pick nearest player.
+		if _target != null and is_instance_valid(_target):
+			current_state = State.CHASE
+			_fsm.state = State.CHASE
+			_fsm.clear_patrol_target()
+		else:
+			# No current target — investigate the noise source.
+			_start_investigate(world_pos)
+	else:
+		_start_investigate(world_pos)
+
 ## Gap until the next attack. Default = the archetype's stat cooldown; ranged
 ## archetypes override to insert a longer recovery between bursts. OVERRIDE.
 func _next_cooldown() -> float:
@@ -613,7 +796,9 @@ func _next_cooldown() -> float:
 ## place without reducing its distance to the target (e.g. a heavy jammed in a POI) is
 ## caught here and recovered; patrol idling is excluded so a waypoint pause never trips it.
 func _update_stuck(delta: float) -> void:
-	if current_state != State.CHASE or _stat_attack_range >= 5.0 \
+	if (current_state != State.CHASE and current_state != State.INVESTIGATE) \
+			or current_state == State.INVESTIGATE \
+			or _stat_attack_range >= 5.0 \
 			or _target == null or not is_instance_valid(_target):
 		_stuck_time = 0.0
 		_stuck_dist = INF

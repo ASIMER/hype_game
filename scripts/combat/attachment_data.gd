@@ -25,6 +25,7 @@ class_name AttachmentData
 @export var mag_add: int = 0
 @export var reserve_add: int = 0
 @export var crit_add: float = 0.0
+@export var noise_mult: float = 1.0        # <1 = quieter (suppressor); composable
 
 ## Applies this attachment's mods to a (duplicated) WeaponData in place.
 func apply_to(w: WeaponData) -> void:
@@ -38,6 +39,8 @@ func apply_to(w: WeaponData) -> void:
 	w.mag_size = maxi(1, w.mag_size + mag_add)
 	w.reserve_max = maxi(0, w.reserve_max + reserve_add)
 	w.crit_mult = maxf(1.0, w.crit_mult + crit_add)
+	if "noise_mult" in w:
+		w.noise_mult *= noise_mult
 
 ## True when this attachment fits the given weapon id.
 func fits(weapon_id: String) -> bool:

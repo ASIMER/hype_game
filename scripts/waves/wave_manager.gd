@@ -9,6 +9,14 @@ class_name WaveManager
 ## tree). Drives spawning through Arena.get_enemy_spawn_point(index) and adds
 ## children directly to Net/Enemies. Guarded so only the local authority server runs
 ## the simulation — clients receive enemies through the MultiplayerSpawner.
+##
+## AIDirector changes (Lane B):
+##   • _spawn_enemy gains `as_hunter` param (default true — existing behaviour unchanged).
+##   • spawn_reinforcements() — public API for AIDirector alarm/flank spawns.
+##   • Camp-punish detection (clustered players → flank spawn).
+##   • Between-wave patrols (_patrols array, separate from _alive_enemies).
+##   • Boss-phase adds (spawn hunter adds when boss health < threshold).
+##   • Registers/unregisters itself with AIDirector.
 
 const ENEMY_SCENE := "res://scenes/enemies/RobotEnemy.tscn"
 const MAX_WAVE: int = 5
@@ -21,6 +29,10 @@ const SCENE_HEAVY := "res://scenes/enemies/RobotHeavy.tscn"
 const SCENE_WASP := "res://scenes/enemies/RobotWasp.tscn"
 const SCENE_BASTION := "res://scenes/enemies/RobotBastion.tscn"
 const SCENE_BOSS := "res://scenes/enemies/RobotBoss.tscn"
+
+# Lane A archetype scenes (guarded with ResourceLoader.exists at spawn time).
+const SCENE_CALLER := "res://scenes/enemies/RobotCaller.tscn"
+const SCENE_ELITE  := "res://scenes/enemies/RobotElite.tscn"
 
 # Escalating type mix per wave. Each entry is a weighted pool the trickle spawner
 # samples for every non-boss enemy. Wave 5 is the boss wave (handled specially:
@@ -65,6 +77,25 @@ var _storm_started: bool = false     # final_wave_started emitted once
 # Storm pool: the heaviest archetypes, weighted toward the nastiest.
 const STORM_POOL := [SCENE_HEAVY, SCENE_BASTION, SCENE_BASTION, SCENE_WASP, SCENE_HEAVY, SCENE_TICK]
 
+# ---------------------------------------------------------------------------
+# AIDirector integration — patrols, camp detection, boss-phase adds
+# ---------------------------------------------------------------------------
+
+## Between-wave patrol enemies. NOT tracked in _alive_enemies so they never block
+## wave-clear accounting. Freed when the next wave starts.
+var _patrols: Array[Node] = []
+
+## Camp-punish state. Reset whenever players disperse below the radius threshold.
+var _camp_timer: float = 0.0
+var _camp_cooldown: float = 0.0   # counts DOWN; 0 = ready to punish again
+
+## Boss-phase adds: spawned once when the boss HP drops below DIRECTOR_BOSS_ADD_HP.
+var _boss_adds_spawned: bool = false
+
+## Throttle the boss-HP check so we don't scan every frame.
+var _boss_check_accum: float = 0.0
+const BOSS_CHECK_INTERVAL: float = 0.5
+
 func _ready() -> void:
 	# Resolve the Arena root and the enemy container. The Arena exposes
 	# get_enemy_spawn_point(index); enemies live under Net/Enemies.
@@ -87,6 +118,18 @@ func _ready() -> void:
 	if GameState.phase == GameState.Phase.IN_MATCH:
 		_on_match_started.call_deferred()
 
+	# Register with AIDirector so it can call spawn_reinforcements.
+	# Resolved lazily via get_node_or_null so a missing autoload (not yet registered
+	# by the lead) is a no-op at runtime rather than a parse-time hard reference error.
+	var director: Node = get_node_or_null("/root/AIDirector")
+	if director != null:
+		director.call("set_wave_manager", self)
+
+func _exit_tree() -> void:
+	var director: Node = get_node_or_null("/root/AIDirector")
+	if director != null:
+		director.call("set_wave_manager", null)
+
 func _resolve_arena() -> Node3D:
 	# Prefer the scene owner (we're attached under the Arena), else walk up.
 	if owner is Node3D and owner.has_method("get_enemy_spawn_point"):
@@ -105,6 +148,7 @@ func _on_match_started() -> void:
 		return
 	_started = true
 	GameState.current_wave = 0
+	_boss_adds_spawned = false
 	# Arm the match clock. reset_match() set match_duration; default it if still 0.
 	if GameState.match_duration <= 0.0:
 		GameState.match_duration = Settings.MATCH_DURATION
@@ -115,9 +159,15 @@ func _on_match_started() -> void:
 	_storm = false
 	_storm_started = false
 	Events.match_timer_changed.emit(GameState.match_time_left, GameState.match_duration)
+	# Spawn pre-first-wave patrols so the map feels alive from second one.
+	_spawn_patrols()
 	_start_next_wave()
 
 func _start_next_wave() -> void:
+	# Clear any surviving patrol enemies before the new wave so they never interfere
+	# with _finish_wave's "spawned >= total and alive.is_empty()" accounting.
+	_clear_patrols()
+
 	# During the storm the gradual 1-5 progression is over: keep the same "wave"
 	# spinning and just refill from the storm stream instead of ending the match.
 	if _storm:
@@ -131,9 +181,12 @@ func _start_next_wave() -> void:
 	_wave_total = _enemy_count_for_wave(next)
 	_wave_spawned = 0
 	_boss_spawned = false
+	_boss_adds_spawned = false
 	_wave_active = true
 	_alive_enemies.clear()
 	_watchdog_time = 0.0
+	# Reset camp timers at wave start so leftover pressure doesn't carry over.
+	_camp_timer = 0.0
 	Events.wave_started.emit(next, _wave_total)
 	NetworkManager.sync_wave(next, _wave_total)   # mirror to co-op clients' HUD
 	# Can't spawn (scene missing / no container)? Don't deadlock the match.
@@ -171,25 +224,29 @@ func _process(delta: float) -> void:
 	# fully-spawned and the watchdog would never run. The 12 s timer below is the grace
 	# window; legit enemies have closed within 55 m by then.
 	_watchdog_time += delta
-	if _watchdog_time < WATCHDOG_STALL:
-		return
-	_watchdog_time = 0.0
-	# Relocate any straggler still far from EVERY player. This late in a fully-spawned
-	# wave a real chaser would have closed in, so a >55 m enemy is marooned (covers
-	# stuck ranged archetypes that the per-enemy melee stuck-check intentionally skips).
-	# Legit ranged enemies sit at their 15–22 m stand-off, well inside 55 m — untouched.
-	var players := get_tree().get_nodes_in_group("players")
-	if players.is_empty():
-		return
-	for e in _alive_enemies:
-		if not is_instance_valid(e) or not (e is Node3D):
-			continue
-		var nd := INF
-		for pl in players:
-			if pl is Node3D:
-				nd = minf(nd, (e as Node3D).global_position.distance_to((pl as Node3D).global_position))
-		if nd > 55.0 and e.has_method("force_unstuck"):
-			e.force_unstuck()
+	if _watchdog_time >= WATCHDOG_STALL:
+		_watchdog_time = 0.0
+		# Relocate any straggler still far from EVERY player. This late in a fully-spawned
+		# wave a real chaser would have closed in, so a >55 m enemy is marooned (covers
+		# stuck ranged archetypes that the per-enemy melee stuck-check intentionally skips).
+		# Legit ranged enemies sit at their 15–22 m stand-off, well inside 55 m — untouched.
+		var players := get_tree().get_nodes_in_group("players")
+		if not players.is_empty():
+			for e in _alive_enemies:
+				if not is_instance_valid(e) or not (e is Node3D):
+					continue
+				var nd: float = INF
+				for pl in players:
+					if pl is Node3D:
+						nd = minf(nd, (e as Node3D).global_position.distance_to((pl as Node3D).global_position))
+				if nd > 55.0 and e.has_method("force_unstuck"):
+					e.force_unstuck()
+
+	# --- Camp-punish ---
+	_tick_camp_detection(delta)
+
+	# --- Boss-phase adds ---
+	_tick_boss_adds(delta)
 
 ## Server-auth match clock. Counts match_time_left down, throttle-emits
 ## match_timer_changed (~4x/sec), warns once at FINAL_WAVE_WARN, and triggers the
@@ -285,7 +342,9 @@ func _scene_for_spawn() -> String:
 	var pick: String = pool[randi() % pool.size()]
 	return pick if ResourceLoader.exists(pick) else SCENE_GRUNT
 
-func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE) -> void:
+## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
+## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.
+func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE, as_hunter: bool = true) -> void:
 	if not ResourceLoader.exists(scene_path):
 		push_warning("WaveManager: %s not present — skipping enemy spawn" % scene_path)
 		return
@@ -296,10 +355,10 @@ func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE) -> void:
 	# Ensure it's discoverable as an enemy even if the scene forgot the group.
 	if not enemy.is_in_group("enemies"):
 		enemy.add_to_group("enemies")
-	# Wave enemies actively hunt the player so survival waves stay aggressive on the
-	# big map (they path in from their nest instead of idling).
+	# Apply hunter flag only when the property exists (guard against scene variants
+	# that may not have it — prevents "Invalid set index" at runtime).
 	if "hunter" in enemy:
-		enemy.hunter = true
+		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
 	# Position at a spawn marker after entering the tree (global_transform needs it).
 	if enemy is Node3D and _arena:
@@ -308,6 +367,11 @@ func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE) -> void:
 	Events.enemy_spawned.emit(enemy)
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
+	# Patrol cleanup runs BEFORE the wave-active gate so patrols that die during the
+	# intermission (or pre-first-wave window) are properly removed.
+	if entity != null and _patrols.has(entity):
+		_patrols.erase(entity)
+
 	if not _wave_active:
 		return
 	if entity == null or not entity.is_in_group("enemies"):
@@ -332,7 +396,8 @@ func _finish_wave() -> void:
 	if cleared >= MAX_WAVE:
 		_on_all_waves_survived()
 		return
-	# Intermission, then the next wave.
+	# Intermission: spawn patrols then start the next wave after the break.
+	_spawn_patrols()
 	get_tree().create_timer(Settings.WAVE_INTERMISSION).timeout.connect(_start_next_wave)
 
 func _on_all_waves_survived() -> void:
@@ -341,3 +406,234 @@ func _on_all_waves_survived() -> void:
 	if GameState.all_players_resolved():
 		return
 	NetworkManager.broadcast_match_won()
+
+# ---------------------------------------------------------------------------
+# Public API for AIDirector
+# ---------------------------------------------------------------------------
+
+## Spawn `count` hunter (or non-hunter) enemies at markers nearest `near_pos`.
+## Called by AIDirector for alarm reinforcements and camp-punish flanks.
+## Respects FINAL_WAVE_CONCURRENT as a hard alive-count ceiling so it can't
+## avalanche. Reinforcements during an active wave count in _alive_enemies;
+## patrols (spawned with as_hunter=false via _spawn_patrols) do NOT (they go
+## into _patrols instead).
+func spawn_reinforcements(count: int, near_pos: Vector3, as_hunter: bool = true, scene_path: String = "") -> void:
+	if not GameState.is_local_authority_server():
+		return
+	if _enemies_container == null or _arena == null:
+		return
+
+	# Resolve scene: caller may override, else use the current wave pool or grunt.
+	var resolved_path: String = scene_path
+	if resolved_path.is_empty():
+		resolved_path = _scene_for_spawn()
+	if not ResourceLoader.exists(resolved_path):
+		resolved_path = SCENE_GRUNT
+
+	# Hard cap: never let alive count exceed FINAL_WAVE_CONCURRENT.
+	var current_alive: int = _alive_enemies.size() + _patrols.size()
+	var can_spawn: int = maxi(0, Settings.FINAL_WAVE_CONCURRENT - current_alive)
+	var actual: int = mini(count, can_spawn)
+	if actual <= 0:
+		return
+
+	# Find best spawn markers — pick markers by proximity to near_pos.
+	# We cycle through a range of marker indices and pick the closest ones.
+	# Arena.get_enemy_spawn_point(index) returns a Transform3D.
+	const CANDIDATE_COUNT: int = 16   # how many markers to sample
+	var chosen_indices: Array[int] = []
+	var best_pairs: Array = []   # Array of [dist, index]
+
+	for i in CANDIDATE_COUNT:
+		if not _arena.has_method("get_enemy_spawn_point"):
+			break
+		var xform: Transform3D = _arena.get_enemy_spawn_point(i)
+		var dist: float = xform.origin.distance_to(near_pos)
+		best_pairs.append([dist, i])
+
+	# Sort ascending by distance so we pick the closest markers first.
+	best_pairs.sort_custom(func(a, b): return a[0] < b[0])
+
+	for j in actual:
+		var idx: int = 0
+		if j < best_pairs.size():
+			idx = int(best_pairs[j][1])
+		else:
+			idx = j  # fallback: sequential index
+		# Spawn the enemy; for reinforcements (as_hunter=true) track in _alive_enemies
+		# (handled inside _spawn_enemy_reinforcement below).
+		_spawn_enemy_reinforcement(idx, resolved_path, as_hunter)
+
+## Internal helper: like _spawn_enemy but does NOT push to _alive_enemies when
+## used for wave-independent patrol spawns (caller handles tracking in _patrols).
+## All reinforcement spawns go into _alive_enemies normally.
+func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool) -> void:
+	if not ResourceLoader.exists(scene_path):
+		push_warning("WaveManager: reinforcement scene %s missing — skipping" % scene_path)
+		return
+	if _enemies_container == null:
+		return
+	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
+	if not enemy.is_in_group("enemies"):
+		enemy.add_to_group("enemies")
+	if "hunter" in enemy:
+		enemy.hunter = as_hunter
+	_enemies_container.add_child(enemy, true)
+	if enemy is Node3D and _arena:
+		(enemy as Node3D).global_transform = _arena.get_enemy_spawn_point(index)
+	# Reinforcements count toward alive enemies (wave-clear accounting).
+	_alive_enemies.append(enemy)
+	Events.enemy_spawned.emit(enemy)
+
+# ---------------------------------------------------------------------------
+# Camp-punish detection
+# ---------------------------------------------------------------------------
+
+func _tick_camp_detection(delta: float) -> void:
+	# Only active during a wave (not storm — storm is already overwhelming).
+	if not _wave_active or _storm:
+		_camp_timer = 0.0
+		return
+
+	# Tick the camp cooldown.
+	if _camp_cooldown > 0.0:
+		_camp_cooldown = maxf(_camp_cooldown - delta, 0.0)
+
+	var players := get_tree().get_nodes_in_group("players")
+	if players.is_empty():
+		_camp_timer = 0.0
+		return
+
+	# Compute centroid of all living (Node3D) players.
+	var centroid := Vector3.ZERO
+	var count: int = 0
+	for pl in players:
+		if pl is Node3D and is_instance_valid(pl):
+			centroid += (pl as Node3D).global_position
+			count += 1
+	if count == 0:
+		_camp_timer = 0.0
+		return
+	centroid /= float(count)
+
+	# Check whether ALL players are within the camp radius of the centroid.
+	var all_clustered: bool = true
+	for pl in players:
+		if not (pl is Node3D) or not is_instance_valid(pl):
+			continue
+		if (pl as Node3D).global_position.distance_to(centroid) > Settings.DIRECTOR_CAMP_RADIUS:
+			all_clustered = false
+			break
+
+	if all_clustered:
+		_camp_timer += delta
+		if _camp_timer >= Settings.DIRECTOR_CAMP_TIME and _camp_cooldown <= 0.0:
+			# Trigger flank: spawn hunters around/behind the centroid.
+			_camp_timer = 0.0
+			_camp_cooldown = Settings.DIRECTOR_CAMP_COOLDOWN
+			spawn_reinforcements(Settings.DIRECTOR_FLANK_COUNT, centroid, true)
+			Events.notify.emit("Flanked!", 2)
+	else:
+		# Players dispersed — reset the timer.
+		_camp_timer = 0.0
+
+# ---------------------------------------------------------------------------
+# Between-wave patrols
+# ---------------------------------------------------------------------------
+
+## Spawn non-hunter patrols so the map feels active during intermission.
+## Uses the Caller scene (Lane A) when available, falls back to the grunt.
+func _spawn_patrols() -> void:
+	if not GameState.is_local_authority_server():
+		return
+	if _enemies_container == null or _arena == null:
+		return
+
+	# Prefer the Caller/Snitch so its perception makes patrols stealthable;
+	# fall back to the grunt if Lane A's scene isn't available yet.
+	var patrol_scene: String = SCENE_CALLER if ResourceLoader.exists(SCENE_CALLER) else SCENE_GRUNT
+
+	var count: int = Settings.PATROL_COUNT
+	# Respect the alive-count ceiling even for patrols.
+	var current_alive: int = _alive_enemies.size() + _patrols.size()
+	var can_spawn: int = maxi(0, Settings.FINAL_WAVE_CONCURRENT - current_alive)
+	count = mini(count, can_spawn)
+
+	for i in count:
+		_spawn_patrol_enemy(i, patrol_scene)
+
+func _spawn_patrol_enemy(index: int, scene_path: String) -> void:
+	if not ResourceLoader.exists(scene_path):
+		return
+	if _enemies_container == null:
+		return
+	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
+	if not enemy.is_in_group("enemies"):
+		enemy.add_to_group("enemies")
+	# Patrols are NOT hunters — they roam/sense normally so the player can avoid them.
+	if "hunter" in enemy:
+		enemy.hunter = false
+	_enemies_container.add_child(enemy, true)
+	if enemy is Node3D and _arena:
+		# Offset the patrol index to spread them away from wave spawn markers.
+		var marker_offset: int = 8 + index
+		(enemy as Node3D).global_transform = _arena.get_enemy_spawn_point(marker_offset)
+	# Track in _patrols, NOT _alive_enemies.
+	_patrols.append(enemy)
+	Events.enemy_spawned.emit(enemy)
+
+## Free all surviving patrol enemies. Called at wave start so they never interfere
+## with _finish_wave's wave-clear accounting.
+func _clear_patrols() -> void:
+	for p in _patrols:
+		if is_instance_valid(p):
+			p.queue_free()
+	_patrols.clear()
+
+# ---------------------------------------------------------------------------
+# Boss-phase adds
+# ---------------------------------------------------------------------------
+
+func _tick_boss_adds(delta: float) -> void:
+	if _boss_adds_spawned or not _wave_active:
+		return
+	# Only check on the final scripted wave (wave 5 = boss wave).
+	if GameState.current_wave < MAX_WAVE:
+		return
+	# Throttle the scan.
+	_boss_check_accum += delta
+	if _boss_check_accum < BOSS_CHECK_INTERVAL:
+		return
+	_boss_check_accum = 0.0
+
+	# Find the boss among alive enemies by enemy_id.
+	var boss: Node = null
+	for e in _alive_enemies:
+		if not is_instance_valid(e):
+			continue
+		# Check enemy_id property (the enemy's archetype string).
+		if e.get("enemy_id") == "robot_boss":
+			boss = e
+			break
+
+	if boss == null:
+		return
+
+	# Read Health node (standard pattern: boss has a child named Health with current/max).
+	var health_node: Node = boss.get_node_or_null("Health")
+	if health_node == null:
+		return
+	var hp_current: float = float(health_node.get("current") if "current" in health_node else 0.0)
+	var hp_max: float = float(health_node.get("max_health") if "max_health" in health_node else 1.0)
+	if hp_max <= 0.0:
+		return
+
+	if hp_current / hp_max <= Settings.DIRECTOR_BOSS_ADD_HP:
+		_boss_adds_spawned = true
+		# Spawn elite adds near the boss; fall back to heavy if elite not available.
+		var add_scene: String = SCENE_ELITE if ResourceLoader.exists(SCENE_ELITE) else SCENE_HEAVY
+		if not ResourceLoader.exists(add_scene):
+			add_scene = SCENE_GRUNT
+		var boss_pos: Vector3 = (boss as Node3D).global_position if boss is Node3D else Vector3.ZERO
+		spawn_reinforcements(Settings.DIRECTOR_BOSS_ADD_COUNT, boss_pos, true, add_scene)
+		Events.notify.emit("Boss called for backup!", 2)
