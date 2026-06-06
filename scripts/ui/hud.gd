@@ -43,6 +43,11 @@ func _ready() -> void:
 	Events.match_timer_changed.connect(_on_match_timer_changed)
 	Events.final_wave_started.connect(_on_final_wave_started)
 
+	# Co-op DOWNED / REVIVE feedback.
+	Events.player_downed.connect(_on_player_downed)
+	Events.player_revived.connect(_on_player_revived)
+	Events.player_bleedout.connect(_on_player_bleedout)
+
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
 	# interaction prompt (interaction_prompt.gd sits at offset_top=-158..bottom=-120).
@@ -237,6 +242,26 @@ var _hit_marker: Label
 var _hit_marker_t: float = 0.0
 var _last_health: float = -1.0
 
+# --- Co-op DOWNED / REVIVE feedback (built in code) ------------------------
+# Local-player downed: a red pulsing fullscreen vignette + centred label + bleedout
+# countdown ring, plus a directional arrow toward any downed TEAMMATE. Everything is
+# drawn by a single full-rect overlay Control whose `draw` signal we drive.
+const DOWN_RED := Color(0.86, 0.16, 0.14)       # downed vignette / ring danger red
+const TEAM_AMBER := Color(0.95, 0.62, 0.22)     # teammate-down arrow
+const REVIVE_BADGE_THRESHOLD := 3               # (mirrored note; badge lives in scoreboard.gd)
+
+var _down_overlay: Control            # full-rect Control that paints the downed feedback
+var _down_label: Label                # "DOWNED — bleeding out" + hint
+var _team_label: Label                # small "Teammate down" caption
+var _down_active: bool = false        # is the LOCAL player downed?
+var _bleed_left: float = 0.0          # local countdown (s), driven from player_downed
+var _bleed_total: float = Settings.BLEEDOUT_TIME
+var _down_pulse: float = 0.0          # vignette pulse phase
+# Teammate-down directional state, refreshed (throttled) in _process.
+var _team_down_angle: float = 0.0     # screen radians toward the nearest downed teammate (0 = up)
+var _team_down_shown: bool = false
+var _team_poll_t: float = 0.0
+
 func _build_feedback_overlays() -> void:
 	# Full-screen red vignette pulse when the local player takes damage.
 	_hurt_flash = ColorRect.new()
@@ -253,6 +278,49 @@ func _build_feedback_overlays() -> void:
 	_hit_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hit_marker.visible = false
 	add_child(_hit_marker)
+	_build_downed_overlay()
+
+## Full-rect overlay that paints (a) the local-player downed vignette + bleedout ring and
+## (b) the teammate-down directional arrow. We drive its `draw` signal so all the custom
+## painting lives in one cheap place, only redrawn when its state changes.
+func _build_downed_overlay() -> void:
+	_down_overlay = Control.new()
+	_down_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_down_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_down_overlay.visible = false
+	_down_overlay.draw.connect(_draw_downed_overlay)
+	add_child(_down_overlay)
+
+	# Centred DOWNED label + hint (above the ring).
+	_down_label = Label.new()
+	_down_label.set_anchors_preset(Control.PRESET_CENTER)
+	_down_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_down_label.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_down_label.offset_top = -150.0
+	_down_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_down_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_down_label.add_theme_font_size_override("font_size", 30)
+	_down_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.36))
+	_down_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_down_label.add_theme_constant_override("outline_size", 5)
+	_down_label.text = ""
+	_down_label.visible = false
+	$Root.add_child(_down_label)
+
+	# Small "Teammate down" caption near the top-centre (under the timer area).
+	_team_label = Label.new()
+	_team_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_team_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_team_label.offset_top = 84.0
+	_team_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_team_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_team_label.add_theme_font_size_override("font_size", 16)
+	_team_label.add_theme_color_override("font_color", TEAM_AMBER)
+	_team_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_team_label.add_theme_constant_override("outline_size", 4)
+	_team_label.text = "⚑ TEAMMATE DOWN"
+	_team_label.visible = false
+	$Root.add_child(_team_label)
 
 func _process(delta: float) -> void:
 	if _hurt_flash and _hurt_flash.color.a > 0.0:
@@ -264,6 +332,23 @@ func _process(delta: float) -> void:
 	# Poll the match timer each frame as a fallback (Events.match_timer_changed also
 	# pushes it). Cheap; keeps the readout live even if the push is throttled.
 	_refresh_match_timer(GameState.match_time_left, GameState.match_duration)
+	# Co-op DOWNED: drive the local bleedout countdown + vignette pulse (locally; the real
+	# resolution is server-authoritative — this is just the visual timer), redraw while down.
+	if _down_active:
+		_bleed_left = maxf(0.0, _bleed_left - delta)
+		_down_pulse += delta
+		if _down_overlay:
+			_down_overlay.queue_redraw()
+	# Throttled poll for a downed teammate (~6 Hz). Cheap; redraws only on state change.
+	_team_poll_t -= delta
+	if _team_poll_t <= 0.0:
+		_team_poll_t = 0.16
+		_update_teammate_down()
+	# Keep the teammate arrow pulsing while shown (even when the local player is up).
+	if _team_down_shown and not _down_active:
+		_down_pulse += delta
+		if _down_overlay:
+			_down_overlay.queue_redraw()
 	# Fade the storm banner out after its flash.
 	if _storm_banner and _storm_banner.visible:
 		_storm_banner_t -= delta
@@ -317,6 +402,158 @@ func _on_damage_dealt(target: Node, _amount: float, source: Node) -> void:
 		if _hit_marker:
 			_hit_marker.visible = true
 			_hit_marker_t = 0.12
+
+# --- Co-op DOWNED / REVIVE -------------------------------------------------
+
+func _on_player_downed(player: Node, _by: Node) -> void:
+	if _is_local(player) and player == _local_player:
+		# LOCAL player went down — start the bleedout countdown + vignette.
+		_down_active = true
+		_bleed_left = Settings.BLEEDOUT_TIME
+		_bleed_total = Settings.BLEEDOUT_TIME
+		_down_pulse = 0.0
+		_refresh_downed_label()
+		if _down_label:
+			_down_label.visible = true
+		if _down_overlay:
+			_down_overlay.visible = true
+			_down_overlay.queue_redraw()
+
+func _on_player_revived(player: Node, _by: Node) -> void:
+	if _is_local(player) and player == _local_player:
+		_hide_downed()
+
+func _on_player_bleedout(player: Node) -> void:
+	if _is_local(player) and player == _local_player:
+		_hide_downed()
+
+func _hide_downed() -> void:
+	_down_active = false
+	_bleed_left = 0.0
+	if _down_label:
+		_down_label.visible = false
+	if _down_overlay:
+		_down_overlay.visible = false
+		_down_overlay.queue_redraw()
+
+## Builds the centred downed prompt, including a self-revive hint when the local player
+## actually carries a Self-Revive Kit.
+func _refresh_downed_label() -> void:
+	if _down_label == null:
+		return
+	var hint := "Hold on for a teammate"
+	if _local_player != null and "_self_revives" in _local_player \
+			and int(_local_player._self_revives) > 0:
+		hint = "Use Self-Revive Kit [H]  ·  or hold on for a teammate"
+	_down_label.text = "DOWNED — bleeding out\n%s" % hint
+
+## Throttled poll for the nearest DOWNED teammate (not the local player). Computes the
+## on-screen bearing the same way damage_indicator.gd does (world→camera-relative yaw).
+func _update_teammate_down() -> void:
+	var local_id: int = GameState.local_peer_id()
+	var nearest: Node3D = null
+	var best_d: float = INF
+	var origin := Vector3.ZERO
+	var have_origin := false
+	if is_instance_valid(_local_player) and _local_player is Node3D:
+		origin = (_local_player as Node3D).global_position
+		have_origin = true
+	# Any peer flagged downed in GameState, excluding the local player.
+	for pid_key in GameState.downed.keys():
+		var pid: int = int(pid_key)
+		if pid == local_id or not GameState.is_downed(pid):
+			continue
+		var node := _find_player_node(pid)
+		if node == null:
+			continue
+		if have_origin:
+			var d: float = origin.distance_squared_to(node.global_position)
+			if d < best_d:
+				best_d = d
+				nearest = node
+		elif nearest == null:
+			nearest = node
+	var want: bool = nearest != null
+	var changed: bool = want != _team_down_shown
+	if want and have_origin:
+		var to_t: Vector3 = nearest.global_position - origin
+		var world_bearing := atan2(to_t.x, -to_t.z)   # 0 = -Z (forward), CW
+		var cam_yaw: float = (_local_player as Node3D).rotation.y
+		var cam: Camera3D = _local_player.get_node_or_null("CameraPivot/SpringArm3D/Camera3D")
+		if is_instance_valid(cam):
+			cam_yaw = cam.global_rotation.y
+		var new_angle := wrapf(world_bearing - cam_yaw, -PI, PI)
+		if absf(new_angle - _team_down_angle) > 0.01:
+			changed = true
+		_team_down_angle = new_angle
+	_team_down_shown = want
+	if _team_label:
+		_team_label.visible = want
+	if changed and _down_overlay:
+		# Show the arrow even if the local player is up (overlay then only paints the arrow).
+		_down_overlay.visible = _down_active or want
+		_down_overlay.queue_redraw()
+
+## Locate the spawned player node for a peer id (named str(peer_id), in group "players").
+func _find_player_node(pid: int) -> Node3D:
+	for p in get_tree().get_nodes_in_group("players"):
+		if p is Node3D and p.name == str(pid):
+			return p
+	return null
+
+## Paints the local-player downed vignette + bleedout ring, and the teammate-down arrow.
+func _draw_downed_overlay() -> void:
+	if _down_overlay == null:
+		return
+	var vp: Vector2 = _down_overlay.get_viewport_rect().size
+	var c: Vector2 = vp * 0.5
+	# (a) LOCAL downed: pulsing red edge vignette + a depleting bleedout ring at centre.
+	if _down_active:
+		var pulse: float = 0.6 + 0.4 * sin(_down_pulse * 4.0)
+		var base_a: float = 0.42 * pulse
+		var band: float = 150.0
+		var steps := 6
+		for i in steps:
+			var f: float = float(i) / float(steps)
+			var a: float = base_a * (1.0 - f)
+			var col := Color(DOWN_RED.r, DOWN_RED.g, DOWN_RED.b, a)
+			var t: float = band * (1.0 - f)
+			_down_overlay.draw_rect(Rect2(0, 0, vp.x, t), col, true)
+			_down_overlay.draw_rect(Rect2(0, vp.y - t, vp.x, t), col, true)
+			_down_overlay.draw_rect(Rect2(0, 0, t, vp.y), col, true)
+			_down_overlay.draw_rect(Rect2(vp.x - t, 0, t, vp.y), col, true)
+		# Bleedout ring — drains clockwise as the countdown runs out.
+		var ratio: float = clampf(_bleed_left / maxf(_bleed_total, 0.001), 0.0, 1.0)
+		var ring_r: float = 46.0
+		var ring_c: Vector2 = c + Vector2(0, 6.0)
+		# Track (dim full circle) then the live remaining arc on top.
+		_down_overlay.draw_arc(ring_c, ring_r, 0.0, TAU, 48, Color(0, 0, 0, 0.55), 6.0, true)
+		var start_a: float = -PI * 0.5                      # 12 o'clock
+		var end_a: float = start_a + TAU * ratio
+		var ring_col := DOWN_RED if ratio > 0.33 else Color(1.0, 0.85, 0.2)
+		_down_overlay.draw_arc(ring_c, ring_r, start_a, end_a, 48, ring_col, 6.0, true)
+		# Seconds remaining inside the ring.
+		var font: Font = _down_overlay.get_theme_default_font()
+		if font != null:
+			var secs: int = int(ceil(maxf(0.0, _bleed_left)))
+			var txt: String = str(secs)
+			var fs := 28
+			var tw: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			_down_overlay.draw_string(font, ring_c + Vector2(-tw * 0.5, fs * 0.35), txt,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))
+	# (b) TEAMMATE down arrow — points (camera-relative) toward the nearest downed mate.
+	if _team_down_shown:
+		var screen_ang: float = _team_down_angle - PI * 0.5   # 0 rad = up; draw measures from +X
+		var rad: float = 120.0
+		var tip: Vector2 = c + Vector2(cos(screen_ang), sin(screen_ang)) * rad
+		var dir: Vector2 = Vector2(cos(screen_ang), sin(screen_ang))
+		var perp: Vector2 = Vector2(-dir.y, dir.x)
+		var p_tip: Vector2 = tip + dir * 18.0
+		var p_a: Vector2 = tip - dir * 6.0 + perp * 12.0
+		var p_b: Vector2 = tip - dir * 6.0 - perp * 12.0
+		var apulse: float = 0.7 + 0.3 * sin(_down_pulse * 5.0)
+		var acol := Color(TEAM_AMBER.r, TEAM_AMBER.g, TEAM_AMBER.b, apulse)
+		_down_overlay.draw_colored_polygon(PackedVector2Array([p_tip, p_a, p_b]), acol)
 
 # --- Player / health -------------------------------------------------------
 

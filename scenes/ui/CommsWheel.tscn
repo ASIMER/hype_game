@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://ccommswheel0ui"]
+
+[ext_resource type="Script" path="res://scripts/ui/comms_wheel.gd" id="1_commswheel"]
+
+[node name="CommsWheel" type="CanvasLayer"]
+script = ExtResource("1_commswheel")

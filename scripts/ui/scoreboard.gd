@@ -22,6 +22,9 @@ const COL_DIM   := Color(0.55, 0.60, 0.66, 1.0)
 const COL_PANEL := Color(0.07, 0.09, 0.11, 0.92)
 const COL_ROW_HL := Color(0.247, 0.71, 0.79, 0.16)  # local player's row tint
 
+# A player with this many revives earns the "medic" cohesion badge next to their name.
+const MEDIC_BADGE_THRESHOLD := 3
+
 const HEADER_FONT_SIZE := 14
 const ROW_FONT_SIZE := 16
 const TITLE_FONT_SIZE := 22
@@ -115,6 +118,7 @@ func _build_ui() -> void:
 	_make_cell(header, "PLAYER", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_make_cell(header, "KILLS", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
 	_make_cell(header, "DEATHS", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
+	_make_cell(header, "REVIVES", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
 	vbox.add_child(header)
 
 	# Container for the per-peer rows (rebuilt each refresh).
@@ -142,7 +146,7 @@ func _make_separator() -> HSeparator:
 ## A 3-column grid used for header + every data row (kept consistent column widths).
 func _make_row_grid() -> GridContainer:
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	grid.add_theme_constant_override("h_separation", 18)
 	return grid
@@ -181,7 +185,8 @@ func _rebuild() -> void:
 		var pname: String = String(info.get("name", "Player %d" % pid))
 		var k: int = int(GameState.kills.get(pid, 0))
 		var d: int = int(GameState.deaths.get(pid, 0))
-		entries.append({ "pid": pid, "name": pname, "kills": k, "deaths": d })
+		var rv: int = int(GameState.revives.get(pid, 0))
+		entries.append({ "pid": pid, "name": pname, "kills": k, "deaths": d, "revives": rv })
 
 	entries.sort_custom(_sort_entries)
 
@@ -223,12 +228,19 @@ func _add_row(e: Dictionary, is_local: bool) -> void:
 	var num_col: Color = COL_AMBER if is_local else COL_TEXT
 
 	var grid := _make_row_grid()
+	var rv: int = int(e.get("revives", 0))
 	var display_name: String = String(e["name"])
 	if is_local:
 		display_name += "  (you)"
+	# Cohesion badge for the squad medic — a star prefix when revives clears the threshold.
+	if rv >= MEDIC_BADGE_THRESHOLD:
+		display_name = "★ " + display_name + "  ·  MVP medic"
 	_make_cell(grid, display_name, name_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_make_cell(grid, str(int(e["kills"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
 	_make_cell(grid, str(int(e["deaths"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
+	# Revives column — highlight a medic's count in teal so it stands out.
+	var rv_col: Color = COL_TEAL if rv >= MEDIC_BADGE_THRESHOLD else num_col
+	_make_cell(grid, str(rv), rv_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
 
 	wrap.add_child(grid)
 	_rows_box.add_child(wrap)

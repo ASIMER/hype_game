@@ -65,6 +65,16 @@ const SPREAD_MULT_SPRINT: float = 2.6
 const SPREAD_MULT_SLIDE: float = 3.0
 const SPREAD_MULT_ADS: float = 0.4
 const FP_SPRING_LENGTH: float = 0.15        # spring length in first-person view
+# Co-op downed / revive loop.
+const BLEEDOUT_TIME: float = 45.0           # seconds downed before true death (no revive)
+const REVIVE_CHANNEL_TIME: float = 4.0      # hold-to-revive duration (s)
+const REVIVE_HEALTH_FRAC: float = 0.35      # fraction of max HP restored on revive
+const DOWNED_MOVE_SPEED: float = 1.2        # crawl speed while downed (m/s)
+const DOWNED_CAMERA_DROP: float = 1.0       # camera drop while downed
+const CARRY_SPEED_MULT: float = 0.5         # carrier move-speed multiplier while carrying a buddy
+const KNOCKDOWN_SHIELD_ABSORB: float = 150.0 # damage a knockdown shield soaks while downed
+const SELF_REVIVE_ITEM: String = "loot_self_revive"       # consumable id that self-revives when downed
+const KNOCKDOWN_SHIELD_ITEM: String = "loot_knockdown_shield"
 
 # Combat
 const WEAPON_NET_REPLICATION_HZ: float = 30.0

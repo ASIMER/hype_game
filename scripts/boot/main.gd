@@ -240,6 +240,12 @@ func load_arena() -> void:
 			ui_layer.add_child((load("res://scenes/ui/MapUI.tscn") as PackedScene).instantiate())
 		if ResourceLoader.exists("res://scenes/ui/HitMarker.tscn"):
 			ui_layer.add_child((load("res://scenes/ui/HitMarker.tscn") as PackedScene).instantiate())
+		# Co-op comms: contextual squad pings (middle-mouse) + the radial comms wheel (Z).
+		# Self-bind to the local player/camera; data flows via Events.ping_placed (networked).
+		if ResourceLoader.exists("res://scenes/ui/PingSystem.tscn"):
+			ui_layer.add_child((load("res://scenes/ui/PingSystem.tscn") as PackedScene).instantiate())
+		if ResourceLoader.exists("res://scenes/ui/CommsWheel.tscn"):
+			ui_layer.add_child((load("res://scenes/ui/CommsWheel.tscn") as PackedScene).instantiate())
 		# Underwater post-processing overlay (blue-green tint + wobble while the LOCAL
 		# player wades/submerges in the river). Self-shows on Events.water_state_changed.
 		if ResourceLoader.exists("res://scenes/fx/UnderwaterOverlay.tscn"):

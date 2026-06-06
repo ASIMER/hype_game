@@ -266,7 +266,7 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 		return
 	if entity.is_in_group("players"):
 		GameState.record_death(_peer_of(entity))
-		_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed)
+		_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
 		Events.scoreboard_changed.emit()
 		return
 	if not entity.is_in_group("enemies"):
@@ -276,7 +276,7 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 		GameState.record_kill(peer)
 	else:
 		GameState.mobs_killed += 1   # unattributed (environment/explosion) still counts to the team
-	_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed)
+	_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
 	Events.scoreboard_changed.emit()
 
 ## Walk up from a node (hurtbox/weapon/player) to the owning player and return its
@@ -291,11 +291,68 @@ func _peer_of(node: Node) -> int:
 	return 0
 
 @rpc("authority", "call_remote", "reliable")
-func _sync_scores(k: Dictionary, d: Dictionary, total: int) -> void:
+func _sync_scores(k: Dictionary, d: Dictionary, total: int, r: Dictionary = {}) -> void:
 	GameState.kills = k
 	GameState.deaths = d
 	GameState.mobs_killed = total
+	GameState.revives = r
 	Events.scoreboard_changed.emit()
+
+# =========================================================== co-op revive / downed / ping
+## A CLIENT (or host) asks the server to revive a downed teammate. Server validates the
+## reviver is up + near + the target is actually downed, then heals the target to a fraction
+## and credits the reviver (reputation). Authority-only mutation; mirrors request_hit.
+func request_revive(target_peer: int) -> void:
+	if GameState.is_local_authority_server():
+		_do_revive(target_peer, _peer_of_local())
+	else:
+		_revive_rpc.rpc_id(1, target_peer, multiplayer.get_unique_id())
+
+@rpc("any_peer", "call_remote", "reliable")
+func _revive_rpc(target_peer: int, reviver_peer: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_do_revive(target_peer, reviver_peer)
+
+func _do_revive(target_peer: int, reviver_peer: int) -> void:
+	if not GameState.is_downed(target_peer):
+		return
+	var target := _player_for_peer(target_peer)
+	if target == null or not target.has_method("server_revive"):
+		return
+	target.server_revive(_player_for_peer(reviver_peer))   # player clears downed + heals (synced)
+	if reviver_peer > 0 and reviver_peer != target_peer:
+		GameState.record_revive(reviver_peer)
+		_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
+		Events.scoreboard_changed.emit()
+
+## Server broadcasts a peer's DOWNED state to everyone (drives the loss check + HUD + AI).
+func broadcast_downed(pid: int, value: bool) -> void:
+	if GameState.is_local_authority_server():
+		GameState.set_downed(pid, value)
+		if multiplayer.has_multiplayer_peer() and not is_offline:
+			_downed_rpc.rpc(pid, value)
+
+@rpc("authority", "call_remote", "reliable")
+func _downed_rpc(pid: int, value: bool) -> void:
+	GameState.set_downed(pid, value)
+
+## Any peer places a ping → server relays to all (incl. sender via call_local) so the whole
+## squad sees the world marker + HUD arrow. Cosmetic/comms; cheap + reliable.
+func broadcast_ping(kind: int, world_pos: Vector3, target_path: NodePath) -> void:
+	var me := multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
+	if not multiplayer.has_multiplayer_peer() or is_offline:
+		Events.ping_placed.emit(me, kind, world_pos, target_path)
+		return
+	_ping_rpc.rpc(me, kind, world_pos, target_path)
+
+@rpc("any_peer", "call_local", "reliable")
+func _ping_rpc(peer_id: int, kind: int, world_pos: Vector3, target_path: NodePath) -> void:
+	Events.ping_placed.emit(peer_id, kind, world_pos, target_path)
+
+## The local player's peer id (1 for host/offline).
+func _peer_of_local() -> int:
+	return multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
 
 # ============================================================ item transfer (give/trade)
 ## Server-authoritative atomic move of `count` of `item_id` from one player's

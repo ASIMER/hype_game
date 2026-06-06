@@ -87,6 +87,8 @@ const CATALOG := {
 
 	# --- Crafted gear + schematics (colored-box fallback) ---
 	"loot_stim":         { "model": "", "icon": "", "prim": Prim.CYLINDER, "size": Vector3(0.2, 0.4, 0.2), "color": Color(0.3, 0.9, 0.6) },
+	"loot_self_revive":     { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.34, 0.24, 0.34), "color": Color(0.95, 0.45, 0.45) },
+	"loot_knockdown_shield": { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.36, 0.4, 0.1), "color": Color(0.55, 0.7, 0.95) },
 	"loot_grenade_mk2":  { "model": "", "icon": "", "prim": Prim.SPHERE, "size": Vector3(0.32, 0.32, 0.32), "color": Color(0.2, 0.5, 0.25) },
 	"loot_circuit_pack": { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.4, 0.12, 0.3), "color": Color(0.2, 0.75, 0.6) },
 	"schematic_ammo":         { "model": "", "icon": "", "prim": Prim.BOX, "size": Vector3(0.3, 0.02, 0.22), "color": Color(0.35, 0.55, 0.95) },
