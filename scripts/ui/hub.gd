@@ -26,12 +26,13 @@ signal deploy_requested()
 signal back_requested()
 
 # Tab index constants for clarity.
-const TAB_STASH    := 0
-const TAB_LOADOUT  := 1
-const TAB_WORKSHOP := 2
-const TAB_SHOP     := 3
-const TAB_QUESTS   := 4
-const TAB_GUNSMITH := 5
+const TAB_STASH       := 0
+const TAB_LOADOUT     := 1
+const TAB_WORKSHOP    := 2
+const TAB_SHOP        := 3
+const TAB_QUESTS      := 4
+const TAB_GUNSMITH    := 5
+const TAB_PROGRESSION := 6
 
 # Paths to tab scenes (built by other agents — guarded with ResourceLoader.exists).
 const TAB_PATHS := [
@@ -41,6 +42,7 @@ const TAB_PATHS := [
 	"res://scenes/ui/tabs/ShopTab.tscn",
 	"res://scenes/ui/tabs/QuestsTab.tscn",
 	"res://scenes/ui/tabs/GunsmithTab.tscn",
+	"res://scenes/ui/tabs/ProgressionTab.tscn",
 ]
 
 # Difficulty one-line descriptions (mirrors Workshop.gd).

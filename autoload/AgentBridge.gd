@@ -151,6 +151,9 @@ func _handle_line(line: String) -> void:
 			# Debug: spawn an enemy archetype near the local player for verification.
 			var ok := _debug_spawn(str(json.get("id", "wasp")), float(json.get("dist", 9.0)), bool(json.get("hunter", true)))
 			_send({ "ok": ok })
+		"event":
+			var ok_ev := _debug_world_event(int(json.get("kind", 0)))
+			_send({ "ok": ok_ev })
 		"tp":
 			# Debug: teleport the local player to a world XZ (for reaching far test spots).
 			var pl2: Node = _local_player(get_tree().get_nodes_in_group("players"))
@@ -490,6 +493,28 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 	return true
 
 
+## Debug: force a world event NOW via the WorldEventDirector (QA for Batch 3).
+## kind: 0 supply_cache, 1 miniboss, 2 contested_poi, 3 surge. Calls the director's
+## per-kind starter directly (underscore = convention, callable). Returns false if the
+## director isn't present/idle or the match isn't running.
+func _debug_world_event(kind: int) -> bool:
+	if not GameState.is_local_authority_server():
+		return false
+	var d: Node = get_node_or_null("/root/WorldEventDirector")
+	if d == null:
+		return false
+	var starter: String = {
+		0: "_start_supply_cache",
+		1: "_start_miniboss",
+		2: "_start_contested_poi",
+		3: "_start_surge",
+	}.get(kind, "")
+	if starter == "" or not d.has_method(starter):
+		return false
+	d.call(starter)
+	return true
+
+
 ## Client-side: once connected to the host, open this peer's own Hub (loadout/stash).
 func _agent_open_client_hub() -> void:
 	var sc := get_tree().current_scene
@@ -669,6 +694,13 @@ func _snapshot() -> Dictionary:
 			"weapon_perks": MetaProgression.weapon_perks,
 			"dailies": MetaProgression.daily_quest_ids,
 			"last_reward": GameState.last_run_reward,
+				"xp": MetaProgression.xp,
+				"raider_level": MetaProgression.raider_level,
+				"skill_points": MetaProgression.skill_points,
+				"skills": MetaProgression.skills,
+				"vendor_rep": MetaProgression.vendor_rep,
+				"rep_tier": MetaProgression.rep_tier(),
+				"weapon_mastery": MetaProgression.weapon_mastery,
 		},
 		"stash": Stash.items,
 		"stash_weight": Stash.total_weight(),

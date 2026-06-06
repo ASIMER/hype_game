@@ -37,6 +37,10 @@ var _is_open: bool = false
 # Drives the OPEN-zone pulse animation.
 var _pulse: float = 0.0
 
+# --- World-event cache (from Events signals; also read live from the group) ---
+# kind (int) -> { "label": String, "pos": Vector3, "active": bool, "ratio": float }
+var _event_cache: Dictionary = {}
+
 func _ready() -> void:
 	layer = 80   # above the HUD, below pause menus
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -53,6 +57,10 @@ func _ready() -> void:
 	Events.extraction_window_changed.connect(_on_window_changed)
 	# Honour external toggles (AgentBridge also emits map_toggled).
 	Events.map_toggled.connect(_on_map_toggled)
+	# World events — cache signal state so _draw is cheap even between group updates.
+	Events.world_event_started.connect(_on_world_event_started)
+	Events.world_event_ended.connect(_on_world_event_ended)
+	Events.world_event_progress.connect(_on_world_event_progress)
 
 	_bind_existing_player()
 
@@ -163,7 +171,49 @@ func _find_arena() -> Node:
 			return n
 	return null
 
+# --- World-event signal handlers -------------------------------------------
+
+func _on_world_event_started(kind: int, world_pos: Vector3, label: String) -> void:
+	_event_cache[kind] = { "label": label, "pos": world_pos, "active": true, "ratio": -1.0 }
+
+func _on_world_event_ended(kind: int, _success: bool) -> void:
+	if _event_cache.has(kind):
+		(_event_cache[kind] as Dictionary)["active"] = false
+
+func _on_world_event_progress(kind: int, ratio: float) -> void:
+	if _event_cache.has(kind):
+		(_event_cache[kind] as Dictionary)["ratio"] = ratio
+
 # --- Drawing helpers (used by the inner MapDraw) ----------------------------
+
+## Returns 0..1 fill ratio for a world-event node, or -1 if not available.
+## Tries node.event_ratio() first, then the _director_ref meta path.
+func _event_ratio(node: Node) -> float:
+	if node.has_method("event_ratio"):
+		return float(node.call("event_ratio"))
+	if node.has_meta("_director_ref"):
+		var d: Variant = node.get_meta("_director_ref")
+		if d != null and is_instance_valid(d as Object) and (d as Object).has_method("marker_event_ratio"):
+			return float((d as Object).call("marker_event_ratio", node))
+	return -1.0
+
+## Returns the risk tier (1/2/3) for a POI by index, preferring arena.get_poi_tier,
+## then the Settings table keyed by the POI's display name.
+func _poi_tier(index: int) -> int:
+	var arena: Node = get_arena()
+	if arena != null and arena.has_method("get_poi_tier"):
+		return int(arena.call("get_poi_tier", index))
+	var name_key: String = POI_NAMES[index] if index < POI_NAMES.size() else ""
+	# Settings.POI_RISK_TIERS uses internal marker names — map display names as fallback.
+	var tier: int = 1
+	match name_key:
+		"North Tower":    tier = int(Settings.POI_RISK_TIERS.get("POI_NorthTower", 1))
+		"East Warehouse": tier = int(Settings.POI_RISK_TIERS.get("POI_EastWarehouse", 1))
+		"Plaza":          tier = int(Settings.POI_RISK_TIERS.get("POI_Plaza", 1))
+		"SW House":       tier = int(Settings.POI_RISK_TIERS.get("POI_SWHouse", 1))
+		"South Yard":     tier = int(Settings.POI_RISK_TIERS.get("POI_SouthYard", 1))
+		"East Yard":      tier = int(Settings.POI_RISK_TIERS.get("POI_EastYard", 1))
+	return clampi(tier, 1, 3)
 
 ## World (x,z) → panel-local pixel coords. NORTH-UP, world-aligned (no yaw):
 ## +x → right, +z (south) → down. Maps +/-WORLD_HALF onto the panel rect.
@@ -210,6 +260,8 @@ class MapDraw extends Control:
 		_draw_pois(font, panel)
 		# --- Extraction zones (with window state + countdown).
 		_draw_extractions(font, panel)
+		# --- World events (supply cache / miniboss / contested POI / surge).
+		_draw_world_events(font, panel)
 		# --- Enemies.
 		for e in owner_ui.get_tree().get_nodes_in_group("enemies"):
 			if e is Node3D:
@@ -249,15 +301,21 @@ class MapDraw extends Control:
 		for i in range(points.size()):
 			var wp: Vector3 = points[i]
 			var p := owner_ui.world_to_panel(wp, panel)
-			# Diamond marker.
+			# Tier-tinted diamond marker.
+			var tier: int = owner_ui._poi_tier(i)
+			var tier_col: Color = Settings.RISK_TIER_COLORS.get(tier, Color(0.85, 0.78, 0.4)) as Color
 			var d := 5.0
 			var pts := PackedVector2Array([
 				p + Vector2(0, -d), p + Vector2(d, 0), p + Vector2(0, d), p + Vector2(-d, 0),
 			])
-			draw_colored_polygon(pts, Color(0.85, 0.78, 0.4, 0.9))
+			draw_colored_polygon(pts, Color(tier_col.r, tier_col.g, tier_col.b, 0.92))
+			# Small tier-number pip inside the diamond.
+			var tier_str: String = str(tier)
+			draw_string(font, p + Vector2(-3.0, 4.0), tier_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 9,
+				Color(0.0, 0.0, 0.0, 0.72))
 			var label: String = owner_ui.POI_NAMES[i] if i < owner_ui.POI_NAMES.size() else "POI %d" % i
 			draw_string(font, p + Vector2(8, 4), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
-				Color(0.92, 0.88, 0.6, 0.95))
+				Color(tier_col.r, tier_col.g, tier_col.b, 0.95))
 
 	func _draw_extractions(font: Font, panel: Rect2) -> void:
 		for z in owner_ui.get_tree().get_nodes_in_group("extraction"):
@@ -286,6 +344,91 @@ class MapDraw extends Control:
 			elif not is_open_z:
 				tag += "  (closed)"
 			draw_string(font, zp + Vector2(10, 4), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col)
+
+	# Event kind → Color accent (distinct per type).
+	const EVENT_COLORS := [
+		Color(0.95, 0.75, 0.25, 0.95),   # 0 supply_cache  — amber/gold
+		Color(0.95, 0.30, 0.95, 0.95),   # 1 miniboss      — magenta
+		Color(0.30, 0.80, 0.95, 0.95),   # 2 contested_poi — cyan
+		Color(1.00, 0.45, 0.10, 0.95),   # 3 surge         — orange
+	]
+
+	func _draw_world_events(font: Font, panel: Rect2) -> void:
+		# Collect live nodes; fall back to cached signal data for any active kind not
+		# present as a node yet (or while the node is mid-spawn).
+		var drawn_kinds: Dictionary = {}   # kind(int) -> true
+
+		for node in owner_ui.get_tree().get_nodes_in_group("world_events"):
+			if not node.has_meta("event_kind"):
+				continue
+			var kind: int = int(node.get_meta("event_kind"))
+			var label: String = node.get_meta("event_label") if node.has_meta("event_label") else ""
+			var wpos: Vector3
+			if node is Node3D:
+				wpos = (node as Node3D).global_position
+			elif node.has_meta("event_pos"):
+				wpos = node.get_meta("event_pos") as Vector3
+			else:
+				continue
+			var ratio: float = owner_ui._event_ratio(node)
+			# Fall back to the cached signal ratio for this kind.
+			if ratio < 0.0:
+				var cached: Variant = owner_ui._event_cache.get(kind, null)
+				if cached != null:
+					ratio = float((cached as Dictionary).get("ratio", -1.0))
+			_draw_event_marker(font, panel, kind, wpos, label, ratio)
+			drawn_kinds[kind] = true
+
+		# Draw any active events that have no live node yet (signal-only).
+		for kind_key in owner_ui._event_cache.keys():
+			var kind: int = int(kind_key)
+			if drawn_kinds.has(kind):
+				continue
+			var cached: Dictionary = owner_ui._event_cache[kind] as Dictionary
+			if not bool(cached.get("active", false)):
+				continue
+			var wpos: Vector3 = cached.get("pos", Vector3.ZERO) as Vector3
+			var label: String = cached.get("label", "") as String
+			var ratio: float = float(cached.get("ratio", -1.0))
+			_draw_event_marker(font, panel, kind, wpos, label, ratio)
+
+	func _draw_event_marker(font: Font, panel: Rect2, kind: int, wpos: Vector3,
+			label: String, ratio: float) -> void:
+		var p := owner_ui.world_to_panel(wpos, panel)
+		var col: Color = EVENT_COLORS[clampi(kind, 0, EVENT_COLORS.size() - 1)]
+		var pulse: float = owner_ui.get_pulse()
+
+		# Outer pulsing ring.
+		var ring_r: float = 9.0 + 2.0 * (0.5 + 0.5 * sin(pulse * 3.0))
+		draw_arc(p, ring_r, 0.0, TAU, 24, col, 2.0)
+
+		# Fill arc (ratio 0..1 = clockwise countdown sweep). Drawn inside the ring.
+		if ratio >= 0.0:
+			var start_a: float = -PI * 0.5
+			var end_a: float = start_a + TAU * clampf(ratio, 0.0, 1.0)
+			draw_arc(p, ring_r - 3.5, start_a, end_a, 20, Color(col.r, col.g, col.b, 0.55), 3.5)
+
+		# Icon in the centre — a distinct shape per kind.
+		match kind:
+			0:  # supply_cache: filled square
+				var hs: float = 4.5
+				draw_rect(Rect2(p - Vector2(hs, hs), Vector2(hs * 2.0, hs * 2.0)), col, true)
+			1:  # miniboss: upward triangle (skull surrogate)
+				var tri := PackedVector2Array([
+					p + Vector2(0, -6.0), p + Vector2(5.5, 5.0), p + Vector2(-5.5, 5.0),
+				])
+				draw_colored_polygon(tri, col)
+			2:  # contested_poi: double concentric rings (contested marker)
+				draw_circle(p, 3.0, col)
+				draw_arc(p, 6.5, 0.0, TAU, 16, col, 1.5)
+			3:  # surge: four-point star (lightning-bolt surrogate)
+				draw_circle(p, 5.0, col)
+				draw_circle(p, 2.5, Color(0.06, 0.06, 0.1, 1.0))
+
+		# Label text to the right of the marker.
+		if label != "":
+			draw_string(font, p + Vector2(ring_r + 4.0, 4.0), label, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, 12, col)
 
 	func _draw_player(panel: Rect2) -> void:
 		var pl: Node3D = owner_ui.get_player()
@@ -326,7 +469,7 @@ class MapDraw extends Control:
 			"WAVE  %d" % GameState.current_wave, HORIZONTAL_ALIGNMENT_LEFT, 220.0, 14,
 			Color(0.7, 0.8, 0.9, 0.85))
 
-		# Legend below the panel.
+		# Legend below the panel — two rows to accommodate the extra event types.
 		var ly: float = panel.position.y + panel.size.y + 18.0
 		var lx: float = panel.position.x
 		_legend_swatch(lx, ly, Color(0.4, 0.85, 1.0), "You")
@@ -336,6 +479,16 @@ class MapDraw extends Control:
 		_legend_swatch(lx + 410.0, ly, Color(1.0, 0.32, 0.32), "Enemy")
 		draw_string(font, Vector2(panel.position.x + panel.size.x - 120.0, ly + 5.0),
 			"[M] close", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.78, 0.86, 0.7))
+		# Second row: world events + tier key.
+		var ly2: float = ly + 20.0
+		_legend_swatch(lx, ly2, Color(0.95, 0.75, 0.25), "Supply Cache")
+		_legend_swatch(lx + 130.0, ly2, Color(0.95, 0.30, 0.95), "Mini-boss")
+		_legend_swatch(lx + 240.0, ly2, Color(0.30, 0.80, 0.95), "Contested")
+		_legend_swatch(lx + 340.0, ly2, Color(1.00, 0.45, 0.10), "Surge")
+		# Tier dots.
+		_legend_swatch(lx + 430.0, ly2, Settings.RISK_TIER_COLORS.get(1, Color.WHITE) as Color, "Tier 1")
+		_legend_swatch(lx + 500.0, ly2, Settings.RISK_TIER_COLORS.get(2, Color.WHITE) as Color, "Tier 2")
+		_legend_swatch(lx + 570.0, ly2, Settings.RISK_TIER_COLORS.get(3, Color.WHITE) as Color, "Tier 3")
 
 	func _legend_swatch(x: float, y: float, col: Color, label: String) -> void:
 		draw_circle(Vector2(x, y), 4.0, col)

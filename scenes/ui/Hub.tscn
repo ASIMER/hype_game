@@ -205,6 +205,11 @@ custom_minimum_size = Vector2(140, 36)
 layout_mode = 2
 text = "GUNSMITH"
 
+[node name="RaiderBtn" type="Button" parent="Layout/Header/HeaderVBox/TabBar"]
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "RAIDER"
+
 ; ── BODY (content area — hub.gd adds tab scenes here) ────────────────────────
 [node name="Body" type="MarginContainer" parent="Layout"]
 layout_mode = 2

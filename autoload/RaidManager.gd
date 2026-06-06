@@ -70,6 +70,9 @@ func _grant_loot(payload: Array, bonus: int) -> void:
 
 ## Deposit the haul into THIS machine's stash + profile (runs on the owning peer).
 func _deposit(payload: Array, bonus: int) -> void:
+	# Scavenger skill (Batch 3): scale the currency reward by the local profile's loot_mult.
+	var loot_mult: float = float(MetaProgression.player_mods().get("loot_mult", 1.0))
+	bonus = int(round(bonus * loot_mult))
 	# Surviving at-risk attachments come back out with you (kept on extract).
 	for aid in _committed_attachments:
 		payload.append({ "id": aid, "count": 1 })

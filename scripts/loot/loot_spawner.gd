@@ -46,13 +46,30 @@ static func drop(loot_root: Node, pos: Vector3, id: String, count: int = 1) -> L
 
 ## Rolls the enemy drop table and spawns the result near `pos`. Returns the
 ## pickup, or null if nothing dropped / not authority. Server only.
-static func drop_for_enemy(loot_root: Node, pos: Vector3) -> LootPickup:
+##
+## `tier` defaults to 0 (auto). When 0, `tier_at(pos)` determines the risk tier
+## from the nearest POI so callers don't need to track it themselves. Pass an
+## explicit tier (1–3) to override (e.g. from a caller that already knows it).
+## Tier 1 uses the legacy ENEMY_DROP_TABLE for backward compatibility; tier 2–3
+## escalates by drawing from LootTables so higher-risk zones give better drops.
+static func drop_for_enemy(loot_root: Node, pos: Vector3, tier: int = 0) -> LootPickup:
 	if not GameState.is_local_authority_server():
 		return null
-	var id := _roll(ENEMY_DROP_TABLE)
+	# Resolve auto tier.
+	var resolved_tier: int = tier if tier >= 1 else tier_at(pos)
+	var id: String = ""
+	if resolved_tier <= 1:
+		# Legacy weighted table — keeps tier-1 behaviour identical to before.
+		id = _roll(ENEMY_DROP_TABLE)
+	else:
+		# For tier 2–3 try the catalog-driven table first; fall back to legacy if
+		# the catalog returns nothing (e.g. headless import scan, empty catalog).
+		id = LootTables.roll_for_enemy(resolved_tier)
+		if id == "":
+			id = _roll(ENEMY_DROP_TABLE)
 	if id == "":
 		return null
-	var count := 1
+	var count: int = 1
 	match id:
 		"loot_scrap":
 			count = randi_range(1, 4)
@@ -67,6 +84,32 @@ static func drop_for_enemy(loot_root: Node, pos: Vector3) -> LootPickup:
 	# Scatter slightly so stacked corpses don't overlap pickups exactly.
 	var jitter := Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(-0.6, 0.6))
 	return LootPickup.spawn_at(loot_root, pos + jitter, id, count)
+
+## Returns the risk tier (1–3) for a world position by finding the nearest POI
+## centre in the arena. Falls back to 1 when the arena isn't in the scene tree
+## (headless import checks, offline unit tests, early frames before _ready).
+static func tier_at(world_pos: Vector3) -> int:
+	var scene_tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if scene_tree == null:
+		return 1
+	var arenas: Array = scene_tree.get_nodes_in_group("arena")
+	if arenas.is_empty():
+		return 1
+	var arena: Node = arenas[0]
+	if not arena.has_method("get_poi_points") or not arena.has_method("get_poi_tier"):
+		return 1
+	var poi_points: Array = arena.get_poi_points()
+	if poi_points.is_empty():
+		return 1
+	var best_idx: int = 0
+	var best_dist: float = INF
+	for i in range(poi_points.size()):
+		var d: float = (poi_points[i] as Vector3).distance_to(world_pos)
+		if d < best_dist:
+			best_dist = d
+			best_idx = i
+	return arena.get_poi_tier(best_idx)
+
 
 static func _roll(table: Dictionary) -> String:
 	var total := 0

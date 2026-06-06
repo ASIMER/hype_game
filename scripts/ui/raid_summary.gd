@@ -22,6 +22,7 @@ signal restart_requested()
 const COL_WIN  := Color(0.40, 1.00, 0.60, 1.0)   # green "EXTRACTED"
 const COL_LOSS := Color(1.00, 0.35, 0.35, 1.0)   # red   "KIA"
 const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
+const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
 const COL_DIM   := Color(0.55, 0.60, 0.65, 1.0)
 
 # ── node refs (all populated in _ready via @onready) ─────────────────────────
@@ -43,6 +44,10 @@ const COL_DIM   := Color(0.55, 0.60, 0.65, 1.0)
 @onready var _btn_continue: Button         = $Root/Panel/VBox/Buttons/ContinueBtn
 @onready var _btn_restart: Button          = $Root/Panel/VBox/Buttons/RestartBtn
 
+# ── Progression section (injected dynamically before _sep_bot in _ready) ─────
+var _prog_section: VBoxContainer = null
+var _prog_list: VBoxContainer    = null
+
 # ── per-run accumulators (reset on match_started) ─────────────────────────────
 ## Raw loot deposited this run: id -> count.
 var _loot_counts: Dictionary = {}
@@ -52,6 +57,18 @@ var _loot_bonus: int = 0
 var _blueprints: Array[String] = []
 ## Quest ids completed this run.
 var _quests_done: Array[String] = []
+
+# ── Progression accumulators ──────────────────────────────────────────────────
+## XP earned this run by source: "kill", "extract", "event", "loot".
+var _xp_by_source: Dictionary = {}
+## New raider level reached this run (0 = no level-up).
+var _new_raider_level: int = 0
+## vendor_rep value at match start (to compute delta at show time).
+var _rep_before: int = 0
+## Rep tier at the START of the run (to detect tier-ups).
+var _rep_tier_start: int = 0
+## Weapon ids whose mastery levelled this run.
+var _mastery_leveled: Array[String] = []
 
 
 func _ready() -> void:
@@ -67,9 +84,40 @@ func _ready() -> void:
 	Events.blueprint_learned.connect(_on_blueprint_learned)
 	Events.quest_completed.connect(_on_quest_completed)
 
+	# Progression accumulation.
+	Events.xp_gained.connect(_on_xp_gained)
+	Events.raider_level_up.connect(_on_raider_level_up)
+	Events.reputation_changed.connect(_on_reputation_changed)
+	Events.weapon_mastery_changed.connect(_on_weapon_mastery_changed)
+
 	# Match-end triggers.
 	Events.match_won.connect(_on_match_won)
 	Events.match_lost.connect(_on_match_lost)
+
+	# ── Inject progression section into the VBox before the bottom separator ──
+	var vbox: VBoxContainer = get_node_or_null("Root/Panel/VBox") as VBoxContainer
+	if vbox != null and _sep_bot != null:
+		_prog_section = VBoxContainer.new()
+		_prog_section.name = "ProgSection"
+		_prog_section.add_theme_constant_override("separation", 4)
+		_prog_section.visible = false
+
+		var prog_hdr := Label.new()
+		prog_hdr.name = "ProgHeader"
+		prog_hdr.text = "PROGRESSION"
+		prog_hdr.add_theme_font_size_override("font_size", 13)
+		prog_hdr.add_theme_color_override("font_color", COL_DIM)
+		_prog_section.add_child(prog_hdr)
+
+		_prog_list = VBoxContainer.new()
+		_prog_list.name = "ProgList"
+		_prog_list.add_theme_constant_override("separation", 3)
+		_prog_section.add_child(_prog_list)
+
+		# Insert before the bottom separator so buttons stay at the bottom.
+		var sep_idx: int = _sep_bot.get_index()
+		vbox.add_child(_prog_section)
+		vbox.move_child(_prog_section, sep_idx)
 
 	hide()
 
@@ -82,6 +130,11 @@ func _on_match_started() -> void:
 	_loot_bonus = 0
 	_blueprints.clear()
 	_quests_done.clear()
+	_xp_by_source.clear()
+	_new_raider_level = 0
+	_rep_before = MetaProgression.vendor_rep
+	_rep_tier_start = MetaProgression.rep_tier()
+	_mastery_leveled.clear()
 
 
 ## payload: [{id: String, count: int}, …], bonus: currency earned this extraction.
@@ -101,6 +154,23 @@ func _on_blueprint_learned(blueprint: String) -> void:
 func _on_quest_completed(quest_id: String) -> void:
 	if quest_id not in _quests_done:
 		_quests_done.append(quest_id)
+
+
+# ── Progression accumulation ──────────────────────────────────────────────────
+
+func _on_xp_gained(amount: int, source: String) -> void:
+	var src: String = source if source != "" else "misc"
+	_xp_by_source[src] = int(_xp_by_source.get(src, 0)) + amount
+
+func _on_raider_level_up(new_level: int, _skill_points: int) -> void:
+	_new_raider_level = new_level
+
+func _on_reputation_changed(_rep: int, _tier: int) -> void:
+	pass  # Delta computed in _show_summary via the _rep_before snapshot.
+
+func _on_weapon_mastery_changed(weapon_id: String, _level: int) -> void:
+	if weapon_id not in _mastery_leveled:
+		_mastery_leveled.append(weapon_id)
 
 
 # ── Match-end display ─────────────────────────────────────────────────────────
@@ -163,8 +233,86 @@ func _show_summary(won: bool) -> void:
 			title_str = (qd as QuestData).title
 		_quest_list.add_child(_make_dim_label("  %s" % title_str))
 
+	# Progression section.
+	_show_progression_section()
+
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	show()
+
+
+func _show_progression_section() -> void:
+	if _prog_section == null or _prog_list == null:
+		return
+	_clear_children(_prog_list)
+
+	var any_line: bool = false
+
+	# ── XP breakdown ─────────────────────────────────────────────────────────
+	var total_xp: int = 0
+	for src in _xp_by_source:
+		total_xp += int(_xp_by_source[src])
+
+	if total_xp > 0:
+		# Build a compact breakdown: "+XP 1440  (kills 900 · extract 500 · loot 40)"
+		var parts: Array[String] = []
+		var kill_xp: int   = int(_xp_by_source.get("kill", 0))
+		var ext_xp: int    = int(_xp_by_source.get("extract", 0))
+		var event_xp: int  = int(_xp_by_source.get("event", 0))
+		var loot_xp: int   = int(_xp_by_source.get("loot", 0))
+		if kill_xp > 0:
+			parts.append("kills %d" % kill_xp)
+		if ext_xp > 0:
+			parts.append("extract %d" % ext_xp)
+		if event_xp > 0:
+			parts.append("events %d" % event_xp)
+		if loot_xp > 0:
+			parts.append("loot %d" % loot_xp)
+
+		var xp_lbl := Label.new()
+		xp_lbl.add_theme_font_size_override("font_size", 14)
+		xp_lbl.add_theme_color_override("font_color", COL_AMBER)
+		if parts.is_empty():
+			xp_lbl.text = "+XP %d" % total_xp
+		else:
+			xp_lbl.text = "+XP %d  (%s)" % [total_xp, "  ·  ".join(parts)]
+		_prog_list.add_child(xp_lbl)
+		any_line = true
+
+	# ── Level-up ─────────────────────────────────────────────────────────────
+	if _new_raider_level > 0:
+		var lvl_lbl := Label.new()
+		lvl_lbl.text = "RAIDER LEVEL UP  →  %d" % _new_raider_level
+		lvl_lbl.add_theme_font_size_override("font_size", 15)
+		lvl_lbl.add_theme_color_override("font_color", COL_TEAL)
+		_prog_list.add_child(lvl_lbl)
+		any_line = true
+
+	# ── Rep gained ───────────────────────────────────────────────────────────
+	var rep_gained: int = MetaProgression.vendor_rep - _rep_before
+	if rep_gained > 0:
+		var tier_now: int  = MetaProgression.rep_tier()
+		var rep_lbl := Label.new()
+		rep_lbl.add_theme_font_size_override("font_size", 13)
+		rep_lbl.add_theme_color_override("font_color", COL_DIM)
+		if tier_now > _rep_tier_start:
+			rep_lbl.text = "+REP %d  (Tier %d → Tier %d)" % [rep_gained, _rep_tier_start, tier_now]
+			rep_lbl.add_theme_color_override("font_color", COL_TEAL)
+		else:
+			rep_lbl.text = "+REP %d  (Tier %d)" % [rep_gained, tier_now]
+		_prog_list.add_child(rep_lbl)
+		any_line = true
+
+	# ── Weapon mastery level-ups ──────────────────────────────────────────────
+	for wid in _mastery_leveled:
+		var lvl: int = MetaProgression.weapon_mastery_level(String(wid))
+		var m_lbl := Label.new()
+		m_lbl.text = "Mastery: %s  Lv%d" % [String(wid).to_upper(), lvl]
+		m_lbl.add_theme_font_size_override("font_size", 13)
+		m_lbl.add_theme_color_override("font_color", COL_AMBER)
+		_prog_list.add_child(m_lbl)
+		any_line = true
+
+	_prog_section.visible = any_line
 
 
 # ── Row builders ──────────────────────────────────────────────────────────────

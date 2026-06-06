@@ -60,6 +60,12 @@ func _ready() -> void:
 	await get_tree().process_frame
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
 	_bake_navmesh.call_deferred()
+	# World loot: scatter tier-appropriate pickups at the pre-placed LootCacheMarkers.
+	# Runs AFTER the deferred navmesh bake so ground geometry is final; server-only
+	# (the MultiplayerSpawner under Net/Loot replicates them to clients).
+	Events.arena_build_progress.emit(0.96, "World loot")
+	await get_tree().process_frame
+	_populate_world_loot()
 	Events.arena_build_progress.emit(1.0, "Ready")
 	# Wave director (server-only logic guarded inside the script). Child of Arena
 	# so its parent-walk finds get_enemy_spawn_point().
@@ -362,6 +368,20 @@ func snap_to_navmesh(pos: Vector3) -> Vector3:
 		return pos
 	return snapped
 
+## Returns the risk tier (1 low … 3 high) for a POI identified either by its
+## integer index into the _POI_DEFS insertion order, or by its String name.
+## Falls back to tier 1 for unknown indices/names.
+func get_poi_tier(which) -> int:
+	var name_str: String = ""
+	if which is int:
+		var keys: Array = _POI_DEFS.keys()
+		if which >= 0 and which < keys.size():
+			name_str = keys[which]
+	elif which is String:
+		name_str = which
+	return int(Settings.POI_RISK_TIERS.get(name_str, 1))
+
+
 ## World positions of each POI center (north tower, warehouse, plaza, etc.).
 ## Used by minimap / loot placement. Order matches the POIMarkers children.
 func get_poi_points() -> Array[Vector3]:
@@ -380,6 +400,38 @@ func _marker_positions(container: Node) -> Array[Vector3]:
 		if child is Node3D:
 			out.append((child as Node3D).global_position)
 	return out
+
+## Server-only: scatter world-loot pickups into Net/Loot after the navmesh bake.
+## For each loot-cache marker find the nearest POI, look up its risk tier, then
+## scatter RISK_TIER_CACHE_COUNT[tier] pickups via LootPickup.spawn_at so they
+## replicate to clients through the Net/Loot MultiplayerSpawner.
+func _populate_world_loot() -> void:
+	if not GameState.is_local_authority_server():
+		return
+	var cache_points: Array[Vector3] = get_loot_cache_points()
+	if cache_points.is_empty():
+		return
+	var poi_points: Array[Vector3] = get_poi_points()
+	if poi_points.is_empty():
+		return
+	for cache_pos in cache_points:
+		# Find the nearest POI centre.
+		var best_idx: int = 0
+		var best_dist: float = INF
+		for i in range(poi_points.size()):
+			var d: float = poi_points[i].distance_to(cache_pos)
+			if d < best_dist:
+				best_dist = d
+				best_idx = i
+		var tier: int = get_poi_tier(best_idx)
+		var count_to_spawn: int = int(Settings.RISK_TIER_CACHE_COUNT.get(tier, 2))
+		for _i in range(count_to_spawn):
+			var id: String = LootTables.roll_by_tier(tier)
+			if id == "":
+				continue
+			var jitter := Vector3(randf_range(-1.2, 1.2), 0.0, randf_range(-1.2, 1.2))
+			LootPickup.spawn_at(loot, cache_pos + jitter, id, 1)
+
 
 func _pick_marker(container: Node, index: int) -> Node3D:
 	if container == null or container.get_child_count() == 0:
