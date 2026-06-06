@@ -3,8 +3,9 @@
   One-command portable Windows release for Hype Raiders.
 
   Produces a single self-contained HypeRaiders.exe (the game data .pck is embedded),
-  bundles a README, and zips it as export/HypeRaiders-v<version>-win64.zip — ready to
-  hand to friends: they unzip and double-click the exe.
+  bundles a README, and zips it as export/v<version>/HypeRaiders-v<version>-win64.zip —
+  ready to hand to friends: they unzip and double-click the exe. Each version exports
+  into its own export/v<version>/ folder, so older releases are never overwritten.
 
   On first run it installs the matching Godot export templates if they're missing
   (one-time ~700 MB download), then skips that on later runs. Re-run anytime to cut a
@@ -56,11 +57,13 @@ function Write-ResourceIndex {
 
 # --- Resolve paths (script lives in tools/build/, project is two levels up) ---
 $ProjectDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$ExportDir  = Join-Path $ProjectDir "export"
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $verFile = Join-Path $ProjectDir "VERSION"
     if (Test-Path $verFile) { $Version = (Get-Content $verFile -Raw).Trim() } else { $Version = "0.0.0" }
 }
+# Per-version output folder (export/v<Version>/) so releases never overwrite each
+# other — each build wipes + refills ONLY its own version's folder.
+$ExportDir  = Join-Path $ProjectDir "export\v$Version"
 
 Write-Host "== Hype Raiders — Windows release build ==" -ForegroundColor Cyan
 Write-Host "  Project : $ProjectDir"
