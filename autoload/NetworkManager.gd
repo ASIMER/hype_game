@@ -16,7 +16,7 @@ func _ready() -> void:
 	Events.entity_died.connect(_on_entity_died)
 
 # ---------------------------------------------------------------- host / join
-func host_game(port: int = Settings.DEFAULT_PORT) -> Error:
+func host_game(port: int = Settings.net_port) -> Error:
 	var peer := ENetMultiplayerPeer.new()
 	var err := peer.create_server(port, Settings.MAX_PLAYERS)
 	if err != OK:
@@ -28,7 +28,7 @@ func host_game(port: int = Settings.DEFAULT_PORT) -> Error:
 	GameState.register_peer(1, local_player_name)
 	return OK
 
-func join_game(ip: String = Settings.DEFAULT_IP, port: int = Settings.DEFAULT_PORT) -> Error:
+func join_game(ip: String = Settings.DEFAULT_IP, port: int = Settings.net_port) -> Error:
 	var peer := ENetMultiplayerPeer.new()
 	var err := peer.create_client(ip, port)
 	if err != OK:

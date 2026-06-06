@@ -246,7 +246,10 @@ func _handle_line(line: String) -> void:
 				_send({ "ok": true })
 			elif nact == "join":
 				var ip := str(json.get("ip", "127.0.0.1"))
-				var jerr := NetworkManager.join_game(ip)
+				# Defaults to this instance's net_port (set via --net-port); an explicit
+				# "port" lets the harness target a host on a different net_port.
+				var jport := int(json.get("port", Settings.net_port))
+				var jerr := NetworkManager.join_game(ip, jport)
 				if jerr == OK and not multiplayer.connected_to_server.is_connected(_agent_open_client_hub):
 					multiplayer.connected_to_server.connect(_agent_open_client_hub, CONNECT_ONE_SHOT)
 				_send({ "ok": jerr == OK })
@@ -276,7 +279,7 @@ func _handle_line(line: String) -> void:
 			# Debug: drive the local server list (browser QA). action: add|remove|list|connect.
 			var fact := str(json.get("action", "list"))
 			var fip := str(json.get("ip", ""))
-			var fport := int(json.get("port", Settings.DEFAULT_PORT))
+			var fport := int(json.get("port", Settings.net_port))
 			var fname := str(json.get("name", ""))
 			match fact:
 				"add": ServerBrowser.add_favorite(fname, fip, fport)

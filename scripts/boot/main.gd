@@ -37,6 +37,10 @@ func _ready() -> void:
 	# This lets the pause/HUD UI stay live without the engine running gameplay.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	world_root.process_mode = Node.PROCESS_MODE_PAUSABLE
+	# Stamp the window title with this instance's identity (worktree branch + ports) so
+	# parallel instances are tellable apart in the OS task manager / window list.
+	if DisplayServer.get_name() != "headless":
+		get_window().title = Settings.window_title()
 	_build_persistent_overlays()
 	Events.match_started.connect(_on_match_started)
 	# Synchronized co-op deploy: the leader's START broadcasts begin_deploy to all
