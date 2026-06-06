@@ -11,7 +11,7 @@ const DEFAULT_IP: String = "127.0.0.1"
 const DISCOVERY_PORT: int = 24566
 ## Game build version (canonical = the VERSION file at the repo root). Stamped into
 ## save files so loads survive game updates (see MetaProgression/Stash version checks).
-const GAME_VERSION: String = "0.1.0"
+const GAME_VERSION: String = "0.2.0"
 # When true, the netcode emits [net]/[arena]/[client] diagnostic prints (connection,
 # roster sync, spawn/replication). Off for normal play; flip on to debug co-op.
 const NET_DEBUG: bool = false

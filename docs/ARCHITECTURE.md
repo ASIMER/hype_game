@@ -53,7 +53,7 @@ Accurate to the current code. Paths are under `res://` (project root `C:\persona
 
 ## 3. Settings (`autoload/Settings.gd`) — values
 
-- **Network**: `DEFAULT_PORT=24565`, `MAX_PLAYERS=8` (ENet listen-server cap), `DEFAULT_IP="127.0.0.1"`, `DISCOVERY_PORT=24566` (LAN-discovery UDP, separate from the game port), `GAME_VERSION="0.1.0"` (stamped into saves), `AGENT_PORT=24700`, `NET_DEBUG=false`
+- **Network**: `DEFAULT_PORT=24565`, `MAX_PLAYERS=8` (ENet listen-server cap), `DEFAULT_IP="127.0.0.1"`, `DISCOVERY_PORT=24566` (LAN-discovery UDP, separate from the game port), `GAME_VERSION="0.2.0"` (stamped into saves), `AGENT_PORT=24700`, `NET_DEBUG=false`
 - **Multi-instance** (parallel agent testing): runtime `agent_port`/`instance_tag` parsed from `--agent-port N` in `_ready()`; `user_path(base,ext)` → `user://<base>.<ext>` (single) or `user://<base>_N.<ext>` (per-instance)
 - **Player**: `PLAYER_MAX_HEALTH=100`, `PLAYER_MOVE_SPEED=5.5`, `PLAYER_SPRINT_SPEED=8.5`, `PLAYER_JUMP_VELOCITY=7.0`, `MOUSE_SENSITIVITY=0.0025`, `CAMERA_PITCH_MIN=-1.2`, `CAMERA_PITCH_MAX=0.6`
 - **Camera/ADS/peek**: `DEFAULT_FOV=60`, `ADS_FOV=42`, `ADS_SENS_SCALE=0.5`, `ADS_SPRING_LENGTH=2.0`, `DEFAULT_SPRING_LENGTH=4.0`, `SHOULDER_OFFSET=0.5`, `AIM_TWEEN_SPEED=10.0`, `PEEK_PROBE=1.4`, `PEEK_SHIFT=0.7`
