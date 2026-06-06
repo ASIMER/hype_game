@@ -13,6 +13,12 @@ class_name RobotCaller
 const STANDOFF_MIN: float = 6.0
 const STANDOFF_PREF: float = 10.0
 
+## Seed the call cooldown on spawn so a freshly-spawned caller can't fire an alert on
+## frame 1 (it must spot + hold a target for one full cooldown before its first call).
+func _ready() -> void:
+	super()
+	_attack_cooldown = _next_cooldown()
+
 ## OVERRIDE: instead of melee damage, emit enemy_alerted so the AIDirector can
 ## summon reinforcements toward our position. The attack_range (14 m) is the
 ## distance at which the ATTACK state activates, i.e. call range.

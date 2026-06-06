@@ -36,6 +36,7 @@ const DOWNED_HEALTH: float = 30.0     # nominal HP pool while downed (drained by
 # Reviver side (authority): the downed teammate we're channeling a revive on + progress.
 var _revive_target: Node = null
 var _revive_progress: float = 0.0
+var _revive_guard_hp: float = -1.0   # reviver HP snapshot at channel start; a drop cancels the revive
 # Carry side (authority): the downed teammate we are carrying.
 var _carry_target: Node = null
 
@@ -270,6 +271,9 @@ func _physics_process(delta: float) -> void:
 			# Wading/swimming slows movement (sluggish in water).
 			if _water_state != Water.DRY:
 				speed *= WATER_SLOW
+			# Carrying a downed buddy is slow + heavy (sidearm only).
+			if is_carrying():
+				speed *= Settings.CARRY_SPEED_MULT
 			velocity.x = move_dir.x * speed
 			velocity.z = move_dir.z * speed
 
@@ -1060,6 +1064,14 @@ func _update_coop_interaction(delta: float) -> void:
 		if target != _revive_target:
 			_revive_target = target
 			_revive_progress = 0.0
+			_revive_guard_hp = health.current
+		# Interrupt the channel if the reviver takes damage (must protect your reviver).
+		if _revive_guard_hp >= 0.0 and health.current < _revive_guard_hp - 0.01:
+			_revive_target = null
+			_revive_progress = 0.0
+			_revive_guard_hp = -1.0
+			Events.notify.emit("Revive interrupted", 2)
+			return
 		_revive_progress += delta
 		if _revive_progress >= Settings.REVIVE_CHANNEL_TIME:
 			_revive_progress = 0.0

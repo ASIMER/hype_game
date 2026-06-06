@@ -17,6 +17,7 @@ var _level_label: Label           = null   # "RAIDER LEVEL 7"
 var _xp_bar: ProgressBar          = null   # XP into current level / need
 var _xp_label: Label              = null   # "1240 / 3500 XP  (Total: 14820)"
 var _skill_points_label: Label    = null   # "Skill Points: 2"
+var _milestone_label: Label       = null   # "Next milestone: L5 — +25 Stash Capacity"
 var _skill_rows: VBoxContainer    = null   # one row per Settings.SKILLS key
 var _skill_buy_btns: Dictionary   = {}     # key -> Button
 var _skill_pip_labels: Dictionary = {}     # key -> Label showing "3 / 5"
@@ -136,6 +137,11 @@ func _build_layout() -> void:
 	_skill_points_label.add_theme_font_size_override("font_size", 15)
 	_skill_points_label.add_theme_color_override("font_color", COL_TEAL)
 	lvl_vbox.add_child(_skill_points_label)
+
+	_milestone_label = Label.new()
+	_milestone_label.add_theme_font_size_override("font_size", 13)
+	_milestone_label.add_theme_color_override("font_color", COL_DIM)
+	lvl_vbox.add_child(_milestone_label)
 
 	# ── Skill tree section ────────────────────────────────────────────────────
 	body.add_child(_make_section_header("SKILL TREE"))
@@ -317,14 +323,20 @@ func _rebuild_mastery_rows() -> void:
 			mbar.value     = float(mxp)
 		col.add_child(mbar)
 
-		# XP sub-label.
+		# XP sub-label + the current "veteran" handling bonus from this level.
 		var xp_lbl := Label.new()
 		xp_lbl.add_theme_font_size_override("font_size", 11)
 		xp_lbl.add_theme_color_override("font_color", COL_DIM)
+		var bonus_txt := ""
+		if lvl > 0:
+			bonus_txt = "   ·   -%d%% recoil, -%d%% spread, -%d%% reload" % [
+				int(round(Settings.WEAPON_MASTERY_RECOIL_PER * lvl * 100.0)),
+				int(round(Settings.WEAPON_MASTERY_SPREAD_PER * lvl * 100.0)),
+				int(round(Settings.WEAPON_MASTERY_RELOAD_PER * lvl * 100.0))]
 		if lvl >= Settings.WEAPON_MASTERY_MAX:
-			xp_lbl.text = "Mastery complete"
+			xp_lbl.text = "Mastery complete" + bonus_txt
 		else:
-			xp_lbl.text = "%d / %d xp" % [mxp, need]
+			xp_lbl.text = ("%d / %d xp" % [mxp, need]) + bonus_txt
 		col.add_child(xp_lbl)
 
 
@@ -359,6 +371,12 @@ func _refresh_level() -> void:
 		else:
 			_skill_points_label.text = ""
 			_skill_points_label.visible = false
+	if _milestone_label != null:
+		var ms: Dictionary = MetaProgression.next_milestone()
+		if ms.is_empty():
+			_milestone_label.text = "All Raider milestones earned."
+		else:
+			_milestone_label.text = "Next milestone — Level %d: %s" % [int(ms.get("level", 0)), String(ms.get("label", ""))]
 
 
 func _refresh_skills() -> void:

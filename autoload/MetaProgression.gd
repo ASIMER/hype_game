@@ -82,6 +82,10 @@ var skills: Dictionary = {}
 var vendor_rep: int = 0
 ## Per-weapon mastery: weapon_id -> { "xp": int, "level": int } (use-driven).
 var weapon_mastery: Dictionary = {}
+## Raider-Level milestones already granted (the milestone LEVELS, e.g. [3,5]) so each is
+## applied exactly once; plus the accumulated permanent stash bonus from "stash" milestones.
+var milestones_claimed: Array = []
+var milestone_stash_bonus: float = 0.0
 
 ## Set once if a save from a NEWER game version was loaded this session (so the
 ## version-mismatch toast fires at most once per file per session).
@@ -237,7 +241,7 @@ func learn_blueprint(bp: String) -> void:
 
 # ---------------------------------------------------------------- stash capacity
 func stash_capacity() -> float:
-	return STASH_BASE_CAPACITY + upgrade_level("stash_capacity") * float(UPGRADES["stash_capacity"]["effect"])
+	return STASH_BASE_CAPACITY + upgrade_level("stash_capacity") * float(UPGRADES["stash_capacity"]["effect"]) + milestone_stash_bonus
 
 # ---------------------------------------------------------------- attachments (at-risk)
 func get_equipped(weapon_id: String) -> Dictionary:
@@ -327,8 +331,44 @@ func add_xp(amount: int, source: String = "") -> void:
 	if new_level > raider_level:
 		skill_points += (new_level - raider_level) * Settings.SKILL_POINTS_PER_LEVEL
 		raider_level = new_level
+		_apply_milestones()
 		Events.raider_level_up.emit(raider_level, skill_points)
 	save_profile()
+
+## Grant any Raider-Level milestone whose level we've now reached but not yet claimed.
+## Idempotent (tracked in milestones_claimed). Gives leveling a permanent point — a free
+## weapon / stash bump / currency — WITHOUT an Arc-Raiders-style tech tree. Called on
+## level-up + once on load (so an interrupted/older save back-fills cleanly).
+func _apply_milestones() -> void:
+	for lvl in Settings.RAIDER_MILESTONES:
+		if int(lvl) > raider_level or int(lvl) in milestones_claimed:
+			continue
+		var m: Dictionary = Settings.RAIDER_MILESTONES[lvl]
+		match String(m.get("kind", "")):
+			"unlock_weapon":
+				var wid := String(m.get("value", ""))
+				if wid != "" and wid not in unlocked and wid not in FREE_WEAPONS:
+					unlocked.append(wid)
+			"stash":
+				milestone_stash_bonus += float(m.get("value", 0))
+			"currency":
+				currency += int(m.get("value", 0))
+				Events.currency_changed.emit(currency)
+		milestones_claimed.append(int(lvl))
+		Events.notify.emit("Raider L%d: %s" % [int(lvl), String(m.get("label", "reward"))], 1)
+
+## The next unclaimed milestone (for the RAIDER tab), or {} if all are claimed.
+func next_milestone() -> Dictionary:
+	var best_lvl: int = -1
+	for lvl in Settings.RAIDER_MILESTONES:
+		var li := int(lvl)
+		if li not in milestones_claimed and (best_lvl < 0 or li < best_lvl):
+			best_lvl = li
+	if best_lvl < 0:
+		return {}
+	var m: Dictionary = (Settings.RAIDER_MILESTONES[best_lvl] as Dictionary).duplicate()
+	m["level"] = best_lvl
+	return m
 
 ## UI helper: { level, into (xp into current level), need (xp to next), total }.
 func level_progress() -> Dictionary:
@@ -475,6 +515,8 @@ func save_profile() -> void:
 	cfg.set_value("meta", "skills", skills)
 	cfg.set_value("meta", "vendor_rep", vendor_rep)
 	cfg.set_value("meta", "weapon_mastery", weapon_mastery)
+	cfg.set_value("meta", "milestones_claimed", milestones_claimed)
+	cfg.set_value("meta", "milestone_stash_bonus", milestone_stash_bonus)
 	cfg.save(_save_path())
 
 func load_profile() -> void:
@@ -535,3 +577,10 @@ func load_profile() -> void:
 	vendor_rep = int(cfg.get_value("meta", "vendor_rep", 0))
 	# weapon_mastery is weapon_id -> { xp, level } (inner dicts) — _load_nested_dict validates.
 	weapon_mastery = _load_nested_dict(cfg.get_value("meta", "weapon_mastery", {}))
+	var raw_ms: Array = cfg.get_value("meta", "milestones_claimed", [])
+	milestones_claimed.clear()
+	for ml in raw_ms:
+		milestones_claimed.append(int(ml))
+	milestone_stash_bonus = float(cfg.get_value("meta", "milestone_stash_bonus", 0.0))
+	# Back-fill any milestone the saved level qualifies for but predates this feature.
+	_apply_milestones()

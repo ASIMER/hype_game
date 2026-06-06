@@ -17,8 +17,10 @@ func _ready() -> void:
 	# Reset per-run state on each new match.
 	Events.match_started.connect(_on_match_started)
 
-	# Kill XP + weapon mastery.
-	Events.entity_died.connect(_on_entity_died)
+	# Kill XP + weapon mastery are NOT driven off Events.entity_died here: that signal
+	# fires SERVER-ONLY (enemies are server-authoritative), so a co-op client would never
+	# see its own kills. Instead NetworkManager._on_entity_died (the server-auth scoreboard
+	# attribution) routes the credit to the KILLER's machine, which calls credit_kill() below.
 
 	# Extraction loot XP + rep.
 	Events.raid_loot_granted.connect(_on_raid_loot_granted)
@@ -38,31 +40,28 @@ func _on_match_started() -> void:
 
 # ── Kill XP + weapon mastery ──────────────────────────────────────────────────
 
-func _on_entity_died(entity: Node, killer: Node) -> void:
-	# Only award XP/mastery when the LOCAL player is the killer.
-	# entity_died fires on all peers; the killer==local check scopes it correctly.
-	if entity == null or killer == null:
-		return
-	# The killed entity must NOT be in the "players" group (i.e. it must be an enemy).
-	if entity.is_in_group("players"):
-		return
-	# Killer must be the local authority player.
-	if not killer.is_in_group("players"):
-		return
-	if not killer.is_multiplayer_authority():
-		return
-
-	# Award account XP for the kill.
+## Called on the KILLER's own machine by NetworkManager (server-auth attribution → the
+## killer peer). Awards account XP for the kill + mastery to THIS machine's active weapon
+## (read locally so it's correct per-peer). Works identically in single-player + co-op.
+func credit_kill() -> void:
 	MetaProgression.add_xp(Settings.XP_PER_KILL, "kill")
-
-	# Award weapon mastery for the active weapon.
-	# Path: the killer (CharacterBody3D) → CameraPivot/SpringArm3D/Camera3D/WeaponController
-	# Guard every step — never crash if the tree differs.
-	var wc: WeaponController = _find_weapon_controller(killer)
+	# Weapon mastery for the local player's active weapon.
+	var local_player: Node = _local_player()
+	if local_player == null:
+		return
+	var wc: WeaponController = _find_weapon_controller(local_player)
 	if wc != null:
 		var wid: String = wc.current_weapon_id()
 		if wid != "":
 			MetaProgression.add_weapon_mastery(wid, Settings.WEAPON_MASTERY_XP_PER_KILL)
+
+
+## The local-authority player node (this peer's own player), or null if not spawned yet.
+func _local_player() -> Node:
+	for p in get_tree().get_nodes_in_group("players"):
+		if p != null and is_instance_valid(p) and (p as Node).is_multiplayer_authority():
+			return p
+	return null
 
 
 ## Walks the killer's subtree to locate its WeaponController child (deep under

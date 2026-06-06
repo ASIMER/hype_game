@@ -125,11 +125,23 @@ func _arm_next(delay: float) -> void:
 func _fire_random_event() -> void:
 	# Weighted pick (supply_cache and miniboss more interesting than surge).
 	var kind: int = randi() % 4
+	# Guard-needing events (cache/mini-boss/contested) must have spawn capacity, else they'd
+	# appear UNDEFENDED (spawn_reinforcements would silently no-op at the alive-cap). If there's
+	# no room, fall back to the surge (it needs no guards) so an event still fires.
+	if kind != 3 and _guards_capacity() <= 0:
+		kind = 3
 	match kind:
 		0: _start_supply_cache()
 		1: _start_miniboss()
 		2: _start_contested_poi()
 		3: _start_surge()
+
+## Remaining enemy-spawn headroom (via the WaveManager); 99 if the manager isn't found yet.
+func _guards_capacity() -> int:
+	var wm: Node = _get_wave_manager()
+	if wm != null and wm.has_method("reinforcement_capacity"):
+		return int(wm.call("reinforcement_capacity"))
+	return 99
 
 # ─── event lifetime tick (timeout fallbacks) ─────────────────────────────────
 

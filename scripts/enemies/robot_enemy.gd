@@ -210,7 +210,45 @@ func _ready() -> void:
 		if not Events.noise_emitted.is_connected(_on_noise_emitted):
 			Events.noise_emitted.connect(_on_noise_emitted)
 
+	# Visual weak-point indicator (render-only; runs on all peers, skipped headless).
+	_setup_weakpoint_marker()
+
 	Events.enemy_spawned.emit(self)
+
+## Add a small glowing marker at this enemy's WeakPoint so players can SEE where the
+## bonus-damage spot is (the Hurtbox itself is invisible). Render-only: a tiny emissive
+## sphere parented under the WeakPoint Area (inherits its position); no gameplay/collision
+## change. No-op if the enemy has no WeakPoint or we're on a headless server.
+func _setup_weakpoint_marker() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var wp := get_node_or_null("WeakPoint")
+	if wp == null:
+		return
+	var shape := wp.get_node_or_null("CollisionShape3D")
+	var radius := 0.18
+	if shape is CollisionShape3D and (shape as CollisionShape3D).shape is SphereShape3D:
+		radius = ((shape as CollisionShape3D).shape as SphereShape3D).radius * 0.85
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 10
+	mesh.rings = 6
+	var mat := StandardMaterial3D.new()
+	var accent := AssetRegistry.get_color(enemy_id).lerp(Color(1.0, 0.85, 0.2), 0.6)
+	mat.albedo_color = accent
+	mat.emission_enabled = true
+	mat.emission = accent
+	mat.emission_energy_multiplier = 2.2
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color.a = 0.85
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	if shape is CollisionShape3D:
+		mi.position = (shape as CollisionShape3D).position   # sit exactly on the weak point
+	wp.add_child(mi)
 
 ## Pull archetype stats from Settings.ENEMY_STATS. Falls back to legacy ENEMY_*
 ## (already the defaults above) so a missing/unknown id still behaves like a grunt.
@@ -507,6 +545,9 @@ func _nearest_player_visual() -> Node3D:
 		if p == null or not is_instance_valid(p) or not (p is Node3D):
 			continue
 		var pn := p as Node3D
+		# Don't visually track a downed player (matches the AI ignoring them for targeting).
+		if pn.has_method("is_downed") and pn.is_downed():
+			continue
 		var d := global_position.distance_to(pn.global_position)
 		if d < best:
 			best = d
@@ -959,6 +1000,10 @@ func _find_nearest_player() -> Node3D:
 		# Skip dead players if they expose a Health child.
 		var ph := pn.get_node_or_null("Health")
 		if ph and ph is Health and (ph as Health).is_dead:
+			continue
+		# Skip DOWNED players — AI fully ignores a downed player (it's threatened only by
+		# the bleedout timer), so the revive window isn't a near-instant death in combat.
+		if pn.has_method("is_downed") and pn.is_downed():
 			continue
 		var d := global_position.distance_to(pn.global_position)
 		if d < best:

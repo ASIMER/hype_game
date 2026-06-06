@@ -173,6 +173,9 @@ const DIRECTOR_BOSS_ADD_COUNT: int = 3
 # Alarms: a caller/alarm (Events.enemy_alerted) summons reinforcements on a cooldown.
 const ALARM_REINFORCE_COUNT: int = 4
 const ALARM_COOLDOWN: float = 12.0
+# A noise_emitted event must be at least this loud to count as an alarm-worthy "bang"
+# (so only grenades, not every gunshot, trigger director reinforcements).
+const ALARM_GRENADE_MIN_LOUDNESS: float = NOISE_GRENADE * 0.6
 # Between-wave patrols: spawn this many NON-hunter enemies during intermission (and
 # pre-first-wave) so the map feels inhabited + stealth has something to sneak past.
 const PATROL_COUNT: int = 3
@@ -258,6 +261,24 @@ const REP_PER_HIGH_TIER_HAUL: int = 80        # extracting RARE+ loot
 const WEAPON_MASTERY_BASE: float = 8.0        # ~8 kills for level 1, scaling up
 const WEAPON_MASTERY_MAX: int = 10
 const WEAPON_MASTERY_XP_PER_KILL: int = 1
+# "Veteran" ramp (validation pass): mastery levels gently improve the gun you USE — a small
+# per-level reduction in recoil/spread/reload (capped at MASTERY_MAX). DISTINCT from the
+# bought permanent perks (damage/mag): mastery is the passive "I've used this a lot" feel.
+# Per-level fractions; total at L10 = 15% recoil / 10% spread / 10% reload.
+const WEAPON_MASTERY_RECOIL_PER: float = 0.015
+const WEAPON_MASTERY_SPREAD_PER: float = 0.010
+const WEAPON_MASTERY_RELOAD_PER: float = 0.010
+
+# --- Progression: Raider Level milestones (validation pass) -------------------
+# Reaching a Raider Level grants a one-time permanent milestone (gives leveling a POINT
+# without an Arc-Raiders-style tech tree). Applied idempotently on level-up + on load.
+#   kind: "unlock_weapon" (free weapon id) | "stash" (+capacity) | "currency" (one-time CR).
+const RAIDER_MILESTONES := {
+	3:  { "kind": "unlock_weapon", "value": "smg",   "label": "Free SMG" },
+	5:  { "kind": "stash",         "value": 25,      "label": "+25 Stash Capacity" },
+	8:  { "kind": "currency",      "value": 500,     "label": "+500 Credits" },
+	12: { "kind": "unlock_weapon", "value": "dmr",   "label": "Free DMR" },
+}
 
 # Camera / ADS / peek
 const DEFAULT_FOV: float = 60.0
