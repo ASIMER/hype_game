@@ -57,6 +57,24 @@ signal extraction_window_changed(zone: Node, open: bool, remaining: float)
 ## The full-screen map was toggled (M key).
 signal map_toggled(open: bool)
 
+# --- Co-op combat / scoreboard ---
+## A teammate's shot, broadcast so everyone sees the tracer/muzzle/impact.
+signal remote_shot(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3)
+## Per-player kill counts changed (synced) — the TAB leaderboard refreshes.
+signal scoreboard_changed()
+
+# --- Co-op item interactions ---
+## A teammate gave you an item (HUD toast). count of item_id.
+signal item_received(from_peer: int, item_id: String, count: int)
+
+# --- Server browser / favorites ---
+## The local favorites/recents list changed — the server-browser UI refreshes.
+signal favorites_changed()
+## A LAN scan began (the UI shows a "scanning…" state).
+signal lan_scan_started()
+## A LAN scan finished. `servers` = Array of { name, ip, port, players, max }.
+signal lan_servers_found(servers: Array)
+
 # --- UI / UX ---
 ## A nearby interactable (loot / extraction) — HUD shows "[E] <prompt>".
 signal interaction_available(prompt: String, target: Node)

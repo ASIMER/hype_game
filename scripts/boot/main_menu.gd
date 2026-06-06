@@ -7,16 +7,29 @@ extends Control
 @onready var status: Label = $Panel/VBox/Status
 @onready var settings_menu := $SettingsMenu
 
+const SERVER_BROWSER := "res://scenes/ui/ServerBrowser.tscn"
+var _server_browser: Control = null
+
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	Events.all_players_ready.connect(_on_all_ready)
 	$Panel/VBox/SinglePlayerBtn.pressed.connect(_on_single_player)
 	$Panel/VBox/HostBtn.pressed.connect(_on_host)
 	$Panel/VBox/JoinBtn.pressed.connect(_on_join)
+	$Panel/VBox/ServersBtn.pressed.connect(_on_servers)
 	$Panel/VBox/BottomRow/SettingsBtn.pressed.connect(_on_settings)
 	$Panel/VBox/BottomRow/QuitBtn.pressed.connect(_on_quit)
 	settings_menu.closed.connect(_on_settings_closed)
 	settings_menu.visible = false
+	# Server browser overlay (direct connect / favorites / LAN) — instanced like the
+	# settings menu. Selecting a server emits connect_requested → the shared _join flow.
+	if ResourceLoader.exists(SERVER_BROWSER):
+		_server_browser = (load(SERVER_BROWSER) as PackedScene).instantiate()
+		add_child(_server_browser)
+		if _server_browser.has_signal("connect_requested"):
+			_server_browser.connect_requested.connect(_on_browser_connect)
+		if _server_browser.has_signal("closed"):
+			_server_browser.closed.connect(_on_browser_closed)
 
 func _main() -> Node:
 	return get_tree().current_scene
@@ -50,24 +63,63 @@ func _on_host() -> void:
 		status.text = "Host failed: %s" % err
 
 func _on_join() -> void:
+	var a := ServerBrowser.parse_addr(ip_field.text)
+	_join(String(a["ip"]), int(a["port"]))
+
+## Shared connect path used by the JOIN button AND the server browser. Parses/uses an
+## explicit ip+port, wires success (open the client hub + remember the server) and
+## FAILURE feedback (previously silent — the menu just hung on "Connecting…").
+func _join(ip: String, port: int) -> void:
 	_apply_name()
-	var ip := ip_field.text.strip_edges()
-	if ip == "":
+	if ip.strip_edges() == "":
 		ip = Settings.DEFAULT_IP
-	var err := NetworkManager.join_game(ip)
+	var err := NetworkManager.join_game(ip, port)
 	if err == OK:
-		status.text = "Connecting to %s…" % ip
+		status.text = "Connecting to %s:%d…" % [ip, port]
+		_pending_ip = ip
+		_pending_port = port
 		# On connect, the client opens its OWN Hub to pick its loadout; DEPLOY loads the
 		# arena + readies it. (Falls back to a direct arena load if no hub exists.)
 		multiplayer.connected_to_server.connect(_on_connected_to_host, CONNECT_ONE_SHOT)
+		multiplayer.connection_failed.connect(_on_join_failed, CONNECT_ONE_SHOT)
 	else:
-		status.text = "Join failed: %s" % err
+		status.text = "Join failed — check IP/port"
+
+var _pending_ip: String = ""
+var _pending_port: int = 0
 
 func _on_connected_to_host() -> void:
+	if multiplayer.connection_failed.is_connected(_on_join_failed):
+		multiplayer.connection_failed.disconnect(_on_join_failed)
+	# Remember this server in the local recents list (MRU).
+	ServerBrowser.record_connect(_pending_ip, _pending_port, NetworkManager.local_player_name)
 	if _main().has_method("open_hub"):
 		_main().open_hub("client")
 	else:
 		_main().load_arena()
+
+func _on_join_failed() -> void:
+	if multiplayer.connected_to_server.is_connected(_on_connected_to_host):
+		multiplayer.connected_to_server.disconnect(_on_connected_to_host)
+	status.text = "Join failed — check IP/port (is the host up?)"
+
+# ---------------------------------------------------------------- server browser
+func _on_servers() -> void:
+	if _server_browser == null:
+		return
+	$Panel.hide()
+	if _server_browser.has_method("open"):
+		_server_browser.open()
+
+func _on_browser_connect(ip: String, port: int) -> void:
+	# A server was picked in the browser — close it and run the shared join flow.
+	if _server_browser and _server_browser.has_method("close"):
+		_server_browser.close()
+	$Panel.show()
+	_join(ip, port)
+
+func _on_browser_closed() -> void:
+	$Panel.show()
 
 func _on_all_ready() -> void:
 	status.text = "All players ready — match starting!"

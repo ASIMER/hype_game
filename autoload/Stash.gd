@@ -11,8 +11,27 @@ extends Node
 
 var items: Array = []   # [{ "id": String, "count": int }]
 
+## Set once if a save from a NEWER game version was loaded this session (guards the
+## version-mismatch toast so it fires at most once per file per session).
+var _warned_newer := false
+
 func _ready() -> void:
 	load_stash()
+
+## Semantic-version compare: -1 if a<b, 0 if equal, 1 if a>b. Splits on ".",
+## compares ints positionally; missing/non-numeric parts count as 0.
+func _cmp_version(a: String, b: String) -> int:
+	var pa := a.split(".")
+	var pb := b.split(".")
+	var n: int = maxi(pa.size(), pb.size())
+	for i in n:
+		var ai := int(pa[i]) if i < pa.size() else 0
+		var bi := int(pb[i]) if i < pb.size() else 0
+		if ai < bi:
+			return -1
+		if ai > bi:
+			return 1
+	return 0
 
 # ---------------------------------------------------------------- queries
 func count_of(id: String) -> int:
@@ -119,6 +138,7 @@ func _path() -> String:
 
 func save_stash() -> void:
 	var cfg := ConfigFile.new()
+	cfg.set_value("stash", "save_version", Settings.GAME_VERSION)
 	cfg.set_value("stash", "items", items)
 	cfg.save(_path())
 
@@ -126,8 +146,24 @@ func load_stash() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(_path()) != OK:
 		return
-	var raw: Array = cfg.get_value("stash", "items", [])
+	# Version resilience: missing stamp = legacy save (compatible). A NEWER save than
+	# this build → warn once, then still load every well-formed entry below.
+	var save_ver := String(cfg.get_value("stash", "save_version", ""))
+	if save_ver != "" and _cmp_version(save_ver, Settings.GAME_VERSION) > 0:
+		if not _warned_newer:
+			_warned_newer = true
+			push_warning("[Stash] stash.cfg is from a newer game version (v%s > v%s) — loading what we can." % [save_ver, Settings.GAME_VERSION])
+			Events.notify.emit("Save is from a newer game version (v%s) — loading what we can." % save_ver, 2)
+	var raw: Variant = cfg.get_value("stash", "items", [])
 	items.clear()
-	for e in raw:
-		if typeof(e) == TYPE_DICTIONARY and e.has("id"):
-			items.append({ "id": String(e["id"]), "count": int(e.get("count", 1)) })
+	if not (raw is Array):
+		return
+	# Skip/repair malformed entries (wrong type, missing id, bad count) so a single bad
+	# stack can't abort the whole load.
+	for e in (raw as Array):
+		if not (e is Dictionary) or not e.has("id"):
+			continue
+		var n := int(e.get("count", 1))
+		if n <= 0:
+			continue
+		items.append({ "id": String(e["id"]), "count": n })

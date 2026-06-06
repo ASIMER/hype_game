@@ -179,6 +179,10 @@ func load_arena() -> void:
 	# Ambient atmosphere (dust/embers + the day→storm transition on the final wave).
 	if DisplayServer.get_name() != "headless" and ResourceLoader.exists("res://scenes/fx/Atmosphere.tscn"):
 		world_root.add_child((load("res://scenes/fx/Atmosphere.tscn") as PackedScene).instantiate())
+	# Renders teammates' shots (tracer/muzzle/impact) from Events.remote_shot so the
+	# whole squad sees each other's combat (co-op FX sync).
+	if DisplayServer.get_name() != "headless":
+		world_root.add_child(RemoteShotFX.new())
 	# Local HUD + inventory overlay (skip on a dedicated headless server).
 	if DisplayServer.get_name() != "headless":
 		if ResourceLoader.exists("res://scenes/ui/HUD.tscn"):
@@ -192,6 +196,12 @@ func load_arena() -> void:
 			ui_layer.add_child((load("res://scenes/ui/MapUI.tscn") as PackedScene).instantiate())
 		if ResourceLoader.exists("res://scenes/ui/HitMarker.tscn"):
 			ui_layer.add_child((load("res://scenes/ui/HitMarker.tscn") as PackedScene).instantiate())
+		# Co-op TAB leaderboard (synced kills) + teammate trade UI. Self-show on their
+		# own input/Events; harmless in single-player (the table just shows you).
+		if ResourceLoader.exists("res://scenes/ui/Scoreboard.tscn"):
+			ui_layer.add_child((load("res://scenes/ui/Scoreboard.tscn") as PackedScene).instantiate())
+		if ResourceLoader.exists("res://scenes/ui/TradeUI.tscn"):
+			ui_layer.add_child((load("res://scenes/ui/TradeUI.tscn") as PackedScene).instantiate())
 		if ResourceLoader.exists(PAUSE_MENU):
 			_pause_menu = (load(PAUSE_MENU) as PackedScene).instantiate()
 			ui_layer.add_child(_pause_menu)

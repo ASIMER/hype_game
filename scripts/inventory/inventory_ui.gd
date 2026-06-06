@@ -254,10 +254,19 @@ func _open_context_menu(item: ItemData, cnt: int) -> void:
 	_context_item = item
 	_context_count = cnt
 	_context_menu.clear()
-	# id 0 = Use (consumables only), id 1 = Drop.
+	# id 0 = Use (consumables only), id 1 = Drop, id 2 = Split, id 3 = Give.
 	if item.kind == ItemData.Kind.CONSUMABLE:
 		_context_menu.add_item("Use", 0)
 	_context_menu.add_item("Drop", 1)
+	# Split: only meaningful when there's more than one to split off.
+	if cnt >= 2:
+		_context_menu.add_item("Split", 2)
+	# Give the whole stack to the nearest teammate; disabled (or omitted) when alone.
+	var to: int = NetworkManager.nearest_teammate(GameState.local_peer_id())
+	if to != 0:
+		var mate: Dictionary = GameState.peers.get(to, {})
+		var mate_name: String = mate.get("name", "Raider")
+		_context_menu.add_item("Give to %s" % mate_name, 3)
 	_context_menu.reset_size()
 	_context_menu.position = Vector2i(get_viewport().get_mouse_position())
 	_context_menu.popup()
@@ -270,6 +279,10 @@ func _on_context_id_pressed(id: int) -> void:
 			_use_item(_context_item)
 		1:
 			_drop_item(_context_item, _context_count)
+		2:
+			_split_item(_context_item, _context_count)
+		3:
+			_give_item(_context_item, _context_count)
 	_context_item = null
 	_context_count = 0
 
@@ -299,6 +312,26 @@ func _drop_item(item: ItemData, count: int) -> void:
 	LootPickup.spawn_at(parent, pos, item.id, count)
 	if _inventory != null:
 		_inventory.remove_item(item.id, count)
+
+## Split half the stack off into a new separate stack via the server-authoritative
+## NetworkManager.request_split (works in single-player too). Do not mutate
+## inv.stacks directly — the owner-mirror fires inventory_changed and we rebuild.
+func _split_item(item: ItemData, count: int) -> void:
+	if count < 2:
+		return
+	var half: int = int(count / 2)
+	if half < 1:
+		return
+	NetworkManager.request_split(GameState.local_peer_id(), item.id, half)
+
+## Give the whole stack to the nearest teammate via the server-authoritative
+## NetworkManager.transfer_item. The server moves the items and re-mirrors both
+## inventories — do not mutate local stacks here.
+func _give_item(item: ItemData, count: int) -> void:
+	var to: int = NetworkManager.nearest_teammate(GameState.local_peer_id())
+	if to == 0:
+		return
+	NetworkManager.transfer_item(GameState.local_peer_id(), to, item.id, count)
 
 ## Where dropped pickups live. Prefer the same parent existing pickups use
 ## (their group is "pickups"); fall back to the current scene root.

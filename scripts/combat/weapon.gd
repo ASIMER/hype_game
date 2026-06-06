@@ -200,7 +200,13 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 			var dealt := dmg
 			if is_crit:
 				dealt *= crit_mult
-			hb.apply_hit(dealt, shooter)
+			# Server-authoritative damage: the host applies directly; a CLIENT routes
+			# the hit to the server (its local apply_hit would only damage its OWN copy
+			# of the enemy, never the authoritative one → the enemy never dies in co-op).
+			if GameState.is_local_authority_server():
+				hb.apply_hit(dealt, shooter)
+			else:
+				NetworkManager.request_hit(hb.get_path(), dealt, _shooter_peer(shooter))
 			hit.emit(hb.get_parent(), dealt)
 			# Crit juice: a punch of camera shake everywhere, plus a brief hit-stop in
 			# single-player only (hit-stop scales Engine.time_scale, which would desync
@@ -215,6 +221,9 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)
+	# Co-op: let teammates SEE this shot. Our own FX already spawned via the `fired`
+	# signal above; broadcast the shot so the OTHER peers spawn the tracer/impact too.
+	NetworkManager.broadcast_shot(_muzzle_position(), hit_point, arc, _is_enemy(hit_node), _last_hit_normal)
 
 ## Muzzle velocity for the ballistic march: a weapon may override the Settings
 ## default by exposing a positive `muzzle_velocity` on its WeaponData.
@@ -322,6 +331,13 @@ func _resolve_hurtbox(node: Node) -> Hurtbox:
 		if child is Hurtbox:
 			return child
 	return null
+
+## Peer id that owns the shooter body (the player node is named str(peer_id)).
+func _shooter_peer(shooter: Node) -> int:
+	if shooter == null:
+		return 1
+	var pid := str(shooter.name).to_int()
+	return pid if pid > 0 else 1
 
 func _find_owner_body() -> Node3D:
 	var n := get_parent()

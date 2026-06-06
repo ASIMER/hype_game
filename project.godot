@@ -1,4 +1,4 @@
-; Engine configuration file.
+Де; Engine configuration file.
 ; Arc Raiders-style co-op extraction shooter — vertical slice
 ; Godot 4.6.3 stable
 
@@ -30,6 +30,7 @@ RaidManager="*res://autoload/RaidManager.gd"
 ExtractionDirector="*res://autoload/ExtractionDirector.gd"
 AgentBridge="*res://autoload/AgentBridge.gd"
 SettingsManager="*res://autoload/SettingsManager.gd"
+ServerBrowser="*res://autoload/ServerBrowser.gd"
 
 [display]
 
@@ -90,6 +91,14 @@ map={
 ui_cancel={
 "deadzone": 0.5,
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194305,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+}
+scoreboard={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194306,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+}
+trade={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":84,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
 }
 aim={
 "deadzone": 0.5,

@@ -214,6 +214,14 @@ func _ensure_player_spawned(peer_id: int) -> void:
 		p.set_multiplayer_authority(peer_id)
 	var marker := _pick_marker(player_spawn_markers, index)
 	var mx := marker.global_transform if marker else global_transform
+	# With more players than markers (5-8), _pick_marker wraps modulo → players would
+	# stack. Offset extras around their marker on a golden-angle ring so they spread.
+	var marker_count: int = player_spawn_markers.get_child_count() if player_spawn_markers else 0
+	if marker_count > 0 and index >= marker_count:
+		var ring: int = index / marker_count
+		var ang: float = float(index) * 2.39996323   # golden angle, even spread
+		var rad: float = 1.9 * float(ring)
+		mx.origin += Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
 	# Set on the server copy (also the host's own player, which the host owns).
 	p.global_transform = mx
 	players.add_child(p, true)

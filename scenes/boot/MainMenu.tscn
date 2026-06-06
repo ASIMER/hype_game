@@ -143,6 +143,11 @@ custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "JOIN CO-OP"
 
+[node name="ServersBtn" type="Button" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "SERVERS — browse / favorites / LAN"
+
 [node name="Sep2" type="HSeparator" parent="Panel/VBox"]
 layout_mode = 2
 

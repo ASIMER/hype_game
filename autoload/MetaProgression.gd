@@ -71,8 +71,46 @@ var weapon_perks: Dictionary = {}
 var last_daily_date: String = ""
 var daily_quest_ids: Array[String] = []
 
+## Set once if a save from a NEWER game version was loaded this session (so the
+## version-mismatch toast fires at most once per file per session).
+var _warned_newer := false
+
 func _ready() -> void:
 	load_profile()
+
+## Semantic-version compare: returns -1 if a<b, 0 if equal, 1 if a>b. Splits on
+## ".", compares ints positionally; missing parts count as 0. Non-numeric parts
+## are treated as 0.
+func _cmp_version(a: String, b: String) -> int:
+	var pa := a.split(".")
+	var pb := b.split(".")
+	var n: int = maxi(pa.size(), pb.size())
+	for i in n:
+		var ai := int(pa[i]) if i < pa.size() else 0
+		var bi := int(pb[i]) if i < pb.size() else 0
+		if ai < bi:
+			return -1
+		if ai > bi:
+			return 1
+	return 0
+
+## Compat hook for older saves; currently a no-op (fields default cleanly). Extend
+## here when a future build changes a field's shape.
+func _migrate(_cfg: ConfigFile, _from_version: String) -> void:
+	pass
+
+## Defensively coerce a loaded value into a Dictionary-of-Dictionary (weapon -> inner
+## map). Non-dict at the top falls back to {}; any inner value that isn't a Dictionary
+## is dropped (that weapon only) so one bad entry can't abort the whole load.
+func _load_nested_dict(raw: Variant) -> Dictionary:
+	if not (raw is Dictionary):
+		return {}
+	var out: Dictionary = {}
+	for k in (raw as Dictionary):
+		var inner: Variant = raw[k]
+		if inner is Dictionary:
+			out[String(k)] = (inner as Dictionary).duplicate()
+	return out
 
 # ---------------------------------------------------------------- currency
 func earn(amount: int) -> void:
@@ -267,6 +305,7 @@ func player_mods() -> Dictionary:
 # ---------------------------------------------------------------- persistence
 func save_profile() -> void:
 	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "save_version", Settings.GAME_VERSION)
 	cfg.set_value("meta", "currency", currency)
 	cfg.set_value("meta", "unlocked", unlocked)
 	cfg.set_value("meta", "upgrades", upgrades)
@@ -286,12 +325,23 @@ func load_profile() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(_save_path()) != OK:
 		return
+	# Version resilience: a missing stamp = legacy pre-versioning save (compatible).
+	# A NEWER save than this build → warn once but still load every field we can.
+	var save_ver := String(cfg.get_value("meta", "save_version", ""))
+	if save_ver != "" and _cmp_version(save_ver, Settings.GAME_VERSION) > 0:
+		if not _warned_newer:
+			_warned_newer = true
+			push_warning("[MetaProgression] profile.cfg is from a newer game version (v%s > v%s) — loading what we can." % [save_ver, Settings.GAME_VERSION])
+			Events.notify.emit("Save is from a newer game version (v%s) — loading what we can." % save_ver, 2)
+	else:
+		_migrate(cfg, save_ver)
 	currency = int(cfg.get_value("meta", "currency", 0))
 	var raw_unlocked: Array = cfg.get_value("meta", "unlocked", [])
 	unlocked.clear()
 	for id in raw_unlocked:
 		unlocked.append(String(id))
-	upgrades = cfg.get_value("meta", "upgrades", {})
+	var raw_upgrades: Variant = cfg.get_value("meta", "upgrades", {})
+	upgrades = raw_upgrades if raw_upgrades is Dictionary else {}
 	var raw_loadout: Array = cfg.get_value("meta", "loadout", ["rifle", "pistol"])
 	loadout.clear()
 	for id in raw_loadout:
@@ -304,13 +354,16 @@ func load_profile() -> void:
 	unlocked_blueprints.clear()
 	for bp in raw_bp:
 		unlocked_blueprints.append(String(bp))
-	quest_progress = cfg.get_value("meta", "quest_progress", {})
+	var raw_qp: Variant = cfg.get_value("meta", "quest_progress", {})
+	quest_progress = raw_qp if raw_qp is Dictionary else {}
 	var raw_cq: Array = cfg.get_value("meta", "completed_quests", [])
 	completed_quests.clear()
 	for qid in raw_cq:
 		completed_quests.append(String(qid))
-	equipped_attachments = cfg.get_value("meta", "equipped_attachments", {})
-	weapon_perks = cfg.get_value("meta", "weapon_perks", {})
+	# Nested weapon->{slot/perk->value} dicts: validate the outer + each inner so a
+	# malformed/newer-shaped value defaults that weapon only, never crashing the load.
+	equipped_attachments = _load_nested_dict(cfg.get_value("meta", "equipped_attachments", {}))
+	weapon_perks = _load_nested_dict(cfg.get_value("meta", "weapon_perks", {}))
 	last_daily_date = String(cfg.get_value("meta", "last_daily_date", ""))
 	var raw_dq: Array = cfg.get_value("meta", "daily_quest_ids", [])
 	daily_quest_ids.clear()

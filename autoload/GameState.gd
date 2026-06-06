@@ -35,10 +35,28 @@ func difficulty_name() -> String:
 # peer_id -> { name: String, ready: bool, alive: bool, extracted: bool }
 var peers: Dictionary = {}
 
+## Per-player mob kills (peer_id -> int) and the team total. Server-authoritative,
+## broadcast to every client so the TAB leaderboard is identical for all. Keys are
+## ints (peer ids); deaths tracked separately for the "deaths" column.
+var kills: Dictionary = {}
+var deaths: Dictionary = {}
+var mobs_killed: int = 0
+
+## Record one mob kill by `peer_id` (server-side). Returns nothing; caller broadcasts.
+func record_kill(peer_id: int) -> void:
+	kills[peer_id] = int(kills.get(peer_id, 0)) + 1
+	mobs_killed += 1
+
+func record_death(peer_id: int) -> void:
+	deaths[peer_id] = int(deaths.get(peer_id, 0)) + 1
+
 func reset_match() -> void:
 	current_wave = 0
 	match_time_left = match_duration
 	final_wave = false
+	kills.clear()
+	deaths.clear()
+	mobs_killed = 0
 	for id in peers:
 		peers[id]["alive"] = true
 		peers[id]["extracted"] = false

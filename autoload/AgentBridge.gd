@@ -263,6 +263,33 @@ func _handle_line(line: String) -> void:
 			var rdy := bool(json.get("on", true))
 			NetworkManager.set_ready.rpc_id(1, rdy)
 			_send({ "ok": true, "ready": rdy })
+		"transfer":
+			# Debug: co-op item give — move {id,count} from {from} peer to {to} peer.
+			# Defaults `from` to this instance's peer id (give MY item to a teammate).
+			var tfrom := int(json.get("from", GameState.local_peer_id()))
+			var tto := int(json.get("to", 1))
+			var tid := str(json.get("id", ""))
+			var tcnt := int(json.get("count", 1))
+			var moved := NetworkManager.transfer_item(tfrom, tto, tid, tcnt)
+			_send({ "ok": true, "moved": moved })
+		"favorites":
+			# Debug: drive the local server list (browser QA). action: add|remove|list|connect.
+			var fact := str(json.get("action", "list"))
+			var fip := str(json.get("ip", ""))
+			var fport := int(json.get("port", Settings.DEFAULT_PORT))
+			var fname := str(json.get("name", ""))
+			match fact:
+				"add": ServerBrowser.add_favorite(fname, fip, fport)
+				"remove": ServerBrowser.remove_favorite(fip, fport)
+				"connect": ServerBrowser.record_connect(fip, fport, fname)
+			_send({ "ok": true, "favorites": ServerBrowser.get_favorites(),
+				"recents": ServerBrowser.get_recents() })
+		"discover":
+			# Debug: trigger a LAN scan; results land in ServerBrowser.last_found (read via
+			# `state.lan` after ~timeout). Returns immediately.
+			var dto := float(json.get("timeout", 1.5))
+			ServerBrowser.scan_lan(dto)
+			_send({ "ok": true, "scanning": true, "timeout": dto })
 		"ui":
 			# Debug: open/close menus for screenshot verification.
 			_send({ "ok": _ui_action(str(json.get("action", ""))) })
@@ -438,6 +465,15 @@ func _ui_action(action: String) -> bool:
 			if sm and sm.has_method("open"):
 				sm.open()
 				return true
+		"open_servers", "close_servers":
+			# Show/hide the main-menu server browser overlay (screenshot QA).
+			var sb := scene.find_child("ServerBrowser", true, false)
+			if sb and sb.has_method("open"):
+				if action == "open_servers":
+					sb.open()
+				else:
+					sb.close()
+				return true
 		"close_settings":
 			var sm := scene.find_child("SettingsMenu", true, false)
 			if sm and sm.has_method("close"):
@@ -566,6 +602,17 @@ func _snapshot() -> Dictionary:
 	}
 	var players := get_tree().get_nodes_in_group("players")
 	d["players_count"] = players.size()
+	d["peer_id"] = GameState.local_peer_id()
+	d["peers"] = GameState.peers.keys()
+	d["peers_count"] = GameState.peers.size()
+	d["favorites"] = ServerBrowser.get_favorites()
+	d["recents"] = ServerBrowser.get_recents()
+	d["lan"] = ServerBrowser.last_found
+	d["scoreboard"] = {
+		"kills": GameState.kills,
+		"deaths": GameState.deaths,
+		"mobs_killed": GameState.mobs_killed,
+	}
 	var p: Node = _local_player(players)
 	if p == null:
 		d["player"] = null

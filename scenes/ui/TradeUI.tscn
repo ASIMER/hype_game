@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://ctradeui0001"]
+
+[ext_resource type="Script" path="res://scripts/ui/trade_ui.gd" id="1_tradeui"]
+
+[node name="TradeUI" type="CanvasLayer"]
+layer = 50
+script = ExtResource("1_tradeui")

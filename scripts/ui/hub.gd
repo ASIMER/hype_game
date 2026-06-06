@@ -55,6 +55,11 @@ const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
 const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
 const COL_DIM   := Color(0.45, 0.50, 0.55, 1.0)
 
+# Squad status-dot colours: amber = leader/host, green = ready, yellow = not ready.
+const DOT_LEADER := Color(0.91, 0.64, 0.24, 1.0)
+const DOT_READY  := Color(0.36, 0.78, 0.42, 1.0)
+const DOT_WAIT   := Color(0.93, 0.82, 0.27, 1.0)
+
 # ── node refs ────────────────────────────────────────────────────────────────
 @onready var _currency_label: Label       = $Layout/Header/HeaderVBox/HRow/CurrencyLabel
 @onready var _tab_buttons: Array          = []  # populated in _ready from TabBar
@@ -71,7 +76,7 @@ var _active_tab: int = TAB_STASH
 
 # ── Co-op squad lobby ──────────────────────────────────────────────────────────
 var _squad_panel: PanelContainer = null
-var _squad_list: VBoxContainer = null
+var _squad_list: HBoxContainer = null   # horizontal roster strip (bottom of the hub)
 var _self_ready: bool = false   # this client's lobby ready state (clients only)
 
 func _is_coop() -> bool:
@@ -196,28 +201,40 @@ func _refresh_deploy_button() -> void:
 		_deploy_btn.text = "UNREADY" if _self_ready else "READY"
 		_deploy_btn.disabled = false
 
-## Builds the SQUAD roster panel (top-right) shown only in co-op.
+## Builds the SQUAD roster strip (bottom, left-of-centre) shown only in co-op.
+## Lays members out horizontally as `● nick` chips with a colour-coded status dot;
+## the strip sits in the lower region, above the footer so it never overlaps DEPLOY.
 func _build_squad_panel() -> void:
 	if not _is_coop():
 		return
 	var panel := PanelContainer.new()
 	panel.name = "SquadPanel"
-	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	panel.offset_left = -300
+	# Bottom strip: anchored to the bottom edge, stretched across, lifted clear of
+	# the footer row so the DEPLOY/START button stays unobstructed.
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.offset_left = 24
 	panel.offset_right = -24
-	panel.offset_top = 96
+	panel.offset_top = -132
+	panel.offset_bottom = -84
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 4)
-	panel.add_child(vb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	panel.add_child(row)
 	var title := Label.new()
 	title.text = "SQUAD"
 	title.add_theme_color_override("font_color", COL_TEAL)
 	title.add_theme_font_size_override("font_size", 16)
-	vb.add_child(title)
-	_squad_list = VBoxContainer.new()
-	_squad_list.add_theme_constant_override("separation", 2)
-	vb.add_child(_squad_list)
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(title)
+	# Scroll horizontally so any number of friends (cap is 8) fit without overflowing.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	row.add_child(scroll)
+	_squad_list = HBoxContainer.new()
+	_squad_list.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_squad_list.add_theme_constant_override("separation", 18)
+	scroll.add_child(_squad_list)
 	add_child(panel)
 	_squad_panel = panel
 
@@ -231,19 +248,24 @@ func _refresh_squad() -> void:
 	ids.sort()
 	for id in ids:
 		var info: Dictionary = GameState.peers[id]
-		var row := Label.new()
-		var who: String = str(info.get("name", "Raider"))
-		var tags := ""
-		if int(id) == 1:
-			tags = "  ★ LEADER"
-		elif info.get("ready", false):
-			tags = "  ✓ READY"
-		else:
-			tags = "  … not ready"
-		row.text = "%s%s" % [who, tags]
-		var col: Color = COL_AMBER if int(id) == 1 else (COL_TEAL if info.get("ready", false) else COL_DIM)
-		row.add_theme_color_override("font_color", col)
-		_squad_list.add_child(row)
+		var nm: String = String(info.get("name", "Raider"))
+		var rdy: bool = bool(info.get("ready", false))
+		var is_leader: bool = (int(id) == 1)
+		# One chip = a coloured dot + the nick, laid out side by side.
+		var chip := HBoxContainer.new()
+		chip.add_theme_constant_override("separation", 5)
+		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var dot := Label.new()
+		dot.text = "●"
+		# Leader is implicitly ready → amber; else green when ready, yellow when waiting.
+		var dot_col: Color = DOT_LEADER if is_leader else (DOT_READY if rdy else DOT_WAIT)
+		dot.add_theme_color_override("font_color", dot_col)
+		chip.add_child(dot)
+		var who := Label.new()
+		who.text = nm
+		who.add_theme_color_override("font_color", COL_TEAL if is_leader else COL_DIM)
+		chip.add_child(who)
+		_squad_list.add_child(chip)
 
 func _on_squad_changed() -> void:
 	_refresh_squad()

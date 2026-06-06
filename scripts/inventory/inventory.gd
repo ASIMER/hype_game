@@ -85,6 +85,26 @@ func add_item(item: ItemData, count: int) -> int:
 		_notify()
 	return remaining
 
+## Splits `amount` off the first stack of `item_id` (count > amount) into a NEW
+## stack of the same item, so the inventory shows two separate stacks. Server-side
+## logic (the owner-mirror serializes per-stack, so the split survives replication).
+## Returns true if a split happened. No-op if amount<=0 or no splittable stack.
+func split_stack(item_id: String, amount: int) -> bool:
+	if amount <= 0:
+		return false
+	for i in stacks.size():
+		var s := stacks[i]
+		if (s["item"] as ItemData).id == item_id and int(s["count"]) > amount:
+			var it: ItemData = s["item"]
+			# A new cell is needed for the split-off stack.
+			if used_cells() + it.grid_w * it.grid_h > capacity_cells():
+				return false
+			s["count"] = int(s["count"]) - amount
+			stacks.insert(i + 1, { "item": it, "count": amount })
+			_notify()
+			return true
+	return false
+
 ## Removes up to `count` of an item id; returns amount actually removed.
 func remove_item(id: String, count: int) -> int:
 	var removed := 0
@@ -149,5 +169,46 @@ func clear() -> void:
 	_notify()
 
 func _notify() -> void:
+	changed.emit()
+	Events.inventory_changed.emit(self)
+	_push_to_owner()
+
+# --------------------------------------------------- co-op replication to owner
+# The inventory is server-authoritative but NOT auto-replicated (stacks hold ItemData
+# refs). So after any server-side change, mirror the serialized contents to the OWNING
+# client, which rebuilds its local copy — otherwise a client never SEES the loot it
+# picked up (and split/give/trade would have nothing to act on).
+func _owner_peer() -> int:
+	var pn := get_parent()
+	if pn == null:
+		return 1
+	var oid := str(pn.name).to_int()
+	return oid if oid > 0 else 1
+
+func _serialize() -> Array:
+	var out: Array = []
+	for s in stacks:
+		out.append({ "id": (s["item"] as ItemData).id, "count": int(s["count"]) })
+	return out
+
+func _push_to_owner() -> void:
+	if not multiplayer.has_multiplayer_peer() or NetworkManager.is_offline:
+		return
+	if not multiplayer.is_server():
+		return
+	var owner := _owner_peer()
+	if owner == 1:
+		return   # the host's own inventory is already local
+	_apply_remote.rpc_id(owner, _serialize())
+
+@rpc("any_peer", "call_remote", "reliable")
+func _apply_remote(data: Array) -> void:
+	if multiplayer.get_remote_sender_id() != 1:
+		return   # only the server mirrors inventories
+	stacks.clear()
+	for e in data:
+		var it: ItemData = ItemCatalog.get_item(String(e["id"]))
+		if it != null:
+			stacks.append({ "item": it, "count": int(e["count"]) })
 	changed.emit()
 	Events.inventory_changed.emit(self)

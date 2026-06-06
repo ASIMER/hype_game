@@ -33,11 +33,31 @@ const SHADOW_SIZES := [1024, 2048, 4096, 8192]
 
 var _values: Dictionary = {}
 
+## Set once if a save from a NEWER game version was loaded this session (guards the
+## version-mismatch toast so it fires at most once per file per session).
+var _warned_newer := false
+
 
 func _ready() -> void:
 	load_config()
 	# Apply after the first frame so the root viewport exists.
 	apply_all.call_deferred()
+
+
+## Semantic-version compare: -1 if a<b, 0 if equal, 1 if a>b. Splits on ".",
+## compares ints positionally; missing/non-numeric parts count as 0.
+func _cmp_version(a: String, b: String) -> int:
+	var pa := a.split(".")
+	var pb := b.split(".")
+	var n: int = maxi(pa.size(), pb.size())
+	for i in n:
+		var ai := int(pa[i]) if i < pa.size() else 0
+		var bi := int(pb[i]) if i < pb.size() else 0
+		if ai < bi:
+			return -1
+		if ai > bi:
+			return 1
+	return 0
 
 
 func _headless() -> bool:
@@ -65,13 +85,25 @@ func reset_defaults() -> void:
 func load_config() -> void:
 	_values = DEFAULTS.duplicate(true)
 	var cfg := ConfigFile.new()
-	if cfg.load(_path()) == OK:
-		for key in DEFAULTS:
-			if cfg.has_section_key("settings", key):
-				_values[key] = cfg.get_value("settings", key)
+	if cfg.load(_path()) != OK:
+		return
+	# Version resilience: stamp lives in a "_meta" section (kept out of the settings
+	# key space). Missing = legacy save (compatible). NEWER than this build → warn once.
+	var save_ver := String(cfg.get_value("_meta", "save_version", ""))
+	if save_ver != "" and _cmp_version(save_ver, Settings.GAME_VERSION) > 0:
+		if not _warned_newer:
+			_warned_newer = true
+			push_warning("[SettingsManager] settings.cfg is from a newer game version (v%s > v%s) — loading what we can." % [save_ver, Settings.GAME_VERSION])
+			Events.notify.emit("Save is from a newer game version (v%s) — loading what we can." % save_ver, 2)
+	# Load only known keys defensively; an unknown/newer key is simply ignored, a known
+	# key keeps its DEFAULT if absent.
+	for key in DEFAULTS:
+		if cfg.has_section_key("settings", key):
+			_values[key] = cfg.get_value("settings", key)
 
 func save() -> void:
 	var cfg := ConfigFile.new()
+	cfg.set_value("_meta", "save_version", Settings.GAME_VERSION)
 	for key in _values:
 		cfg.set_value("settings", key, _values[key])
 	cfg.save(_path())
