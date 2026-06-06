@@ -774,6 +774,10 @@ static func _build_water(root: Node3D) -> void:
 	var smat := ShaderMaterial.new()
 	if shader != null:
 		smat.shader = shader
+	# Graphics-quality lever (set by SettingsManager from the preset; read at build, so a
+	# change applies on the next raid): 0 = flat/cheap water (no SCREEN_TEXTURE refraction),
+	# 0.12 = full refractive water. Default ceiling is 0.12.
+	smat.set_shader_parameter("refract_amt", clampf(Settings.water_refraction, 0.0, 0.5))
 	# Half-width = the channel half-extent so the plane reaches the waterline on the banks.
 	var off_edge: float = RIVER_CHANNEL_HALF
 	var off_mid: float = RIVER_CHANNEL_HALF * 0.42

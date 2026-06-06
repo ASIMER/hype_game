@@ -171,6 +171,10 @@ var fov: float = DEFAULT_FOV            # camera FOV (player.gd reads this)
 var sfx_volume: float = 0.9             # 0..1, applied to AudioManager
 var invert_y: bool = false
 var ads_toggle: bool = false            # false = hold to aim, true = toggle
+# Graphics-quality scale for rebuild-bound levers (set by SettingsManager from the quality
+# preset; read at arena build, so a change applies on the NEXT raid). 1.0 = Ultra ceiling.
+var grass_density_scale: float = 1.0    # multiplies the near/far grass caps in procedural_flora
+var water_refraction: float = 0.12      # water.gdshader refract_amt baked at water build (0 = flat/cheap)
 
 # --- Multi-instance (parallel agent testing) -------------------------------
 # To run 2–4 game instances at once (each driven by its own agent) the agent

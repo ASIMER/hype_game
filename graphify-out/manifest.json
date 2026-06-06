@@ -35,13 +35,13 @@
     "semantic_hash": "d09b3924d69e9c983a42aaa9f00d888f"
   },
   "tools/audio/gen_audio.py": {
-    "mtime": 1780756361.6702454,
+    "mtime": 1780760786.1148283,
     "ast_hash": "05072b574f8665c8bd179aaaec2eb6c8",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1780758377.509275,
-    "ast_hash": "f6eed6299671597eac7d613e7b71fef4",
+    "mtime": 1780762110.3522186,
+    "ast_hash": "73a7b6e0cd4146b30e9e3a1d43998de2",
     "semantic_hash": ""
   },
   "README.md": {
@@ -525,7 +525,7 @@
     "semantic_hash": ""
   },
   "docs/ASSETS.md": {
-    "mtime": 1780758350.9562821,
+    "mtime": 1780760786.0892775,
     "ast_hash": "19da4c431ca559847247f1e1dc3452ae",
     "semantic_hash": ""
   },
@@ -729,11 +729,6 @@
     "ast_hash": "607b77ac116ed374c59b29614c2b0978",
     "semantic_hash": ""
   },
-  "debug_screens/Screenshot 2026-06-06 150742.png": {
-    "mtime": 1780747726.9833367,
-    "ast_hash": "5243e2499f2ea75b6d04bf2d8d5c1a68",
-    "semantic_hash": ""
-  },
   "icon.svg": {
     "mtime": 1780664941.165353,
     "ast_hash": "c4584e64563e5cefa7508ef99da5d526",
@@ -835,12 +830,12 @@
     "semantic_hash": ""
   },
   "assets/audio/underwater.ogg": {
-    "mtime": 1780756370.4119375,
+    "mtime": 1780760786.0817692,
     "ast_hash": "daabdb1e3857ba89f4ee35328bd51a4c",
     "semantic_hash": ""
   },
   "assets/audio/water_splash.ogg": {
-    "mtime": 1780756370.159456,
+    "mtime": 1780760786.0827696,
     "ast_hash": "7e4a3f4dc95fec964bf70e5a3a3441a6",
     "semantic_hash": ""
   }

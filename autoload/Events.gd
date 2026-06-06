@@ -80,6 +80,18 @@ signal lan_scan_started()
 ## A LAN scan finished. `servers` = Array of { name, ip, port, players, max }.
 signal lan_servers_found(servers: Array)
 
+# --- Graphics / diagnostics ---
+## A graphics quality preset (or an individual quality lever) changed. level: 0 Low,
+## 1 Medium, 2 High, 3 Ultra. Scene-side render levers (env SDFGI/SSAO/glow, sky clouds)
+## listen and apply immediately; rebuild-bound levers (grass/water) read at next arena build.
+signal graphics_quality_changed(level: int)
+## The stats/diagnostics overlay config changed (settings menu → StatsOverlay). Carries the
+## full config in one signal: show a minimal FPS counter, show the detailed perf/net panel,
+## and the detailed-panel display mode (0 Numeric, 1 Graphs).
+signal stats_overlay_changed(show_fps: bool, show_detailed: bool, mode: int)
+## Arena build progress for the loading screen. frac 0..1, label = current phase name.
+signal arena_build_progress(frac: float, label: String)
+
 # --- UI / UX ---
 ## A nearby interactable (loot / extraction) — HUD shows "[E] <prompt>".
 signal interaction_available(prompt: String, target: Node)

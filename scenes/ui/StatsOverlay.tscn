@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://cstatsoverlay0d1"]
+
+[ext_resource type="Script" path="res://scripts/ui/stats_overlay.gd" id="1_statsoverlay"]
+
+[node name="StatsOverlay" type="CanvasLayer"]
+layer = 128
+script = ExtResource("1_statsoverlay")

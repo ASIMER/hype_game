@@ -95,6 +95,12 @@ func _ready() -> void:
 	# flag (covers a debug restart where this Atmosphere may NOT be re-instanced).
 	if Events and not Events.match_started.is_connected(_on_match_started):
 		Events.match_started.connect(_on_match_started)
+	# Graphics-quality render levers (SDFGI/SSAO/glow on the Environment, Sky3D clouds):
+	# apply the current setting now + on every change. Scene-side levers live here because
+	# this is the one node that captures the live Environment + SkyDome.
+	if Events and not Events.graphics_quality_changed.is_connected(_apply_graphics_quality):
+		Events.graphics_quality_changed.connect(_apply_graphics_quality)
+	_apply_graphics_quality(int(SettingsManager.get_value("graphics_quality")))
 
 # ---------------------------------------------------------------------------
 # Particles
