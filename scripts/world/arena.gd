@@ -46,6 +46,11 @@ func _ready() -> void:
 	Events.arena_build_progress.emit(0.75, "Flora")
 	await get_tree().process_frame
 	_build_flora()
+	# Reflection probes (Ultra+RT tier only) — render-only, per-peer cosmetic; placed at
+	# the POIs AFTER structures exist. Headless/dedicated skips them inside the builder.
+	Events.arena_build_progress.emit(0.82, "Reflections")
+	await get_tree().process_frame
+	_build_reflection_probes()
 	Events.arena_build_progress.emit(0.90, "Navmesh")
 	await get_tree().process_frame
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
@@ -115,6 +120,23 @@ func _build_flora() -> void:
 	if script == null:
 		return
 	script.build(nav_region)
+
+## Ultra+RT tier: spawn baked ReflectionProbes at the POIs for off-screen reflections.
+## GUARDED (load-by-path) so the arena runs even without the file; the builder itself
+## early-returns on headless and when Settings.reflection_probes_enabled is off. Render-
+## only + deterministic (placement derives from POI markers), so it never touches the
+## navmesh/collision/netcode.
+func _build_reflection_probes() -> void:
+	var path := "res://scripts/visual/procedural_reflection_probes.gd"
+	if not ResourceLoader.exists(path):
+		return
+	var script: GDScript = load(path)
+	if script == null:
+		return
+	script.build(self, poi_markers)
+	# Experimental VoxelGI (off by default; gated inside on Settings.voxelgi_enabled).
+	if script.has_method("build_voxelgi"):
+		script.build_voxelgi(self, Vector3(80.0, 24.0, 80.0))
 
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a

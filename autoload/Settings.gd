@@ -175,6 +175,9 @@ var ads_toggle: bool = false            # false = hold to aim, true = toggle
 # preset; read at arena build, so a change applies on the NEXT raid). 1.0 = Ultra ceiling.
 var grass_density_scale: float = 1.0    # multiplies the near/far grass caps in procedural_flora
 var water_refraction: float = 0.12      # water.gdshader refract_amt baked at water build (0 = flat/cheap)
+# "RT-style" tier rebuild-bound levers (scene nodes spawned at arena build; Ultra+RT only).
+var reflection_probes_enabled: bool = false  # spawn baked ReflectionProbes at POIs (off-screen reflections)
+var voxelgi_enabled: bool = false            # EXPERIMENTAL runtime VoxelGI bake (heavy)
 
 # --- Multi-instance / git-worktree parallelism -----------------------------
 # To run several game instances at once (each driven by its own agent, often from a
