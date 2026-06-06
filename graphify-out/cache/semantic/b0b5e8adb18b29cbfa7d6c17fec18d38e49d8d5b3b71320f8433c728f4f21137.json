@@ -1,0 +1,1 @@
+{"nodes": [{"id": "events_events", "label": "Events (global signal bus)", "file_type": "code", "source_file": "autoload/Events.gd", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}, {"id": "autoload_events", "label": "Events bus", "file_type": "code", "source_file": "autoload/Events.gd"}], "edges": [], "hyperedges": []}
