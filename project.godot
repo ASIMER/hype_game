@@ -32,6 +32,10 @@ AgentBridge="*res://autoload/AgentBridge.gd"
 SettingsManager="*res://autoload/SettingsManager.gd"
 ServerBrowser="*res://autoload/ServerBrowser.gd"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/sky_3d/plugin.cfg")
+
 [display]
 
 window/size/viewport_width=1280

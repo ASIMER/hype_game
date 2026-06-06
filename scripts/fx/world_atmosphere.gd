@@ -5,16 +5,19 @@ class_name WorldAtmosphere
 ## Events.final_wave_started. Procedural — zero external assets.
 ##
 ## Instanced into world_root by main.gd (non-headless, guarded). On _ready it
-## finds the active WorldEnvironment + the scene's DirectionalLight3D at runtime
-## (never references Arena.tscn) and, on the final wave, tweens the sky shader's
-## `storm` uniform, fog, ambient light and the sun into a stormy look.
+## finds the active WorldEnvironment (a Sky3D node), the Sky3D SkyDome, and the
+## scene's main DirectionalLight3D at runtime (never references Arena.tscn) and,
+## on the final wave, tweens the Sky3D clouds/atmosphere, fog, ambient light and
+## the sun into a dark overcast storm look.
+##
+## Sky3D integration (Lane B): the procedural sky shader was replaced by the
+## Sky3D plugin. The storm no longer drives a `storm` shader uniform or billboard
+## cloud puffs; instead it raises cumulus coverage/thickness + atm_darkness and
+## drops sun_energy/exposure on the live SkyDome so the cinematic clouds go dark
+## and overcast.
 
 const MAP_HALF := 80.0          # 160x160 map -> +/-80
 const DUST_BOX := Vector3(160.0, 30.0, 160.0)
-
-const PUFF_COUNT := 12          # billboard cloud puffs
-const PUFF_RADIUS := 150.0      # max XZ distance from center
-const PUFF_DRIFT := 1.4         # m/s base drift speed
 
 var _dust: GPUParticles3D
 var _embers: GPUParticles3D
@@ -22,38 +25,43 @@ var _ember_mat: ParticleProcessMaterial
 var _dust_mat: ParticleProcessMaterial
 
 var _env: Environment
-var _sky_mat: ShaderMaterial
 var _sun: DirectionalLight3D
+# The Sky3D SkyDome node (driving clouds/atmosphere). Typed as Node so this script
+# does not hard-depend on the Sky3D class_name being registered.
+var _skydome: Node
 
-# Captured baseline (day) values. These are CAPTURED from the live Environment in
-# _ready() (the lead retuned the env), so the storm tween always scales the real
-# defaults. The initial values here are only fallbacks if capture fails.
-var _base_ambient := 1.1
-var _base_fog_density := 0.0022
-var _base_fog_color := Color(0.62, 0.68, 0.76, 1)
-var _base_glow := 0.7
+# Captured baseline (day) values. These are CAPTURED from the live Environment +
+# SkyDome in _ready() so the storm tween always scales the real defaults. The
+# initial values here are only fallbacks if capture fails.
+var _base_ambient := 0.95
+var _base_fog_density := 0.001
+var _base_fog_color := Color(0.64, 0.68, 0.72, 1)
+var _base_glow := 0.55
 var _base_sun_energy := 1.35
 var _base_sun_rot := Vector3.ZERO
+# SkyDome baselines.
+var _base_cumulus_coverage := 0.55
+var _base_cumulus_thickness := 0.0243
+var _base_cumulus_intensity := 0.7
+var _base_atm_darkness := 0.45
+var _base_skydome_exposure := 1.0
 var _captured := false
 
-# Billboard cloud puffs.
-var _puffs: Array[MeshInstance3D] = []
-var _puff_mats: Array[StandardMaterial3D] = []
-var _puff_home: Array[Vector3] = []
-var _puff_vel: Array[Vector3] = []
-var _puff_base_col := Color(1.0, 1.0, 1.0, 0.85)
-var _puff_dark_col := Color(0.28, 0.29, 0.33, 0.95)
+# Storm look targets for the SkyDome.
+const STORM_CUMULUS_COVERAGE := 0.92
+const STORM_CUMULUS_THICKNESS := 0.06
+const STORM_CUMULUS_INTENSITY := 0.18
+const STORM_ATM_DARKNESS := 0.85
+const STORM_SKYDOME_EXPOSURE := 0.45
 
 var _storm_tween: Tween
 var _stormed := false
-var _storm_prog := 0.0          # 0 day .. 1 storm (drives puff darkening)
 
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
 	_build_dust()
 	_build_embers()
-	_build_puffs()
 	_find_env_and_light()
 	_capture_baseline()
 	# If the match somehow already flipped to the final wave before we loaded.
@@ -166,95 +174,7 @@ func _flicker_ramp() -> CurveTexture:
 	return ct
 
 # ---------------------------------------------------------------------------
-# Billboard cloud puffs ("объёмные тучи") — deterministic, asset-free.
-# ---------------------------------------------------------------------------
-## Deterministic int hash from a seed (mirrors procedural_buildings._h).
-static func _h(n: int) -> int:
-	var x: int = (n * 2654435761) ^ 0x27d4eb2d
-	x = (x ^ (x >> 15)) * 0x85ebca6b
-	x = x ^ (x >> 13)
-	return abs(x)
-
-## Deterministic float in [0,1) from seed `n`.
-static func _hf(n: int) -> float:
-	return float(_h(n) % 100000) / 100000.0
-
-## A white->transparent radial-falloff alpha texture (soft round puff).
-func _puff_texture() -> GradientTexture2D:
-	var g := Gradient.new()
-	g.set_offset(0, 0.0)
-	g.set_color(0, Color(1, 1, 1, 1))
-	g.add_point(0.55, Color(1, 1, 1, 0.85))
-	g.set_offset(g.get_point_count() - 1, 1.0)
-	g.set_color(g.get_point_count() - 1, Color(1, 1, 1, 0.0))
-	var gt := GradientTexture2D.new()
-	gt.gradient = g
-	gt.width = 128
-	gt.height = 128
-	gt.fill = GradientTexture2D.FILL_RADIAL
-	gt.fill_from = Vector2(0.5, 0.5)
-	gt.fill_to = Vector2(1.0, 0.5)
-	return gt
-
-func _build_puffs() -> void:
-	var tex := _puff_texture()
-	for i in range(PUFF_COUNT):
-		var sd: int = i * 37 + 11
-		var ang: float = _hf(sd) * TAU
-		var rad: float = 40.0 + _hf(sd + 1) * (PUFF_RADIUS - 40.0)
-		var hx: float = cos(ang) * rad
-		var hz: float = sin(ang) * rad
-		var hy: float = 60.0 + _hf(sd + 2) * 30.0   # 60..90 m
-		var size: float = 30.0 + _hf(sd + 3) * 30.0 # 30..60 m
-
-		var q := QuadMesh.new()
-		q.size = Vector2(size, size * 0.62)
-
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		mat.billboard_keep_scale = true
-		mat.albedo_color = _puff_base_col
-		mat.albedo_texture = tex
-		mat.disable_receive_shadows = true
-		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		q.material = mat
-
-		var mi := MeshInstance3D.new()
-		mi.name = "CloudPuff%d" % i
-		mi.mesh = q
-		mi.position = Vector3(hx, hy, hz)
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(mi)
-
-		# Slow deterministic drift direction/speed from the hash.
-		var dang: float = _hf(sd + 4) * TAU
-		var dspeed: float = PUFF_DRIFT * (0.5 + _hf(sd + 5))
-		_puffs.append(mi)
-		_puff_mats.append(mat)
-		_puff_home.append(mi.position)
-		_puff_vel.append(Vector3(cos(dang) * dspeed, 0.0, sin(dang) * dspeed))
-
-func _process(delta: float) -> void:
-	if _puffs.is_empty():
-		return
-	# Drift puffs slowly, wrapping within +/- PUFF_RADIUS so they never leave.
-	var dark := _puff_base_col.lerp(_puff_dark_col, clamp(_storm_prog, 0.0, 1.0))
-	for i in range(_puffs.size()):
-		var mi := _puffs[i]
-		var p := mi.position
-		p += _puff_vel[i] * delta
-		# Soft wrap around the home cluster bounds.
-		if p.x > PUFF_RADIUS: p.x -= 2.0 * PUFF_RADIUS
-		elif p.x < -PUFF_RADIUS: p.x += 2.0 * PUFF_RADIUS
-		if p.z > PUFF_RADIUS: p.z -= 2.0 * PUFF_RADIUS
-		elif p.z < -PUFF_RADIUS: p.z += 2.0 * PUFF_RADIUS
-		mi.position = p
-		_puff_mats[i].albedo_color = dark
-
-# ---------------------------------------------------------------------------
-# Env / light discovery (runtime; never touches Arena.tscn)
+# Env / light / Sky3D discovery (runtime; never touches Arena.tscn)
 # ---------------------------------------------------------------------------
 func _find_env_and_light() -> void:
 	var root := get_tree().get_current_scene()
@@ -268,15 +188,52 @@ func _find_env_and_light() -> void:
 		var vp := get_viewport()
 		if vp != null and vp.world_3d != null and vp.world_3d.environment != null:
 			_env = vp.world_3d.environment
-	if _env != null and _env.sky != null and _env.sky.sky_material is ShaderMaterial:
-		_sky_mat = _env.sky.sky_material as ShaderMaterial
-	_sun = _find_directional_light(root)
+	# The Sky3D SkyDome drives the cloud/atmosphere look. It is a child of the
+	# Sky3D WorldEnvironment node and exposes cumulus_*/atm_darkness/exposure.
+	_skydome = _find_skydome(we)
+	# Our main shadow-casting sun lives at the scene root (NOT under Sky3D, whose
+	# own SunLight/MoonLight are disabled). Prefer that one.
+	_sun = _find_main_sun(root, we)
+	if Settings and Settings.NET_DEBUG:
+		print("[atmosphere] env=", _env != null, " skydome=", _skydome != null, " sun=", _sun != null)
 
 func _find_world_environment(n: Node) -> WorldEnvironment:
 	if n is WorldEnvironment:
 		return n as WorldEnvironment
 	for c in n.get_children():
 		var r := _find_world_environment(c)
+		if r != null:
+			return r
+	return null
+
+## Finds the SkyDome node by checking for the cumulus_coverage property. Returns
+## null if Sky3D is not present (graceful fallback to env/light-only storm).
+func _find_skydome(we: Node) -> Node:
+	if we == null:
+		return null
+	for c in we.get_children():
+		# SkyDome is the child carrying cloud/atmosphere setters.
+		if c.get("cumulus_coverage") != null and c.get("atm_darkness") != null:
+			return c
+	return null
+
+## Finds the Arena's main DirectionalLight3D, skipping any lights that live under
+## the Sky3D node (its auto-created SunLight/MoonLight).
+func _find_main_sun(root: Node, sky_we: Node) -> DirectionalLight3D:
+	# Prefer a DirectionalLight3D that is NOT a descendant of the Sky3D node.
+	var best := _find_directional_light_excluding(root, sky_we)
+	if best != null:
+		return best
+	# Fallback: any directional light at all.
+	return _find_directional_light(root)
+
+func _find_directional_light_excluding(n: Node, exclude: Node) -> DirectionalLight3D:
+	if n == exclude:
+		return null
+	if n is DirectionalLight3D:
+		return n as DirectionalLight3D
+	for c in n.get_children():
+		var r := _find_directional_light_excluding(c, exclude)
 		if r != null:
 			return r
 	return null
@@ -299,6 +256,22 @@ func _capture_baseline() -> void:
 	if _sun != null:
 		_base_sun_energy = _sun.light_energy
 		_base_sun_rot = _sun.rotation
+	if _skydome != null:
+		var cc: Variant = _skydome.get("cumulus_coverage")
+		if cc != null:
+			_base_cumulus_coverage = cc
+		var ct: Variant = _skydome.get("cumulus_thickness")
+		if ct != null:
+			_base_cumulus_thickness = ct
+		var ci: Variant = _skydome.get("cumulus_intensity")
+		if ci != null:
+			_base_cumulus_intensity = ci
+		var ad: Variant = _skydome.get("atm_darkness")
+		if ad != null:
+			_base_atm_darkness = ad
+		var ex: Variant = _skydome.get("exposure")
+		if ex != null:
+			_base_skydome_exposure = ex
 	_captured = true
 
 # ---------------------------------------------------------------------------
@@ -319,8 +292,13 @@ func _start_storm_tween() -> void:
 	_storm_tween.set_trans(Tween.TRANS_SINE)
 	_storm_tween.set_ease(Tween.EASE_IN_OUT)
 
-	# Sky shader storm uniform 0 -> 1 (also tracks _storm_prog for the puffs).
-	_storm_tween.tween_method(_set_sky_storm, 0.0, 1.0, t)
+	# Sky3D clouds + atmosphere -> dark overcast.
+	if _skydome != null:
+		_storm_tween.tween_property(_skydome, "cumulus_coverage", STORM_CUMULUS_COVERAGE, t)
+		_storm_tween.tween_property(_skydome, "cumulus_thickness", STORM_CUMULUS_THICKNESS, t)
+		_storm_tween.tween_property(_skydome, "cumulus_intensity", STORM_CUMULUS_INTENSITY, t)
+		_storm_tween.tween_property(_skydome, "atm_darkness", STORM_ATM_DARKNESS, t)
+		_storm_tween.tween_property(_skydome, "exposure", STORM_SKYDOME_EXPOSURE, t)
 
 	if _env != null:
 		# Ambient floor ×0.5 (not ×0.45) so interiors stay readable in the storm.
@@ -341,14 +319,14 @@ func _start_storm_tween() -> void:
 	if _embers != null:
 		_storm_tween.tween_property(_embers, "amount_ratio", 1.0, t * 0.5)
 
-func _set_sky_storm(v: float) -> void:
-	_storm_prog = v
-	if _sky_mat != null:
-		_sky_mat.set_shader_parameter("storm", v)
-
 func _apply_storm_instant() -> void:
 	_stormed = true
-	_set_sky_storm(1.0)
+	if _skydome != null:
+		_skydome.set("cumulus_coverage", STORM_CUMULUS_COVERAGE)
+		_skydome.set("cumulus_thickness", STORM_CUMULUS_THICKNESS)
+		_skydome.set("cumulus_intensity", STORM_CUMULUS_INTENSITY)
+		_skydome.set("atm_darkness", STORM_ATM_DARKNESS)
+		_skydome.set("exposure", STORM_SKYDOME_EXPOSURE)
 	if _env != null:
 		_env.ambient_light_energy = _base_ambient * 0.5
 		_env.fog_density = _base_fog_density * 3.2

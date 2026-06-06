@@ -98,51 +98,114 @@ static func build(parent: Node3D) -> Node3D:
 
 	var seed: int = Settings.TERRAIN_SEED
 
-	# Shared materials (a small handful, reused by every tree/bush — NOT one per tree).
-	var mats: Dictionary = _make_materials(seed)
-
-	_build_trees(root, seed, mats)
-	_build_bushes(root, seed, mats)
+	_build_trees(root, seed)
+	_build_bushes(root, seed)
 	_build_grass(root, seed)
 	_build_stones(root, seed)
 	_build_boulders(root, seed)
 	return root
 
-# ---------------------------------------------------------------- shared materials
-## ~7 shared StandardMaterial3D reused across all trees/bushes so we never build 80
-## unique materials. Keyed by name in the returned Dictionary.
-static func _make_materials(seed: int) -> Dictionary:
-	var d: Dictionary = {}
-	# Bark — two subtle tones so conifer/broadleaf trunks differ.
-	d["bark"] = ProceduralModels._mat(Color(0.35, 0.26, 0.18), 0.0, 0.95)
-	d["bark2"] = ProceduralModels._mat(Color(0.30, 0.23, 0.17), 0.0, 0.95)
-	# Conifer canopy — three dark-green shades for per-tree variation.
-	d["conifer_a"] = ProceduralModels._mat(Color(0.14, 0.28, 0.16), 0.0, 0.9)
-	d["conifer_b"] = ProceduralModels._mat(Color(0.17, 0.32, 0.19), 0.0, 0.9)
-	d["conifer_c"] = ProceduralModels._mat(Color(0.13, 0.25, 0.15), 0.0, 0.9)
-	# Broadleaf canopy — three mid-green shades.
-	d["broad_a"] = ProceduralModels._mat(Color(0.24, 0.38, 0.20), 0.0, 0.88)
-	d["broad_b"] = ProceduralModels._mat(Color(0.27, 0.42, 0.22), 0.0, 0.88)
-	d["broad_c"] = ProceduralModels._mat(Color(0.21, 0.34, 0.18), 0.0, 0.88)
-	# Bush — DARK shrub greens (kept low + slightly darker so squashed spheres don't
-	# read as bright blocky blobs next to the fine grass).
-	d["bush_a"] = ProceduralModels._mat(Color(0.15, 0.26, 0.14), 0.0, 0.93)
-	d["bush_b"] = ProceduralModels._mat(Color(0.18, 0.29, 0.16), 0.0, 0.93)
-	return d
+# ---------------------------------------------------------------- glTF model cache
+## Quaternius CC0 megakit models (copied into assets/models/flora/). We pull the Mesh out
+## of each imported glTF PackedScene ONCE and feed it to a MultiMesh, exactly like the
+## grass — so 100 trees are a handful of draw calls, NOT 100 scene nodes. Render-only;
+## collision is emitted separately as StaticBody3D primitives so the navmesh bakes around
+## trunks/rocks.
+##
+## Each entry: id -> {mesh, base_scale, trunk_r}. `base_scale` normalises the raw model
+## (Quaternius models range ~7 m to ~17 m tall) to our ~5-8 m tree look; `trunk_r` is the
+## collision-cylinder radius (rocks reuse the field as a sphere radius).
+const _TREE_MODELS: Array = [
+	# [id, base_scale, trunk_radius]
+	["CommonTree_1", 0.95, 0.42],
+	["CommonTree_3", 0.95, 0.42],
+	["Pine_1", 0.95, 0.40],
+	["DeadTree_2", 0.62, 0.40],
+	["TwistedTree_1", 0.42, 0.55],
+]
+const _ROCK_MODELS: Array = [
+	# [id, base_scale]
+	["Rock_Medium_1", 1.0],
+	["Rock_Medium_2", 1.0],
+	["Rock_Medium_3", 1.0],
+]
+const _BUSH_MODELS: Array = [
+	# Raw bushes are ~1.6 m tall; 0.6 base keeps them as low ground shrubs, not domes.
+	["Bush_Common", 0.6],
+	["Bush_Common_Flowers", 0.6],
+]
 
-# ================================================================ TREES (×80)
+## Load a glTF model's Mesh (with all its surfaces/materials). Returns null in headless
+## (no rendering server) — callers guard so the arena still builds. Cached per-id.
+static var _mesh_cache: Dictionary = {}
+static func _model_mesh(id: String) -> Mesh:
+	if _mesh_cache.has(id):
+		return _mesh_cache[id]
+	var ps: PackedScene = load("res://assets/models/flora/%s.gltf" % id)
+	var m: Mesh = null
+	if ps != null:
+		var inst: Node = ps.instantiate()
+		var mi: MeshInstance3D = _find_mesh_instance(inst)
+		if mi != null:
+			m = mi.mesh
+		inst.free()
+	_mesh_cache[id] = m
+	return m
+
+## Depth-first search for the first MeshInstance3D in an instanced glTF scene.
+static func _find_mesh_instance(n: Node) -> MeshInstance3D:
+	if n is MeshInstance3D:
+		return n
+	for c in n.get_children():
+		var r: MeshInstance3D = _find_mesh_instance(c)
+		if r != null:
+			return r
+	return null
+
+## Emit ONE MultiMeshInstance3D for `mesh` from a transform list (render-only, no colors).
+static func _emit_model_mm(parent: Node3D, nm: String, mesh: Mesh,
+		xforms: Array[Transform3D]) -> void:
+	if mesh == null or xforms.is_empty():
+		return
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = nm
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = false
+	mm.mesh = mesh
+	mm.instance_count = xforms.size()
+	for j in range(xforms.size()):
+		mm.set_instance_transform(j, xforms[j])
+	mmi.multimesh = mm
+	# Beyond ~110 m a tree is a few pixels — cull the lot to keep distant draw cheap.
+	mmi.visibility_range_end = 120.0
+	mmi.visibility_range_end_margin = 12.0
+	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	parent.add_child(mmi)
+
+# ================================================================ TREES (Quaternius glTF)
 ## Deterministic jittered-grid scatter: walk a coarse grid over the field, hash-decide
 ## presence per cell + hash-jitter the position inside the cell. The grid spacing gives
-## the ≥4 m min-spacing between trees for free and stays fully deterministic.
-static func _build_trees(root: Node3D, seed: int, mats: Dictionary) -> int:
+## the ≥4 m min-spacing between trees for free and stays fully deterministic. Each accepted
+## site picks one of the 5 tree models by hash and appends to that model's transform list;
+## we then emit ONE MultiMeshInstance3D per model + a collidable trunk per instance.
+static func _build_trees(root: Node3D, seed: int) -> int:
 	var trees := Node3D.new()
 	trees.name = "Trees"
 	root.add_child(trees)
+	# A separate node holding all the (render-less) trunk StaticBodies so the navmesh
+	# bake + player collision route around them; the glTF MultiMeshes are render-only.
+	var colliders := Node3D.new()
+	colliders.name = "TreeColliders"
+	trees.add_child(colliders)
+
+	# Per-model transform buckets, parallel to _TREE_MODELS.
+	var buckets: Array = []
+	for i in range(_TREE_MODELS.size()):
+		buckets.append([] as Array[Transform3D])
 
 	var target: int = Settings.FLORA_TREES
 	var placed: int = 0
-	# Coarse grid ~7 m cells over the ~[-72,72] field → plenty of candidate cells;
-	# we hash-skip most so we land near `target` with good spread (>=4 m apart).
 	var step: float = 7.0
 	var half: float = 70.0
 	var gx: int = 0
@@ -154,116 +217,64 @@ static func _build_trees(root: Node3D, seed: int, mats: Dictionary) -> int:
 			var cell: int = _h(seed * 911 + gx * 257 + gz * 31 + 7)
 			# Accept ~62% of cells; jitter keeps them off a visible lattice.
 			if (cell % 100) < 62:
-				var jx: float = _hrange(cell + 1, -2.6, 2.6)
-				var jz: float = _hrange(cell + 2, -2.6, 2.6)
-				var px: float = x + jx
-				var pz: float = z + jz
+				var px: float = x + _hrange(cell + 1, -2.6, 2.6)
+				var pz: float = z + _hrange(cell + 2, -2.6, 2.6)
 				if not _blocked(px, pz):
 					var gy: float = _ground_y(px, pz)
 					if gy >= -0.05:  # not in the river
-						_make_tree(trees, cell, px, gy, pz, mats)
+						_place_tree(colliders, buckets, cell, px, gy, pz)
 						placed += 1
 			gz += 1
 			z += step
 		gx += 1
 		x += step
+
+	# Emit one MultiMesh per tree model from its bucket.
+	for i in range(_TREE_MODELS.size()):
+		var id: String = String(_TREE_MODELS[i][0])
+		var mesh: Mesh = _model_mesh(id)
+		_emit_model_mm(trees, "Tree_%s" % id, mesh, buckets[i])
 	return placed
 
-## One tree = one Node3D: a trunk (collidable) + canopy (render-only). Species picked
-## by hash. Heights 4-7 m.
-static func _make_tree(parent: Node3D, hseed: int, x: float, y: float, z: float,
-		mats: Dictionary) -> void:
-	var node := Node3D.new()
-	node.position = Vector3(x, y, z)
-	# Whole-tree yaw so foliage doesn't all face the same way.
-	node.rotation.y = _hrange(hseed + 11, 0.0, TAU)
-	parent.add_child(node)
+## Pick a model by hash, append a yaw+scale-jittered Transform3D to its bucket, and emit a
+## collidable trunk cylinder (layer 1) sized to the scaled model footprint.
+static func _place_tree(colliders: Node3D, buckets: Array, hseed: int,
+		x: float, y: float, z: float) -> void:
+	var mi: int = _h(hseed + 5) % _TREE_MODELS.size()
+	var base_scale: float = float(_TREE_MODELS[mi][1])
+	var trunk_r: float = float(_TREE_MODELS[mi][2])
+	var yaw: float = _hrange(hseed + 11, 0.0, TAU)
+	# Slight per-instance scale variation so the same model doesn't read as clones.
+	var sc: float = base_scale * _hrange(hseed + 13, 0.82, 1.18)
+	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
+	(buckets[mi] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y, z)))
 
-	var height: float = _hrange(hseed + 3, 4.0, 7.0)
-	var conifer: bool = (_h(hseed + 5) % 2) == 0
-
-	# --- trunk (collidable) ---
-	var trunk_h: float = height * (0.5 if conifer else 0.46)
-	var trunk_r: float = _hrange(hseed + 7, 0.16, 0.26)
-	var bark: StandardMaterial3D = mats["bark"] if conifer else mats["bark2"]
+	# --- collidable trunk (render-only StaticBody) ---
 	var body := StaticBody3D.new()
 	body.collision_layer = 1
 	body.collision_mask = 0
-	node.add_child(body)
-	# Slight upward taper for the trunk mesh.
-	var tm := CylinderMesh.new()
-	tm.top_radius = trunk_r * 0.6
-	tm.bottom_radius = trunk_r
-	tm.height = trunk_h
-	tm.radial_segments = 8
-	var tmi := MeshInstance3D.new()
-	tmi.mesh = tm
-	tmi.material_override = bark
-	tmi.position = Vector3(0.0, trunk_h * 0.5, 0.0)
-	body.add_child(tmi)
+	body.position = Vector3(x, y, z)
+	colliders.add_child(body)
 	var col := CollisionShape3D.new()
 	var cs := CylinderShape3D.new()
-	cs.radius = maxf(trunk_r, 0.22)
-	cs.height = trunk_h
+	cs.radius = maxf(trunk_r * sc, 0.25)
+	# A tall trunk capsule so players/AI can't clip past it; height scaled with the model.
+	cs.height = 6.0 * sc
 	col.shape = cs
-	col.position = Vector3(0.0, trunk_h * 0.5, 0.0)
+	col.position = Vector3(0.0, cs.height * 0.5, 0.0)
 	body.add_child(col)
 
-	# --- canopy (render-only) ---
-	if conifer:
-		_conifer_canopy(node, hseed, trunk_h, height, trunk_r, mats)
-	else:
-		_broadleaf_canopy(node, hseed, trunk_h, height, trunk_r, mats)
-
-## 2-3 stacked cones, narrowing upward, dark-green.
-static func _conifer_canopy(node: Node3D, hseed: int, trunk_h: float, height: float,
-		trunk_r: float, mats: Dictionary) -> void:
-	var pick: int = _h(hseed + 21) % 3
-	var leaf: StandardMaterial3D = mats["conifer_a"]
-	if pick == 1:
-		leaf = mats["conifer_b"]
-	elif pick == 2:
-		leaf = mats["conifer_c"]
-	var tiers: int = 2 + (_h(hseed + 23) % 2)  # 2 or 3
-	var canopy_h: float = height - trunk_h * 0.6
-	var base_r: float = _hrange(hseed + 25, 1.3, 1.9)
-	var bottom: float = trunk_h * 0.55
-	var tier_h: float = canopy_h / float(tiers)
-	for i in range(tiers):
-		var frac: float = float(i) / float(maxi(tiers, 1))
-		var r: float = base_r * (1.0 - frac * 0.55)
-		var cone_h: float = tier_h * 1.55
-		var cy: float = bottom + tier_h * float(i) + cone_h * 0.5
-		ProceduralModels._part(node, ProceduralModels._cone(r, cone_h, 9), leaf,
-			Vector3(0.0, cy, 0.0))
-
-## 2-3 overlapping spheres, mid-green.
-static func _broadleaf_canopy(node: Node3D, hseed: int, trunk_h: float, height: float,
-		trunk_r: float, mats: Dictionary) -> void:
-	var pick: int = _h(hseed + 31) % 3
-	var leaf: StandardMaterial3D = mats["broad_a"]
-	if pick == 1:
-		leaf = mats["broad_b"]
-	elif pick == 2:
-		leaf = mats["broad_c"]
-	var blobs: int = 2 + (_h(hseed + 33) % 2)  # 2 or 3
-	var crown_r: float = _hrange(hseed + 35, 1.4, 2.1)
-	var crown_y: float = trunk_h + crown_r * 0.55
-	for i in range(blobs):
-		var ox: float = _hrange(hseed + 41 + i * 3, -crown_r * 0.5, crown_r * 0.5)
-		var oz: float = _hrange(hseed + 42 + i * 3, -crown_r * 0.5, crown_r * 0.5)
-		var oy: float = _hrange(hseed + 43 + i * 3, -crown_r * 0.25, crown_r * 0.45)
-		var br: float = crown_r * _hrange(hseed + 44 + i * 3, 0.7, 1.0)
-		ProceduralModels._part(node, ProceduralModels._sphere(br, false, 7, 9), leaf,
-			Vector3(ox, crown_y + oy, oz))
-
-# ================================================================ BUSHES (×60)
-## 1-2 squashed spheres, no collision. Scattered on a finer jittered grid, separate
-## hash stream so they don't collide with the tree lattice.
-static func _build_bushes(root: Node3D, seed: int, mats: Dictionary) -> int:
+# ================================================================ BUSHES (Quaternius glTF)
+## Render-only shrubs (no collision). Scattered on a finer jittered grid, separate hash
+## stream so they don't share the tree lattice. One MultiMesh per bush model.
+static func _build_bushes(root: Node3D, seed: int) -> int:
 	var bushes := Node3D.new()
 	bushes.name = "Bushes"
 	root.add_child(bushes)
+
+	var buckets: Array = []
+	for i in range(_BUSH_MODELS.size()):
+		buckets.append([] as Array[Transform3D])
 
 	var target: int = Settings.FLORA_BUSHES
 	var placed: int = 0
@@ -282,31 +293,26 @@ static func _build_bushes(root: Node3D, seed: int, mats: Dictionary) -> int:
 				if not _blocked(px, pz):
 					var gy: float = _ground_y(px, pz)
 					if gy >= -0.05:
-						_make_bush(bushes, cell, px, gy, pz, mats)
+						var mi: int = _h(cell + 51) % _BUSH_MODELS.size()
+						var bscale: float = float(_BUSH_MODELS[mi][1])
+						var yaw: float = _hrange(cell + 3, 0.0, TAU)
+						# Bushes are small/low — keep them under 1× so they don't tower.
+						var sc: float = bscale * _hrange(cell + 4, 0.55, 0.95)
+						var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(
+							Vector3(sc, sc, sc))
+						(buckets[mi] as Array[Transform3D]).append(
+							Transform3D(basis, Vector3(px, gy, pz)))
 						placed += 1
 			gz += 1
 			z += step
 		gx += 1
 		x += step
-	return placed
 
-static func _make_bush(parent: Node3D, hseed: int, x: float, y: float, z: float,
-		mats: Dictionary) -> void:
-	var node := Node3D.new()
-	node.position = Vector3(x, y, z)
-	parent.add_child(node)
-	var leaf: StandardMaterial3D = mats["bush_a"] if (_h(hseed + 51) % 2) == 0 else mats["bush_b"]
-	# Slightly smaller than before so squashed-sphere bushes read less as blocky blobs.
-	var size: float = _hrange(hseed + 53, 0.5, 1.0)
-	var blobs: int = 1 + (_h(hseed + 55) % 2)  # 1 or 2
-	for i in range(blobs):
-		var r: float = size * _hrange(hseed + 57 + i * 3, 0.6, 0.85)
-		var ox: float = _hrange(hseed + 58 + i * 3, -size * 0.4, size * 0.4)
-		var oz: float = _hrange(hseed + 59 + i * 3, -size * 0.4, size * 0.4)
-		# Squash vertically so it reads as a low shrub, not a green ball.
-		ProceduralModels._part(parent, ProceduralModels._sphere(r, false, 6, 8), leaf,
-			Vector3(x + ox, y + r * 0.30, z + oz), Vector3.ZERO,
-			Vector3(1.0, 0.55, 1.0))
+	for i in range(_BUSH_MODELS.size()):
+		var id: String = String(_BUSH_MODELS[i][0])
+		var mesh: Mesh = _model_mesh(id)
+		_emit_model_mm(bushes, "Bush_%s" % id, mesh, buckets[i])
+	return placed
 
 # ================================================================ GRASS (dense, LOD + spatial tiling)
 ## TWO LOD layers (NEAR ~11k fine clumped tufts within GRASS_VIS_RANGE, FAR ~2k larger
@@ -328,6 +334,16 @@ static func _make_bush(parent: Node3D, hseed: int, x: float, y: float, z: float,
 ## silently lossy in Godot 4.6 here). Density uses a clumped jittered grid; keep-out / river
 ## instances aren't emitted. Fully deterministic (_h/_hf).
 const GRASS_TILE_M: float = 16.0  # spatial-tile edge (m) for the MultiMesh-LOD cull fix
+# DENSITY (local, since Settings.FLORA_GRASS_PATCHES isn't ours to edit): over-provision the
+# near layer to a solid carpet. Finer grid => more candidate cells per tile; the higher cap
+# lets them actually emit. Tiling + the 45 m visibility bubble keep on-screen draw bounded,
+# so the global count is cheap headroom-wise.
+const NEAR_GRASS_CAP: int = 26000     # near-layer instance budget (60k was too heavy for weak/shared GPUs)
+const NEAR_GRASS_GRID: float = 0.7    # near-layer nominal blade spacing (m) (relaxed from 0.52 so the count fills naturally)
+# Clumping density floor: the old 0.4x minimum carved big bald gaps. Raise the floor so the
+# field is uniformly dense with only gentle density variation (no bare patches).
+const GRASS_CLUMP_FLOOR: float = 0.85 # min per-clump emission weight (was 0.40)
+const GRASS_CLUMP_RANGE: float = 0.95 # added on top of the floor => 0.85x .. 1.80x
 
 static func _build_grass(root: Node3D, seed: int) -> void:
 	# One fine-blade mesh, shared by every tile of both LOD layers.
@@ -337,19 +353,28 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	var sh: Shader = load("res://shaders/grass.gdshader")
 	var mat := ShaderMaterial.new()
 	mat.shader = sh
-	mat.set_shader_parameter("base_color", Color(0.20, 0.34, 0.13))  # dark root green
-	mat.set_shader_parameter("tip_color", Color(0.44, 0.60, 0.25))   # lighter tip
-	# Sway tuned for clearly visible wind on the short fine blades (subtle 0.08 read as
-	# nearly static in QA at gameplay distance).
-	mat.set_shader_parameter("sway_strength", 0.16)
-	mat.set_shader_parameter("sway_speed", 2.2)
+	# Cinematic palette: deep root green -> lush mid-green tip, restrained warm SSS glow.
+	mat.set_shader_parameter("base_color", Color(0.10, 0.22, 0.06))  # deep root green
+	mat.set_shader_parameter("tip_color", Color(0.34, 0.52, 0.18))   # lush sun-lit tip
+	mat.set_shader_parameter("sss_color", Color(0.85, 0.78, 0.34))   # warm, less orange
+	mat.set_shader_parameter("sss_strength", 0.40)                   # subtle backlight only
+	mat.set_shader_parameter("ao_strength", 0.85)
+	# Multi-frequency wind (gusts + turbulence) tuned for clearly visible sway at gameplay
+	# distance (a subtle single-sine read as nearly static in QA).
+	mat.set_shader_parameter("sway_strength", 0.34)
+	mat.set_shader_parameter("sway_speed", 2.0)
+	mat.set_shader_parameter("widen_strength", 1.0)
 
 	# NEAR layer: dense, clumped, short visibility range, fades self. Tiled.
-	# Cap slightly below the Settings budget so on-screen tiles stay cheap (the perf gate
-	# is per-tile draw cost, not the global count) — keeps ~11k near.
-	var near_target: int = mini(Settings.FLORA_GRASS_PATCHES, 11000)
+	# DENSITY PASS: the previous 11k cap + 0.95 m grid read as scattered tufts from the
+	# 3rd-person camera. We have 40+ fps of headroom (gate >=200), so push toward a solid
+	# carpet: a much higher local cap (NEAR_GRASS_CAP) over a finer grid (more cells emit
+	# per tile). visibility_range stays at GRASS_VIS_RANGE so only the ~45 m bubble draws —
+	# tiling means the global count barely matters for per-frame cost; on-screen tile draw
+	# cost is what the perf gate measures and that's bounded by the visible-tile area.
+	var near_target: int = NEAR_GRASS_CAP
 	var near_xforms: Array[Transform3D] = _grass_transforms(
-		seed, near_target, 0.95, 4099, 1.0, true)
+		seed, near_target, NEAR_GRASS_GRID, 4099, 1.0, true)
 	var near_root := Node3D.new()
 	near_root.name = "Grass_Near"
 	root.add_child(near_root)
@@ -446,8 +471,8 @@ static func _grass_transforms(seed: int, target: int, grid: float, salt: int,
 			var clx: int = int(floor((bx + half) / 6.0))
 			var clz: int = int(floor((bz + half) / 6.0))
 			var cf: float = _hf(_h(seed * 769 + clx * 211 + clz * 97 + 5))
-			# Map the field → 0.4× (sparse) .. 1.6× (dense) emission weight.
-			dens_mul = 0.4 + cf * 1.2
+			# Map the clump field to an emission weight; floor raised so no bald patches.
+			dens_mul = GRASS_CLUMP_FLOOR + cf * GRASS_CLUMP_RANGE
 			# Probabilistically skip cells in sparse clumps (deterministic per-cell hash).
 			if _hf(hcell + 9) > dens_mul:
 				continue
@@ -479,6 +504,8 @@ static func _grass_card_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Use a fixed hash stream so the mesh is identical on every machine (determinism).
+	# 6 blades/tuft: lighter geometry per instance (eases weak/shared GPUs) while the
+	# 26k clumped instance count still reads as a solid carpet, not discrete tufts.
 	var blades: int = 6
 	for bi in range(blades):
 		var bh: int = _h(98731 + bi * 53)
@@ -486,9 +513,11 @@ static func _grass_card_mesh() -> ArrayMesh:
 		var ang: float = (float(bi) / float(blades)) * TAU + _hrange(bh + 1, -0.35, 0.35)
 		var dx: float = cos(ang)
 		var dz: float = sin(ang)
-		var hgt: float = _hrange(bh + 2, 0.30, 0.42)
-		var base_half: float = 0.045
-		var tip_half: float = 0.008
+		# Tall blades so the field reads as cinematic grass from the raised 3rd-person
+		# camera, not a mown lawn that vanishes into a flat ground texture.
+		var hgt: float = _hrange(bh + 2, 0.75, 1.15)
+		var base_half: float = 0.055
+		var tip_half: float = 0.012
 		# Lean direction (mostly outward along the blade, slight sideways drift).
 		var lean: float = _hrange(bh + 3, 0.06, 0.16)
 		var side: float = _hrange(bh + 4, -0.05, 0.05)
@@ -602,24 +631,27 @@ static func _emit_stone_layer(root: Node3D, nm: String, mesh: Mesh,
 	mmi.material_override = mat
 	root.add_child(mmi)
 
-# ================================================================ BOULDERS (×14)
-## BIG collidable cover rocks (1.2-2.6 m). Mesh = a low-poly sphere whose vertices are
-## displaced deterministically by hash noise (±~25%), so each boulder is a unique
-## lumpy rock. StaticBody3D + SphereShape3D on layer 1 → joins the navmesh bake.
+# ================================================================ BOULDERS (Quaternius glTF)
+## BIG collidable cover rocks from the Quaternius Rock_Medium models (~2-3 m raw). One
+## MultiMesh per rock model (render-only) + a StaticBody3D + SphereShape3D per instance on
+## layer 1 so they join the navmesh bake and act as cover. Placed on the same golden-angle
+## candidate ring as before, ≥10 m apart, with a couple allowed at the river bank.
 static func _build_boulders(root: Node3D, seed: int) -> void:
 	var node := Node3D.new()
 	node.name = "Boulders"
 	root.add_child(node)
+	var colliders := Node3D.new()
+	colliders.name = "BoulderColliders"
+	node.add_child(colliders)
 
-	var rock_mat: StandardMaterial3D = ProcMaterials.weathered(
-		Color(0.44, 0.45, 0.47), 0.0, 0.95, 0.6, seed * 5 + 1)
+	# Per-model transform buckets, parallel to _ROCK_MODELS.
+	var buckets: Array = []
+	for i in range(_ROCK_MODELS.size()):
+		buckets.append([] as Array[Transform3D])
 
 	var target: int = Settings.FLORA_BOULDERS
-	# Hand-spread anchor ring of candidate positions (deterministic), plus a couple
-	# near the river bank for looks. We accept the first `target` valid ones, keeping
-	# each ≥10 m from the previously accepted boulders.
+	# Golden-angle ring of candidate positions (deterministic).
 	var candidates: Array = []
-	# Golden-angle ring of candidates across the open field.
 	var n_cand: int = 64
 	for k in range(n_cand):
 		var hk: int = _h(seed * 4099 + k * 37 + 9)
@@ -639,7 +671,7 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 		if _blocked(c.x, c.y, true):
 			continue
 		var gy: float = _ground_y(c.x, c.y)
-		# Allow a couple of boulders right at the river bank (height slightly negative)
+		# Allow a couple of boulders right at the river bank (slightly negative height)
 		# but never IN the water (< -0.30).
 		var river_bank: bool = gy < -0.05 and gy > -0.30
 		if gy < -0.05 and not (river_bank and near_river_done < 2):
@@ -655,68 +687,37 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 		if river_bank:
 			near_river_done += 1
 		var hseed: int = _h(seed * 7919 + placed.size() * 53 + 21)
-		_make_boulder(node, hseed, c.x, maxf(gy, 0.0), c.y, rock_mat)
+		_place_boulder(colliders, buckets, hseed, c.x, maxf(gy, 0.0), c.y)
 		placed.append(c)
 
-static func _make_boulder(parent: Node3D, hseed: int, x: float, y: float, z: float,
-		mat: StandardMaterial3D) -> void:
-	var size: float = _hrange(hseed + 1, 1.2, 2.6)
+	# Emit one MultiMesh per rock model from its bucket.
+	for i in range(_ROCK_MODELS.size()):
+		var id: String = String(_ROCK_MODELS[i][0])
+		var mesh: Mesh = _model_mesh(id)
+		_emit_model_mm(node, "Boulder_%s" % id, mesh, buckets[i])
+
+## Pick a rock model by hash, append a yaw+scale-jittered Transform3D to its bucket, and
+## emit a sphere collider sized to the scaled rock footprint (~1.4 m raw radius * scale).
+static func _place_boulder(colliders: Node3D, buckets: Array, hseed: int,
+		x: float, y: float, z: float) -> void:
+	var mi: int = _h(hseed + 1) % _ROCK_MODELS.size()
+	var base_scale: float = float(_ROCK_MODELS[mi][1])
+	var yaw: float = _hrange(hseed + 2, 0.0, TAU)
+	# Cover-rock scale: raw models are ~2-3 m wide; 0.7-1.3× keeps a good cover spread.
+	var sc: float = base_scale * _hrange(hseed + 3, 0.7, 1.3)
+	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
+	(buckets[mi] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y, z)))
+
 	var body := StaticBody3D.new()
 	body.collision_layer = 1
 	body.collision_mask = 0
 	body.position = Vector3(x, y, z)
-	body.rotation.y = _hrange(hseed + 2, 0.0, TAU)
-	parent.add_child(body)
-
-	var mi := MeshInstance3D.new()
-	mi.mesh = _boulder_mesh(hseed, size)
-	mi.material_override = mat
-	# Sit so most of the rock is above ground; sink the base a touch.
-	mi.position = Vector3(0.0, size * 0.35, 0.0)
-	body.add_child(mi)
-
+	colliders.add_child(body)
 	var col := CollisionShape3D.new()
 	var sh := SphereShape3D.new()
-	# Slightly smaller than visual radius so the navmesh hugs the rock, not its hull.
-	sh.radius = size * 0.8
+	# Rock_Medium models are ~1.4 m radius before scale; hug it a touch under the visual.
+	sh.radius = maxf(1.3 * sc, 0.6)
 	col.shape = sh
-	col.position = Vector3(0.0, size * 0.35, 0.0)
+	# Centre the sphere at ~rock mid-height so the navmesh routes around the base.
+	col.position = Vector3(0.0, sh.radius * 0.7, 0.0)
 	body.add_child(col)
-
-## A lumpy rock: take a low-poly SphereMesh's vertex arrays and push each vertex along
-## its normal by a deterministic per-vertex hash (±~25%), then re-commit. Squashed a
-## bit on Y so it reads as a grounded boulder, not a ball.
-static func _boulder_mesh(hseed: int, size: float) -> ArrayMesh:
-	var base := SphereMesh.new()
-	base.radius = size
-	base.height = size * 2.0
-	base.radial_segments = 8
-	base.rings = 6
-	var arrays: Array = base.surface_get_arrays(0)
-	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var out := PackedVector3Array()
-	out.resize(verts.size())
-	for i in range(verts.size()):
-		var v: Vector3 = verts[i]
-		var nrm: Vector3 = v.normalized()
-		# Hash from the rounded position so shared vertices on the sphere seam move
-		# together (keeps the mesh watertight).
-		var key: int = hseed * 131 \
-			+ int(round(v.x * 17.0)) * 73 \
-			+ int(round(v.y * 17.0)) * 131 \
-			+ int(round(v.z * 17.0)) * 197
-		var disp: float = _hrange(key, -0.25, 0.25)
-		var nv: Vector3 = v + nrm * size * disp
-		nv.y *= 0.78  # squash for a grounded look
-		out[i] = nv
-	arrays[Mesh.ARRAY_VERTEX] = out
-	# Drop stale normals/tangents so SurfaceTool recomputes them from the new verts.
-	arrays[Mesh.ARRAY_NORMAL] = null
-	arrays[Mesh.ARRAY_TANGENT] = null
-	var tmp := ArrayMesh.new()
-	tmp.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	# Recompute smooth normals via SurfaceTool.
-	var st := SurfaceTool.new()
-	st.create_from(tmp, 0)
-	st.generate_normals()
-	return st.commit()

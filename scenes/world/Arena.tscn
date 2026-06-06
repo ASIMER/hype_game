@@ -1,8 +1,13 @@
-[gd_scene load_steps=82 format=3 uid="uid://c0arcarena01"]
+[gd_scene load_steps=86 format=3 uid="uid://c0arcarena01"]
 
 [ext_resource type="Script" path="res://scripts/world/arena.gd" id="1_arena"]
 [ext_resource type="Environment" path="res://default_env.tres" id="2_env"]
 [ext_resource type="Script" path="res://scripts/extraction/extraction_zone.gd" id="3_extract"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/Sky3D.gd" id="4_sky3d"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/SkyDome.gd" id="5_skydome"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/TimeOfDay.gd" id="6_tod"]
+
+[sub_resource type="CameraAttributesPractical" id="CamAttr_sky3d"]
 
 [sub_resource type="NavigationMesh" id="NavMesh_1"]
 geometry_parsed_geometry_type = 1
@@ -253,8 +258,46 @@ size = Vector3(3, 2.4, 3)
 [node name="Arena" type="Node3D"]
 script = ExtResource("1_arena")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="Sky3D" type="WorldEnvironment" parent="."]
 environment = ExtResource("2_env")
+camera_attributes = SubResource("CamAttr_sky3d")
+script = ExtResource("4_sky3d")
+sky3d_enabled = true
+lights_enabled = false
+editor_time_enabled = false
+game_time_enabled = false
+current_time = 10.5
+minutes_per_day = 0.0
+cloud_intensity = 0.7
+skydome_energy = 1.0
+tonemap_exposure = 0.95
+
+[node name="SkyDome" type="Node" parent="Sky3D"]
+script = ExtResource("5_skydome")
+sun_azimuth = 0.6981317
+sun_altitude = 0.9599311
+atm_darkness = 0.45
+atm_thickness = 0.7
+exposure = 1.0
+fog_visible = false
+cumulus_visible = true
+cumulus_coverage = 0.55
+cumulus_thickness = 0.0243
+cumulus_absorption = 2.0
+cumulus_intensity = 0.7
+cirrus_visible = true
+cirrus_coverage = 0.45
+wind_speed = 3.0
+wind_direction = 1.5708
+
+[node name="TimeOfDay" type="Node" parent="Sky3D"]
+script = ExtResource("6_tod")
+dome_path = NodePath("../SkyDome")
+editor_time_enabled = false
+game_time_enabled = false
+system_sync = false
+minutes_per_day = 0.0
+current_time = 10.5
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 40, 0)
