@@ -74,6 +74,10 @@ func _on_host() -> void:
 			_main().open_hub("host")
 		else:
 			_main().load_arena()
+	elif err == ERR_CANT_CREATE or err == ERR_ALREADY_IN_USE:
+		# Port bind failed — almost always another copy of the game is still running and
+		# holding the UDP port (e.g. a previous session that didn't close cleanly).
+		status.text = tr("Port %d is busy — close any other running copy of the game and try again.") % Settings.DEFAULT_PORT
 	else:
 		status.text = tr("Host failed: %s") % err
 

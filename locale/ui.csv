@@ -564,3 +564,4 @@ CR %d","%s
 "VISUAL FX","ВИЗУАЛЬНЫЕ ЭФФЕКТЫ"
 "UI Glass FX","Стеклянные эффекты"
 "Scanlines, grain & frosted-glass blur behind menus","Развёртка, зерно и матовое размытие за меню"
+"Port %d is busy — close any other running copy of the game and try again.","Порт %d занят — закройте другой запущенный экземпляр игры и повторите."
