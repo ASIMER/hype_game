@@ -353,6 +353,10 @@ var ads_toggle: bool = false            # false = hold to aim, true = toggle
 # of the viewport (0 = at the screen edge). Read by minimap/killfeed/hud/stats_overlay.
 var ui_edge_margin: float = 0.0         # horizontal inset (fraction of viewport width)
 var ui_top_margin: float = 0.0          # vertical inset (fraction of viewport height)
+# "Military glass" UI FX master toggle (set by SettingsManager from the Interface tab):
+# scanline/grain/vignette overlay + frosted-glass blur behind modals. Read by FXOverlay
+# + GlassBackdrop; false → plain dim (cheap fallback for Low-end / preference).
+var ui_fx_enabled: bool = true
 # Camera (set by SettingsManager from the Interface tab; read by the player rig).
 var camera_distance_scale: float = 1.0  # multiplies DEFAULT_SPRING_LENGTH (third-person distance)
 var camera_shoulder_scale: float = 1.0  # multiplies SHOULDER_OFFSET (over-shoulder side offset)

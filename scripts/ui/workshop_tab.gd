@@ -71,35 +71,6 @@ func _exit_tree() -> void:
 ##         Right VBox: permanent upgrades
 ##       craft section
 func _build_layout() -> void:
-	# Panel StyleBox shared by section panels.
-	var sb_panel := StyleBoxFlat.new()
-	sb_panel.content_margin_left   = 16.0
-	sb_panel.content_margin_top    = 12.0
-	sb_panel.content_margin_right  = 16.0
-	sb_panel.content_margin_bottom = 12.0
-	sb_panel.bg_color       = Color(0.106, 0.133, 0.157, 0.97)
-	sb_panel.border_width_left   = 1
-	sb_panel.border_width_top    = 1
-	sb_panel.border_width_right  = 1
-	sb_panel.border_width_bottom = 1
-	sb_panel.border_color = Color(0.235, 0.3, 0.36, 1.0)
-	sb_panel.corner_radius_top_left     = 6
-	sb_panel.corner_radius_top_right    = 6
-	sb_panel.corner_radius_bottom_right = 6
-	sb_panel.corner_radius_bottom_left  = 6
-
-	# Section header StyleBox.
-	var sb_sec := StyleBoxFlat.new()
-	sb_sec.content_margin_left   = 12.0
-	sb_sec.content_margin_top    = 8.0
-	sb_sec.content_margin_right  = 12.0
-	sb_sec.content_margin_bottom = 8.0
-	sb_sec.bg_color = Color(0.13, 0.165, 0.20, 1.0)
-	sb_sec.border_width_bottom = 1
-	sb_sec.border_color = Color(0.235, 0.3, 0.36, 0.8)
-	sb_sec.corner_radius_top_left  = 6
-	sb_sec.corner_radius_top_right = 6
-
 	# Outer scroll so the whole tab scrolls on small screens.
 	var scroll := ScrollContainer.new()
 	scroll.name = "Scroll"
@@ -123,17 +94,15 @@ func _build_layout() -> void:
 	var title_lbl := Label.new()
 	title_lbl.text = "WORKSHOP"
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_lbl.add_theme_color_override("font_color", COL_AMBER)
-	title_lbl.add_theme_font_size_override("font_size", 32)
+	UIStyle.make_header(title_lbl, UIStyle.AMBER, 42, 3)
 	hdr.add_child(title_lbl)
 
 	_currency_label = Label.new()
 	_currency_label.name = "CurrencyLabel"
 	_currency_label.text = "CR 0"
 	_currency_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_currency_label.add_theme_color_override("font_color", COL_AMBER)
-	_currency_label.add_theme_font_size_override("font_size", 22)
 	_currency_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	UIStyle.make_header(_currency_label, UIStyle.AMBER, 22, 2)
 	hdr.add_child(_currency_label)
 
 	# ── Two-column body: unlocks (left) + upgrades (right) ───────────────────
@@ -150,18 +119,13 @@ func _build_layout() -> void:
 	cols.add_child(left_col)
 
 	var unlk_hdr_panel := PanelContainer.new()
-	unlk_hdr_panel.add_theme_stylebox_override("panel", sb_sec)
+	unlk_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
 	left_col.add_child(unlk_hdr_panel)
-
-	var unlk_hdr_lbl := Label.new()
-	unlk_hdr_lbl.text = "WEAPON UNLOCKS"
-	unlk_hdr_lbl.add_theme_color_override("font_color", COL_TEAL)
-	unlk_hdr_lbl.add_theme_font_size_override("font_size", 15)
-	unlk_hdr_panel.add_child(unlk_hdr_lbl)
+	unlk_hdr_panel.add_child(UIStyle.micro_header("WEAPON UNLOCKS", UIStyle.TEAL, 15))
 
 	var unlk_panel := PanelContainer.new()
 	unlk_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	unlk_panel.add_theme_stylebox_override("panel", sb_panel)
+	unlk_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	left_col.add_child(unlk_panel)
 
 	var unlk_margin := MarginContainer.new()
@@ -184,18 +148,13 @@ func _build_layout() -> void:
 	cols.add_child(right_col)
 
 	var upg_hdr_panel := PanelContainer.new()
-	upg_hdr_panel.add_theme_stylebox_override("panel", sb_sec)
+	upg_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
 	right_col.add_child(upg_hdr_panel)
-
-	var upg_hdr_lbl := Label.new()
-	upg_hdr_lbl.text = "PERMANENT UPGRADES"
-	upg_hdr_lbl.add_theme_color_override("font_color", COL_TEAL)
-	upg_hdr_lbl.add_theme_font_size_override("font_size", 15)
-	upg_hdr_panel.add_child(upg_hdr_lbl)
+	upg_hdr_panel.add_child(UIStyle.micro_header("PERMANENT UPGRADES", UIStyle.TEAL, 15))
 
 	var upg_panel := PanelContainer.new()
 	upg_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	upg_panel.add_theme_stylebox_override("panel", sb_panel)
+	upg_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	right_col.add_child(upg_panel)
 
 	var upg_margin := MarginContainer.new()
@@ -212,17 +171,12 @@ func _build_layout() -> void:
 
 	# ── CRAFT section (below the two columns) ─────────────────────────────────
 	var craft_hdr_panel := PanelContainer.new()
-	craft_hdr_panel.add_theme_stylebox_override("panel", sb_sec)
+	craft_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
 	root_vbox.add_child(craft_hdr_panel)
-
-	var craft_hdr_lbl := Label.new()
-	craft_hdr_lbl.text = "CRAFT"
-	craft_hdr_lbl.add_theme_color_override("font_color", COL_TEAL)
-	craft_hdr_lbl.add_theme_font_size_override("font_size", 15)
-	craft_hdr_panel.add_child(craft_hdr_lbl)
+	craft_hdr_panel.add_child(UIStyle.micro_header("CRAFT", UIStyle.TEAL, 15))
 
 	var craft_panel := PanelContainer.new()
-	craft_panel.add_theme_stylebox_override("panel", sb_panel)
+	craft_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	root_vbox.add_child(craft_panel)
 
 	var craft_margin := MarginContainer.new()
@@ -283,6 +237,7 @@ func _build_weapon_rows() -> void:
 		unlock_btn.custom_minimum_size = Vector2(90, 32)
 		unlock_btn.text = "UNLOCK"
 		unlock_btn.pressed.connect(func() -> void: _on_unlock_pressed(id))
+		UIStyle.hover_lift(unlock_btn)
 		row.add_child(unlock_btn)
 
 		_weapon_rows.add_child(row)
@@ -340,6 +295,7 @@ func _build_upgrade_rows() -> void:
 		btn.custom_minimum_size = Vector2(90, 32)
 		btn.text = "UPGRADE"
 		btn.pressed.connect(func() -> void: _on_upgrade_pressed(key))
+		UIStyle.hover_lift(btn)
 		row.add_child(btn)
 
 		_upgrade_rows.add_child(row)
@@ -480,6 +436,7 @@ func _build_craft_rows() -> void:
 		craft_btn.text = "CRAFT"
 		craft_btn.focus_mode = Control.FOCUS_NONE
 		craft_btn.pressed.connect(func() -> void: _on_craft_pressed(recipe.id))
+		UIStyle.hover_lift(craft_btn)
 		row.add_child(craft_btn)
 
 		_craft_rows.add_child(row)

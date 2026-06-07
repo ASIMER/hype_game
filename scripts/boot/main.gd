@@ -96,6 +96,9 @@ func _build_persistent_overlays() -> void:
 	if ResourceLoader.exists(LOADING_SCREEN):
 		_loading = (load(LOADING_SCREEN) as PackedScene).instantiate()
 		add_child(_loading)
+	# "Military glass" FX veil (scanline/grain/vignette over the shell UI). Script-only
+	# CanvasLayer; self-gates on Settings.ui_fx_enabled + shell-vs-raid state.
+	add_child((load("res://scripts/ui/fx_overlay.gd") as GDScript).new())
 
 func _show_menu() -> void:
 	for c in ui_layer.get_children():

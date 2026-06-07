@@ -242,8 +242,9 @@ class MapDraw extends Control:
 		if owner_ui == null:
 			return
 		var font := ThemeDB.fallback_font
-		# --- Backdrop dim over the gameplay view.
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.05, 0.82), true)
+		# --- Backdrop dim over the gameplay view (glass tone).
+		draw_rect(Rect2(Vector2.ZERO, size),
+			Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.82), true)
 
 		# --- Square map panel, centred, inset by the margin.
 		var avail := size - Vector2(owner_ui.PANEL_MARGIN, owner_ui.PANEL_MARGIN) * 2.0
@@ -251,8 +252,13 @@ class MapDraw extends Control:
 		var origin := (size - Vector2(side, side)) * 0.5
 		var panel := Rect2(origin, Vector2(side, side))
 
-		draw_rect(panel, Color(0.04, 0.06, 0.09, 0.92), true)
-		draw_rect(panel, Color(0.35, 0.55, 0.7, 0.9), false, 2.0)
+		draw_rect(panel, Color(UIStyle.PANEL_BG.r, UIStyle.PANEL_BG.g, UIStyle.PANEL_BG.b, 0.92), true)
+		# Amber accent border with thin inner light edge (glass frame).
+		draw_rect(panel, Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.55), false, 2.0)
+		var inset: float = 2.0
+		draw_rect(Rect2(panel.position + Vector2(inset, inset),
+			panel.size - Vector2(inset * 2.0, inset * 2.0)),
+			UIStyle.BORDER_LT, false, 1.0)
 		_draw_grid(panel)
 		_draw_compass(font, panel)
 
@@ -289,9 +295,11 @@ class MapDraw extends Control:
 	func _draw_compass(font: Font, panel: Rect2) -> void:
 		# North is -z (up), world-aligned.
 		draw_string(font, Vector2(panel.position.x + panel.size.x * 0.5 - 6.0, panel.position.y + 16.0),
-			"N", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.7, 0.85, 1.0, 0.85))
+			"N", HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+			Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.85))
 		draw_string(font, Vector2(panel.position.x + panel.size.x * 0.5 - 6.0, panel.position.y + panel.size.y - 6.0),
-			"S", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.6, 0.7, 0.8, 0.6))
+			"S", HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+			Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.6))
 
 	func _draw_pois(font: Font, panel: Rect2) -> void:
 		var arena: Node = owner_ui.get_arena()
@@ -446,28 +454,29 @@ class MapDraw extends Control:
 		draw_circle(pp, 2.5, Color(0.9, 0.97, 1.0))
 
 	func _draw_overlay_text(font: Font, panel: Rect2) -> void:
-		# Title above the panel.
+		# Title above the panel — amber header.
 		draw_string(font, Vector2(panel.position.x, panel.position.y - 30.0),
-			tr("TACTICAL MAP"), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.8, 0.9, 1.0, 0.95))
+			tr("TACTICAL MAP"), HORIZONTAL_ALIGNMENT_LEFT, -1, 20,
+			Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.95))
 
 		# Match timer (mm:ss), top-right of the panel header.
 		var left: float = maxf(0.0, GameState.match_time_left)
-		var timer_col := Color(0.85, 0.92, 1.0, 0.95)
+		var timer_col := Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.95)
 		var timer_txt: String
 		if GameState.final_wave:
 			timer_txt = tr("FINAL WAVE — STORM")
-			timer_col = Color(1.0, 0.4, 0.35, 0.95)
+			timer_col = Color(UIStyle.RED.r, UIStyle.RED.g, UIStyle.RED.b, 0.95)
 		else:
 			timer_txt = tr("TIME  %s") % _fmt_time(left)
 			if left <= Settings.FINAL_WAVE_WARN and GameState.match_duration > 0.0:
-				timer_col = Color(1.0, 0.5, 0.4, 0.95)
+				timer_col = Color(UIStyle.RED.r, UIStyle.RED.g, UIStyle.RED.b, 0.95)
 		draw_string(font, Vector2(panel.position.x + panel.size.x - 230.0, panel.position.y - 30.0),
 			timer_txt, HORIZONTAL_ALIGNMENT_LEFT, 220.0, 18, timer_col)
 
 		# Wave readout under the timer.
 		draw_string(font, Vector2(panel.position.x + panel.size.x - 230.0, panel.position.y - 8.0),
 			tr("WAVE  %d") % GameState.current_wave, HORIZONTAL_ALIGNMENT_LEFT, 220.0, 14,
-			Color(0.7, 0.8, 0.9, 0.85))
+			Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.85))
 
 		# Legend below the panel — two rows to accommodate the extra event types.
 		var ly: float = panel.position.y + panel.size.y + 18.0
@@ -478,7 +487,8 @@ class MapDraw extends Control:
 		_legend_swatch(lx + 340.0, ly, Color(0.85, 0.78, 0.4), tr("POI"))
 		_legend_swatch(lx + 410.0, ly, Color(1.0, 0.32, 0.32), tr("Enemy"))
 		draw_string(font, Vector2(panel.position.x + panel.size.x - 120.0, ly + 5.0),
-			tr("[M] close"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.78, 0.86, 0.7))
+			tr("[M] close"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.7))
 		# Second row: world events + tier key.
 		var ly2: float = ly + 20.0
 		_legend_swatch(lx, ly2, Color(0.95, 0.75, 0.25), tr("Supply Cache"))
@@ -493,7 +503,8 @@ class MapDraw extends Control:
 	func _legend_swatch(x: float, y: float, col: Color, label: String) -> void:
 		draw_circle(Vector2(x, y), 4.0, col)
 		draw_string(ThemeDB.fallback_font, Vector2(x + 10.0, y + 5.0), label,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.9, 0.95, 0.9))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.9))
 
 	func _fmt_time(secs: float) -> String:
 		var s: int = int(ceil(secs))

@@ -111,16 +111,14 @@ func _build_layout() -> void:
 	title_lbl.name = "TitleLabel"
 	title_lbl.text = "GUNSMITH"
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_lbl.add_theme_font_size_override("font_size", 42)
-	title_lbl.add_theme_color_override("font_color", COL_AMBER)
+	UIStyle.make_header(title_lbl, UIStyle.AMBER, 42, 3)
 	hdr.add_child(title_lbl)
 
 	_currency_label = Label.new()
 	_currency_label.name = "CurrencyLabel"
 	_currency_label.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_currency_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_currency_label.add_theme_font_size_override("font_size", 20)
-	_currency_label.add_theme_color_override("font_color", COL_AMBER)
+	UIStyle.make_header(_currency_label, UIStyle.AMBER, 20, 2)
 	hdr.add_child(_currency_label)
 
 	# ── Weapon selector bar ───────────────────────────────────────────────────
@@ -317,6 +315,7 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 	clear_btn.focus_mode = Control.FOCUS_NONE
 	clear_btn.disabled = cur_id.is_empty()
 	clear_btn.pressed.connect(func() -> void: _on_clear_slot(wid_cap, slot_id))
+	UIStyle.hover_lift(clear_btn)
 	row.add_child(clear_btn)
 
 	return row
@@ -417,6 +416,7 @@ func _build_perk_row(key: String) -> HBoxContainer:
 		buy_btn.disabled = MetaProgression.currency < cost
 		var wid_cap: String = _selected_weapon
 		buy_btn.pressed.connect(func() -> void: _on_buy_perk(wid_cap, key))
+	UIStyle.hover_lift(buy_btn)
 	row.add_child(buy_btn)
 
 	return row
@@ -461,52 +461,20 @@ func _stat_delta_text(att: AttachmentData) -> String:
 	return "(" + ", ".join(parts) + ")"
 
 
-## Dark card panel matching shop_tab.gd / loadout_tab.gd _make_panel().
+## Glass card panel (military-glass look).
 func _make_panel() -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.106, 0.133, 0.157, 0.97)
-	sb.border_width_left   = 1
-	sb.border_width_top    = 1
-	sb.border_width_right  = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 1.0)
-	sb.corner_radius_top_left     = 8
-	sb.corner_radius_top_right    = 8
-	sb.corner_radius_bottom_right = 8
-	sb.corner_radius_bottom_left  = 8
-	sb.shadow_color = Color(0.0, 0.0, 0.0, 0.45)
-	sb.shadow_size  = 14
-	sb.content_margin_left   = 16.0
-	sb.content_margin_top    = 14.0
-	sb.content_margin_right  = 16.0
-	sb.content_margin_bottom = 14.0
-	pc.add_theme_stylebox_override("panel", sb)
+	pc.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	return pc
 
 
-## Teal-labeled section header matching shop_tab.gd _make_section_header().
+## Glass header-panel with a spaced-caps teal label (section heading strip).
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.165, 0.20, 1.0)
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 0.8)
-	sb.corner_radius_top_left  = 6
-	sb.corner_radius_top_right = 6
-	sb.content_margin_left   = 14.0
-	sb.content_margin_top    = 10.0
-	sb.content_margin_right  = 14.0
-	sb.content_margin_bottom = 10.0
-	pc.add_theme_stylebox_override("panel", sb)
-
-	var lbl := Label.new()
-	lbl.text = title
-	lbl.add_theme_color_override("font_color", COL_TEAL)
-	lbl.add_theme_font_size_override("font_size", 15)
-	pc.add_child(lbl)
+	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_child(UIStyle.micro_header(title, UIStyle.TEAL, 15))
 	return pc
 
 

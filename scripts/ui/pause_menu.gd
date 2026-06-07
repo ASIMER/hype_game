@@ -17,6 +17,16 @@ func _ready() -> void:
 	$Panel/VBox/QuitBtn.pressed.connect(_on_quit_to_menu)
 	_settings_menu.closed.connect(_on_settings_closed)
 	_settings_menu.visible = false
+	# Style the scene-side title with Russo One header face.
+	UIStyle.make_header($Panel/VBox/Title, UIStyle.AMBER, 36)
+	# Hover-lift on the three action buttons.
+	UIStyle.hover_lift($Panel/VBox/ResumeBtn)
+	UIStyle.hover_lift($Panel/VBox/SettingsBtn)
+	UIStyle.hover_lift($Panel/VBox/QuitBtn)
+	# Frosted-glass backdrop behind the panel.
+	var bg := GlassBackdrop.new()
+	add_child(bg)
+	move_child(bg, 0)
 	hide()
 
 
@@ -25,6 +35,7 @@ func show_pause() -> void:
 	_settings_menu.hide()
 	_panel.show()
 	show()
+	UIStyle.pop_in(_panel)
 
 func hide_pause() -> void:
 	_settings_menu.hide()

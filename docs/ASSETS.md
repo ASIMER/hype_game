@@ -24,6 +24,8 @@ All SHIPPED assets are **CC0** (public domain, no attribution required) or **MIT
 | **Blaster Kit** (Kenney) | Weapons (fallback) | https://kenney.nl/assets/blaster-kit | CC0 | ✅/🔎 | reliable CC0 GLB fallback for gun ids + projectiles/crates |
 | **Kenney Audio** (Impact / UI / Sci-Fi) | Audio | https://kenney.nl/assets/category:Audio | CC0 | ✅ | `assets/audio/` — shot/hit/explosion/reload/ui/extract SFX |
 | **Water SFX** (self-generated) | Audio | `tools/audio/gen_audio.py` (procedural) | CC0 (own work) | ✅ | `assets/audio/water_splash.ogg` + `underwater.ogg` — river immersion |
+| **Russo One** (Google Fonts) | UI font (headings) | https://fonts.google.com/specimen/Russo+One · https://github.com/google/fonts/tree/main/ofl/russoone | SIL OFL 1.1 (`assets/fonts/OFL-RussoOne.txt`) | ✅ | `assets/fonts/RussoOne-Regular.ttf` → theme `HeaderLarge`/`HeaderSmall` variations (condensed military caps; Latin + **Cyrillic** for the RU locale) |
+| **Oswald** (Google Fonts) | UI font (body) | https://fonts.google.com/specimen/Oswald · https://github.com/google/fonts/tree/main/ofl/oswald | SIL OFL 1.1 (`assets/fonts/OFL-Oswald.txt`) | ✅ | `assets/fonts/Oswald-VariableFont_wght.ttf` → theme body font (Label/Button/LineEdit; Latin + **Cyrillic**) |
 
 ---
 

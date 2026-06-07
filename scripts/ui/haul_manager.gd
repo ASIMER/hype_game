@@ -30,12 +30,39 @@ func _ready() -> void:
 	Events.stash_changed.connect(_refresh)
 	_confirm_btn.pressed.connect(_on_confirm_pressed)
 	_root.visible = false
+	_apply_glass_style()
+
+## Apply military-glass look: backdrop, panel stylebox, title, hover on confirm.
+func _apply_glass_style() -> void:
+	# GlassBackdrop behind everything in _root.
+	var bg := GlassBackdrop.new()
+	_root.add_child(bg)
+	_root.move_child(bg, 0)
+
+	# Panel glass stylebox with amber accent header bar.
+	var panel: Panel = $Root/Panel
+	if panel != null:
+		panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.AMBER, 0.92))
+
+	# Title label: find the first Label child of the panel VBox and make it a header.
+	var vbox: VBoxContainer = $Root/Panel/VBox
+	if vbox != null:
+		for child in vbox.get_children():
+			if child is Label:
+				UIStyle.make_header(child as Label, UIStyle.AMBER, 22, 3)
+				break
+
+	# Confirm button hover lift.
+	UIStyle.hover_lift(_confirm_btn)
 
 # ------------------------------------------------------------------ show/hide
 func _on_haul_overflow(_incoming: Array, _over_by: float) -> void:
 	_root.visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_refresh()
+	var panel: Panel = $Root/Panel
+	if panel != null:
+		UIStyle.pop_in(panel, UIStyle.Dir.DOWN, 14.0, 0.16)
 
 func _on_confirm_pressed() -> void:
 	_root.visible = false
@@ -154,7 +181,7 @@ func _make_row(id: String, cnt: int, item: ItemData) -> Control:
 ## Dark slot fill with a rarity-colored border — mirrors stash_tab._slot_stylebox.
 func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	sb.bg_color = Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.92)
 	sb.set_border_width_all(2)
 	sb.border_color = item.rarity_color() if item != null else Color(0.62, 0.62, 0.66)
 	sb.set_corner_radius_all(4)

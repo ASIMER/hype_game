@@ -19,12 +19,12 @@ extends Control
 signal closed
 signal connect_requested(ip: String, port: int)
 
-# Project theme colours (shared across the UI — matches shop_tab.gd etc.).
-const COL_AMBER := Color(0.91, 0.64, 0.24)
-const COL_TEAL  := Color(0.247, 0.71, 0.79)
-const COL_DIM   := Color(0.45, 0.50, 0.55)
-const COL_WHITE := Color(0.88, 0.90, 0.92)
-const COL_RED   := Color(0.85, 0.30, 0.25)
+# Palette — forward local COL_* to UIStyle so we don't churn every usage site.
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL  := UIStyle.TEAL
+const COL_DIM   := UIStyle.DIM
+const COL_WHITE := UIStyle.WHITE
+const COL_RED   := UIStyle.RED
 
 # ── Node refs (built in code; no .tscn sub-tree) ──────────────────────────────
 var _direct_field: LineEdit  = null
@@ -33,8 +33,11 @@ var _scanning_label: Label   = null
 var _lan_rows: VBoxContainer  = null
 var _fav_rows: VBoxContainer   = null
 var _recent_rows: VBoxContainer = null
+var _card: PanelContainer    = null  # kept for pop_in
 
 var _scanning: bool = false
+# Frosted-glass backdrop (lazy-created once).
+var _glass_bg: GlassBackdrop = null
 
 
 func _ready() -> void:
@@ -59,8 +62,15 @@ func _exit_tree() -> void:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 func open() -> void:
+	# Lazy-create frosted backdrop (first child = drawn behind the card).
+	if _glass_bg == null:
+		_glass_bg = GlassBackdrop.new()
+		add_child(_glass_bg)
+		move_child(_glass_bg, 0)
 	show()
 	move_to_front()
+	if _card != null:
+		UIStyle.pop_in(_card)
 	_refresh()
 
 
@@ -82,14 +92,8 @@ func close() -> void:
 ##         section "RECENT"    → _recent_rows
 ##       CLOSE button
 func _build_layout() -> void:
-	# Dim scrim behind the card.
-	var scrim := Panel.new()
-	scrim.name = "Scrim"
-	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var scrim_sb := StyleBoxFlat.new()
-	scrim_sb.bg_color = Color(0, 0, 0, 0.6)
-	scrim.add_theme_stylebox_override("panel", scrim_sb)
-	add_child(scrim)
+	# Dim/blur is provided by GlassBackdrop (added lazily in open()).
+	# No extra scrim Panel needed.
 
 	# Full-rect center wrapper → centers the card horizontally & vertically over
 	# the scrim, regardless of viewport size. This mirrors SettingsMenu's centered
@@ -99,25 +103,13 @@ func _build_layout() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
-	# Centered card (fixed width; height = its content up to a sensible min, with
-	# the list scrolling inside). A CenterContainer sizes the card to its minimum,
-	# so the card never overflows toward a screen edge.
+	# Centered card — glass panel style, padded generously.
 	var card := PanelContainer.new()
 	card.name = "Card"
 	card.custom_minimum_size = Vector2(560, 600)
 	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var card_sb := StyleBoxFlat.new()
-	card_sb.bg_color = Color(0.086, 0.106, 0.125, 0.98)
-	card_sb.border_width_left = 1
-	card_sb.border_width_top = 1
-	card_sb.border_width_right = 1
-	card_sb.border_width_bottom = 1
-	card_sb.border_color = Color(0.235, 0.3, 0.36, 1)
-	card_sb.corner_radius_top_left = 10
-	card_sb.corner_radius_top_right = 10
-	card_sb.corner_radius_bottom_right = 10
-	card_sb.corner_radius_bottom_left = 10
+	var card_sb := UIStyle.glass_panel(0.97)
 	card_sb.shadow_color = Color(0, 0, 0, 0.5)
 	card_sb.shadow_size = 18
 	card_sb.content_margin_left = 22.0
@@ -126,6 +118,7 @@ func _build_layout() -> void:
 	card_sb.content_margin_bottom = 18.0
 	card.add_theme_stylebox_override("panel", card_sb)
 	center.add_child(card)
+	_card = card
 
 	var body := VBoxContainer.new()
 	body.name = "Body"
@@ -136,8 +129,7 @@ func _build_layout() -> void:
 	var title := Label.new()
 	title.name = "Title"
 	title.text = "SERVERS"
-	title.add_theme_font_size_override("font_size", 38)
-	title.add_theme_color_override("font_color", COL_AMBER)
+	UIStyle.make_header(title, UIStyle.AMBER, 38)
 	body.add_child(title)
 
 	# ── DIRECT CONNECT ─────────────────────────────────────────────────────────
@@ -162,6 +154,7 @@ func _build_layout() -> void:
 	connect_btn.custom_minimum_size = Vector2(90, 32)
 	connect_btn.focus_mode = Control.FOCUS_NONE
 	connect_btn.pressed.connect(_on_direct_connect)
+	UIStyle.hover_lift(connect_btn)
 	dc_row.add_child(connect_btn)
 
 	var save_btn := Button.new()
@@ -184,6 +177,7 @@ func _build_layout() -> void:
 	_scan_btn.custom_minimum_size = Vector2(120, 32)
 	_scan_btn.focus_mode = Control.FOCUS_NONE
 	_scan_btn.pressed.connect(_on_scan_lan)
+	UIStyle.hover_lift(_scan_btn)
 	scan_row.add_child(_scan_btn)
 
 	_scanning_label = Label.new()
@@ -246,6 +240,7 @@ func _build_layout() -> void:
 	close_btn.custom_minimum_size = Vector2(0, 36)
 	close_btn.focus_mode = Control.FOCUS_NONE
 	close_btn.pressed.connect(_on_close)
+	UIStyle.hover_lift(close_btn)
 	body.add_child(close_btn)
 
 
@@ -365,44 +360,15 @@ func _empty_label(text: String) -> Label:
 func _make_panel() -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.106, 0.133, 0.157, 0.97)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 1)
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.content_margin_left = 14.0
-	sb.content_margin_top = 12.0
-	sb.content_margin_right = 14.0
-	sb.content_margin_bottom = 12.0
-	pc.add_theme_stylebox_override("panel", sb)
+	pc.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.92))
 	return pc
 
 
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.165, 0.20, 1.0)
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 0.8)
-	sb.corner_radius_top_left = 6
-	sb.corner_radius_top_right = 6
-	sb.content_margin_left = 14.0
-	sb.content_margin_top = 8.0
-	sb.content_margin_right = 14.0
-	sb.content_margin_bottom = 8.0
-	pc.add_theme_stylebox_override("panel", sb)
-
-	var lbl := Label.new()
-	lbl.text = title
-	lbl.add_theme_color_override("font_color", COL_TEAL)
-	lbl.add_theme_font_size_override("font_size", 15)
+	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL, 0.88))
+	var lbl := UIStyle.micro_header(title, UIStyle.TEAL, 13)
 	pc.add_child(lbl)
 	return pc
 

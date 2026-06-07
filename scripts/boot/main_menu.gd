@@ -30,6 +30,21 @@ func _ready() -> void:
 			_server_browser.connect_requested.connect(_on_browser_connect)
 		if _server_browser.has_signal("closed"):
 			_server_browser.closed.connect(_on_browser_closed)
+	_apply_glass_style()
+
+## Military-glass polish: Russo One title, frosted-glass backdrop behind the panel,
+## hover-lift on the buttons, and a fade+slide open animation.
+func _apply_glass_style() -> void:
+	UIStyle.make_header($TitleBox/Title, UIStyle.WHITE, 46, 6)
+	UIStyle.make_header($TitleBox/Subtitle, UIStyle.AMBER, 15, 4)
+	var bg := GlassBackdrop.new()
+	add_child(bg)
+	move_child(bg, $Vignette.get_index() + 1)  # frost the bg, stay behind title + panel
+	for btn in [$Panel/VBox/SinglePlayerBtn, $Panel/VBox/HostBtn, $Panel/VBox/JoinBtn,
+			$Panel/VBox/ServersBtn, $Panel/VBox/BottomRow/SettingsBtn,
+			$Panel/VBox/BottomRow/QuitBtn]:
+		UIStyle.hover_lift(btn)
+	UIStyle.pop_in($Panel)
 
 func _main() -> Node:
 	return get_tree().current_scene

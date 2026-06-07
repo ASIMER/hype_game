@@ -18,12 +18,12 @@ extends CanvasLayer
 signal continue_requested()
 signal restart_requested()
 
-# Project theme colours — mirror hub.gd / Workshop.gd.
+# Project theme colours via UIStyle palette.
 const COL_WIN  := Color(0.40, 1.00, 0.60, 1.0)   # green "EXTRACTED"
 const COL_LOSS := Color(1.00, 0.35, 0.35, 1.0)   # red   "KIA"
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
-const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
-const COL_DIM   := Color(0.55, 0.60, 0.65, 1.0)
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL  := UIStyle.TEAL
+const COL_DIM   := UIStyle.DIM
 
 # ── node refs (all populated in _ready via @onready) ─────────────────────────
 @onready var _panel: PanelContainer       = $Root/Panel
@@ -94,6 +94,33 @@ func _ready() -> void:
 	Events.match_won.connect(_on_match_won)
 	Events.match_lost.connect(_on_match_lost)
 
+	# ── Glass treatment: backdrop + panel + header styling ────────────────────
+	var root_ctrl: Control = get_node_or_null("Root") as Control
+	if root_ctrl != null:
+		var bg := GlassBackdrop.new()
+		root_ctrl.add_child(bg)
+		root_ctrl.move_child(bg, 0)
+
+	if _panel != null:
+		_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.92))
+
+	# Title → Russo One large header.
+	UIStyle.make_header(_title, UIStyle.WHITE, 30, 4)
+	# Subtitle → dimmer, smaller Russo One.
+	UIStyle.make_header(_subtitle, UIStyle.DIM, 14, 2)
+
+	# Section headers → micro_header style.
+	if _loot_header != null:
+		UIStyle.make_header(_loot_header, UIStyle.DIM, 13, 3)
+	if _bp_header != null:
+		UIStyle.make_header(_bp_header, UIStyle.DIM, 13, 3)
+	if _quest_header != null:
+		UIStyle.make_header(_quest_header, UIStyle.DIM, 13, 3)
+
+	# Primary button → hover lift + header style (applied before pop_in).
+	UIStyle.hover_lift(_btn_continue)
+	UIStyle.hover_lift(_btn_restart)
+
 	# ── Inject progression section into the VBox before the bottom separator ──
 	var vbox: VBoxContainer = get_node_or_null("Root/Panel/VBox") as VBoxContainer
 	if vbox != null and _sep_bot != null:
@@ -102,11 +129,8 @@ func _ready() -> void:
 		_prog_section.add_theme_constant_override("separation", 4)
 		_prog_section.visible = false
 
-		var prog_hdr := Label.new()
+		var prog_hdr: Label = UIStyle.micro_header("PROGRESSION", UIStyle.DIM, 13)
 		prog_hdr.name = "ProgHeader"
-		prog_hdr.text = "PROGRESSION"
-		prog_hdr.add_theme_font_size_override("font_size", 13)
-		prog_hdr.add_theme_color_override("font_color", COL_DIM)
 		_prog_section.add_child(prog_hdr)
 
 		_prog_list = VBoxContainer.new()
@@ -238,6 +262,9 @@ func _show_summary(won: bool) -> void:
 
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	show()
+	# Animate the panel in once visible (pop_in requires is_inside_tree).
+	if _panel != null:
+		UIStyle.pop_in(_panel, UIStyle.Dir.DOWN, 16.0, 0.18)
 
 
 func _show_progression_section() -> void:

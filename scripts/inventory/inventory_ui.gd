@@ -55,6 +55,14 @@ func _ready() -> void:
 	_weight_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_weight_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	# Glass panel stylebox on the root Panel node.
+	var root_panel: Panel = get_node_or_null("Panel") as Panel
+	if root_panel != null:
+		root_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.AMBER, 0.92))
+
+	# Weight bar: amber glow fill to match the glass look.
+	_weight_bar.theme_type_variation = "FillAmber"
+
 	_setup_sort_option()
 	_setup_filters()
 	_setup_context_menu()
@@ -227,7 +235,7 @@ func _make_slot(item: ItemData, cnt: int) -> Control:
 ## A dark slot fill with a rarity-colored border.
 func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	sb.bg_color = Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.92)
 	sb.set_border_width_all(2)
 	sb.border_color = item.rarity_color()
 	sb.set_corner_radius_all(4)

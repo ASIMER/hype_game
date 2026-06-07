@@ -50,6 +50,7 @@ const DEFAULTS := {
 	"show_fps": false,            # minimal FPS counter
 	"show_detailed_stats": false, # full perf + network panel
 	"stats_display_mode": 0,      # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
+	"ui_fx_enabled": true,        # "military glass" UI FX: scanline/grain/vignette + modal blur
 	# Interface / HUD layout (ultrawide comfort — lives in the Interface settings tab).
 	"ui_edge_margin": 0.0,        # 0.0..0.2 pull edge-anchored UI in toward center (frac of width)
 	"ui_top_margin": 0.0,         # 0.0..0.2 vertical inset for top/bottom-anchored UI (frac of height)
@@ -266,6 +267,7 @@ func apply(key: String) -> void:
 			_apply_quality_lever()
 		"language": _apply_language(str(v))
 		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
+		"ui_fx_enabled": _apply_ui_fx(bool(v))
 		"ui_edge_margin", "ui_top_margin": _apply_ui_margins()
 		"hud_scale": _apply_hud_scale(float(v))
 		"camera_distance", "camera_shoulder", "default_view": _apply_camera()
@@ -363,6 +365,12 @@ func _apply_stats_overlay() -> void:
 		bool(get_value("show_fps")),
 		bool(get_value("show_detailed_stats")),
 		int(get_value("stats_display_mode")))
+
+## "Military glass" UI FX master toggle → mirror into Settings + tell FXOverlay /
+## GlassBackdrops to enable or fall back to plain dim.
+func _apply_ui_fx(enabled: bool) -> void:
+	Settings.ui_fx_enabled = enabled
+	Events.ui_fx_changed.emit(enabled)
 
 ## Mirror the camera prefs into Settings + tell the player rig to re-read them.
 func _apply_camera() -> void:

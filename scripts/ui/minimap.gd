@@ -126,8 +126,11 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var c := size * 0.5
-	draw_circle(c, RADIUS, Color(0.03, 0.05, 0.07, 0.8))
-	draw_arc(c, RADIUS, 0.0, TAU, 48, Color(0.5, 0.7, 0.85, 0.9), 2.5)
+	# Glass-toned disc background + amber-accent border ring.
+	draw_circle(c, RADIUS, Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.82))
+	draw_arc(c, RADIUS, 0.0, TAU, 48, Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.55), 2.5)
+	# Thin inner light-border for the glass frame.
+	draw_arc(c, RADIUS - 2.5, 0.0, TAU, 48, UIStyle.BORDER_LT, 1.0)
 
 	# Sensor-blackout surge: scramble the minimap with a "SIGNAL LOST" overlay and return.
 	if _sensor_blackout:
