@@ -27,6 +27,7 @@ def send(cmd, host=DEFAULT_HOST, port=DEFAULT_PORT, timeout=None):
 
     move/fire are blocking: the server replies only after the held duration
     elapses, so the socket timeout is sized to duration + 10s (min 15s).
+    For short-lived probes pass an explicit timeout (e.g. 1.0).
     """
     if timeout is None:
         dur = 0.0
@@ -80,6 +81,18 @@ def _emit(resp, raw=False):
     return 0 if resp.get("ok") else 1
 
 
+def _cast_num(s):
+    """Try int then float; return string if neither works."""
+    try:
+        return int(s)
+    except ValueError:
+        pass
+    try:
+        return float(s)
+    except ValueError:
+        return s
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="play.py", description="Control client for the hype-game agent server."
@@ -104,8 +117,15 @@ def main(argv=None):
     p_look.add_argument("dx", type=float)
     p_look.add_argument("dy", type=float)
 
-    p_aim = sub.add_parser("aim", help="point the camera at an enemy (engine-side)")
+    p_aim = sub.add_parser(
+        "aim",
+        help="point the camera at a target (engine-side). "
+             "Usage: aim [nearest|<name>|weakpoint|point X Y Z]",
+    )
     p_aim.add_argument("target", nargs="?", default="nearest")
+    p_aim.add_argument("ax", nargs="?", type=float, default=None, metavar="X")
+    p_aim.add_argument("ay", nargs="?", type=float, default=None, metavar="Y")
+    p_aim.add_argument("az", nargs="?", type=float, default=None, metavar="Z")
 
     p_goto = sub.add_parser("goto", help="face world XZ point and walk forward toward it")
     p_goto.add_argument("x", type=float)
@@ -128,6 +148,50 @@ def main(argv=None):
 
     sub.add_parser("quit", help="ask the game to quit")
 
+    # --- New commands ---
+
+    p_hold = sub.add_parser(
+        "hold",
+        help="hold or release a sustained input: hold <action> on|off",
+    )
+    p_hold.add_argument(
+        "action",
+        choices=["crouch", "interact", "carry", "jump", "fire", "sprint", "ads"],
+    )
+    p_hold.add_argument("on", choices=["on", "off"])
+
+    p_down = sub.add_parser("down", help="down or revive the local player: down on|off")
+    p_down.add_argument("on", choices=["on", "off"])
+
+    p_hurt = sub.add_parser(
+        "hurt",
+        help="deal damage: hurt <target> <amount> [weak]  (target: self|nearest|<name>)",
+    )
+    p_hurt.add_argument("target")
+    p_hurt.add_argument("amount", type=float)
+    p_hurt.add_argument("weak", nargs="?", default="")
+
+    p_kill = sub.add_parser("kill", help="instantly kill target: kill [nearest|self|<name>]")
+    p_kill.add_argument("target", nargs="?", default="nearest")
+
+    p_heal = sub.add_parser("heal", help="heal the local player: heal <amount>")
+    p_heal.add_argument("amount", type=float)
+
+    p_sethp = sub.add_parser("sethp", help="set local player health to value: sethp <value>")
+    p_sethp.add_argument("value", type=float)
+
+    sub.add_parser("crosshair", help="raycast from the camera; returns hit info")
+
+    p_prog = sub.add_parser(
+        "prog",
+        help="progression setter: prog <action> [key=value ...]\n"
+             "  actions: add_xp set_xp set_level add_rep set_rep add_mastery\n"
+             "           set_mastery skill_points buy_skill credit_kill",
+    )
+    p_prog.add_argument("action")
+    p_prog.add_argument("pairs", nargs="*", metavar="key=value",
+                        help="Extra fields, e.g. amount=500 weapon=rifle level=3")
+
     args = parser.parse_args(argv)
 
     # Build the protocol command from the parsed subcommand.
@@ -141,6 +205,13 @@ def main(argv=None):
         cmd = {"cmd": "look", "dx": args.dx, "dy": args.dy}
     elif args.command == "aim":
         cmd = {"cmd": "aim", "target": args.target}
+        # For target="point", pass the world coords if provided.
+        if args.ax is not None:
+            cmd["x"] = args.ax
+        if args.ay is not None:
+            cmd["y"] = args.ay
+        if args.az is not None:
+            cmd["z"] = args.az
     elif args.command == "goto":
         # goto is blocking like move/fire; send() sizes the timeout off duration.
         cmd = {"cmd": "goto", "x": args.x, "z": args.z, "duration": args.duration}
@@ -154,6 +225,32 @@ def main(argv=None):
         cmd = {"cmd": "screenshot", "name": args.name}
     elif args.command == "quit":
         cmd = {"cmd": "quit"}
+    elif args.command == "hold":
+        cmd = {"cmd": "hold", "action": args.action, "on": args.on == "on"}
+    elif args.command == "down":
+        cmd = {"cmd": "down", "on": args.on == "on"}
+    elif args.command == "hurt":
+        cmd = {
+            "cmd": "hurt",
+            "target": args.target,
+            "amount": args.amount,
+            "weak": args.weak.lower() == "weak",
+        }
+    elif args.command == "kill":
+        cmd = {"cmd": "kill", "target": args.target}
+    elif args.command == "heal":
+        cmd = {"cmd": "heal", "amount": args.amount}
+    elif args.command == "sethp":
+        cmd = {"cmd": "sethp", "value": args.value}
+    elif args.command == "crosshair":
+        cmd = {"cmd": "crosshair"}
+    elif args.command == "prog":
+        cmd = {"cmd": "prog", "action": args.action}
+        for pair in args.pairs:
+            if "=" not in pair:
+                parser.error("prog extra args must be key=value, got: {}".format(pair))
+            k, _, v = pair.partition("=")
+            cmd[k.strip()] = _cast_num(v.strip())
     else:  # pragma: no cover - argparse enforces choices
         parser.error("unknown command")
 

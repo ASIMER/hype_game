@@ -20,6 +20,7 @@ class_name Player
 @onready var _weapon_controller: Node = $CameraPivot/SpringArm3D/Camera3D/WeaponController
 
 var _input_enabled: bool = true
+var _agent_jump_prev: bool = false   # edge-detect a HELD agent jump so it fires once
 
 # --- Co-op DOWNED / REVIVE / CARRY (server-authoritative; authority drives its own) ---
 ## Synced (Player.tscn MultiplayerSynchronizer): every peer renders a teammate as downed.
@@ -203,7 +204,14 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	if _input_enabled and is_on_floor() and Input.is_action_just_pressed("jump"):
+	var _jump_edge: bool
+	if AgentBridge.active:
+		var _jn := AgentBridge.held("jump")
+		_jump_edge = _jn and not _agent_jump_prev
+		_agent_jump_prev = _jn
+	else:
+		_jump_edge = Input.is_action_just_pressed("jump")
+	if _input_enabled and is_on_floor() and _jump_edge:
 		velocity.y = Settings.PLAYER_JUMP_VELOCITY
 
 	# Agent self-play: when the control server is driving, consume its look delta
@@ -242,7 +250,7 @@ func _physics_process(delta: float) -> void:
 
 	# --- Stance: crouch / slide vs stand --------------------------------------
 	# A slide locks steering and decays its own velocity, so resolve it first.
-	var crouch_held := _input_enabled and Input.is_action_pressed("crouch")
+	var crouch_held := _input_enabled and _act_held("crouch")
 	var sprinting := false
 	if stance == Stance.SLIDE:
 		sprinting = false
@@ -1040,9 +1048,9 @@ func _update_coop_interaction(delta: float) -> void:
 	var target := _nearest_downed_teammate()
 	# --- Carry (hold F) ---
 	if _carry_target != null and (not is_instance_valid(_carry_target) \
-			or not _carry_target.get("downed") or not Input.is_action_pressed("carry")):
+			or not _carry_target.get("downed") or not _act_held("carry")):
 		_drop_carry()
-	if _carry_target == null and target != null and Input.is_action_pressed("carry"):
+	if _carry_target == null and target != null and _act_held("carry"):
 		_begin_carry(target)
 	if _carry_target != null:
 		# While carrying, keep the body glued to a point in front of us.
@@ -1060,7 +1068,7 @@ func _update_coop_interaction(delta: float) -> void:
 		return
 	# A downed teammate takes priority over loot — show the revive prompt.
 	Events.interaction_available.emit("Revive / Carry [hold E / F]", target)
-	if Input.is_action_pressed("interact"):
+	if _act_held("interact"):
 		if target != _revive_target:
 			_revive_target = target
 			_revive_progress = 0.0
@@ -1144,6 +1152,12 @@ func set_carry_anchor(p: Vector3) -> void:
 ## PUBLIC: HUD / other lanes query downed state.
 func is_downed() -> bool:
 	return downed
+
+## Agent-or-input HELD read: when the harness drives this player, consult
+## AgentBridge.held(action); otherwise the real Input. Lets the harness HOLD
+## crouch/interact/carry (revive/carry/crouch testing).
+func _act_held(action: String) -> bool:
+	return AgentBridge.held(action) if AgentBridge.active else Input.is_action_pressed(action)
 
 # --- Audible movement noise (sound stealth) ---------------------------------
 ## Observe planar speed from the SYNCED position on every peer (runs on server AND

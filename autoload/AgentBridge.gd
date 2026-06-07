@@ -18,6 +18,14 @@ var sprint: bool = false
 var fire: bool = false
 var ads: bool = false               # aim-down-sights (harness-driven)
 var _pending_look: Vector2 = Vector2.ZERO   # dx = yaw (right+), dy = pitch (down+), radians
+# Sustained HELD inputs (vs the tap-only `act`): player.gd reads held("crouch"/"interact"/
+# "carry"/"jump") in place of Input.is_action_pressed when active. Lets the harness test
+# hold-to-crouch / hold-E-revive / hold-F-carry. fire/sprint/ads use their own bools above.
+var _held: Dictionary = {}
+
+## PUBLIC: is the harness holding `action`? (player.gd consults this when active.)
+func held(action: String) -> bool:
+	return bool(_held.get(action, false))
 
 var _server: TCPServer
 var _client: StreamPeerTCP
@@ -137,9 +145,16 @@ func _handle_line(line: String) -> void:
 			_pending_look += Vector2(float(json.get("dx", 0.0)), float(json.get("dy", 0.0)))
 			_send({ "ok": true })
 		"aim":
-			# Precisely point the player's camera at an enemy (engine-side math, exact).
-			# target: "nearest" (default) or an enemy node name.
-			var aimed := _aim_at(str(json.get("target", "nearest")))
+			# Precisely point the player's camera at a target (engine-side math, exact). target:
+			# "nearest"(default) | enemy name | "weakpoint" | "point" (the world x,y,z).
+			var atgt := str(json.get("target", "nearest"))
+			var aimed := false
+			if atgt == "point":
+				aimed = _aim_at_point(Vector3(float(json.get("x", 0.0)), float(json.get("y", 0.0)), float(json.get("z", 0.0))))
+			elif atgt == "weakpoint":
+				aimed = _aim_weakpoint()
+			else:
+				aimed = _aim_at(atgt)
 			_send({ "ok": aimed })
 		"sprint":
 			sprint = bool(json.get("on", false))
@@ -152,7 +167,7 @@ func _handle_line(line: String) -> void:
 			var ok := _debug_spawn(str(json.get("id", "wasp")), float(json.get("dist", 9.0)), bool(json.get("hunter", true)))
 			_send({ "ok": ok })
 		"event":
-			var ok_ev := _debug_world_event(int(json.get("kind", 0)))
+			var ok_ev := _debug_world_event(int(json.get("kind", 0)), bool(json.get("end", false)))
 			_send({ "ok": ok_ev })
 		"tp":
 			# Debug: teleport the local player to a world XZ (for reaching far test spots).
@@ -351,6 +366,41 @@ func _handle_line(line: String) -> void:
 		"act":
 			_do_action(str(json.get("action", "")))
 			_send({ "ok": true })
+		"hold":
+			# Sustained input hold (crouch/interact/carry/jump -> _held; fire/sprint/ads ->
+			# their own bools). The counterpart to tap-only `act`.
+			var hact := str(json.get("action", ""))
+			var hon := bool(json.get("on", true))
+			match hact:
+				"fire": fire = hon
+				"sprint": sprint = hon
+				"ads": ads = hon
+				_: _held[hact] = hon
+			_send({ "ok": true })
+		"down":
+			# Debug: force the local player DOWNED (on:true) or revive it (on:false).
+			_send(_debug_down(bool(json.get("on", true))))
+		"hurt":
+			# Debug: damage self / nearest / a named enemy (weak:true -> weak-point multiplier).
+			_send(_debug_hurt(str(json.get("target", "nearest")), float(json.get("amount", 9999.0)), bool(json.get("weak", false))))
+		"kill":
+			_send(_debug_hurt(str(json.get("target", "nearest")), 1.0e9, false))
+		"heal":
+			var hpl := _local_player(get_tree().get_nodes_in_group("players"))
+			var hhp: Health = hpl.get_node_or_null("Health") if hpl else null
+			if hhp: hhp.heal(float(json.get("amount", 9999.0)))
+			_send({ "ok": hhp != null, "health": hhp.current if hhp else 0.0 })
+		"sethp":
+			var spl := _local_player(get_tree().get_nodes_in_group("players"))
+			var shp: Health = spl.get_node_or_null("Health") if spl else null
+			if shp:
+				shp.current = clampf(float(json.get("value", shp.current)), 0.0, shp.max_health)
+				shp.health_changed.emit(shp.current, shp.max_health)
+			_send({ "ok": shp != null, "health": shp.current if shp else 0.0 })
+		"prog":
+			_send(_debug_prog(json))
+		"crosshair":
+			_send(_debug_crosshair())
 		"screenshot":
 			_screenshot(str(json.get("name", "shot")))   # replies asynchronously
 		"restart":
@@ -379,8 +429,30 @@ func _hold(duration: float, clears: String) -> void:
 ## position), so position and aim direction must converge together. After this the
 ## screen-center crosshair is on the target, so Weapon.try_fire connects.
 func _aim_at(target_name: String) -> bool:
-	var players := get_tree().get_nodes_in_group("players")
-	var p: Node = _local_player(players)
+	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var enemy: Node3D = _pick_enemy(p, target_name)
+	if enemy == null:
+		return false
+	# Body CENTRE — inside every archetype's hitbox, ground or air.
+	return _aim_at_point(enemy.global_position)
+
+
+## Aim at the nearest enemy's WeakPoint sphere (headshot line-up for weak-point QA).
+func _aim_weakpoint() -> bool:
+	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var enemy: Node3D = _pick_enemy(p, "nearest")
+	if enemy == null:
+		return false
+	var wp := enemy.get_node_or_null("WeakPoint/CollisionShape3D")
+	var pt: Vector3 = (wp as Node3D).global_position if wp is Node3D else enemy.global_position
+	return _aim_at_point(pt)
+
+
+## Converge the player camera so its forward ray lands on `aimp` (the weapon's two-stage
+## shot then sends bullets to that crosshair point). Iterates because the camera orbits
+## the pivot — moving the yaw moves the camera, so position + aim must converge together.
+func _aim_at_point(aimp: Vector3) -> bool:
+	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
 	if p == null:
 		return false
 	var pivot: Node3D = p.get_node_or_null("CameraPivot")
@@ -388,22 +460,6 @@ func _aim_at(target_name: String) -> bool:
 	var cam: Node3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D")
 	if pivot == null or spring == null or cam == null:
 		return false
-
-	var enemy: Node3D = _pick_enemy(p, target_name)
-	if enemy == null:
-		return false
-	# Aim at the body CENTRE (global_position). The old +0.9 torso bias overshot small
-	# targets like the 0.4 m flying wasp (crosshair landed just above it → every shot
-	# missed); the centre is inside every archetype's hitbox, ground or air.
-	var aimp := enemy.global_position
-
-	# The body carries the global yaw (pivot yaw is transferred into it each frame by
-	# the controller), so set the BODY yaw and keep the pivot's local yaw at 0; pitch
-	# lives on the spring arm. We aim so the CAMERA'S forward ray lands on the target,
-	# because the weapon's two-stage shot converges bullets to that crosshair point.
-	# The camera sits ~4 m back/up on the spring arm, so for ELEVATED targets (flying
-	# wasps) the pivot-based angle misses — refine a few times from the camera's true
-	# position (which moves as we rotate) until it converges onto the target.
 	var origin: Vector3 = pivot.global_position
 	for _i in 3:
 		var to := (aimp - origin).normalized()
@@ -416,7 +472,7 @@ func _aim_at(target_name: String) -> bool:
 		pivot.force_update_transform()
 		spring.force_update_transform()
 		cam.force_update_transform()
-		origin = cam.global_position   # refine against where the camera actually ended up
+		origin = cam.global_position
 	return true
 
 
@@ -458,6 +514,132 @@ func _pick_enemy(p: Node, target_name: String) -> Node3D:
 	return best
 
 
+## Debug: down (on:true) or revive (on:false) the local player deterministically.
+func _debug_down(on: bool) -> Dictionary:
+	if not GameState.is_local_authority_server():
+		return { "ok": false, "error": "server-auth only" }
+	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	if p == null:
+		return { "ok": false, "error": "no player" }
+	if on:
+		if p.has_method("_enter_downed"):
+			p._enter_downed(null)
+	else:
+		if p.has_method("_apply_revive"):
+			p._apply_revive()
+		elif p.has_method("server_revive"):
+			p.server_revive(p)
+	return { "ok": true, "downed": p.is_downed() if p.has_method("is_downed") else false }
+
+
+## Debug: deal damage to self / nearest / a named enemy. weak:true routes through the
+## enemy's WeakPoint Hurtbox so the damage_multiplier applies (weak-point QA).
+func _debug_hurt(target: String, amount: float, weak: bool) -> Dictionary:
+	if not GameState.is_local_authority_server():
+		return { "ok": false, "error": "server-auth only" }
+	var me: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var node: Node = me if target == "self" else _pick_enemy(me, target)
+	if node == null:
+		return { "ok": false, "error": "no target" }
+	if weak and target != "self":
+		var wp := node.get_node_or_null("WeakPoint")
+		if wp and wp.has_method("apply_hit"):
+			wp.apply_hit(amount, me)
+			var whp: Health = node.get_node_or_null("Health")
+			return { "ok": true, "target": str(node.name), "weak": true, "health": whp.current if whp else 0.0 }
+	var hp: Health = node.get_node_or_null("Health")
+	if hp == null:
+		return { "ok": false, "error": "no Health on target" }
+	hp.take_damage(amount, me)
+	return { "ok": true, "target": str(node.name), "weak": false, "health": hp.current }
+
+
+## Debug: drive MetaProgression / Progression directly (jump XP/level/rep/mastery/skills
+## to test milestones + bonuses without grinding). Per-peer LOCAL (runs on THIS instance).
+func _debug_prog(json: Dictionary) -> Dictionary:
+	var a := str(json.get("action", ""))
+	match a:
+		"add_xp": MetaProgression.add_xp(int(json.get("amount", 0)), "debug")
+		"set_xp":
+			MetaProgression.xp = 0
+			MetaProgression.raider_level = 1
+			MetaProgression.add_xp(int(json.get("value", 0)), "debug")
+		"set_level":
+			MetaProgression.raider_level = maxi(1, int(json.get("value", 1)))
+			MetaProgression._apply_milestones()
+			MetaProgression.save_profile()
+		"add_rep": MetaProgression.grant_rep(int(json.get("amount", 0)))
+		"set_rep":
+			MetaProgression.vendor_rep = int(json.get("value", 0))
+			MetaProgression.save_profile()
+		"add_mastery": MetaProgression.add_weapon_mastery(str(json.get("weapon", "")), int(json.get("amount", 0)))
+		"set_mastery":
+			var wm: Dictionary = MetaProgression.weapon_mastery
+			wm[str(json.get("weapon", ""))] = { "xp": 0, "level": int(json.get("level", 0)) }
+			MetaProgression.weapon_mastery = wm
+			MetaProgression.save_profile()
+		"skill_points":
+			MetaProgression.skill_points = int(json.get("value", 0))
+			MetaProgression.save_profile()
+		"buy_skill": MetaProgression.buy_skill(str(json.get("key", "")))
+		"credit_kill": Progression.credit_kill()
+	return { "ok": true, "meta": {
+		"xp": MetaProgression.xp, "raider_level": MetaProgression.raider_level,
+		"skill_points": MetaProgression.skill_points, "vendor_rep": MetaProgression.vendor_rep,
+		"rep_tier": MetaProgression.rep_tier(), "weapon_mastery": MetaProgression.weapon_mastery } }
+
+
+## Debug: raycast from the camera forward and report what the crosshair is on — entity,
+## whether the ray lines up on the enemy's weak-point sphere, distance. Verify aim before firing.
+func _debug_crosshair() -> Dictionary:
+	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") if p else null
+	if cam == null:
+		return { "ok": false, "error": "no camera" }
+	var from: Vector3 = cam.global_position
+	var dir: Vector3 = -cam.global_transform.basis.z
+	var vp := get_viewport()
+	if vp == null or vp.world_3d == null:
+		return { "ok": false, "error": "no world" }
+	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 300.0)
+	q.collide_with_areas = true
+	q.collide_with_bodies = true
+	# Exclude ALL of the player's own collision objects (body + Hurtbox + any view-model)
+	# so the ray reports the enemy/world under the reticle, not our own gun at point-blank.
+	var excl: Array[RID] = []
+	_collect_collision_rids(p, excl)
+	q.exclude = excl
+	var hit := vp.world_3d.direct_space_state.intersect_ray(q)
+	if not hit:
+		return { "ok": true, "hit": false }
+	var col: Object = hit.get("collider")
+	var entity := ""
+	var eid := ""
+	var enemy_node: Node = null
+	var n: Node = col as Node
+	while n != null:
+		if n.is_in_group("enemies"):
+			enemy_node = n
+			entity = str(n.name)
+			eid = str(n.get("enemy_id")) if "enemy_id" in n else ""
+			break
+		if n.is_in_group("players"):
+			entity = str(n.name)
+			break
+		n = n.get_parent()
+	var is_weak := false
+	if enemy_node:
+		var wps := enemy_node.get_node_or_null("WeakPoint/CollisionShape3D")
+		if wps is CollisionShape3D and (wps as CollisionShape3D).shape is SphereShape3D:
+			var c: Vector3 = (wps as Node3D).global_position
+			var r: float = ((wps as CollisionShape3D).shape as SphereShape3D).radius
+			var t: float = maxf(0.0, (c - from).dot(dir))
+			is_weak = (from + dir * t).distance_to(c) <= r + 0.05
+	var point: Vector3 = hit.get("position")
+	return { "ok": true, "hit": true, "entity": entity, "enemy_id": eid,
+		"is_weakpoint": is_weak, "point": _v3(point), "dist": from.distance_to(point) }
+
+
 ## Debug: instance an enemy archetype in front of the local player (for verifying
 ## the new types). Server-authoritative; reuses the wave enemy container.
 func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
@@ -497,12 +679,28 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 ## kind: 0 supply_cache, 1 miniboss, 2 contested_poi, 3 surge. Calls the director's
 ## per-kind starter directly (underscore = convention, callable). Returns false if the
 ## director isn't present/idle or the match isn't running.
-func _debug_world_event(kind: int) -> bool:
+func _debug_world_event(kind: int, want_end: bool = false) -> bool:
 	if not GameState.is_local_authority_server():
 		return false
 	var d: Node = get_node_or_null("/root/WorldEventDirector")
 	if d == null:
 		return false
+	if want_end:
+		# End whatever event is active (by its _active_kind), via the matching _end_* method.
+		var ak: int = int(d.get("_active_kind")) if "_active_kind" in d else -1
+		var ender: String = {
+			0: "_end_supply_cache_timeout",
+			1: "_end_miniboss",
+			2: "_end_contested_poi",
+			3: "_end_surge",
+		}.get(ak, "")
+		if ender == "" or not d.has_method(ender):
+			return false
+		if ak == 0:
+			d.call(ender)
+		else:
+			d.call(ender, true)
+		return true
 	var starter: String = {
 		0: "_start_supply_cache",
 		1: "_start_miniboss",
@@ -702,6 +900,7 @@ func _snapshot() -> Dictionary:
 				"rep_tier": MetaProgression.rep_tier(),
 				"weapon_mastery": MetaProgression.weapon_mastery,
 		},
+		"agent_held": _held,
 		"stash": Stash.items,
 		"stash_weight": Stash.total_weight(),
 		"stash_cap": Stash.capacity(),
@@ -722,6 +921,7 @@ func _snapshot() -> Dictionary:
 	var p: Node = _local_player(players)
 	if p == null:
 		d["player"] = null
+		d["drivable"] = false
 		d["inventory"] = []
 		d["enemies"] = []
 		return d
@@ -755,6 +955,32 @@ func _snapshot() -> Dictionary:
 		"shoulder": float(p.get("_shoulder_sign")),
 		"medkits": int(p.get("_medkits")),
 		"grenades": int(p.get("_grenades")),
+		"stance": int(p.get("stance")) if p.get("stance") != null else 0,
+		"water": int(p.get("_water_state")) if p.get("_water_state") != null else 0,
+		"noise_radius": (p.noise_radius() if p.has_method("noise_radius") else 0.0),
+		"fov": _cam_fov(p),
+		"agent_active": active,
+		"input_enabled": bool(p.get("_input_enabled")),
+		"authority": p.is_multiplayer_authority(),
+		"bleedout": float(p.get("_bleedout")) if p.get("_bleedout") != null else 0.0,
+		"revive_progress": float(p.get("_revive_progress")) if p.get("_revive_progress") != null else 0.0,
+		"carried_by": int(p.get("_carried_by_peer")) if p.get("_carried_by_peer") != null else 0,
+		"carrying": (p.is_carrying() if p.has_method("is_carrying") else false),
+		"self_revives": int(p.get("_self_revives")) if p.get("_self_revives") != null else 0,
+		"shields": int(p.get("_shields")) if p.get("_shields") != null else 0,
+		"crosshair": _debug_crosshair(),
+		"wdbg": {
+			"weapons": (wc.get("_weapons").size() if (wc and wc.get("_weapons") != null) else 0),
+			"cooldown": float(wc.get("_cooldown")) if (wc and wc.get("_cooldown") != null) else 0.0,
+			"latched": bool(wc.get("_semi_latched")) if wc else false,
+			"reloading": bool(wc.get("_reloading")) if wc else false,
+			"enabled": bool(wc.get("_enabled")) if wc else false,
+			"agent_fire": fire,
+			"tf_calls": int(wc.get("_tf_calls")) if (wc and wc.get("_tf_calls") != null) else 0,
+			"tf_fail": str(wc.get("_tf_fail")) if (wc and wc.get("_tf_fail") != null) else "",
+			"wc_ref_ok": p.get("_weapon_controller") != null,
+			"cam_ref_ok": p.get("camera") != null,
+		},
 	}
 	var stacks: Array = []
 	if inv:
@@ -763,6 +989,11 @@ func _snapshot() -> Dictionary:
 			stacks.append({ "id": item.id, "count": s["count"], "weight": item.weight })
 		d["inv_weight"] = inv.total_weight()
 		d["inv_value"] = inv.total_value()
+	# Drivable = the local player is fully spawned + its weapon/camera refs resolved +
+	# input enabled. Poll this after deploy/join before scripting move/fire (avoids the
+	# post-spawn race where refs are briefly null — the cause of "co-op client wont fire").
+	d["drivable"] = (p.get("_weapon_controller") != null and p.get("camera") != null
+		and bool(p.get("_input_enabled")) and active)
 	d["inventory"] = stacks
 
 	var enemies: Array = []
@@ -777,6 +1008,9 @@ func _snapshot() -> Dictionary:
 			"pos": _v3(e.global_position),
 			"health": ehp.current if ehp else 0.0,
 			"state": st,
+			"hunter": bool(e.get("hunter")) if "hunter" in e else false,
+			"target": (str(e.get_target().name) if (e.has_method("get_target") and e.get_target() != null) else ""),
+			"investigating": st == 3,
 			"dist": p.global_position.distance_to(e.global_position),
 		})
 	d["enemies"] = enemies
@@ -790,6 +1024,24 @@ func _snapshot() -> Dictionary:
 			"dist": p.global_position.distance_to(l.global_position),
 		})
 	d["loot"] = loot
+
+	# Dynamic world events (markers + the active supply cache) for QA introspection.
+	var wevents: Array = []
+	var director: Node = get_node_or_null("/root/WorldEventDirector")
+	for w in get_tree().get_nodes_in_group("world_events"):
+		var wr := -1.0
+		if w.has_method("event_ratio"):
+			wr = float(w.call("event_ratio"))
+		elif director and director.has_method("marker_event_ratio"):
+			wr = float(director.call("marker_event_ratio", w))
+		wevents.append({
+			"kind": int(w.get_meta("event_kind")) if w.has_meta("event_kind") else -1,
+			"label": str(w.get_meta("event_label")) if w.has_meta("event_label") else "",
+			"pos": _v3(w.global_position) if w is Node3D else [0, 0, 0],
+			"ratio": wr,
+		})
+	d["world_events"] = wevents
+	d["active_event_kind"] = (int(director.get("_active_kind")) if (director and "_active_kind" in director) else -1)
 	return d
 
 
@@ -803,3 +1055,17 @@ func _local_player(players: Array) -> Node:
 
 func _v3(v: Vector3) -> Array:
 	return [snappedf(v.x, 0.001), snappedf(v.y, 0.001), snappedf(v.z, 0.001)]
+
+
+## Current camera FOV of a player (for verifying ADS zoom), or 0.0 if no camera.
+func _cam_fov(p: Node) -> float:
+	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D")
+	return cam.fov if cam else 0.0
+
+
+## Collect the RIDs of every CollisionObject3D in `root`s subtree (for ray excludes).
+func _collect_collision_rids(root: Node, out: Array[RID]) -> void:
+	if root is CollisionObject3D:
+		out.append((root as CollisionObject3D).get_rid())
+	for c in root.get_children():
+		_collect_collision_rids(c, out)

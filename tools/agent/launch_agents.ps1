@@ -24,7 +24,7 @@
   Screenshots land in:  %APPDATA%\Godot\app_userdata\Hype Raiders\agent\<port>\
   Per-instance saves:   %APPDATA%\...\Hype Raiders\profile_<port>.cfg / settings_<port>.cfg
 
-.PARAMETER Count     How many instances (1-4). Default 2.
+.PARAMETER Count     How many instances (1-8). Default 2.
 .PARAMETER BasePort  First control port. Default 24700. Instance i uses BasePort + i.
 .PARAMETER NetPort   ENet game port for this group/worktree. Default 24565 (discovery = +1).
 .PARAMETER Label     Window-title identifier. Default = the git branch checked out at -Path.
@@ -52,7 +52,7 @@ param(
   [string]$Godot = "C:\Users\illya\Desktop\godot\Godot_v4.6.3-stable_win64.exe"
 )
 
-if ($Count -lt 1 -or $Count -gt 4) { throw "Count must be 1-4 (got $Count)." }
+if ($Count -lt 1 -or $Count -gt 8) { throw "Count must be 1-8 (got $Count)." }
 if (-not (Test-Path $Godot)) { throw "Godot not found at $Godot" }
 
 # Default the label to the worktree's current git branch (so the window title says
