@@ -1,16 +1,16 @@
 # Graph Report - hype game  (2026-06-07)
 
 ## Corpus Check
-- 20 files · ~2,009,058 words
+- 20 files · ~2,009,310 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 481 nodes · 634 edges · 72 communities (37 shown, 35 thin omitted)
-- Extraction: 88% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 71 edges (avg confidence: 0.85)
+- 482 nodes · 635 edges · 72 communities (37 shown, 35 thin omitted)
+- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 71 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8c9e772d`
+- Built from commit: `256a98b2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -147,7 +147,7 @@ Nodes (31): Health component, Health.take_damage, Hurtbox.apply_hit, Hurtbox, We
 
 ### Community 4 - "Asset Registry & Fallbacks"
 Cohesion: 0.10
-Nodes (25): AssetRegistry.CATALOG (logical id table), Guarded-fallback resolution (glb to procedural to primitive), AssetRegistry.get_icon, AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), AudioManager (Events-driven SFX), AudioManager._play / _play_at, Events Bus (+17 more)
+Nodes (25): AssetRegistry.CATALOG (logical id table), AssetRegistry.get_icon, AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), Events Bus, Server-Authoritative Inventory Owner-Mirror, ExtractionZone, CameraFX (+17 more)
 
 ### Community 5 - "HUD Widgets"
 Cohesion: 0.19
@@ -210,8 +210,8 @@ Cohesion: 0.67
 Nodes (3): ProcMaterials.grime_texture, ProcMaterials.streaked, ProcMaterials.weathered
 
 ### Community 56 - "Community 56"
-Cohesion: 0.20
-Nodes (12): Local Visual-Only FX, RobotGunner._fire_hitscan, RobotGunner._spawn_tracer, RobotGunner._strike, CameraFX._on_hit_stop, Explosion, Impact, MuzzleFlash (+4 more)
+Cohesion: 0.28
+Nodes (9): Local Visual-Only FX, RobotGunner._fire_hitscan, RobotGunner._spawn_tracer, RobotGunner._strike, Impact, MuzzleFlash, RemoteShotFX._on_remote_shot, RobotDebris (+1 more)
 
 ### Community 57 - "Community 57"
 Cohesion: 0.12
@@ -222,8 +222,8 @@ Cohesion: 0.20
 Nodes (9): Agent Teams — Expected Structure & Ownership, Build-phase pattern (how a feature push runs), Canonical roles (workstreams) and their file lanes, Coordination & cross-deps, How to spawn, Team, The core rule: spine vs lanes (no two agents edit the same file), Worked examples (the co-op batches built this way) (+1 more)
 
 ### Community 59 - "Community 59"
-Cohesion: 0.22
-Nodes (8): Architecture at a glance, graphify, Hype Raiders — Project Guide (read me first), Parallel work with agent teams, Release / packaging (portable Windows build), Run / test / validate (most important for a new session), Self-play harness in 6 lines (how to actually test gameplay), Top conventions & gotchas
+Cohesion: 0.20
+Nodes (9): Architecture at a glance, graphify, Hype Raiders — Project Guide (read me first), Parallel work with agent teams, Release / packaging (portable Windows build), Release / packaging (portable Windows + macOS builds), Run / test / validate (most important for a new session), Self-play harness in 6 lines (how to actually test gameplay) (+1 more)
 
 ### Community 60 - "Community 60"
 Cohesion: 0.25
@@ -238,8 +238,8 @@ Cohesion: 0.50
 Nodes (3): Attribution, License, Relevant FAQs
 
 ### Community 67 - "Community 67"
-Cohesion: 0.25
-Nodes (8): AgentBridge._debug_spawn, Events (global signal bus), ExtractionDirector (timed evac windows), RemoteShotFX, GameState.is_local_authority_server, NetworkManager.begin_match, NetworkManager.broadcast_shot, NetworkManager.notify_loaded (load gate)
+Cohesion: 0.18
+Nodes (11): AgentBridge._debug_spawn, Guarded-fallback resolution (glb to procedural to primitive), AudioManager (Events-driven SFX), AudioManager._play / _play_at, Events (global signal bus), ExtractionDirector (timed evac windows), RemoteShotFX, GameState.is_local_authority_server (+3 more)
 
 ### Community 68 - "Community 68"
 Cohesion: 0.25
@@ -264,7 +264,7 @@ Nodes (12): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_lin
   scripts/combat/weapon_controller.gd · relation: references
 
 ## Knowledge Gaps
-- **175 isolated node(s):** `PreToolUse`, `allow`, `python`, `AGENT_HOST`, `AGENT_PORT` (+170 more)
+- **176 isolated node(s):** `PreToolUse`, `allow`, `python`, `AGENT_HOST`, `AGENT_PORT` (+171 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **35 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -279,9 +279,9 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Why does `ItemCatalog (id to ItemData)` connect `Core Autoload Singletons` to `Server-Auth Co-op Netcode`, `Community 70`?**
   _High betweenness centrality (0.021) - this node is a cross-community bridge._
-- **Why does `Events Bus` connect `Asset Registry & Fallbacks` to `Community 56`, `Community 67`?**
+- **Why does `Events Bus` connect `Asset Registry & Fallbacks` to `Community 67`?**
   _High betweenness centrality (0.020) - this node is a cross-community bridge._
 - **What connects `PreToolUse`, `allow`, `python` to the rest of the system?**
-  _233 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _234 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `SFX Audio Synthesizer` be split into smaller, more focused modules?**
   _Cohesion score 0.09278846153846154 - nodes in this community are weakly interconnected._

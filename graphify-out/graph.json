@@ -534,13 +534,13 @@
       "norm_label": "strip internal keys (_build) before advertising a tool."
     },
     {
-      "label": "Dispatch a single JSON-RPC request; return a response dict or None.      None is",
+      "label": "Dispatch a single JSON-RPC request; return a response dict or None.      None",
       "file_type": "rationale",
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L517",
       "id": "agent_mcp_server_rationale_517",
       "community": 8,
-      "norm_label": "dispatch a single json-rpc request; return a response dict or none.      none is"
+      "norm_label": "dispatch a single json-rpc request; return a response dict or none.      none"
     },
     {
       "label": "play.py",
@@ -615,13 +615,13 @@
       "norm_label": "raised when the control server cannot be reached or replies badly."
     },
     {
-      "label": "Send one command dict and return the parsed response dict.      move/fire are bl",
+      "label": "Send one command dict and return the parsed response dict.      move/fire are",
       "file_type": "rationale",
       "source_file": "tools/agent/play.py",
       "source_location": "L26",
       "id": "agent_play_rationale_26",
       "community": 8,
-      "norm_label": "send one command dict and return the parsed response dict.      move/fire are bl"
+      "norm_label": "send one command dict and return the parsed response dict.      move/fire are"
     },
     {
       "label": "Print a response dict; return process exit code based on resp['ok'].",
@@ -1263,13 +1263,13 @@
       "norm_label": "run / test / validate (most important for a new session)"
     },
     {
-      "label": "Release / packaging (portable Windows build)",
+      "label": "Release / packaging (portable Windows + macOS builds)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
       "source_location": "L36",
-      "id": "claude_release_packaging_portable_windows_build",
+      "id": "claude_release_packaging_portable_windows_macos_builds",
       "community": 59,
-      "norm_label": "release / packaging (portable windows build)"
+      "norm_label": "release / packaging (portable windows + macos builds)"
     },
     {
       "label": "Self-play harness in 6 lines (how to actually test gameplay)",
@@ -2010,6 +2010,15 @@
       "norm_label": "quick manual test (no game)"
     },
     {
+      "label": "Release / packaging (portable Windows build)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L36",
+      "community": 59,
+      "norm_label": "release / packaging (portable windows build)",
+      "id": "claude_release_packaging_portable_windows_build"
+    },
+    {
       "label": "Write a diagnostic line to stderr (never stdout).",
       "file_type": "rationale",
       "source_file": "tools/agent/mcp_server.py",
@@ -2363,7 +2372,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 67,
       "norm_label": "guarded-fallback resolution (glb to procedural to primitive)",
       "id": "assetregistry_fallback_chain"
     },
@@ -2376,7 +2385,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 67,
       "norm_label": "audiomanager (events-driven sfx)",
       "id": "audiomanager_audiomanager"
     },
@@ -2389,7 +2398,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 67,
       "norm_label": "audiomanager._play / _play_at",
       "id": "audiomanager_play"
     },
@@ -3975,7 +3984,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 4,
       "norm_label": "camerafx._on_hit_stop",
       "id": "fx_camera_fx_on_hit_stop"
     },
@@ -4027,7 +4036,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 4,
       "norm_label": "explosion",
       "id": "fx_explosion_explosion"
     },
@@ -4274,7 +4283,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 4,
       "norm_label": "grenade._explode",
       "id": "items_grenade_explode"
     },
@@ -5508,9 +5517,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L460",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server",
-      "target": "agent_mcp_server_build_prog",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_build_prog"
     },
     {
       "relation": "contains",
@@ -5518,9 +5527,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L448",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server",
-      "target": "agent_mcp_server_build_raw",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_build_raw"
     },
     {
       "relation": "contains",
@@ -5548,9 +5557,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L478",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server",
-      "target": "agent_mcp_server_instance_info",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_instance_info"
     },
     {
       "relation": "contains",
@@ -5578,9 +5587,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L469",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server",
-      "target": "agent_mcp_server_probe_port",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_probe_port"
     },
     {
       "relation": "contains",
@@ -5618,9 +5627,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L512",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server",
-      "target": "agent_mcp_server_tool_result",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_tool_result"
     },
     {
       "relation": "calls",
@@ -5629,9 +5638,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L566",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_handle_request",
-      "target": "agent_mcp_server_build_raw",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_build_raw"
     },
     {
       "relation": "rationale_for",
@@ -5639,9 +5648,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L449",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_449",
-      "target": "agent_mcp_server_build_raw",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_build_raw"
     },
     {
       "relation": "rationale_for",
@@ -5649,9 +5658,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L461",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_461",
-      "target": "agent_mcp_server_build_prog",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_build_prog"
     },
     {
       "relation": "calls",
@@ -5660,9 +5669,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L480",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_instance_info",
-      "target": "agent_mcp_server_probe_port",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_probe_port"
     },
     {
       "relation": "calls",
@@ -5681,9 +5690,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L470",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_470",
-      "target": "agent_mcp_server_probe_port",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_probe_port"
     },
     {
       "relation": "calls",
@@ -5692,9 +5701,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L557",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_handle_request",
-      "target": "agent_mcp_server_instance_info",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_instance_info"
     },
     {
       "relation": "calls",
@@ -5713,9 +5722,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L479",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_479",
-      "target": "agent_mcp_server_instance_info",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_instance_info"
     },
     {
       "relation": "calls",
@@ -5754,9 +5763,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L495",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_495",
-      "target": "agent_mcp_server_log",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_log"
     },
     {
       "relation": "calls",
@@ -5795,9 +5804,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L500",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_500",
-      "target": "agent_mcp_server_public_tool",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_public_tool"
     },
     {
       "relation": "calls",
@@ -5817,9 +5826,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L513",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_tool_result",
-      "target": "agent_mcp_server_result",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_result"
     },
     {
       "relation": "calls",
@@ -5850,9 +5859,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L560",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_handle_request",
-      "target": "agent_mcp_server_tool_result",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_tool_result"
     },
     {
       "relation": "calls",
@@ -5902,9 +5911,9 @@
       "source_file": "tools/agent/mcp_server.py",
       "source_location": "L517",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_mcp_server_rationale_517",
-      "target": "agent_mcp_server_handle_request",
-      "confidence_score": 1.0
+      "target": "agent_mcp_server_handle_request"
     },
     {
       "relation": "contains",
@@ -5922,9 +5931,9 @@
       "source_file": "tools/agent/play.py",
       "source_location": "L84",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_play",
-      "target": "agent_play_cast_num",
-      "confidence_score": 1.0
+      "target": "agent_play_cast_num"
     },
     {
       "relation": "contains",
@@ -6044,9 +6053,9 @@
       "source_file": "tools/agent/play.py",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_play_rationale_76",
-      "target": "agent_play_emit",
-      "confidence_score": 1.0
+      "target": "agent_play_emit"
     },
     {
       "relation": "calls",
@@ -6055,9 +6064,9 @@
       "source_file": "tools/agent/play.py",
       "source_location": "L253",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_play_main",
-      "target": "agent_play_cast_num",
-      "confidence_score": 1.0
+      "target": "agent_play_cast_num"
     },
     {
       "relation": "rationale_for",
@@ -6065,9 +6074,9 @@
       "source_file": "tools/agent/play.py",
       "source_location": "L85",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_play_rationale_85",
-      "target": "agent_play_cast_num",
-      "confidence_score": 1.0
+      "target": "agent_play_cast_num"
     },
     {
       "relation": "contains",
@@ -8194,6 +8203,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "claude_hype_raiders_project_guide_read_me_first",
+      "target": "claude_release_packaging_portable_windows_macos_builds",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
       "source_location": "L12",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -8766,9 +8785,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L302",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_hype_game_agent_harness",
-      "target": "agent_readme_n_instance_co_op_recipe",
-      "confidence_score": 1.0
+      "target": "agent_readme_n_instance_co_op_recipe"
     },
     {
       "relation": "contains",
@@ -8836,9 +8855,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L163",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_mcp_server",
-      "target": "agent_readme_per_call_port_targeting",
-      "confidence_score": 1.0
+      "target": "agent_readme_per_call_port_targeting"
     },
     {
       "relation": "contains",
@@ -8856,9 +8875,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L173",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_mcp_server",
-      "target": "agent_readme_tools_exposed",
-      "confidence_score": 1.0
+      "target": "agent_readme_tools_exposed"
     },
     {
       "relation": "contains",
@@ -8866,9 +8885,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L221",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_tools_exposed",
-      "target": "agent_readme_game_broadcast_fan_out_to_n_instances",
-      "confidence_score": 1.0
+      "target": "agent_readme_game_broadcast_fan_out_to_n_instances"
     },
     {
       "relation": "contains",
@@ -8876,9 +8895,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L212",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_tools_exposed",
-      "target": "agent_readme_game_instances_discover_live_instances",
-      "confidence_score": 1.0
+      "target": "agent_readme_game_instances_discover_live_instances"
     },
     {
       "relation": "contains",
@@ -8886,9 +8905,9 @@
       "source_file": "tools/agent/README.md",
       "source_location": "L201",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_readme_tools_exposed",
-      "target": "agent_readme_game_raw_generic_forwarder",
-      "confidence_score": 1.0
+      "target": "agent_readme_game_raw_generic_forwarder"
     },
     {
       "relation": "conceptually_related_to",
@@ -12045,5 +12064,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "8c9e772d60d461a284a0f5959532229bc7592002"
+  "built_at_commit": "256a98b2d01c0efa5a29de097b816db72d82ed10"
 }

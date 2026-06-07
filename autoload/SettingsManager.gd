@@ -37,7 +37,7 @@ const DEFAULTS := {
 	"draw_distance": 1.0,         # 0.5..2.0 flora/grass visibility-range multiplier (rebuild-bound)
 	"particle_density": 1.0,      # 0.0..1.5 ambient dust/ember amount multiplier (immediate)
 	"terrain_detail": 1.0,        # 1.0..2.0 ground-mesh subdivision multiplier (rebuild-bound)
-	"volumetric_fog_density": 0.0, # 0.0..0.08 froxel volumetric fog density (immediate; 0 = off look)
+	"volumetric_fog_density": 1.0, # 0.0..2.0 LOCAL fog-zone density multiplier (immediate; global density is always 0)
 	"shadow_distance": 140.0,     # 60..250 m directional shadow max distance (immediate)
 	"dof_amount": 0.0,            # 0.0..0.2 far depth-of-field blur amount (immediate; 0 = none)
 	"volumetric_fog": false,      # enable the global froxel volumetric fog (immediate)
@@ -149,11 +149,11 @@ const QUALITY_PRESETS := {
 	"draw_distance":          [0.6,  0.8,  1.0,  1.0,  1.2],
 	"particle_density":       [0.3,  0.5,  0.85, 1.0,  1.0],
 	"terrain_detail":         [1.0,  1.0,  1.0,  1.3,  1.5],
-	"volumetric_fog_density": [0.0,  0.01, 0.02, 0.025, 0.03],
+	"volumetric_fog_density": [1.0,  1.0,  1.0,  1.0,  1.0],
 	"shadow_distance":        [80.0, 110.0, 140.0, 160.0, 200.0],
 	"dof_amount":             [0.0,  0.0,  0.0,  0.06, 0.08],
-	"volumetric_fog":         [false, true,  true, true, true],
-	"local_fog":              [false, false, false, false, true],
+	"volumetric_fog":         [false, false, false, true, true],
+	"local_fog":              [false, false, false, true,  true],
 	"god_rays":               [false, false, true, true, true],
 	"dof":                    [false, false, false, true, true],
 	"terrain_parallax":       [false, false, false, true, true],
@@ -228,6 +228,11 @@ func load_config() -> void:
 	for key in DEFAULTS:
 		if cfg.has_section_key("settings", key):
 			_values[key] = cfg.get_value("settings", key)
+	# MIGRATION: "volumetric_fog_density" changed meaning (old: 0..0.08 GLOBAL density;
+	# new: 0..2 multiplier on the local fog ZONES). An old-scale saved value would make
+	# the zones invisible — coerce anything in the old range to the 1.0 default.
+	if float(_values.get("volumetric_fog_density", 1.0)) <= 0.081:
+		_values["volumetric_fog_density"] = 1.0
 
 func save() -> void:
 	var cfg := ConfigFile.new()

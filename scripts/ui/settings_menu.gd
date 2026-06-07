@@ -244,7 +244,8 @@ func _build_quality_rows() -> void:
 	_graphics_v.add_child(td_row[0])
 
 	# Volumetric Fog Density.
-	var vfd_row := _make_slider_row("Volumetric Fog Density", 0.0, 0.08, 0.005)
+	# NB: now a MULTIPLIER on the localized FogVolume smoke banks (global density is 0).
+	var vfd_row := _make_slider_row("Local Fog Density", 0.0, 2.0, 0.1)
 	_volumetric_fog_density = vfd_row[1]
 	_volumetric_fog_density_value = vfd_row[2]
 	_volumetric_fog_density.value_changed.connect(_on_volumetric_fog_density)
@@ -523,7 +524,7 @@ func sync_from_settings() -> void:
 	_terrain_detail_value.text = "%.1fx" % terrain_detail
 	var volumetric_fog_density: float = float(g.get_value("volumetric_fog_density"))
 	_volumetric_fog_density.value = volumetric_fog_density
-	_volumetric_fog_density_value.text = "%.3f" % volumetric_fog_density
+	_volumetric_fog_density_value.text = "%.1f" % volumetric_fog_density
 	var shadow_distance: float = float(g.get_value("shadow_distance"))
 	_shadow_distance.value = shadow_distance
 	_shadow_distance_value.text = "%d m" % roundi(shadow_distance)
@@ -626,7 +627,7 @@ func _on_terrain_detail(v: float) -> void:
 	_refresh_preset_label()
 
 func _on_volumetric_fog_density(v: float) -> void:
-	_volumetric_fog_density_value.text = "%.3f" % v
+	_volumetric_fog_density_value.text = "%.1f" % v
 	_apply_setting("volumetric_fog_density", v)
 	_refresh_preset_label()
 

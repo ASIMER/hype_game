@@ -161,7 +161,18 @@ func _build_fog_zones() -> void:
 	var script: GDScript = load(path)
 	if script == null:
 		return
-	script.build(self, poi_markers)
+	# Pass the player-spawn centroid so the fog zones keep the start corner clear.
+	var spawn_center := Vector3(58.0, 0.0, 62.0)
+	if player_spawn_markers != null and player_spawn_markers.get_child_count() > 0:
+		var acc := Vector3.ZERO
+		var n := 0
+		for m in player_spawn_markers.get_children():
+			if m is Node3D:
+				acc += (m as Node3D).global_position
+				n += 1
+		if n > 0:
+			spawn_center = acc / float(n)
+	script.build(self, poi_markers, spawn_center)
 
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a
