@@ -36,6 +36,8 @@ var _model_holder: Node3D         # child that shows the current weapon model
 var _cooldown: float = 0.0        # time until the next shot is allowed (1/fire_rate)
 var _semi_latched: bool = false   # semi-auto: true once we've fired for the current hold
 var _since_fire_call: float = 1.0 # seconds since try_fire() was last called (release detect)
+var _tf_calls: int = 0      # DIAG: try_fire() call count
+var _tf_fail: String = ""   # DIAG: last try_fire early-return reason
 
 # ADS state of THIS controller's owning player. Tracked off Events.ads_changed
 # (only honored for our own player node) so the authoritative shot path and the
@@ -181,19 +183,26 @@ func try_fire(from_node: Node3D) -> bool:
 	# Mark the trigger as held this instant so _process can detect release
 	# (see _process: a short gap with no try_fire() call un-latches semi-auto).
 	_since_fire_call = 0.0
+	_tf_calls += 1
 	if _weapon == null or from_node == null:
+		_tf_fail = "weapon/from_node null"
 		return false
 	if _reloading or _switch_timer > 0.0 or _cooldown > 0.0:
+		_tf_fail = "reload/switch/cooldown"
 		return false
 	var data := current_weapon()
 	if data == null:
+		_tf_fail = "no data"
 		return false
 	# Semi-auto: one shot per press. Stay latched until the trigger is released.
 	if not data.auto and _semi_latched:
+		_tf_fail = "semi-latched"
 		return false
 	if int(_ammo.get(data.id, 0)) <= 0:
+		_tf_fail = "no ammo"
 		_begin_reload()
 		return false
+	_tf_fail = "fired"
 	# Effective spread folds in the owning player's stance/movement and ADS. Pass it
 	# to the weapon (which resolves the shot server-authoritatively, so a co-op client
 	# can't bypass it — the spread is applied where the authoritative dir is computed).

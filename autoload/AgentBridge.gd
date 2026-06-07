@@ -921,6 +921,7 @@ func _snapshot() -> Dictionary:
 	var p: Node = _local_player(players)
 	if p == null:
 		d["player"] = null
+		d["drivable"] = false
 		d["inventory"] = []
 		d["enemies"] = []
 		return d
@@ -968,6 +969,18 @@ func _snapshot() -> Dictionary:
 		"self_revives": int(p.get("_self_revives")) if p.get("_self_revives") != null else 0,
 		"shields": int(p.get("_shields")) if p.get("_shields") != null else 0,
 		"crosshair": _debug_crosshair(),
+		"wdbg": {
+			"weapons": (wc.get("_weapons").size() if (wc and wc.get("_weapons") != null) else 0),
+			"cooldown": float(wc.get("_cooldown")) if (wc and wc.get("_cooldown") != null) else 0.0,
+			"latched": bool(wc.get("_semi_latched")) if wc else false,
+			"reloading": bool(wc.get("_reloading")) if wc else false,
+			"enabled": bool(wc.get("_enabled")) if wc else false,
+			"agent_fire": fire,
+			"tf_calls": int(wc.get("_tf_calls")) if (wc and wc.get("_tf_calls") != null) else 0,
+			"tf_fail": str(wc.get("_tf_fail")) if (wc and wc.get("_tf_fail") != null) else "",
+			"wc_ref_ok": p.get("_weapon_controller") != null,
+			"cam_ref_ok": p.get("camera") != null,
+		},
 	}
 	var stacks: Array = []
 	if inv:
@@ -976,6 +989,11 @@ func _snapshot() -> Dictionary:
 			stacks.append({ "id": item.id, "count": s["count"], "weight": item.weight })
 		d["inv_weight"] = inv.total_weight()
 		d["inv_value"] = inv.total_value()
+	# Drivable = the local player is fully spawned + its weapon/camera refs resolved +
+	# input enabled. Poll this after deploy/join before scripting move/fire (avoids the
+	# post-spawn race where refs are briefly null — the cause of "co-op client wont fire").
+	d["drivable"] = (p.get("_weapon_controller") != null and p.get("camera") != null
+		and bool(p.get("_input_enabled")) and active)
 	d["inventory"] = stacks
 
 	var enemies: Array = []
