@@ -131,6 +131,10 @@ func _physics_process(delta: float) -> void:
 func _complete(body: Node) -> void:
 	_timers.erase(body)
 	_completed[body] = true
+	# A DOWNED player can crawl into an OPEN evac and self-extract — clear their downed
+	# state first so the bleedout timer can't true-kill them as they extract.
+	if body.has_method("is_downed") and body.is_downed() and body.has_method("cancel_downed_for_extract"):
+		body.cancel_downed_for_extract()
 	Events.extraction_completed.emit(body)
 	_mark_extracted(body)
 	_grant_extraction(body)
