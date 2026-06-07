@@ -105,8 +105,7 @@ func _build_layout() -> void:
 	# ── Title ─────────────────────────────────────────────────────────────────
 	var title_lbl := Label.new()
 	title_lbl.text = "RAIDER"
-	title_lbl.add_theme_font_size_override("font_size", 42)
-	title_lbl.add_theme_color_override("font_color", COL_AMBER)
+	UIStyle.make_header(title_lbl, UIStyle.AMBER, 42, 3)
 	body.add_child(title_lbl)
 
 	# ── Raider Level section ──────────────────────────────────────────────────
@@ -126,6 +125,7 @@ func _build_layout() -> void:
 	_xp_bar.custom_minimum_size = Vector2(0, 14)
 	_xp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_xp_bar.show_percentage = false
+	_xp_bar.theme_type_variation = "FillAmber"
 	lvl_vbox.add_child(_xp_bar)
 
 	_xp_label = Label.new()
@@ -170,6 +170,7 @@ func _build_layout() -> void:
 	_rep_bar.custom_minimum_size = Vector2(0, 14)
 	_rep_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rep_bar.show_percentage = false
+	_rep_bar.theme_type_variation = "FillAmber"
 	rep_vbox.add_child(_rep_bar)
 
 	_rep_label = Label.new()
@@ -248,6 +249,7 @@ func _build_skill_rows() -> void:
 		buy_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var k := String(key)  # capture for lambda
 		buy_btn.pressed.connect(func() -> void: _on_buy_skill(k))
+		UIStyle.hover_lift(buy_btn)
 		row.add_child(buy_btn)
 		_skill_buy_btns[key] = buy_btn
 
@@ -315,6 +317,7 @@ func _rebuild_mastery_rows() -> void:
 		mbar.custom_minimum_size = Vector2(0, 10)
 		mbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		mbar.show_percentage = false
+		mbar.theme_type_variation = "FillAmber"
 		if lvl >= Settings.WEAPON_MASTERY_MAX or need <= 0:
 			mbar.max_value = 1.0
 			mbar.value     = 1.0
@@ -471,46 +474,15 @@ func _on_buy_skill(key: String) -> void:
 func _make_panel() -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.106, 0.133, 0.157, 0.97)
-	sb.border_width_left   = 1
-	sb.border_width_top    = 1
-	sb.border_width_right  = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 1)
-	sb.corner_radius_top_left     = 8
-	sb.corner_radius_top_right    = 8
-	sb.corner_radius_bottom_right = 8
-	sb.corner_radius_bottom_left  = 8
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size  = 14
-	sb.content_margin_left   = 16.0
-	sb.content_margin_top    = 14.0
-	sb.content_margin_right  = 16.0
-	sb.content_margin_bottom = 14.0
-	pc.add_theme_stylebox_override("panel", sb)
+	pc.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	return pc
 
 
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.165, 0.20, 1.0)
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 0.8)
-	sb.corner_radius_top_left  = 6
-	sb.corner_radius_top_right = 6
-	sb.content_margin_left   = 14.0
-	sb.content_margin_top    = 10.0
-	sb.content_margin_right  = 14.0
-	sb.content_margin_bottom = 10.0
-	pc.add_theme_stylebox_override("panel", sb)
-	var lbl := Label.new()
-	lbl.text = title
-	lbl.add_theme_color_override("font_color", COL_TEAL)
-	lbl.add_theme_font_size_override("font_size", 15)
-	pc.add_child(lbl)
+	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_child(UIStyle.micro_header(title, UIStyle.TEAL, 15))
 	return pc
 
 

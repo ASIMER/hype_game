@@ -49,8 +49,7 @@ func _build_ui() -> void:
 	_title = Label.new()
 	_title.text = "HYPE RAIDERS"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title.add_theme_font_size_override("font_size", 34)
-	_title.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98))
+	UIStyle.make_header(_title, UIStyle.WHITE, 34, 4)
 	col.add_child(_title)
 
 	_bar = ProgressBar.new()
@@ -60,13 +59,17 @@ func _build_ui() -> void:
 	_bar.value = 0.0
 	_bar.show_percentage = false
 	_bar.custom_minimum_size = Vector2(420, 22)
+	# Teal glow fill via the global theme variation (defined in theme.tres).
+	_bar.theme_type_variation = &"FillAmber"
+	# Override fill to teal so the loading bar reads as cool/neutral, not action amber.
+	_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(UIStyle.TEAL))
 	col.add_child(_bar)
 
 	_status = Label.new()
 	_status.text = ""
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_font_size_override("font_size", 16)
-	_status.add_theme_color_override("font_color", Color(0.66, 0.72, 0.82))
+	_status.add_theme_color_override("font_color", UIStyle.DIM)
 	col.add_child(_status)
 
 # ------------------------------------------------------------------- public API

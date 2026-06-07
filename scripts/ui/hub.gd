@@ -94,11 +94,18 @@ func _ready() -> void:
 	# Drop any equipped attachment lost on a failed raid (not in the stash anymore).
 	MetaProgression.reconcile_attachments()
 
+	# ── Frosted-glass backdrop (drawn behind all tab panels) ──────────────────
+	var bg := GlassBackdrop.new()
+	add_child(bg)
+	move_child(bg, 0)
+
 	# ── Wire footer buttons ───────────────────────────────────────────────────
 	if _back_btn:
 		_back_btn.pressed.connect(func() -> void: back_requested.emit())
+		UIStyle.hover_lift(_back_btn)
 	if _deploy_btn:
 		_deploy_btn.pressed.connect(_on_deploy_pressed)
+		UIStyle.hover_lift(_deploy_btn)
 
 	# ── Wire difficulty selector ──────────────────────────────────────────────
 	if _diff_option:
@@ -140,7 +147,13 @@ func _ready() -> void:
 		# Buttons are in order: STASH, LOADOUT, WORKSHOP.
 		for i in _tab_buttons.size():
 			var idx := i  # capture for lambda
-			(_tab_buttons[i] as Button).pressed.connect(func() -> void: _switch_tab(idx))
+			var tbtn := _tab_buttons[i] as Button
+			tbtn.pressed.connect(func() -> void: _switch_tab(idx))
+			UIStyle.hover_lift(tbtn)
+
+	# ── Apply Russo One face to Hub screen title (CurrencyLabel header row) ───
+	if _currency_label:
+		UIStyle.make_header(_currency_label, UIStyle.AMBER, 18, 2)
 
 	# ── Squad lobby (co-op only) ──────────────────────────────────────────────
 	_build_squad_panel()
@@ -157,6 +170,10 @@ func _ready() -> void:
 	_update_tab_button_states()
 	_refresh_squad()
 	_refresh_deploy_button()
+
+	# ── Pop-in the content area when the Hub opens ────────────────────────────
+	if _content_area:
+		UIStyle.pop_in(_content_area, UIStyle.Dir.DOWN, 14.0, 0.18)
 
 	# ── Live currency updates (reconnect-safe) ────────────────────────────────
 	if not Events.currency_changed.is_connected(_on_currency_changed):
@@ -225,13 +242,11 @@ func _build_squad_panel() -> void:
 	panel.offset_top = -184
 	panel.offset_bottom = -148
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.70))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	panel.add_child(row)
-	var title := Label.new()
-	title.text = "SQUAD"
-	title.add_theme_color_override("font_color", COL_TEAL)
-	title.add_theme_font_size_override("font_size", 16)
+	var title := UIStyle.micro_header("SQUAD", UIStyle.TEAL, 14)
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(title)
 	# Scroll horizontally so any number of friends (cap is 8) fit without overflowing.
@@ -295,7 +310,10 @@ func _switch_tab(idx: int) -> void:
 	_active_tab = clamp(idx, 0, _tabs.size() - 1)
 	for i in _tabs.size():
 		if _tabs[i] != null:
-			_tabs[i].visible = (i == _active_tab)
+			var should_show: bool = (i == _active_tab)
+			_tabs[i].visible = should_show
+			if should_show:
+				UIStyle.pop_in(_tabs[i], UIStyle.Dir.DOWN, 10.0, 0.14)
 	_update_tab_button_states()
 
 

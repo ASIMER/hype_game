@@ -51,6 +51,9 @@ func _ready() -> void:
 	_build_footer()
 	Events.stash_changed.connect(_refresh)
 	Events.currency_changed.connect(_on_currency_changed)
+	# Apply Russo One to the scene-defined header value label.
+	if _header_value_label != null:
+		UIStyle.make_header(_header_value_label, UIStyle.AMBER, 18, 2)
 	_refresh()
 
 # ------------------------------------------------------------------ popup setup
@@ -83,10 +86,7 @@ func _build_capacity_bar() -> void:
 	_cap_bar.max_value             = 200.0   # 200 = 100% of cap (doubled for overflow display)
 	_cap_bar.value                 = 0.0
 	_cap_bar.show_percentage       = false
-	var bg_sb := StyleBoxFlat.new()
-	bg_sb.bg_color = Color(0.18, 0.18, 0.20, 1.0)
-	bg_sb.set_corner_radius_all(3)
-	_cap_bar.add_theme_stylebox_override("background", bg_sb)
+	_cap_bar.theme_type_variation  = "FillAmber"
 	cap_row.add_child(_cap_bar)
 
 	_cap_label = Label.new()
@@ -113,10 +113,8 @@ func _refresh_capacity() -> void:
 	var ratio := clampf(w / cap, 0.0, 2.0) if cap > 0.0 else 1.0
 	_cap_bar.value = ratio * 100.0
 	var over := w > cap
-	var fill_sb := StyleBoxFlat.new()
-	fill_sb.bg_color = Color(0.90, 0.20, 0.20) if over else Color(0.20, 0.65, 0.35)
-	fill_sb.set_corner_radius_all(3)
-	_cap_bar.add_theme_stylebox_override("fill", fill_sb)
+	var fill_col: Color = UIStyle.RED if over else UIStyle.GREEN
+	_cap_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(fill_col))
 	_cap_label.text = tr("%.1f / %.1f kg") % [w, cap]
 	_cap_label.add_theme_color_override("font_color",
 		Color(0.90, 0.20, 0.20) if over else Color(0.55, 0.75, 0.55))
@@ -150,6 +148,7 @@ func _build_footer() -> void:
 	sort_btn.custom_minimum_size = Vector2(80, 28)
 	sort_btn.tooltip_text = tr("Toggle sort by value (high → low)")
 	sort_btn.pressed.connect(_on_sort_pressed)
+	UIStyle.hover_lift(sort_btn)
 	footer.add_child(sort_btn)
 
 	var sell_junk_btn := Button.new()
@@ -158,6 +157,7 @@ func _build_footer() -> void:
 	sell_junk_btn.custom_minimum_size = Vector2(120, 28)
 	sell_junk_btn.tooltip_text = tr("Sell every Common-rarity Material stack")
 	sell_junk_btn.pressed.connect(_on_sell_all_junk_pressed)
+	UIStyle.hover_lift(sell_junk_btn)
 	footer.add_child(sell_junk_btn)
 
 	var recycle_all_btn := Button.new()
@@ -166,6 +166,7 @@ func _build_footer() -> void:
 	recycle_all_btn.custom_minimum_size = Vector2(110, 28)
 	recycle_all_btn.tooltip_text = tr("Recycle every Material stack (leaves consumables & weapons)")
 	recycle_all_btn.pressed.connect(_on_recycle_all_pressed)
+	UIStyle.hover_lift(recycle_all_btn)
 	footer.add_child(recycle_all_btn)
 
 # ------------------------------------------------------------------ signal handlers

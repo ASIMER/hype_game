@@ -144,6 +144,10 @@ signal ui_layout_changed()
 ## Camera settings changed (distance/shoulder/default-view) — the player rig re-reads
 ## Settings.camera_distance_scale / camera_shoulder_scale.
 signal camera_settings_changed()
+## The "military glass" UI FX toggle changed (settings → FXOverlay + GlassBackdrops):
+## scanline/grain/vignette overlay + frosted-glass blur behind modals. enabled=false →
+## plain dim (cheap fallback). Read Settings.ui_fx_enabled.
+signal ui_fx_changed(enabled: bool)
 
 # --- UI / UX ---
 ## A nearby interactable (loot / extraction) — HUD shows "[E] <prompt>".

@@ -14,12 +14,12 @@ extends CanvasLayer
 ## It is hold-to-view only: mouse_filter = IGNORE everywhere so it never steals input,
 ## and it starts hidden so it never shows in menus/hub.
 
-# Project palette (matches assets/ui/theme.tres + hub.gd; not imported, just mirrored).
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
-const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
-const COL_TEXT  := Color(0.85, 0.88, 0.90, 1.0)
-const COL_DIM   := Color(0.55, 0.60, 0.66, 1.0)
-const COL_PANEL := Color(0.07, 0.09, 0.11, 0.92)
+# Project palette via UIStyle.
+const COL_AMBER  := UIStyle.AMBER
+const COL_TEAL   := UIStyle.TEAL
+const COL_TEXT   := UIStyle.TEXT
+const COL_DIM    := UIStyle.DIM
+# PANEL_BG kept as a local alpha-tuned value (UIStyle.GLASS_BG at 0.92).
 const COL_ROW_HL := Color(0.247, 0.71, 0.79, 0.16)  # local player's row tint
 
 # A player with this many revives earns the "medic" cohesion badge next to their name.
@@ -88,11 +88,7 @@ func _build_ui() -> void:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.custom_minimum_size = Vector2(520, 0)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = COL_PANEL
-	sb.border_color = Color(0.235, 0.30, 0.36, 1.0)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(8)
+	var sb: StyleBoxFlat = UIStyle.header_panel(UIStyle.AMBER, 0.92)
 	sb.set_content_margin_all(20)
 	panel.add_theme_stylebox_override("panel", sb)
 	center.add_child(panel)
@@ -102,13 +98,12 @@ func _build_ui() -> void:
 	vbox.add_theme_constant_override("separation", 6)
 	panel.add_child(vbox)
 
-	# Title.
+	# Title — Russo One header.
 	var title := Label.new()
 	title.text = tr("SQUAD — KILLS")
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
-	title.add_theme_color_override("font_color", COL_AMBER)
+	UIStyle.make_header(title, COL_AMBER, TITLE_FONT_SIZE, 3)
 	vbox.add_child(title)
 
 	vbox.add_child(_make_separator())
@@ -208,9 +203,7 @@ func _add_row(e: Dictionary, is_local: bool) -> void:
 	var wrap := PanelContainer.new()
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if is_local:
-		var hl := StyleBoxFlat.new()
-		hl.bg_color = COL_ROW_HL
-		hl.set_corner_radius_all(4)
+		var hl: StyleBoxFlat = UIStyle.chip(UIStyle.TEAL, 0.16)
 		hl.content_margin_left = 6.0
 		hl.content_margin_right = 6.0
 		hl.content_margin_top = 2.0

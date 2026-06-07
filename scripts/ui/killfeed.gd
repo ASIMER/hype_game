@@ -13,11 +13,11 @@ const TOP := 16.0
 const LEFT := 16.0
 const WIDTH := 280.0
 
-const COL_INFO := Color(0.847, 0.871, 0.894)  # white-ish #d8dee4
-const COL_GOOD := Color(0.247, 0.714, 0.788)  # teal #3fb6c9
-const COL_BAD := Color(0.847, 0.271, 0.251)   # red #d84540
-const COL_WAVE := Color(0.91, 0.64, 0.24)     # amber #e8a33d
-const COL_DIM := Color(0.55, 0.6, 0.66)       # dim grey
+const COL_INFO := UIStyle.TEXT   # white-ish
+const COL_GOOD := UIStyle.TEAL   # teal
+const COL_BAD  := UIStyle.RED    # red
+const COL_WAVE := UIStyle.AMBER  # amber
+const COL_DIM  := UIStyle.DIM    # dim grey
 
 # Each line: { "text": String, "color": Color, "t": float }
 var _lines: Array = []
@@ -154,6 +154,12 @@ func _draw() -> void:
 		var alpha := 1.0 if t > FADE else clampf(t / FADE, 0.0, 1.0)
 		var base: Color = l["color"]
 		var col := Color(base.r, base.g, base.b, base.a * alpha)
+		# Subtle glass chip background behind each line.
+		var bg_col := Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.55 * alpha)
+		draw_rect(Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(WIDTH + 8.0, LINE_H - 2.0)), bg_col, true)
+		# Thin accent border matching the line's accent color.
+		var border_col := Color(base.r, base.g, base.b, 0.28 * alpha)
+		draw_rect(Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(2.0, LINE_H - 2.0)), border_col, true)
 		draw_string(font, Vector2(0.0, y), l["text"],
 			HORIZONTAL_ALIGNMENT_LEFT, WIDTH, FONT_SIZE, col)
 		y += LINE_H

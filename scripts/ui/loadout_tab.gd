@@ -92,8 +92,7 @@ func _build_layout() -> void:
 	var hdr := Label.new()
 	hdr.name = "Header"
 	hdr.text = "LOADOUT"
-	hdr.add_theme_font_size_override("font_size", 42)
-	hdr.add_theme_color_override("font_color", COL_AMBER)
+	UIStyle.make_header(hdr, UIStyle.AMBER, 42, 3)
 	inner.add_child(hdr)
 
 	# ── WEAPONS section ──────────────────────────────────────────────────────
@@ -170,52 +169,20 @@ func _build_layout() -> void:
 	inner.add_child(starter_btn)
 
 
-## Returns a styled PanelContainer matching the project's dark card style.
+## Returns a styled PanelContainer using the military-glass look.
 func _make_panel() -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.106, 0.133, 0.157, 0.97)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 1)
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 14
-	sb.content_margin_left = 16.0
-	sb.content_margin_top = 14.0
-	sb.content_margin_right = 16.0
-	sb.content_margin_bottom = 14.0
-	pc.add_theme_stylebox_override("panel", sb)
+	pc.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	return pc
 
 
-## Returns a styled section-header PanelContainer with a teal Label inside.
+## Returns a glass header-panel PanelContainer with a spaced-caps teal label inside.
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.165, 0.20, 1.0)
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.235, 0.3, 0.36, 0.8)
-	sb.corner_radius_top_left = 6
-	sb.corner_radius_top_right = 6
-	sb.content_margin_left = 14.0
-	sb.content_margin_top = 10.0
-	sb.content_margin_right = 14.0
-	sb.content_margin_bottom = 10.0
-	pc.add_theme_stylebox_override("panel", sb)
-
-	var lbl := Label.new()
-	lbl.text = title
-	lbl.add_theme_color_override("font_color", COL_TEAL)
-	lbl.add_theme_font_size_override("font_size", 15)
-	pc.add_child(lbl)
+	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_child(UIStyle.micro_header(title, UIStyle.TEAL, 15))
 	return pc
 
 

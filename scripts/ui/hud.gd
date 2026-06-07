@@ -59,6 +59,9 @@ func _ready() -> void:
 	extract_panel.offset_top = -96.0
 	extract_panel.offset_bottom = -70.0
 	banner.visible = false
+	# Glass theme variations for the progress bars.
+	health_bar.theme_type_variation = "FillAmber"
+	extract_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(UIStyle.TEAL))
 	_set_health(Settings.PLAYER_MAX_HEALTH, Settings.PLAYER_MAX_HEALTH)
 	_update_wave_label(GameState.current_wave)
 	_build_feedback_overlays()
@@ -124,7 +127,7 @@ func _build_hud_widgets() -> void:
 	_storm_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_storm_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_storm_banner.add_theme_font_size_override("font_size", 30)
-	_storm_banner.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
+	_storm_banner.add_theme_color_override("font_color", UIStyle.RED)
 	_storm_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_storm_banner.add_theme_constant_override("outline_size", 5)
 	_storm_banner.text = tr("⚠ STORM INCOMING — EXTRACT")
@@ -143,7 +146,7 @@ func _build_hud_widgets() -> void:
 	_event_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_event_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_event_banner.add_theme_font_size_override("font_size", 24)
-	_event_banner.add_theme_color_override("font_color", Color(0.95, 0.75, 0.25))
+	_event_banner.add_theme_color_override("font_color", UIStyle.AMBER)
 	_event_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_event_banner.add_theme_constant_override("outline_size", 4)
 	_event_banner.text = ""
@@ -198,7 +201,7 @@ func _build_hud_widgets() -> void:
 	hints.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hints.add_theme_font_size_override("font_size", 12)
-	hints.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 0.7))
+	hints.add_theme_color_override("font_color", Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.7))
 	hints.text = tr("WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map")
 	$Root.add_child(hints)
 
@@ -286,8 +289,8 @@ var _last_health: float = -1.0
 # Local-player downed: a red pulsing fullscreen vignette + centred label + bleedout
 # countdown ring, plus a directional arrow toward any downed TEAMMATE. Everything is
 # drawn by a single full-rect overlay Control whose `draw` signal we drive.
-const DOWN_RED := Color(0.86, 0.16, 0.14)       # downed vignette / ring danger red
-const TEAM_AMBER := Color(0.95, 0.62, 0.22)     # teammate-down arrow
+const DOWN_RED   := UIStyle.RED               # downed vignette / ring danger red
+const TEAM_AMBER := UIStyle.AMBER             # teammate-down arrow
 const REVIVE_BADGE_THRESHOLD := 3               # (mirrored note; badge lives in scoreboard.gd)
 
 var _down_overlay: Control            # full-rect Control that paints the downed feedback
@@ -340,7 +343,7 @@ func _build_downed_overlay() -> void:
 	_down_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_down_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_down_label.add_theme_font_size_override("font_size", 30)
-	_down_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.36))
+	_down_label.add_theme_color_override("font_color", UIStyle.RED)
 	_down_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_down_label.add_theme_constant_override("outline_size", 5)
 	_down_label.text = ""
@@ -416,11 +419,11 @@ func _on_world_event_started(kind: int, _pos: Vector3, label: String) -> void:
 	# Pick a colour per event kind matching the map accent colours.
 	var col: Color
 	match kind:
-		0: col = Color(0.95, 0.75, 0.25)   # supply_cache — amber
-		1: col = Color(0.95, 0.30, 0.95)   # miniboss — magenta
-		2: col = Color(0.30, 0.80, 0.95)   # contested_poi — cyan
-		3: col = Color(1.00, 0.55, 0.15)   # surge — orange
-		_: col = Color(1.00, 1.00, 1.00)
+		0: col = UIStyle.AMBER                  # supply_cache — amber
+		1: col = Color(0.95, 0.30, 0.95)        # miniboss — magenta
+		2: col = UIStyle.TEAL                   # contested_poi — teal/cyan
+		3: col = Color(1.00, 0.55, 0.15)        # surge — orange
+		_: col = UIStyle.WHITE
 	_event_banner.text = tr("⚠ %s") % label.to_upper()
 	_event_banner.add_theme_color_override("font_color", col)
 	_event_banner.visible = true
@@ -464,15 +467,15 @@ func _refresh_match_timer(left: float, total: float) -> void:
 		return
 	if GameState.final_wave:
 		_timer_label.text = tr("⚠ FINAL WAVE")
-		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+		_timer_label.add_theme_color_override("font_color", UIStyle.RED)
 		return
 	var l: float = maxf(0.0, left)
 	var s: int = int(ceil(l))
 	_timer_label.text = "%d:%02d" % [s / 60, s % 60]
 	if l <= Settings.FINAL_WAVE_WARN:
-		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+		_timer_label.add_theme_color_override("font_color", UIStyle.RED)
 	else:
-		_timer_label.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0))
+		_timer_label.add_theme_color_override("font_color", UIStyle.TEXT)
 
 func _on_final_wave_started() -> void:
 	if _storm_banner:
@@ -481,7 +484,7 @@ func _on_final_wave_started() -> void:
 		_storm_banner_t = 4.0   # lingers ~4s, then fades in the final second
 	if _timer_label:
 		_timer_label.text = tr("⚠ FINAL WAVE")
-		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+		_timer_label.add_theme_color_override("font_color", UIStyle.RED)
 
 ## Tints the screen on local-player damage and pops a hit marker when the local
 ## player damages an enemy. damage_dealt(target, amount, source).

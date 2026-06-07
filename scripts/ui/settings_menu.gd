@@ -67,6 +67,7 @@ var _toggle_terrain_parallax: CheckButton
 var _show_fps: CheckButton
 var _show_detailed: CheckButton
 var _stats_mode: OptionButton
+var _ui_fx: CheckButton
 
 # --- interface / HUD-layout controls (built programmatically) ---
 var _ui_edge_margin: HSlider
@@ -111,6 +112,9 @@ const KEYBINDS := [
 var _syncing := false
 
 
+# Frosted-glass backdrop (lazy-created once; reused on every open()).
+var _glass_bg: GlassBackdrop = null
+
 func _ready() -> void:
 	_populate_options()
 	_build_quality_rows()
@@ -119,14 +123,25 @@ func _ready() -> void:
 	_wire()
 	sync_from_settings()
 	_show_page(0)
+	# Style the scene-side Title label with Russo One header face.
+	UIStyle.make_header($Panel/Root/Title, UIStyle.AMBER, 30)
+	# Hover-lift on the primary action buttons.
+	UIStyle.hover_lift(_reset)
+	UIStyle.hover_lift(_back)
 
 
 # ---------------------------------------------------------------- public API
 func open() -> void:
 	sync_from_settings()
+	# Lazy-create the frosted backdrop the first time (first child = behind the panel).
+	if _glass_bg == null:
+		_glass_bg = GlassBackdrop.new()
+		add_child(_glass_bg)
+		move_child(_glass_bg, 0)
 	show()
 	# Bring overlay to front when instanced over gameplay.
 	move_to_front()
+	UIStyle.pop_in($Panel)
 
 func close() -> void:
 	hide()
@@ -325,6 +340,12 @@ func _build_interface_rows() -> void:
 	sm_row.add_child(_stats_mode)
 	_interface_v.add_child(sm_row)
 
+	# --- Visual FX ("military glass" look) ---
+	_interface_v.add_child(_make_header("VISUAL FX", accent))
+	_ui_fx = _add_interface_toggle_row(
+		"UI Glass FX", "ui_fx_enabled",
+		"Scanlines, grain & frosted-glass blur behind menus")
+
 	# --- HUD layout (ultrawide-friendly insets + global scale) ---
 	_interface_v.add_child(_make_header("HUD LAYOUT (ULTRAWIDE)", accent))
 
@@ -449,11 +470,7 @@ func _make_slider_row(text: String, mn: float, mx: float, step: float, note := "
 
 
 func _make_header(text: String, accent: Color) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_color_override("font_color", accent)
-	l.add_theme_font_size_override("font_size", 14)
-	return l
+	return UIStyle.micro_header(text, accent, 13)
 
 
 func _make_note(text: String) -> Label:
@@ -568,6 +585,8 @@ func sync_from_settings() -> void:
 	_show_detailed.button_pressed = detailed
 	_stats_mode.select(int(g.get_value("stats_display_mode")))
 	_stats_mode.disabled = not detailed
+	if _ui_fx != null:
+		_ui_fx.button_pressed = bool(g.get_value("ui_fx_enabled"))
 
 	# Interface / HUD layout.
 	var edge_margin: float = float(g.get_value("ui_edge_margin"))

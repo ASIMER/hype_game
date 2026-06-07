@@ -9,9 +9,9 @@ const STRIP_W := 360.0
 const STRIP_H := 26.0
 const TOP := 12.0
 const FOV := deg_to_rad(120.0)     # angular span shown across the strip width
-const TICK_COL := Color(0.847, 0.871, 0.894, 0.55)  # dim #d8dee4
-const CARD_COL := Color(0.847, 0.871, 0.894, 0.95)
-const AMBER := Color(0.91, 0.64, 0.24)              # #e8a33d centre marker
+const TICK_COL := Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.55)
+const CARD_COL := Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.95)
+const AMBER := UIStyle.AMBER                         # centre marker
 const EXTRACT_COL := Color(0.3, 1.0, 0.5)           # green
 
 var _player: Node3D = null
@@ -66,9 +66,12 @@ func _bearing_to_x(world_bearing: float, heading: float) -> Dictionary:
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var cx := STRIP_W * 0.5
-	# Backing strip + frame.
-	draw_rect(Rect2(0, 0, STRIP_W, STRIP_H), Color(0.03, 0.05, 0.07, 0.7), true)
-	draw_rect(Rect2(0, 0, STRIP_W, STRIP_H), Color(AMBER, 0.35), false, 1.0)
+	# Backing strip: glass-toned bg + amber accent border + thin light inner edge.
+	draw_rect(Rect2(0, 0, STRIP_W, STRIP_H),
+		Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.82), true)
+	draw_rect(Rect2(0, 0, STRIP_W, STRIP_H),
+		Color(AMBER.r, AMBER.g, AMBER.b, 0.45), false, 1.0)
+	draw_rect(Rect2(1, 1, STRIP_W - 2, STRIP_H - 2), UIStyle.BORDER_LT, false, 0.5)
 	# Centre marker (the heading you're facing).
 	draw_line(Vector2(cx, 0), Vector2(cx, STRIP_H), AMBER, 1.5)
 	draw_colored_polygon(PackedVector2Array([

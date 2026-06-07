@@ -82,8 +82,7 @@ func _build_layout() -> void:
 	var hdr := Label.new()
 	hdr.name = "Header"
 	hdr.text = "QUESTS"
-	hdr.add_theme_font_size_override("font_size", 42)
-	hdr.add_theme_color_override("font_color", COL_AMBER)
+	UIStyle.make_header(hdr, UIStyle.AMBER, 42, 3)
 	inner.add_child(hdr)
 
 	# ── "No contracts available" placeholder (shown when both lists are empty) ─
@@ -144,17 +143,19 @@ func _refresh() -> void:
 		_cards_container.add_child(_build_card(q))
 
 
-## Builds a labelled section header with an optional sub-note beneath it.
+## Builds a glass-header section strip with an optional sub-note beneath it.
 func _build_section_header(title: String, note: String, accent: Color) -> VBoxContainer:
 	var sec := VBoxContainer.new()
 	sec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sec.add_theme_constant_override("separation", 2)
 
-	var lbl := Label.new()
-	lbl.text = title
-	lbl.add_theme_font_size_override("font_size", 22)
-	lbl.add_theme_color_override("font_color", accent)
-	sec.add_child(lbl)
+	var hdr_pc := PanelContainer.new()
+	hdr_pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hdr_pc.add_theme_stylebox_override("panel", UIStyle.header_panel(accent))
+	sec.add_child(hdr_pc)
+
+	var lbl := UIStyle.micro_header(title, accent, 15)
+	hdr_pc.add_child(lbl)
 
 	if note != "":
 		var note_lbl := Label.new()
@@ -175,24 +176,11 @@ func _build_card(q: QuestData) -> PanelContainer:
 	var card := PanelContainer.new()
 	card.name = "Quest_" + q.id
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.106, 0.133, 0.157, 0.97)
-	sb.border_width_left = 3
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = COL_GREEN if complete else Color(0.235, 0.3, 0.36, 1.0)
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 14
-	sb.content_margin_left = 16.0
-	sb.content_margin_top = 14.0
-	sb.content_margin_right = 16.0
-	sb.content_margin_bottom = 14.0
-	card.add_theme_stylebox_override("panel", sb)
+	# Base glass panel; override the accent border to signal completion state.
+	var card_sb: StyleBoxFlat = UIStyle.glass_panel()
+	card_sb.border_width_left = 3
+	card_sb.border_color = COL_GREEN if complete else UIStyle.BORDER_LT
+	card.add_theme_stylebox_override("panel", card_sb)
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "VBox"
@@ -249,6 +237,7 @@ func _build_card(q: QuestData) -> PanelContainer:
 	bar.max_value = float(maxi(1, q.obj_count))
 	bar.value = float(clampi(cur, 0, q.obj_count))
 	bar.show_percentage = false
+	bar.theme_type_variation = "FillAmber"
 	prog_row.add_child(bar)
 
 	var counter_lbl := Label.new()
@@ -305,6 +294,7 @@ func _build_card(q: QuestData) -> PanelContainer:
 		# Capture q.id by value for the closure.
 		var quest_id: String = q.id
 		claim_btn.pressed.connect(func() -> void: _on_claim_pressed(quest_id))
+		UIStyle.hover_lift(claim_btn)
 	else:
 		claim_btn.text = tr("IN PROGRESS")
 		claim_btn.disabled = true

@@ -62,13 +62,13 @@ func _build_ui() -> void:
 		_root.theme = theme
 	add_child(_root)
 
-	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.5)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_root.add_child(dim)
+	# GlassBackdrop replaces the plain dim ColorRect.
+	var bg := GlassBackdrop.new()
+	_root.add_child(bg)
+	_root.move_child(bg, 0)
 
 	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL, 0.92))
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.custom_minimum_size = Vector2(680, 460)
 	panel.anchor_left = 0.5
@@ -95,6 +95,7 @@ func _build_ui() -> void:
 	_title = Label.new()
 	_title.text = "TRADE"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UIStyle.make_header(_title, UIStyle.TEAL, 24, 4)
 	vbox.add_child(_title)
 
 	# Three columns: your inventory | your offer | their offer.
@@ -125,12 +126,14 @@ func _build_ui() -> void:
 	_confirm_btn.text = "CONFIRM"
 	_confirm_btn.custom_minimum_size = Vector2(160, 40)
 	_confirm_btn.pressed.connect(_on_confirm_pressed)
+	UIStyle.hover_lift(_confirm_btn)
 	buttons.add_child(_confirm_btn)
 
 	_cancel_btn = Button.new()
 	_cancel_btn.text = "CANCEL"
 	_cancel_btn.custom_minimum_size = Vector2(160, 40)
 	_cancel_btn.pressed.connect(_on_cancel_pressed)
+	UIStyle.hover_lift(_cancel_btn)
 	buttons.add_child(_cancel_btn)
 
 ## A titled, scrollable VBox column. Returns the inner VBox to fill with rows.
@@ -149,6 +152,7 @@ func _make_column_with_title(parent: Node, title: String) -> Array:
 	var lbl := Label.new()
 	lbl.text = title
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UIStyle.make_header(lbl, UIStyle.DIM, 13, 3)
 	col.add_child(lbl)
 
 	var scroll := ScrollContainer.new()
@@ -205,6 +209,10 @@ func _open(initiator: bool) -> void:
 	if not initiator:
 		_set_status(tr("Trading with %s") % _peer_name(_partner))
 	_refresh_all()
+	# Pop the panel in when it becomes visible.
+	var panel: Control = _root.get_child(1) if _root.get_child_count() > 1 else null
+	if panel != null:
+		UIStyle.pop_in(panel, UIStyle.Dir.DOWN, 14.0, 0.16)
 
 ## Closes the window locally and clears all session state. Does NOT message the
 ## partner (callers that need to tell the partner do so first).
