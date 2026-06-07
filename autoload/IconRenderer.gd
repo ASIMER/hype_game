@@ -12,6 +12,7 @@ const ICON_SIZE := 256
 const VIEW_DIR := Vector3(0.8, 0.42, -1.1)
 
 var _cache: Dictionary = {}          # id -> ImageTexture
+var _busy: bool = false               # serialize captures (the SubViewport is shared)
 var _vp: SubViewport = null
 var _cam: Camera3D = null
 var _holder: Node3D = null
@@ -85,17 +86,36 @@ func render_now(id: String) -> Texture2D:
 	var model: Node3D = AssetRegistry.get_model(id)
 	if model == null:
 		return null
-	_holder.add_child(model)
-	_frame(model)
+	return await _capture(id, model)
+
+## Serialized off-screen capture of `node` into a texture cached by `key`. The SubViewport
+## + holder are SHARED, so concurrent callers must NOT have two models in the holder when
+## it captures (that composites them into one icon). We gate on _busy and clear the holder
+## so each capture renders exactly one model. Frees the node.
+func _capture(key: String, node: Node3D) -> Texture2D:
+	# Wait for any in-flight capture to finish before touching the shared viewport.
+	while _busy:
+		await get_tree().process_frame
+	if _cache.has(key):   # a concurrent caller may have filled it while we waited
+		node.queue_free()
+		return _cache[key]
+	_busy = true
+	# Clean slate: free any leftover so only `node` is in frame.
+	for c in _holder.get_children():
+		_holder.remove_child(c)
+		c.queue_free()
+	_holder.add_child(node)
+	_frame(node)
 	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
 	var img := _vp.get_texture().get_image()
-	_holder.remove_child(model)
-	model.queue_free()
+	_holder.remove_child(node)
+	node.queue_free()
+	_busy = false
 	if img == null:
 		return null
 	var tex := ImageTexture.create_from_image(img)
-	_cache[id] = tex
+	_cache[key] = tex
 	return tex
 
 ## Render an arbitrary prebuilt Node3D to a texture, cached by `key` (for previews whose
@@ -107,18 +127,7 @@ func render_node(key: String, node: Node3D) -> Texture2D:
 	if _vp == null:
 		node.queue_free()
 		return null
-	_holder.add_child(node)
-	_frame(node)
-	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	await RenderingServer.frame_post_draw
-	var img := _vp.get_texture().get_image()
-	_holder.remove_child(node)
-	node.queue_free()
-	if img == null:
-		return null
-	var tex := ImageTexture.create_from_image(img)
-	_cache[key] = tex
-	return tex
+	return await _capture(key, node)
 
 ## Render a character cosmetic variant preview (cached by category+variant+paint). For
 ## "paint" this renders the whole body in that scheme; otherwise just that part.

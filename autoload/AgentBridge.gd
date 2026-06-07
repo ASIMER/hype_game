@@ -195,7 +195,14 @@ func _handle_line(line: String) -> void:
 			# save it as a PNG for visual QA of procedural models + inventory icons.
 			var rid := str(json.get("id", ""))
 			var rname := str(json.get("name", rid))
-			var rtex: Texture2D = await IconRenderer.render_now(rid)
+			# Optional: render a single cosmetic PART variant (same path the CHARACTER tab
+			# thumbnails use) for QA — {render, category, variant, paint, name}.
+			var rcat := str(json.get("category", ""))
+			var rtex: Texture2D
+			if rcat != "":
+				rtex = await IconRenderer.render_cosmetic(rcat, str(json.get("variant", "")), str(json.get("paint", "paint_raider")))
+			else:
+				rtex = await IconRenderer.render_now(rid)
 			if rtex == null:
 				_send({ "ok": false, "error": "no texture (headless or unknown id)" })
 			else:
