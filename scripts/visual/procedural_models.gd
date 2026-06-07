@@ -16,7 +16,7 @@ class_name ProceduralModels
 
 # Builders registered here are chosen by AssetRegistry over the single-primitive
 # fallback. Attachment ids dispatch to family builders (optic/mag/barrel/grip).
-const ENEMY_BUILDERS := ["robot_tick", "robot_wasp", "robot_bastion", "robot_boss"]
+const ENEMY_BUILDERS := ["robot_tick", "robot_wasp", "robot_bastion", "robot_boss", "robot_caller"]
 const ITEM_BUILDERS := ["loot_medkit", "loot_cell", "loot_chemicals", "loot_stim",
 	"loot_circuit", "loot_circuit_pack", "loot_artifact", "loot_grenade",
 	"loot_grenade_mk2", "loot_ammo", "loot_scrap", "loot_plastic", "loot_data_chip"]
@@ -39,6 +39,7 @@ static func build(id: String) -> Node3D:
 		"robot_wasp": return build_robot_wasp()
 		"robot_bastion": return build_robot_bastion()
 		"robot_boss": return build_robot_boss()
+		"robot_caller": return build_robot_caller()
 		"loot_medkit": return build_medkit()
 		"loot_cell": return build_battery(AssetRegistry.get_color(id))
 		"loot_chemicals": return build_canister(AssetRegistry.get_color(id))
@@ -328,6 +329,52 @@ static func build_robot_boss() -> Node3D:
 	head.name = "Head"
 	var eyes := _part(torso, _box(Vector3(0.5, 0.12, 0.1)), eye_mat, Vector3(0, 1.8, -0.36))
 	eyes.name = "Eyes"
+	return root
+
+## Caller / "Snitch" — a fragile signal bot that keeps its distance and screams for
+## reinforcements. Reads as an antenna/siren, NOT a fighter: a small pod body on a spindly
+## tripod, a tall mast topped with a dish ring + a glowing alarm beacon, and whip antennae.
+## Collision capsule r0.4 h1.5 @ world y0.75; ModelRoot @ y0.75 → local y0 = world 0.75,
+## feet at local y≈-0.72. The script pulses nodes named "Core"/"Eye" and sways "Leg%d".
+static func build_robot_caller() -> Node3D:
+	var root := Node3D.new()
+	var beacon_col := AssetRegistry.get_color("robot_caller")  # alarm red-orange
+	var shell := ProcMaterials.weathered(Color(0.5, 0.54, 0.58), 0.45, 0.5, 0.5, 17, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.14, 0.16, 0.18), 0.5, 0.5)
+	var leg_mat := _mat(Color(0.3, 0.33, 0.36), 0.55, 0.45)
+	var beacon_mat := _mat(beacon_col, 0.0, 0.3, beacon_col, 7.0)
+	var eye_mat := _mat(beacon_col, 0.0, 0.3, beacon_col, 5.0)
+
+	# Compact egg-shaped pod body centred at y0, with a collar ring.
+	_part(root, _sphere(0.26, false, 10, 14), shell, Vector3(0, 0.0, 0), Vector3.ZERO, Vector3(1.0, 1.1, 1.0))
+	_part(root, _cyl(0.2, 0.08, 12), dark, Vector3(0, 0.18, 0))
+	# Forward glowing sensor eye.
+	var eye := _part(root, _sphere(0.07, false, 8, 10), eye_mat, Vector3(0, 0.02, -0.24))
+	eye.name = "Eye"
+
+	# Tall antenna mast up from the head → dish ring → glowing alarm beacon on top.
+	_part(root, _cyl(0.03, 0.42, 8), dark, Vector3(0, 0.42, 0))
+	_part(root, _cyl(0.16, 0.03, 14), dark, Vector3(0, 0.6, 0))            # dish ring
+	var beacon := _part(root, _sphere(0.09, false, 10, 12), beacon_mat, Vector3(0, 0.72, 0))
+	beacon.name = "Core"                                                   # pulsed by the script
+	# Two side whip-antennae for the signal-bot read.
+	_part(root, _cyl(0.012, 0.3, 6), beacon_mat, Vector3(0.14, 0.34, 0.02), Vector3(0, 0, 28))
+	_part(root, _cyl(0.012, 0.3, 6), beacon_mat, Vector3(-0.14, 0.34, 0.02), Vector3(0, 0, -28))
+
+	# Spindly tripod legs (one front, two rear) — stands but looks fragile/low-HP.
+	var feet := [Vector3(0.0, 0.0, -0.28), Vector3(0.26, 0.0, 0.2), Vector3(-0.26, 0.0, 0.2)]
+	var li := 0
+	for f in feet:
+		var fv: Vector3 = f
+		var attach := Vector3(fv.x * 0.4, -0.12, fv.z * 0.4)
+		var foot := Vector3(fv.x, -0.72, fv.z)
+		var pivot := Node3D.new()
+		pivot.name = "Leg%d" % li
+		pivot.position = attach
+		root.add_child(pivot)
+		_strut(pivot, Vector3.ZERO, foot - attach, 0.03, leg_mat)
+		_part(pivot, _sphere(0.04, false, 6, 8), dark, foot - attach)
+		li += 1
 	return root
 
 # ================================================================= ITEMS

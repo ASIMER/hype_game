@@ -69,6 +69,13 @@ const CATALOG := {
 		"prim": Prim.BOX, "size": Vector3(2.0, 2.6, 2.0), "color": Color(0.5, 0.1, 0.1) },
 	"robot_boss": { "model": "", "icon": "",
 		"prim": Prim.BOX, "size": Vector3(3.4, 4.4, 3.4), "color": Color(0.35, 0.05, 0.35) },
+	# Caller / "Snitch" — distinct procedural antenna-bot (ProceduralModels); alarm-red beacon.
+	"robot_caller": { "model": "", "icon": "",
+		"prim": Prim.CAPSULE, "size": Vector3(0.8, 1.5, 0.8), "color": Color(0.95, 0.45, 0.2) },
+	# Elite — a bigger, gold-trimmed variant of the RobotExpressive grunt model (like heavy).
+	"robot_elite": { "model": "res://assets/models/robots/grunt.glb", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(1.0, 1.7, 1.0), "color": Color(0.92, 0.72, 0.18),
+		"model_scale": 0.42, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.85, 0) },
 
 	# --- Expansion: items ---
 	"loot_medkit": { "model": "", "icon": "",
