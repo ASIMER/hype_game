@@ -23,7 +23,10 @@ param(
     # The Godot 4.6.3 console executable (used headless to export).
     [string]$Godot = "C:\Users\illya\Desktop\godot\Godot_v4.6.3-stable_win64_console.exe",
     # Release version; defaults to the contents of the VERSION file at the repo root.
-    [string]$Version = ""
+    [string]$Version = "",
+    # Build-timestamp subfolder (yyyy-MM-dd_HH-mm-ss). When called from export_all.ps1 the
+    # SAME stamp is passed to both platforms so they land together. Empty = generate now.
+    [string]$Stamp = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -65,9 +68,11 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $verFile = Join-Path $ProjectDir "VERSION"
     if (Test-Path $verFile) { $Version = (Get-Content $verFile -Raw).Trim() } else { $Version = "0.0.0" }
 }
-# Per-version, PER-PLATFORM output folder — wipe + refill ONLY export/v<V>/mac/
-# (the sibling windows/ build is untouched).
-$ExportDir  = Join-Path $ProjectDir "export\v$Version\mac"
+# Timestamped, per-platform output folder: export/v<Version>/<stamp>/mac/ — every build goes
+# to a NEW dated folder so previous builds are PRESERVED for rollback. The stamp is shared
+# with the Windows build when both are run via export_all.ps1.
+if ([string]::IsNullOrWhiteSpace($Stamp)) { $Stamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss" }
+$ExportDir  = Join-Path $ProjectDir "export\v$Version\$Stamp\mac"
 
 Write-Host "== Hype Raiders — macOS release build (from Windows) ==" -ForegroundColor Cyan
 Write-Host "  Project : $ProjectDir"
