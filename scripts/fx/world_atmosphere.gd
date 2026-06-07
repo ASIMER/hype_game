@@ -75,6 +75,9 @@ const STORM_CUMULUS_THICKNESS := 0.06
 const STORM_CUMULUS_INTENSITY := 0.18
 const STORM_ATM_DARKNESS := 0.85
 const STORM_SKYDOME_EXPOSURE := 0.45
+# Storm-only GLOBAL volumetric haze (normal play keeps global density at 0 — fog lives
+# only in the localized FogZones; the storm justifies a brief whole-map murk).
+const STORM_VOLUMETRIC_DENSITY := 0.035
 
 var _storm_tween: Tween
 var _stormed := false
@@ -141,13 +144,21 @@ func _apply_graphics_quality(level: int) -> void:
 		if _env.ssil_enabled:
 			_env.ssil_radius = 5.0
 			_env.ssil_intensity = 1.0
-		# Global volumetric fog — a soft world-space haze that the FogVolume zones layer on
-		# top of (they only render when this is on). Read both ways so toggling off restores
-		# the clear day. The live density is remembered so the storm tween scales from it.
+		# Volumetric fog = the CARRIER for the localized FogVolume smoke banks ONLY. The
+		# GLOBAL ambient density is ALWAYS ZERO (the map itself stays clear — the player
+		# explicitly does not want whole-map haze); fog exists only inside the FogZones
+		# placed at landmarks. volumetric_fog_length is raised so a smoke bank is visible
+		# from across the 160 m map (the 80 m default culled zones beyond 80 m entirely).
+		# The "volumetric_fog_density" setting is now the ZONES' density multiplier
+		# (applied below via ProceduralFogZones.apply_density), not a global density.
 		_env.volumetric_fog_enabled = bool(SettingsManager.get_value("volumetric_fog"))
+		_base_vol_fog_density = 0.0
 		if _env.volumetric_fog_enabled:
-			_base_vol_fog_density = clampf(float(SettingsManager.get_value("volumetric_fog_density")), 0.0, 0.2)
-			_env.volumetric_fog_density = _base_vol_fog_density
+			_env.volumetric_fog_density = 0.0
+			_env.volumetric_fog_length = 220.0
+			_env.volumetric_fog_detail_spread = 2.6
+		# Rescale the local fog zones' density from the settings slider (live, no rebuild).
+		ProceduralFogZones.apply_density(get_tree().current_scene if get_tree() else null)
 	# God rays: let the sun cast volumetric shafts THROUGH the global fog (no-op when
 	# volumetric fog is off). Shadow distance also lives on the sun. Guard non-null.
 	if _sun != null:
@@ -453,9 +464,10 @@ func _start_storm_tween() -> void:
 		_storm_tween.tween_property(_env, "fog_density", _base_fog_density * 3.2, t)
 		_storm_tween.tween_property(_env, "fog_light_color", Color(0.22, 0.20, 0.24, 1.0), t)
 		_storm_tween.tween_property(_env, "glow_intensity", _base_glow * 1.25, t)
-		# Thicken the global volumetric fog into the storm (only if it's enabled this run).
+		# Storm-only global volumetric haze (a fixed constant — the normal-play global
+		# density is now permanently 0; the reset path restores _base_vol_fog_density=0).
 		if _env.volumetric_fog_enabled:
-			_storm_tween.tween_property(_env, "volumetric_fog_density", _base_vol_fog_density * 2.5, t)
+			_storm_tween.tween_property(_env, "volumetric_fog_density", STORM_VOLUMETRIC_DENSITY, t)
 
 	if _sun != null:
 		_storm_tween.tween_property(_sun, "light_energy", _base_sun_energy * 0.4, t)
