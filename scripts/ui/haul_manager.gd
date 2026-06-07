@@ -40,7 +40,7 @@ func _apply_glass_style() -> void:
 	_root.move_child(bg, 0)
 
 	# Panel glass stylebox with amber accent header bar.
-	var panel: Panel = $Root/Panel
+	var panel: PanelContainer = $Root/Panel
 	if panel != null:
 		panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.AMBER, 0.92))
 

@@ -29,6 +29,7 @@ var downed: bool = false
 ## see the body follow its carrier.
 var _carried_by_peer: int = 0
 var _bleedout: float = 0.0            # seconds left before true death while downed (authority)
+var _giveup_held: float = 0.0         # seconds the give_up key has been held while downed (authority)
 var _downed_resolved: bool = false    # guards true-death from firing twice
 var _shield_charges: float = 0.0      # remaining knockdown-shield absorb while downed
 var _self_revives: int = 0            # SELF_REVIVE_ITEM count from the bring-list
@@ -1024,7 +1025,29 @@ func _downed_physics(delta: float) -> void:
 	var target_y := _cam_base_y - Settings.DOWNED_CAMERA_DROP
 	var ty := clampf(delta * Settings.CROUCH_CAMERA_LERP, 0.0, 1.0)
 	camera_pivot.position.y = lerpf(camera_pivot.position.y, target_y, ty)
+	# GIVE UP: hold the give_up key to self-finish and skip the bleedout wait (e.g. solo,
+	# with no teammate to revive you). Runs on this player's OWN authority, so it works the
+	# same hosting or as a co-op client. Releasing the key resets the hold.
+	if _input_enabled and _act_held("give_up"):
+		_giveup_held += delta
+		if _giveup_held >= Settings.GIVE_UP_HOLD_TIME and not _downed_resolved:
+			_bleedout = 0.0
+	else:
+		_giveup_held = 0.0
 	_tick_downed(delta)
+
+## 0..1 progress of the give-up hold (for the HUD ring/bar). 0 when not holding.
+func give_up_ratio() -> float:
+	if not downed:
+		return 0.0
+	return clampf(_giveup_held / maxf(Settings.GIVE_UP_HOLD_TIME, 0.001), 0.0, 1.0)
+
+## Extraction saved this downed player: clear the downed state so the bleedout can't
+## true-kill them after they reach the evac. Called server-side by ExtractionZone on
+## completion; server_revive self-guards to the server and syncs the owning client.
+func cancel_downed_for_extract() -> void:
+	if downed:
+		server_revive(self)
 
 ## Consume a SELF_REVIVE_ITEM to revive yourself (solo lifeline). Routes through the server
 ## so GameState.downed is cleared authoritatively; offline/host applies it directly.

@@ -545,11 +545,12 @@ func _hide_downed() -> void:
 func _refresh_downed_label() -> void:
 	if _down_label == null:
 		return
-	var hint := tr("Hold on for a teammate")
+	var opts := tr("teammate can revive you") + "   ·   " + tr("hold [X] to give up")
 	if _local_player != null and "_self_revives" in _local_player \
 			and int(_local_player._self_revives) > 0:
-		hint = tr("Use Self-Revive Kit [H]  ·  or hold on for a teammate")
-	_down_label.text = tr("DOWNED — bleeding out\n%s") % hint
+		opts = tr("[H] Self-Revive") + "   ·   " + opts
+	_down_label.text = tr("DOWNED — bleeding out") + "\n" \
+		+ tr("Crawl (WASD) to cover or an OPEN evac to escape") + "\n" + opts
 
 ## Throttled poll for the nearest DOWNED teammate (not the local player). Computes the
 ## on-screen bearing the same way damage_indicator.gd does (world→camera-relative yaw).
@@ -645,6 +646,18 @@ func _draw_downed_overlay() -> void:
 			var tw: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 			_down_overlay.draw_string(font, ring_c + Vector2(-tw * 0.5, fs * 0.35), txt,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))
+		# Give-up hold progress — an amber arc fills inside the ring while you hold [X].
+		var gu: float = 0.0
+		if _local_player != null and _local_player.has_method("give_up_ratio"):
+			gu = float(_local_player.give_up_ratio())
+		if gu > 0.001:
+			_down_overlay.draw_arc(ring_c, ring_r - 12.0, start_a, start_a + TAU * gu, 40,
+				Color(0.95, 0.7, 0.2, 0.95), 4.0, true)
+			if font != null:
+				var glbl := tr("GIVING UP…")
+				var gw: float = font.get_string_size(glbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+				_down_overlay.draw_string(font, ring_c + Vector2(-gw * 0.5, ring_r + 26.0), glbl,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.95, 0.7, 0.2, 0.95))
 	# (b) TEAMMATE down arrow — points (camera-relative) toward the nearest downed mate.
 	if _team_down_shown:
 		var screen_ang: float = _team_down_angle - PI * 0.5   # 0 rad = up; draw measures from +X
