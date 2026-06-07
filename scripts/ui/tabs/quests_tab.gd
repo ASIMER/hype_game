@@ -126,7 +126,7 @@ func _refresh() -> void:
 
 	# ── DAILY CONTRACTS section ──────────────────────────────────────────────
 	_cards_container.add_child(_build_section_header(
-		"DAILY CONTRACTS", "Refreshes each day", COL_TEAL))
+		tr("DAILY CONTRACTS"), tr("Refreshes each day"), COL_TEAL))
 
 	for q_var in dailies:
 		var q := q_var as QuestData
@@ -135,7 +135,7 @@ func _refresh() -> void:
 		_cards_container.add_child(_build_card(q))
 
 	# ── STANDING CONTRACTS section ───────────────────────────────────────────
-	_cards_container.add_child(_build_section_header("CONTRACTS", "", COL_AMBER))
+	_cards_container.add_child(_build_section_header(tr("CONTRACTS"), "", COL_AMBER))
 
 	for q_var in standing:
 		var q := q_var as QuestData
@@ -208,7 +208,7 @@ func _build_card(q: QuestData) -> PanelContainer:
 
 	var title_lbl := Label.new()
 	title_lbl.name = "Title"
-	title_lbl.text = q.title
+	title_lbl.text = tr(q.title)
 	title_lbl.add_theme_color_override("font_color", COL_AMBER)
 	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -227,7 +227,7 @@ func _build_card(q: QuestData) -> PanelContainer:
 	if q.desc != "":
 		var desc_lbl := Label.new()
 		desc_lbl.name = "Desc"
-		desc_lbl.text = q.desc
+		desc_lbl.text = tr(q.desc)
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
 		desc_lbl.add_theme_font_size_override("font_size", 13)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -253,7 +253,7 @@ func _build_card(q: QuestData) -> PanelContainer:
 
 	var counter_lbl := Label.new()
 	counter_lbl.name = "Counter"
-	counter_lbl.text = "%d / %d" % [clampi(cur, 0, q.obj_count), q.obj_count]
+	counter_lbl.text = tr("%d / %d") % [clampi(cur, 0, q.obj_count), q.obj_count]
 	counter_lbl.add_theme_color_override("font_color", COL_GREEN if complete else COL_WHITE)
 	counter_lbl.add_theme_font_size_override("font_size", 13)
 	counter_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -262,22 +262,22 @@ func _build_card(q: QuestData) -> PanelContainer:
 	# ── Reward line ──────────────────────────────────────────────────────────
 	var reward_parts: Array[String] = []
 	if q.reward_currency > 0:
-		reward_parts.append("CR %d" % q.reward_currency)
+		reward_parts.append(tr("CR %d") % q.reward_currency)
 	for it_var in q.reward_items():
 		var it: Dictionary = it_var as Dictionary
 		var item_id: String = String(it.get("id", ""))
 		var item_count: int = int(it.get("count", 1))
 		var item_data: ItemData = ItemCatalog.get_item(item_id)
-		var item_name: String = item_data.display_name if item_data != null else item_id
-		reward_parts.append("%s x%d" % [item_name, item_count])
+		var item_name: String = tr(item_data.display_name) if item_data != null else item_id
+		reward_parts.append(tr("%s x%d") % [item_name, item_count])
 	for bp in q.reward_blueprints:
 		if String(bp) != "":
-			reward_parts.append("Blueprint: %s" % String(bp))
+			reward_parts.append(tr("Blueprint: %s") % String(bp))
 
 	if not reward_parts.is_empty():
 		var reward_lbl := Label.new()
 		reward_lbl.name = "Reward"
-		reward_lbl.text = "Reward: " + ", ".join(reward_parts)
+		reward_lbl.text = tr("Reward: ") + ", ".join(reward_parts)
 		reward_lbl.add_theme_color_override("font_color", COL_TEAL)
 		reward_lbl.add_theme_font_size_override("font_size", 13)
 		reward_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -299,14 +299,14 @@ func _build_card(q: QuestData) -> PanelContainer:
 	claim_btn.focus_mode = Control.FOCUS_NONE
 	claim_btn.custom_minimum_size = Vector2(140, 36)
 	if complete:
-		claim_btn.text = "CLAIM"
+		claim_btn.text = tr("CLAIM")
 		claim_btn.disabled = false
 		claim_btn.add_theme_color_override("font_color", COL_GREEN)
 		# Capture q.id by value for the closure.
 		var quest_id: String = q.id
 		claim_btn.pressed.connect(func() -> void: _on_claim_pressed(quest_id))
 	else:
-		claim_btn.text = "IN PROGRESS"
+		claim_btn.text = tr("IN PROGRESS")
 		claim_btn.disabled = true
 		claim_btn.add_theme_color_override("font_color", COL_DIM)
 	btn_row.add_child(claim_btn)

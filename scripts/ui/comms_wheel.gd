@@ -199,7 +199,7 @@ func _on_draw() -> void:
 		_wheel.draw_circle(slot, r, bg)
 		_wheel.draw_arc(slot, r, 0.0, TAU, 24, Color(col.r, col.g, col.b, 0.95), 2.0, true)
 		# Label centered under the slot.
-		var label: String = str(opt.get("label", ""))
+		var label: String = tr(str(opt.get("label", "")))
 		var fs: int = 14 if picked else 12
 		var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var lp := slot + Vector2(-tw * 0.5, r + 14.0)
@@ -208,6 +208,6 @@ func _on_draw() -> void:
 		_wheel.draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tcol)
 
 	# Center hint.
-	var hint := "COMMS"
+	var hint := tr("COMMS")
 	var hw := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	_wheel.draw_string(font, center + Vector2(-hw * 0.5, 4.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.82, 0.92, 0.8))

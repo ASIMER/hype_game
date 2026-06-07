@@ -262,10 +262,10 @@ func _rebuild_lan() -> void:
 	_clear(_lan_rows)
 	var servers: Array = ServerBrowser.last_found
 	if _scanning:
-		_lan_rows.add_child(_empty_label("Scanning the local network…"))
+		_lan_rows.add_child(_empty_label(tr("Scanning the local network…")))
 		return
 	if servers.is_empty():
-		_lan_rows.add_child(_empty_label("No LAN servers found. Press SCAN LAN."))
+		_lan_rows.add_child(_empty_label(tr("No LAN servers found. Press SCAN LAN.")))
 		return
 	for srv in servers:
 		var d: Dictionary = srv
@@ -281,7 +281,7 @@ func _rebuild_favorites() -> void:
 	_clear(_fav_rows)
 	var favs: Array = ServerBrowser.get_favorites()
 	if favs.is_empty():
-		_fav_rows.add_child(_empty_label("No favorites yet. Save a server with ☆."))
+		_fav_rows.add_child(_empty_label(tr("No favorites yet. Save a server with ☆.")))
 		return
 	for srv in favs:
 		var d: Dictionary = srv
@@ -295,7 +295,7 @@ func _rebuild_recents() -> void:
 	_clear(_recent_rows)
 	var recents: Array = ServerBrowser.get_recents()
 	if recents.is_empty():
-		_recent_rows.add_child(_empty_label("No recent connections."))
+		_recent_rows.add_child(_empty_label(tr("No recent connections.")))
 		return
 	for srv in recents:
 		var d: Dictionary = srv

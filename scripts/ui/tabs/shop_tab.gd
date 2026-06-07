@@ -120,7 +120,7 @@ func _build_layout() -> void:
 
 	_currency_label = Label.new()
 	_currency_label.name = "CurrencyLabel"
-	_currency_label.text = "CR %d" % MetaProgression.currency
+	_currency_label.text = tr("CR %d") % MetaProgression.currency
 	_currency_label.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_currency_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_currency_label.add_theme_font_size_override("font_size", 20)
@@ -157,7 +157,7 @@ func _build_layout() -> void:
 
 	_no_blueprints_label = Label.new()
 	_no_blueprints_label.name = "NoBpLabel"
-	_no_blueprints_label.text = "No blueprints available — check back after crafting more recipes."
+	_no_blueprints_label.text = tr("No blueprints available — check back after crafting more recipes.")
 	_no_blueprints_label.add_theme_color_override("font_color", COL_DIM)
 	_no_blueprints_label.add_theme_font_size_override("font_size", 14)
 	_no_blueprints_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -187,7 +187,7 @@ func _build_item_rows() -> void:
 		cell.name = "Cell_" + id
 		cell.add_theme_constant_override("separation", 4)
 		cell.size_flags_horizontal = Control.SIZE_FILL
-		cell.tooltip_text = "%s\nCR %d" % [display, price]
+		cell.tooltip_text = tr("%s\nCR %d") % [tr(display), price]
 
 		# Icon cell (clickable shortcut to buy).
 		var icon := _icon_cell(id, 0, 56)
@@ -200,7 +200,7 @@ func _build_item_rows() -> void:
 		# Display name (small, centered, wrapping).
 		var name_lbl := Label.new()
 		name_lbl.name = "NameLbl"
-		name_lbl.text = display
+		name_lbl.text = tr(display)
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_lbl.custom_minimum_size = Vector2(72, 0)
@@ -211,7 +211,7 @@ func _build_item_rows() -> void:
 		# Price caption (recolors red when unaffordable in _refresh).
 		var price_lbl := Label.new()
 		price_lbl.name = "PriceLbl"
-		price_lbl.text = "CR %d" % price
+		price_lbl.text = tr("CR %d") % price
 		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		price_lbl.add_theme_color_override("font_color", COL_AMBER)
 		price_lbl.add_theme_font_size_override("font_size", 13)
@@ -220,7 +220,7 @@ func _build_item_rows() -> void:
 		# Compact BUY button.
 		var buy_btn := Button.new()
 		buy_btn.name = "BuyBtn"
-		buy_btn.text = "BUY"
+		buy_btn.text = tr("BUY")
 		buy_btn.custom_minimum_size = Vector2(72, 26)
 		buy_btn.focus_mode = Control.FOCUS_NONE
 		buy_btn.pressed.connect(func() -> void: _on_buy_item(id, price))
@@ -285,7 +285,7 @@ func _build_blueprint_rows() -> void:
 		# Price / LEARNED label (shares the slot; text swaps at refresh).
 		var status_lbl := Label.new()
 		status_lbl.name = "StatusLbl"
-		status_lbl.text = "CR %d" % price
+		status_lbl.text = tr("CR %d") % price
 		status_lbl.custom_minimum_size = Vector2(80, 0)
 		status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		status_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -295,7 +295,7 @@ func _build_blueprint_rows() -> void:
 		# BUY button.
 		var buy_btn := Button.new()
 		buy_btn.name = "BuyBtn"
-		buy_btn.text = "BUY"
+		buy_btn.text = tr("BUY")
 		buy_btn.custom_minimum_size = Vector2(72, 32)
 		buy_btn.focus_mode = Control.FOCUS_NONE
 		buy_btn.pressed.connect(func() -> void: _on_buy_blueprint(bp_id, price))
@@ -428,7 +428,7 @@ func _refresh() -> void:
 func _refresh_currency_label() -> void:
 	if _currency_label == null:
 		return
-	_currency_label.text = "CR %d" % MetaProgression.currency
+	_currency_label.text = tr("CR %d") % MetaProgression.currency
 
 
 ## Enable / disable each stock BUY button based on current currency.
@@ -442,7 +442,7 @@ func _refresh_item_buttons() -> void:
 		var price_lbl: Label = ui["price_lbl"]
 		var affordable: bool = MetaProgression.currency >= price
 		buy_btn.disabled = not affordable
-		price_lbl.text = "CR %d" % price
+		price_lbl.text = tr("CR %d") % price
 		price_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
 
 
@@ -457,14 +457,14 @@ func _refresh_blueprint_buttons() -> void:
 		var status_lbl: Label  = ui["status_lbl"]
 
 		if MetaProgression.is_blueprint_known(bp_id):
-			status_lbl.text = "LEARNED"
+			status_lbl.text = tr("LEARNED")
 			status_lbl.add_theme_color_override("font_color", COL_GREEN)
-			buy_btn.text     = "LEARNED"
+			buy_btn.text     = tr("LEARNED")
 			buy_btn.disabled = true
 		else:
-			status_lbl.text = "CR %d" % price
+			status_lbl.text = tr("CR %d") % price
 			status_lbl.add_theme_color_override("font_color", COL_AMBER)
-			buy_btn.text     = "BUY"
+			buy_btn.text     = tr("BUY")
 			buy_btn.disabled = MetaProgression.currency < price
 
 

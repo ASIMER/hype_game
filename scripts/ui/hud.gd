@@ -127,7 +127,7 @@ func _build_hud_widgets() -> void:
 	_storm_banner.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
 	_storm_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_storm_banner.add_theme_constant_override("outline_size", 5)
-	_storm_banner.text = "⚠ STORM INCOMING — EXTRACT"
+	_storm_banner.text = tr("⚠ STORM INCOMING — EXTRACT")
 	_storm_banner.visible = false
 	$Root.add_child(_storm_banner)
 
@@ -199,7 +199,7 @@ func _build_hud_widgets() -> void:
 	hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hints.add_theme_font_size_override("font_size", 12)
 	hints.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 0.7))
-	hints.text = "WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"
+	hints.text = tr("WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map")
 	$Root.add_child(hints)
 
 	# --- Ultrawide-comfort inset: pull edge-anchored widgets toward center -----
@@ -260,7 +260,7 @@ func _on_weapon_switched(weapon_id: String, ammo: int, reserve: int) -> void:
 
 func _refresh_weapon_label() -> void:
 	if _weapon_label:
-		_weapon_label.text = _current_weapon_name + ("  (RELOADING)" if _reloading else "")
+		_weapon_label.text = _current_weapon_name + (tr("  (RELOADING)") if _reloading else "")
 
 func _on_ammo_changed(ammo: int, reserve: int) -> void:
 	_set_ammo(ammo, reserve)
@@ -358,7 +358,7 @@ func _build_downed_overlay() -> void:
 	_team_label.add_theme_color_override("font_color", TEAM_AMBER)
 	_team_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	_team_label.add_theme_constant_override("outline_size", 4)
-	_team_label.text = "⚑ TEAMMATE DOWN"
+	_team_label.text = tr("⚑ TEAMMATE DOWN")
 	_team_label.visible = false
 	$Root.add_child(_team_label)
 
@@ -421,7 +421,7 @@ func _on_world_event_started(kind: int, _pos: Vector3, label: String) -> void:
 		2: col = Color(0.30, 0.80, 0.95)   # contested_poi — cyan
 		3: col = Color(1.00, 0.55, 0.15)   # surge — orange
 		_: col = Color(1.00, 1.00, 1.00)
-	_event_banner.text = "⚠ %s" % label.to_upper()
+	_event_banner.text = tr("⚠ %s") % label.to_upper()
 	_event_banner.add_theme_color_override("font_color", col)
 	_event_banner.visible = true
 	_event_banner.modulate.a = 1.0
@@ -463,7 +463,7 @@ func _refresh_match_timer(left: float, total: float) -> void:
 		_timer_label.text = ""
 		return
 	if GameState.final_wave:
-		_timer_label.text = "⚠ FINAL WAVE"
+		_timer_label.text = tr("⚠ FINAL WAVE")
 		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
 		return
 	var l: float = maxf(0.0, left)
@@ -480,7 +480,7 @@ func _on_final_wave_started() -> void:
 		_storm_banner.modulate.a = 1.0
 		_storm_banner_t = 4.0   # lingers ~4s, then fades in the final second
 	if _timer_label:
-		_timer_label.text = "⚠ FINAL WAVE"
+		_timer_label.text = tr("⚠ FINAL WAVE")
 		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
 
 ## Tints the screen on local-player damage and pops a hit marker when the local
@@ -534,11 +534,11 @@ func _hide_downed() -> void:
 func _refresh_downed_label() -> void:
 	if _down_label == null:
 		return
-	var hint := "Hold on for a teammate"
+	var hint := tr("Hold on for a teammate")
 	if _local_player != null and "_self_revives" in _local_player \
 			and int(_local_player._self_revives) > 0:
-		hint = "Use Self-Revive Kit [H]  ·  or hold on for a teammate"
-	_down_label.text = "DOWNED — bleeding out\n%s" % hint
+		hint = tr("Use Self-Revive Kit [H]  ·  or hold on for a teammate")
+	_down_label.text = tr("DOWNED — bleeding out\n%s") % hint
 
 ## Throttled poll for the nearest DOWNED teammate (not the local player). Computes the
 ## on-screen bearing the same way damage_indicator.gd does (world→camera-relative yaw).
@@ -674,13 +674,13 @@ func _on_wave_started(wave_number: int, _enemy_count: int) -> void:
 	_update_wave_label(wave_number)
 
 func _on_wave_cleared(wave_number: int) -> void:
-	wave_label.text = "WAVE %d CLEARED" % wave_number
+	wave_label.text = tr("WAVE %d CLEARED") % wave_number
 
 func _update_wave_label(wave_number: int) -> void:
 	if wave_number <= 0:
-		wave_label.text = "PREPARING…"
+		wave_label.text = tr("PREPARING…")
 	else:
-		wave_label.text = "WAVE %d" % wave_number
+		wave_label.text = tr("WAVE %d") % wave_number
 
 # --- Extraction ------------------------------------------------------------
 
@@ -717,23 +717,23 @@ var _reward_line: String = ""
 func _on_run_rewards(currency: int, breakdown: Dictionary) -> void:
 	var loot: int = int(breakdown.get("loot", 0))
 	var survival: int = int(breakdown.get("survival", 0))
-	_reward_line = "+%d SCRAP  (loot %d · survival %d)" % [currency, loot, survival]
+	_reward_line = tr("+%d SCRAP  (loot %d · survival %d)") % [currency, loot, survival]
 
 func _on_match_won() -> void:
-	var msg := "EXTRACTED — YOU WIN"
+	var msg := tr("EXTRACTED — YOU WIN")
 	if _reward_line != "":
 		msg += "\n" + _reward_line
 	_show_banner(msg, Color(0.4, 1.0, 0.6))
 
 func _on_match_lost() -> void:
-	_show_banner("KIA — gear lost", Color(1.0, 0.35, 0.35))
+	_show_banner(tr("KIA — gear lost"), Color(1.0, 0.35, 0.35))
 
 func _show_banner(text: String, color: Color) -> void:
 	# The RaidSummary screen owns the post-raid UI when present; only fall back to this
 	# inline banner if that scene isn't in the build.
 	if ResourceLoader.exists("res://scenes/ui/RaidSummary.tscn"):
 		return
-	banner.text = "%s\n\nPress ENTER to restart" % text
+	banner.text = tr("%s\n\nPress ENTER to restart") % text
 	banner.add_theme_color_override("font_color", color)
 	banner.visible = true
 

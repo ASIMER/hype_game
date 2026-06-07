@@ -169,8 +169,8 @@ func _update_footer() -> void:
 	var weight := _inventory.total_weight() if _inventory != null else 0.0
 	var value := _inventory.total_value() if _inventory != null else 0
 	_weight_bar.value = weight
-	_weight_label.text = "%.1f / %.0f kg" % [weight, Settings.INVENTORY_MAX_WEIGHT]
-	_value_label.text = "Value: %d" % value
+	_weight_label.text = tr("%.1f / %.0f kg") % [weight, Settings.INVENTORY_MAX_WEIGHT]
+	_value_label.text = tr("Value: %d") % value
 
 func _clear_grid() -> void:
 	for c in _grid.get_children():
@@ -236,7 +236,7 @@ func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 ## Rich tooltip text: name + rarity tier + weight + value + description. The name
 ## line is BBCode-free (Control tooltips are plain), but we still surface rarity.
 func _tooltip_for(item: ItemData) -> String:
-	return "%s\n[%s]\nWeight: %.1f kg\nValue: %d\n\n%s" % [
+	return tr("%s\n[%s]\nWeight: %.1f kg\nValue: %d\n\n%s") % [
 		item.display_name,
 		item.rarity_name(),
 		item.weight,
@@ -256,17 +256,17 @@ func _open_context_menu(item: ItemData, cnt: int) -> void:
 	_context_menu.clear()
 	# id 0 = Use (consumables only), id 1 = Drop, id 2 = Split, id 3 = Give.
 	if item.kind == ItemData.Kind.CONSUMABLE:
-		_context_menu.add_item("Use", 0)
-	_context_menu.add_item("Drop", 1)
+		_context_menu.add_item(tr("Use"), 0)
+	_context_menu.add_item(tr("Drop"), 1)
 	# Split: only meaningful when there's more than one to split off.
 	if cnt >= 2:
-		_context_menu.add_item("Split", 2)
+		_context_menu.add_item(tr("Split"), 2)
 	# Give the whole stack to the nearest teammate; disabled (or omitted) when alone.
 	var to: int = NetworkManager.nearest_teammate(GameState.local_peer_id())
 	if to != 0:
 		var mate: Dictionary = GameState.peers.get(to, {})
 		var mate_name: String = mate.get("name", "Raider")
-		_context_menu.add_item("Give to %s" % mate_name, 3)
+		_context_menu.add_item(tr("Give to %s") % mate_name, 3)
 	_context_menu.reset_size()
 	_context_menu.position = Vector2i(get_viewport().get_mouse_position())
 	_context_menu.popup()

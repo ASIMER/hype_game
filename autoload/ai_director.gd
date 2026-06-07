@@ -79,7 +79,7 @@ func _on_enemy_alerted(world_pos: Vector3, level: float) -> void:
 	# Fire reinforcements toward the alert position.
 	var count: int = maxi(1, int(round(float(Settings.ALARM_REINFORCE_COUNT) * level)))
 	_wave_mgr.spawn_reinforcements(count, world_pos, true)
-	Events.notify.emit("Reinforcements inbound!", 2)
+	Events.notify.emit(tr("Reinforcements inbound!"), 2)
 	_alarm_cooldown = Settings.ALARM_COOLDOWN
 
 ## Loud events (grenade) can also trigger the alarm path.
@@ -98,5 +98,5 @@ func _on_noise_emitted(world_pos: Vector3, loudness: float, kind: int) -> void:
 	if not is_instance_valid(_wave_mgr):
 		return
 	_wave_mgr.spawn_reinforcements(Settings.ALARM_REINFORCE_COUNT, world_pos, true)
-	Events.notify.emit("Reinforcements inbound!", 2)
+	Events.notify.emit(tr("Reinforcements inbound!"), 2)
 	_noise_alarm_cooldown = Settings.ALARM_COOLDOWN

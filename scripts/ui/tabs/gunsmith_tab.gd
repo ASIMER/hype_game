@@ -160,7 +160,7 @@ func _rebuild_weapon_bar() -> void:
 		var wid: String = String(raw_id)
 		var btn := Button.new()
 		btn.name = "WBtn_" + wid
-		btn.text = wid.to_upper()
+		btn.text = tr(wid.to_upper())
 		btn.custom_minimum_size = Vector2(100, 36)
 		btn.focus_mode = Control.FOCUS_NONE
 		# Highlight active weapon.
@@ -192,7 +192,7 @@ func _build_attachments_section() -> void:
 	# AT-RISK warning note.
 	var note := Label.new()
 	note.name = "AtRiskNote"
-	note.text = "  WARNING — AT RISK: attachments are LOST if you do not extract."
+	note.text = tr("  WARNING — AT RISK: attachments are LOST if you do not extract.")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.add_theme_color_override("font_color", COL_ORANGE)
 	note.add_theme_font_size_override("font_size", 13)
@@ -248,16 +248,16 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 	cur_lbl.add_theme_font_size_override("font_size", 13)
 
 	if cur_id.is_empty():
-		cur_lbl.text = "— empty —"
+		cur_lbl.text = tr("— empty —")
 		cur_lbl.add_theme_color_override("font_color", COL_DIM)
 	else:
 		var att_item: ItemData = ItemCatalog.get_item(cur_id)
 		if att_item != null:
 			var att_data: AttachmentData = att_item as AttachmentData
 			if att_data != null:
-				cur_lbl.text = att_data.display_name + "  " + _stat_delta_text(att_data)
+				cur_lbl.text = tr(att_data.display_name) + "  " + _stat_delta_text(att_data)
 			else:
-				cur_lbl.text = att_item.display_name
+				cur_lbl.text = tr(att_item.display_name)
 		else:
 			cur_lbl.text = cur_id
 		cur_lbl.add_theme_color_override("font_color", COL_WHITE)
@@ -282,7 +282,7 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 	opt.focus_mode = Control.FOCUS_NONE
 
 	# First entry is always "— pick —".
-	opt.add_item("— pick —", -1)
+	opt.add_item(tr("— pick —"), -1)
 	opt.set_item_metadata(0, "")
 
 	for i: int in candidates.size():
@@ -290,7 +290,7 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 		var raw_it: ItemData = ItemCatalog.get_item(att_id)
 		var display_name: String = att_id
 		if raw_it != null:
-			display_name = raw_it.display_name
+			display_name = tr(raw_it.display_name)
 		var opt_icon: Texture2D = AssetRegistry.get_icon(att_id)
 		if opt_icon != null:
 			opt.add_icon_item(opt_icon, display_name, i)
@@ -312,7 +312,7 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 	# CLEAR button — only enabled when something is equipped.
 	var clear_btn := Button.new()
 	clear_btn.name = "ClearBtn"
-	clear_btn.text = "CLEAR"
+	clear_btn.text = tr("CLEAR")
 	clear_btn.custom_minimum_size = Vector2(64, 32)
 	clear_btn.focus_mode = Control.FOCUS_NONE
 	clear_btn.disabled = cur_id.is_empty()
@@ -362,14 +362,14 @@ func _build_perk_row(key: String) -> HBoxContainer:
 
 	var name_lbl := Label.new()
 	name_lbl.name = "PerkName"
-	name_lbl.text = String(perk_dict.get("name", key))
+	name_lbl.text = tr(String(perk_dict.get("name", key)))
 	name_lbl.add_theme_color_override("font_color", COL_WHITE)
 	name_lbl.add_theme_font_size_override("font_size", 14)
 	info_vbox.add_child(name_lbl)
 
 	var desc_lbl := Label.new()
 	desc_lbl.name = "PerkDesc"
-	desc_lbl.text = String(perk_dict.get("desc", ""))
+	desc_lbl.text = tr(String(perk_dict.get("desc", "")))
 	desc_lbl.add_theme_color_override("font_color", COL_DIM)
 	desc_lbl.add_theme_font_size_override("font_size", 12)
 	info_vbox.add_child(desc_lbl)
@@ -377,7 +377,7 @@ func _build_perk_row(key: String) -> HBoxContainer:
 	# Level indicator.
 	var lvl_lbl := Label.new()
 	lvl_lbl.name = "LvlLbl"
-	lvl_lbl.text = "Lv %d/%d" % [lvl, max_lvl]
+	lvl_lbl.text = tr("Lv %d/%d") % [lvl, max_lvl]
 	lvl_lbl.custom_minimum_size = Vector2(60, 0)
 	lvl_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lvl_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -396,10 +396,10 @@ func _build_perk_row(key: String) -> HBoxContainer:
 	cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cost_lbl.add_theme_font_size_override("font_size", 13)
 	if lvl >= max_lvl:
-		cost_lbl.text = "MAX"
+		cost_lbl.text = tr("MAX")
 		cost_lbl.add_theme_color_override("font_color", COL_GREEN)
 	else:
-		cost_lbl.text = "CR %d" % cost
+		cost_lbl.text = tr("CR %d") % cost
 		cost_lbl.add_theme_color_override("font_color", COL_AMBER)
 	row.add_child(cost_lbl)
 
@@ -410,10 +410,10 @@ func _build_perk_row(key: String) -> HBoxContainer:
 	buy_btn.focus_mode = Control.FOCUS_NONE
 
 	if lvl >= max_lvl:
-		buy_btn.text     = "MAX"
+		buy_btn.text     = tr("MAX")
 		buy_btn.disabled = true
 	else:
-		buy_btn.text     = "BUY"
+		buy_btn.text     = tr("BUY")
 		buy_btn.disabled = MetaProgression.currency < cost
 		var wid_cap: String = _selected_weapon
 		buy_btn.pressed.connect(func() -> void: _on_buy_perk(wid_cap, key))
@@ -542,7 +542,7 @@ func _icon_cell(id: String, cell_size: int) -> Panel:
 	sb.border_color = item.rarity_color() if item != null else COL_TEAL
 	slot.add_theme_stylebox_override("panel", sb)
 	if item != null:
-		slot.tooltip_text = item.display_name
+		slot.tooltip_text = tr(item.display_name)
 
 	var icon := AssetRegistry.get_icon(id)
 	if icon != null:
@@ -577,7 +577,7 @@ func _refresh() -> void:
 	if not is_inside_tree():
 		return
 	if _currency_label != null:
-		_currency_label.text = "CR %d" % MetaProgression.currency
+		_currency_label.text = tr("CR %d") % MetaProgression.currency
 	_rebuild_weapon_bar()
 	_rebuild_content()
 	_update_weapon_btn_highlights()

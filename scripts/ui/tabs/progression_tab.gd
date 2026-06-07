@@ -216,13 +216,13 @@ func _build_skill_rows() -> void:
 		row.add_child(text_col)
 
 		var name_lbl := Label.new()
-		name_lbl.text = String(info.get("name", key))
+		name_lbl.text = tr(String(info.get("name", key)))
 		name_lbl.add_theme_color_override("font_color", COL_WHITE)
 		name_lbl.add_theme_font_size_override("font_size", 15)
 		text_col.add_child(name_lbl)
 
 		var desc_lbl := Label.new()
-		desc_lbl.text = String(info.get("desc", ""))
+		desc_lbl.text = tr(String(info.get("desc", "")))
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
 		desc_lbl.add_theme_font_size_override("font_size", 12)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -294,7 +294,7 @@ func _rebuild_mastery_rows() -> void:
 		col.add_child(name_row)
 
 		var nm_lbl := Label.new()
-		nm_lbl.text = w_id.to_upper()
+		nm_lbl.text = tr(w_id.to_upper())
 		nm_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		nm_lbl.add_theme_color_override("font_color", COL_WHITE)
 		nm_lbl.add_theme_font_size_override("font_size", 14)
@@ -302,10 +302,10 @@ func _rebuild_mastery_rows() -> void:
 
 		var lvl_lbl := Label.new()
 		if lvl >= Settings.WEAPON_MASTERY_MAX:
-			lvl_lbl.text = "MAX (%d)" % lvl
+			lvl_lbl.text = tr("MAX (%d)") % lvl
 			lvl_lbl.add_theme_color_override("font_color", COL_GREEN)
 		else:
-			lvl_lbl.text = "Lv %d / %d" % [lvl, Settings.WEAPON_MASTERY_MAX]
+			lvl_lbl.text = tr("Lv %d / %d") % [lvl, Settings.WEAPON_MASTERY_MAX]
 			lvl_lbl.add_theme_color_override("font_color", COL_AMBER)
 		lvl_lbl.add_theme_font_size_override("font_size", 13)
 		name_row.add_child(lvl_lbl)
@@ -334,9 +334,9 @@ func _rebuild_mastery_rows() -> void:
 				int(round(Settings.WEAPON_MASTERY_SPREAD_PER * lvl * 100.0)),
 				int(round(Settings.WEAPON_MASTERY_RELOAD_PER * lvl * 100.0))]
 		if lvl >= Settings.WEAPON_MASTERY_MAX:
-			xp_lbl.text = "Mastery complete" + bonus_txt
+			xp_lbl.text = tr("Mastery complete") + bonus_txt
 		else:
-			xp_lbl.text = ("%d / %d xp" % [mxp, need]) + bonus_txt
+			xp_lbl.text = (tr("%d / %d xp") % [mxp, need]) + bonus_txt
 		col.add_child(xp_lbl)
 
 
@@ -357,16 +357,16 @@ func _refresh_level() -> void:
 	var total: int = int(prog.get("total", 0))
 
 	if _level_label != null:
-		_level_label.text = "RAIDER LEVEL %d" % lvl
+		_level_label.text = tr("RAIDER LEVEL %d") % lvl
 	if _xp_bar != null:
 		_xp_bar.max_value = float(maxi(1, need))
 		_xp_bar.value     = float(into)
 	if _xp_label != null:
-		_xp_label.text = "%d / %d XP  (Total: %d)" % [into, need, total]
+		_xp_label.text = tr("%d / %d XP  (Total: %d)") % [into, need, total]
 	if _skill_points_label != null:
 		var sp: int = MetaProgression.skill_points
 		if sp > 0:
-			_skill_points_label.text = "Skill Points Available: %d" % sp
+			_skill_points_label.text = tr("Skill Points Available: %d") % sp
 			_skill_points_label.visible = true
 		else:
 			_skill_points_label.text = ""
@@ -374,9 +374,9 @@ func _refresh_level() -> void:
 	if _milestone_label != null:
 		var ms: Dictionary = MetaProgression.next_milestone()
 		if ms.is_empty():
-			_milestone_label.text = "All Raider milestones earned."
+			_milestone_label.text = tr("All Raider milestones earned.")
 		else:
-			_milestone_label.text = "Next milestone — Level %d: %s" % [int(ms.get("level", 0)), String(ms.get("label", ""))]
+			_milestone_label.text = tr("Next milestone — Level %d: %s") % [int(ms.get("level", 0)), tr(String(ms.get("label", "")))]
 
 
 func _refresh_skills() -> void:
@@ -387,7 +387,7 @@ func _refresh_skills() -> void:
 
 		var pip_lbl: Label = _skill_pip_labels.get(key)
 		if pip_lbl != null:
-			pip_lbl.text = "%d / %d" % [lvl, max_l]
+			pip_lbl.text = tr("%d / %d") % [lvl, max_l]
 			if maxed:
 				pip_lbl.add_theme_color_override("font_color", COL_GREEN)
 			else:
@@ -396,10 +396,10 @@ func _refresh_skills() -> void:
 		var btn: Button = _skill_buy_btns.get(key)
 		if btn != null:
 			if maxed:
-				btn.text     = "MAX"
+				btn.text     = tr("MAX")
 				btn.disabled = true
 			else:
-				btn.text     = "BUY"
+				btn.text     = tr("BUY")
 				btn.disabled = (MetaProgression.skill_points <= 0)
 
 
@@ -413,9 +413,9 @@ func _refresh_rep() -> void:
 
 	if _rep_tier_label != null:
 		if disc_pct > 0:
-			_rep_tier_label.text = "TIER %d  ·  %d%% shop discount" % [tier, disc_pct]
+			_rep_tier_label.text = tr("TIER %d  ·  %d%% shop discount") % [tier, disc_pct]
 		else:
-			_rep_tier_label.text = "TIER %d  ·  No discount yet" % tier
+			_rep_tier_label.text = tr("TIER %d  ·  No discount yet") % tier
 
 	if _rep_bar != null:
 		if need <= 0:
@@ -428,10 +428,10 @@ func _refresh_rep() -> void:
 
 	if _rep_label != null:
 		if need <= 0:
-			_rep_label.text = "Maximum tier reached!"
+			_rep_label.text = tr("Maximum tier reached!")
 			_rep_label.add_theme_color_override("font_color", COL_GREEN)
 		else:
-			_rep_label.text = "%d / %d rep to Tier %d" % [into, need, tier + 1]
+			_rep_label.text = tr("%d / %d rep to Tier %d") % [into, need, tier + 1]
 			_rep_label.add_theme_color_override("font_color", COL_DIM)
 
 	if _rep_reward_label != null:
@@ -444,15 +444,15 @@ func _refresh_rep() -> void:
 			var parts: Array[String] = []
 			var cur_rw: int = int(reward.get("currency", 0))
 			if cur_rw > 0:
-				parts.append("CR %d" % cur_rw)
+				parts.append(tr("CR %d") % cur_rw)
 			var bp_rw: String = String(reward.get("blueprint", ""))
 			if bp_rw != "":
-				parts.append("Blueprint: %s" % bp_rw)
+				parts.append(tr("Blueprint: %s") % bp_rw)
 			if parts.is_empty():
 				_rep_reward_label.text = ""
 				_rep_reward_label.visible = false
 			else:
-				_rep_reward_label.text = "Next tier reward: " + ", ".join(parts)
+				_rep_reward_label.text = tr("Next tier reward: ") + ", ".join(parts)
 				_rep_reward_label.visible = true
 
 

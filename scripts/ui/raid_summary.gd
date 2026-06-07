@@ -187,20 +187,20 @@ func _on_match_lost() -> void:
 func _show_summary(won: bool) -> void:
 	# Title + subtitle.
 	if won:
-		_title.text = "EXTRACTED"
+		_title.text = tr("EXTRACTED")
 		_title.add_theme_color_override("font_color", COL_WIN)
-		_subtitle.text = "Gear secured. Head back to the Hub."
+		_subtitle.text = tr("Gear secured. Head back to the Hub.")
 		_subtitle.add_theme_color_override("font_color", COL_WIN)
 	else:
-		_title.text = "KIA"
+		_title.text = tr("KIA")
 		_title.add_theme_color_override("font_color", COL_LOSS)
-		_subtitle.text = "Gear lost. Better luck next time."
+		_subtitle.text = tr("Gear lost. Better luck next time.")
 		_subtitle.add_theme_color_override("font_color", COL_LOSS)
 
 	# Loot section.
 	_clear_children(_loot_list)
 	if _loot_counts.is_empty():
-		var empty_lbl := _make_dim_label("Nothing extracted.")
+		var empty_lbl := _make_dim_label(tr("Nothing extracted."))
 		_loot_list.add_child(empty_lbl)
 	else:
 		for id in _loot_counts:
@@ -209,10 +209,10 @@ func _show_summary(won: bool) -> void:
 
 	# Currency line (always shown on a win; zero on a loss).
 	if _loot_bonus > 0:
-		_currency_label.text = "+CR %d" % _loot_bonus
+		_currency_label.text = tr("+CR %d") % _loot_bonus
 		_currency_label.add_theme_color_override("font_color", COL_AMBER)
 	else:
-		_currency_label.text = "+CR 0"
+		_currency_label.text = tr("+CR 0")
 		_currency_label.add_theme_color_override("font_color", COL_DIM)
 
 	# Blueprints section.
@@ -260,28 +260,28 @@ func _show_progression_section() -> void:
 		var event_xp: int  = int(_xp_by_source.get("event", 0))
 		var loot_xp: int   = int(_xp_by_source.get("loot", 0))
 		if kill_xp > 0:
-			parts.append("kills %d" % kill_xp)
+			parts.append(tr("kills %d") % kill_xp)
 		if ext_xp > 0:
-			parts.append("extract %d" % ext_xp)
+			parts.append(tr("extract %d") % ext_xp)
 		if event_xp > 0:
-			parts.append("events %d" % event_xp)
+			parts.append(tr("events %d") % event_xp)
 		if loot_xp > 0:
-			parts.append("loot %d" % loot_xp)
+			parts.append(tr("loot %d") % loot_xp)
 
 		var xp_lbl := Label.new()
 		xp_lbl.add_theme_font_size_override("font_size", 14)
 		xp_lbl.add_theme_color_override("font_color", COL_AMBER)
 		if parts.is_empty():
-			xp_lbl.text = "+XP %d" % total_xp
+			xp_lbl.text = tr("+XP %d") % total_xp
 		else:
-			xp_lbl.text = "+XP %d  (%s)" % [total_xp, "  ·  ".join(parts)]
+			xp_lbl.text = tr("+XP %d  (%s)") % [total_xp, "  ·  ".join(parts)]
 		_prog_list.add_child(xp_lbl)
 		any_line = true
 
 	# ── Level-up ─────────────────────────────────────────────────────────────
 	if _new_raider_level > 0:
 		var lvl_lbl := Label.new()
-		lvl_lbl.text = "RAIDER LEVEL UP  →  %d" % _new_raider_level
+		lvl_lbl.text = tr("RAIDER LEVEL UP  →  %d") % _new_raider_level
 		lvl_lbl.add_theme_font_size_override("font_size", 15)
 		lvl_lbl.add_theme_color_override("font_color", COL_TEAL)
 		_prog_list.add_child(lvl_lbl)
@@ -295,10 +295,10 @@ func _show_progression_section() -> void:
 		rep_lbl.add_theme_font_size_override("font_size", 13)
 		rep_lbl.add_theme_color_override("font_color", COL_DIM)
 		if tier_now > _rep_tier_start:
-			rep_lbl.text = "+REP %d  (Tier %d → Tier %d)" % [rep_gained, _rep_tier_start, tier_now]
+			rep_lbl.text = tr("+REP %d  (Tier %d → Tier %d)") % [rep_gained, _rep_tier_start, tier_now]
 			rep_lbl.add_theme_color_override("font_color", COL_TEAL)
 		else:
-			rep_lbl.text = "+REP %d  (Tier %d)" % [rep_gained, tier_now]
+			rep_lbl.text = tr("+REP %d  (Tier %d)") % [rep_gained, tier_now]
 		_prog_list.add_child(rep_lbl)
 		any_line = true
 
@@ -306,7 +306,7 @@ func _show_progression_section() -> void:
 	for wid in _mastery_leveled:
 		var lvl: int = MetaProgression.weapon_mastery_level(String(wid))
 		var m_lbl := Label.new()
-		m_lbl.text = "Mastery: %s  Lv%d" % [String(wid).to_upper(), lvl]
+		m_lbl.text = tr("Mastery: %s  Lv%d") % [String(wid).to_upper(), lvl]
 		m_lbl.add_theme_font_size_override("font_size", 13)
 		m_lbl.add_theme_color_override("font_color", COL_AMBER)
 		_prog_list.add_child(m_lbl)

@@ -51,6 +51,7 @@ const DIFFICULTY_DESCS := [
 	"NORMAL — balanced threat. Recommended for most runs.",
 	"HARD — more enemies, higher damage. Extraction is brutal.",
 ]
+# tr() applied at use-time (in _refresh_difficulty) so the locale is live.
 
 # Project theme colours (match Workshop.gd / MainMenu.tscn).
 const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
@@ -119,7 +120,7 @@ func _ready() -> void:
 			else:
 				# Placeholder shown during bringup while the tab agent finishes.
 				var lbl := Label.new()
-				lbl.text = "Coming soon"
+				lbl.text = tr("Coming soon")
 				lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 				lbl.add_theme_color_override("font_color", COL_DIM)
@@ -191,16 +192,16 @@ func _refresh_deploy_button() -> void:
 	if _deploy_btn == null:
 		return
 	if not _is_coop():
-		_deploy_btn.text = "DEPLOY"
+		_deploy_btn.text = tr("DEPLOY")
 		_deploy_btn.disabled = false
 		return
 	if _is_host():
-		_deploy_btn.text = "START RAID"
+		_deploy_btn.text = tr("START RAID")
 		var ready: bool = GameState.squad_all_ready()
 		_deploy_btn.disabled = not ready
-		_deploy_btn.tooltip_text = "" if ready else "Waiting for the squad to ready up…"
+		_deploy_btn.tooltip_text = "" if ready else tr("Waiting for the squad to ready up…")
 	else:
-		_deploy_btn.text = "UNREADY" if _self_ready else "READY"
+		_deploy_btn.text = tr("UNREADY") if _self_ready else tr("READY")
 		_deploy_btn.disabled = false
 
 ## Builds the SQUAD roster strip (bottom, left-of-centre) shown only in co-op.
@@ -315,7 +316,7 @@ func _update_tab_button_states() -> void:
 func _refresh_currency() -> void:
 	if not _currency_label:
 		return
-	_currency_label.text = "CR %d" % MetaProgression.currency
+	_currency_label.text = tr("CR %d") % MetaProgression.currency
 
 
 func _on_currency_changed(_amount: int) -> void:
@@ -331,7 +332,7 @@ func _refresh_difficulty() -> void:
 	_diff_option.selected = GameState.difficulty
 	_diff_option.set_block_signals(false)
 	if _diff_desc:
-		_diff_desc.text = DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)]
+		_diff_desc.text = tr(DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)])
 
 
 func _on_difficulty_selected(index: int) -> void:

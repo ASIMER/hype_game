@@ -46,6 +46,7 @@ const DEFAULTS := {
 	"dof": false,                 # cinematic far depth-of-field (immediate)
 	"terrain_parallax": false,    # parallax-occlusion mapping on the ground (rebuild-bound; heavy)
 	# Diagnostics overlay
+	"language": "en",             # UI locale ("en" base/fallback, "ru", ... — TranslationServer)
 	"show_fps": false,            # minimal FPS counter
 	"show_detailed_stats": false, # full perf + network panel
 	"stats_display_mode": 0,      # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
@@ -263,6 +264,7 @@ func apply(key: String) -> void:
 		"shadow_distance", "dof_amount", "volumetric_fog", "local_fog", "god_rays", \
 		"dof", "terrain_parallax":
 			_apply_quality_lever()
+		"language": _apply_language(str(v))
 		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
 		"ui_edge_margin", "ui_top_margin": _apply_ui_margins()
 		"hud_scale": _apply_hud_scale(float(v))
@@ -273,6 +275,15 @@ func apply(key: String) -> void:
 		"sensitivity": Settings.mouse_sensitivity = Settings.MOUSE_SENSITIVITY * clampf(float(v), 0.1, 4.0)
 		"invert_y": Settings.invert_y = bool(v)
 		"ads_toggle": Settings.ads_toggle = bool(v)
+
+## UI locale. English is the BASE language: en has no translation table — tr() falls
+## back to the key, which IS the English source string ("English-as-key" scheme; see
+## locale/ui.csv). Static Control texts auto-retranslate live on locale change.
+func _apply_language(code: String) -> void:
+	if code == "":
+		code = "en"
+	TranslationServer.set_locale(code)
+
 
 func _apply_window_mode(mode: int) -> void:
 	if _headless() or AgentBridge.active:

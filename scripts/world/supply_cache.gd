@@ -53,7 +53,7 @@ func _ready() -> void:
 	add_to_group("world_events")
 	# Expose Lane C metadata.
 	set_meta("event_kind", 0)
-	set_meta("event_label", "Supply Cache")
+	set_meta("event_label", tr("Supply Cache"))
 	# event_pos is set after global_position is available (call_deferred).
 	call_deferred("_set_pos_meta")
 
@@ -80,7 +80,7 @@ func _on_body_entered(body: Node) -> void:
 		return
 	if body != null and body.is_in_group("players"):
 		_nearby_players += 1
-		Events.interaction_available.emit("[Hold] Crack supply cache", self)
+		Events.interaction_available.emit(tr("[Hold] Crack supply cache"), self)
 
 func _on_body_exited(body: Node) -> void:
 	if body != null and body.is_in_group("players"):
@@ -115,7 +115,7 @@ func event_ratio() -> float:
 
 ## Lane C interface: label string.
 func event_label() -> String:
-	return "Supply Cache"
+	return tr("Supply Cache")
 
 # ─── crack: spawn loot + signals ─────────────────────────────────────────────
 
@@ -127,7 +127,7 @@ func _crack() -> void:
 
 	Events.world_event_progress.emit(0, 1.0)
 	Events.world_event_ended.emit(0, true)
-	Events.notify.emit("Supply cache cracked! Loot secured.", 1)
+	Events.notify.emit(tr("Supply cache cracked! Loot secured."), 1)
 	Events.interaction_cleared.emit()
 
 	# Tell the director we're done (it will clear _active_kind).

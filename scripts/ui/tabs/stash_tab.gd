@@ -57,9 +57,9 @@ func _ready() -> void:
 func _build_popup() -> void:
 	_popup = PopupMenu.new()
 	add_child(_popup)
-	_popup.add_item("Sell 1",    _ACT_SELL_ONE)
-	_popup.add_item("Sell All",  _ACT_SELL_ALL)
-	_popup.add_item("Recycle 1", _ACT_RECYCLE)
+	_popup.add_item(tr("Sell 1"),    _ACT_SELL_ONE)
+	_popup.add_item(tr("Sell All"),  _ACT_SELL_ALL)
+	_popup.add_item(tr("Recycle 1"), _ACT_RECYCLE)
 	_popup.id_pressed.connect(_on_popup_action)
 
 # ------------------------------------------------------------------ capacity bar
@@ -117,7 +117,7 @@ func _refresh_capacity() -> void:
 	fill_sb.bg_color = Color(0.90, 0.20, 0.20) if over else Color(0.20, 0.65, 0.35)
 	fill_sb.set_corner_radius_all(3)
 	_cap_bar.add_theme_stylebox_override("fill", fill_sb)
-	_cap_label.text = "%.1f / %.1f kg" % [w, cap]
+	_cap_label.text = tr("%.1f / %.1f kg") % [w, cap]
 	_cap_label.add_theme_color_override("font_color",
 		Color(0.90, 0.20, 0.20) if over else Color(0.55, 0.75, 0.55))
 
@@ -146,25 +146,25 @@ func _build_footer() -> void:
 
 	var sort_btn := Button.new()
 	sort_btn.name = "SortBtn"
-	sort_btn.text = "SORT"
+	sort_btn.text = tr("SORT")
 	sort_btn.custom_minimum_size = Vector2(80, 28)
-	sort_btn.tooltip_text = "Toggle sort by value (high → low)"
+	sort_btn.tooltip_text = tr("Toggle sort by value (high → low)")
 	sort_btn.pressed.connect(_on_sort_pressed)
 	footer.add_child(sort_btn)
 
 	var sell_junk_btn := Button.new()
 	sell_junk_btn.name = "SellJunkBtn"
-	sell_junk_btn.text = "SELL ALL JUNK"
+	sell_junk_btn.text = tr("SELL ALL JUNK")
 	sell_junk_btn.custom_minimum_size = Vector2(120, 28)
-	sell_junk_btn.tooltip_text = "Sell every Common-rarity Material stack"
+	sell_junk_btn.tooltip_text = tr("Sell every Common-rarity Material stack")
 	sell_junk_btn.pressed.connect(_on_sell_all_junk_pressed)
 	footer.add_child(sell_junk_btn)
 
 	var recycle_all_btn := Button.new()
 	recycle_all_btn.name = "RecycleAllBtn"
-	recycle_all_btn.text = "RECYCLE ALL"
+	recycle_all_btn.text = tr("RECYCLE ALL")
 	recycle_all_btn.custom_minimum_size = Vector2(110, 28)
-	recycle_all_btn.tooltip_text = "Recycle every Material stack (leaves consumables & weapons)"
+	recycle_all_btn.tooltip_text = tr("Recycle every Material stack (leaves consumables & weapons)")
 	recycle_all_btn.pressed.connect(_on_recycle_all_pressed)
 	footer.add_child(recycle_all_btn)
 
@@ -203,7 +203,7 @@ func _refresh() -> void:
 
 # ------------------------------------------------------------------ header
 func _refresh_header() -> void:
-	_header_value_label.text = "Total value: %d" % Stash.total_value()
+	_header_value_label.text = tr("Total value: %d") % Stash.total_value()
 
 # ------------------------------------------------------------------ grid helpers
 func _clear_grid() -> void:
@@ -275,12 +275,12 @@ func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 ## Rich tooltip: name + rarity + value + description. Degrades when ItemData is null.
 func _tooltip_for(id: String, item: ItemData) -> String:
 	if item == null:
-		return "%s\n[Unknown item]" % id
-	return "%s\n[%s]\nValue: %d\n\n%s" % [
-		item.display_name,
-		item.rarity_name(),
+		return tr("%s\n[Unknown item]") % id
+	return tr("%s\n[%s]\nValue: %d\n\n%s") % [
+		tr(item.display_name),
+		tr(item.rarity_name()),
 		item.value,
-		item.description,
+		tr(item.description),
 	]
 
 # ------------------------------------------------------------------ slot input
