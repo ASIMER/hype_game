@@ -399,6 +399,20 @@ func _handle_line(line: String) -> void:
 			_send({ "ok": shp != null, "health": shp.current if shp else 0.0 })
 		"prog":
 			_send(_debug_prog(json))
+		"cosmetic":
+			# Debug character customization: {action:equip|buy|grant, id} or {action:get}.
+			# grant = unlock free (QA); buy = unlock spending currency; equip = set equipped.
+			var cact := str(json.get("action", "get"))
+			var cid := str(json.get("id", ""))
+			match cact:
+				"grant":
+					if cid != "" and not (cid in MetaProgression.unlocked_cosmetics):
+						MetaProgression.unlocked_cosmetics.append(cid)
+						MetaProgression.save_profile()
+				"buy": MetaProgression.unlock_cosmetic(cid)
+				"equip": MetaProgression.set_equipped_cosmetic(cid)
+			_send({ "ok": true, "equipped": MetaProgression.get_cosmetics(),
+				"currency": MetaProgression.currency })
 		"crosshair":
 			_send(_debug_crosshair())
 		"screenshot":
@@ -799,13 +813,14 @@ func _ui_action(action: String) -> bool:
 				return true
 			Events.map_toggled.emit(action == "open_map")
 			return true
-		"hub_stash", "hub_loadout", "hub_workshop", "hub_shop", "hub_quests", "hub_gunsmith", "hub_raider":
+		"hub_stash", "hub_loadout", "hub_workshop", "hub_shop", "hub_quests", "hub_gunsmith", "hub_raider", "hub_character":
 			# Switch the open Hub's active tab (screenshot QA of each tab).
 			var hub := scene.find_child("Hub", true, false)
 			if hub == null or not hub.has_method("_switch_tab"):
 				return false
 			var idx: int = { "hub_stash": 0, "hub_loadout": 1, "hub_workshop": 2,
-				"hub_shop": 3, "hub_quests": 4, "hub_gunsmith": 5, "hub_raider": 6 }.get(action, 0)
+				"hub_shop": 3, "hub_quests": 4, "hub_gunsmith": 5, "hub_raider": 6,
+				"hub_character": 7 }.get(action, 0)
 			hub._switch_tab(idx)
 			return true
 	return false
@@ -1014,6 +1029,18 @@ func _snapshot() -> Dictionary:
 			"dist": p.global_position.distance_to(e.global_position),
 		})
 	d["enemies"] = enemies
+
+	# All players (incl. remotes) with their REPLICATED cosmetics — proves co-op appearance
+	# sync: each peer's copy of another player carries that player's chosen look.
+	var players_arr: Array = []
+	for pl in get_tree().get_nodes_in_group("players"):
+		players_arr.append({
+			"name": str(pl.name),
+			"authority": pl.is_multiplayer_authority() if pl.has_method("is_multiplayer_authority") else false,
+			"cosmetics": pl.get("cosmetics") if "cosmetics" in pl else {},
+			"downed": pl.is_downed() if pl.has_method("is_downed") else false,
+		})
+	d["players"] = players_arr
 
 	var loot: Array = []
 	for l in get_tree().get_nodes_in_group("pickups"):

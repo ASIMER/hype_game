@@ -33,6 +33,7 @@ const TAB_SHOP        := 3
 const TAB_QUESTS      := 4
 const TAB_GUNSMITH    := 5
 const TAB_PROGRESSION := 6
+const TAB_CHARACTER   := 7
 
 # Paths to tab scenes (built by other agents — guarded with ResourceLoader.exists).
 const TAB_PATHS := [
@@ -43,6 +44,7 @@ const TAB_PATHS := [
 	"res://scenes/ui/tabs/QuestsTab.tscn",
 	"res://scenes/ui/tabs/GunsmithTab.tscn",
 	"res://scenes/ui/tabs/ProgressionTab.tscn",
+	"res://scenes/ui/tabs/CharacterTab.tscn",
 ]
 
 # Difficulty one-line descriptions (mirrors Workshop.gd).

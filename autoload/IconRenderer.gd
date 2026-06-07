@@ -98,6 +98,36 @@ func render_now(id: String) -> Texture2D:
 	_cache[id] = tex
 	return tex
 
+## Render an arbitrary prebuilt Node3D to a texture, cached by `key` (for previews whose
+## model isn't a CATALOG id, e.g. cosmetic parts). Frees the node. null on headless/failure.
+func render_node(key: String, node: Node3D) -> Texture2D:
+	if _cache.has(key):
+		node.queue_free()
+		return _cache[key]
+	if _vp == null:
+		node.queue_free()
+		return null
+	_holder.add_child(node)
+	_frame(node)
+	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	await RenderingServer.frame_post_draw
+	var img := _vp.get_texture().get_image()
+	_holder.remove_child(node)
+	node.queue_free()
+	if img == null:
+		return null
+	var tex := ImageTexture.create_from_image(img)
+	_cache[key] = tex
+	return tex
+
+## Render a character cosmetic variant preview (cached by category+variant+paint). For
+## "paint" this renders the whole body in that scheme; otherwise just that part.
+func render_cosmetic(category: String, variant_id: String, paint_id: String) -> Texture2D:
+	var key := "cos:%s:%s:%s" % [category, variant_id, paint_id]
+	if _cache.has(key):
+		return _cache[key]
+	return await render_node(key, ProceduralPlayer.build_part(category, variant_id, paint_id))
+
 func has_cached(id: String) -> bool:
 	return _cache.has(id)
 
