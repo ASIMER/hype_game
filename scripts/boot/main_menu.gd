@@ -12,6 +12,9 @@ var _server_browser: Control = null
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	# Show the real build version (single source of truth) so it never drifts from VERSION.
+	if has_node("Version"):
+		$Version.text = "v" + Settings.GAME_VERSION
 	Events.all_players_ready.connect(_on_all_ready)
 	$Panel/VBox/SinglePlayerBtn.pressed.connect(_on_single_player)
 	$Panel/VBox/HostBtn.pressed.connect(_on_host)
