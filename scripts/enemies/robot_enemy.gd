@@ -36,7 +36,11 @@ const DEATH_POP_TIME: float = 0.32
 const DEATH_LINGER: float = 1.0
 # Separation: nearby enemies within this radius push us apart so they don't blob.
 const SEPARATION_RADIUS: float = 1.6
-const SEPARATION_STRENGTH: float = 3.2
+const SEPARATION_STRENGTH: float = 1.5
+# Hard ceiling on the separation steer's magnitude (vs the unit-length pursuit dir) so a
+# dense crowd can never repel itself outside attack range — body collision still resolves
+# the final hard overlaps. See _apply_movement.
+const SEPARATION_MAX: float = 0.6
 
 # Mirror of EnemyStateMachine.State so the synchronizer replicates a plain int
 # and clients can map it to animation without the helper class.
@@ -924,7 +928,21 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	# Blend in a separation steer so enemies don't pile into one point. The body
 	# collision (mask now includes the enemy layer) resolves hard overlaps; this
 	# soft push keeps them spread BEFORE they touch, which reads much better.
+	# CRITICAL: separation must only NUDGE — never overpower the unit-length pursuit
+	# `dir`, or a dense crowd repels itself into a ring WIDER than attack range and the
+	# enemies can never reach melee (looks like "they run in place and won't attack").
+	# So we clamp the separation magnitude well below 1.0 AND fade it out as the enemy
+	# closes on its target, letting the swarm commit to a dogpile within attack range.
 	var sep := _separation_steer()
+	if sep.length() > SEPARATION_MAX:
+		sep = sep.normalized() * SEPARATION_MAX
+	if _target != null and is_instance_valid(_target):
+		var td := Vector2(global_position.x - _target.global_position.x,
+			global_position.z - _target.global_position.z).length()
+		# Fade separation from full (at >2× attack range) to zero (at attack range) so the
+		# final approach is pure pursuit and crowded enemies still reach the player.
+		var fade := clampf((td - _stat_attack_range) / maxf(0.1, _stat_attack_range), 0.0, 1.0)
+		sep *= fade
 	var move := dir + sep
 	if move.length() > 1.0:
 		move = move.normalized()

@@ -164,9 +164,11 @@ func _on_match_started() -> void:
 	_start_next_wave()
 
 func _start_next_wave() -> void:
-	# Clear any surviving patrol enemies before the new wave so they never interfere
-	# with _finish_wave's "spawned >= total and alive.is_empty()" accounting.
-	_clear_patrols()
+	# NOTE: between-wave patrols PERSIST across wave starts (they live in _patrols, which is
+	# separate from _alive_enemies, so they never affect _finish_wave's wave-clear accounting).
+	# They used to be freed here every wave — which made them spawn, then vanish seconds later,
+	# then respawn elsewhere ("the bots disappear and re-spawn"). Now they stay in the world
+	# until the player kills them; _spawn_patrols() just tops the population back up.
 
 	# During the storm the gradual 1-5 progression is over: keep the same "wave"
 	# spinning and just refill from the storm stream instead of ending the match.
@@ -559,11 +561,13 @@ func _spawn_patrols() -> void:
 	# fall back to the grunt if Lane A's scene isn't available yet.
 	var patrol_scene: String = SCENE_CALLER if ResourceLoader.exists(SCENE_CALLER) else SCENE_GRUNT
 
-	var count: int = Settings.PATROL_COUNT
-	# Respect the alive-count ceiling even for patrols.
+	# Patrols PERSIST now, so only TOP UP to a steady target population (PATROL_COUNT live
+	# patrols) — replacing ones the player killed — instead of adding a fresh batch each
+	# intermission (which would accumulate). Also respect the global alive ceiling.
+	var need: int = maxi(0, Settings.PATROL_COUNT - _patrols.size())
 	var current_alive: int = _alive_enemies.size() + _patrols.size()
 	var can_spawn: int = maxi(0, Settings.FINAL_WAVE_CONCURRENT - current_alive)
-	count = mini(count, can_spawn)
+	var count: int = mini(need, can_spawn)
 
 	for i in count:
 		_spawn_patrol_enemy(i, patrol_scene)
