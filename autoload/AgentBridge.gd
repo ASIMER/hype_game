@@ -604,8 +604,11 @@ func _debug_crosshair() -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 300.0)
 	q.collide_with_areas = true
 	q.collide_with_bodies = true
-	if p is CollisionObject3D:
-		q.exclude = [(p as CollisionObject3D).get_rid()]
+	# Exclude ALL of the player's own collision objects (body + Hurtbox + any view-model)
+	# so the ray reports the enemy/world under the reticle, not our own gun at point-blank.
+	var excl: Array[RID] = []
+	_collect_collision_rids(p, excl)
+	q.exclude = excl
 	var hit := vp.world_3d.direct_space_state.intersect_ray(q)
 	if not hit:
 		return { "ok": true, "hit": false }
@@ -897,6 +900,7 @@ func _snapshot() -> Dictionary:
 				"rep_tier": MetaProgression.rep_tier(),
 				"weapon_mastery": MetaProgression.weapon_mastery,
 		},
+		"agent_held": _held,
 		"stash": Stash.items,
 		"stash_weight": Stash.total_weight(),
 		"stash_cap": Stash.capacity(),
@@ -1039,3 +1043,11 @@ func _v3(v: Vector3) -> Array:
 func _cam_fov(p: Node) -> float:
 	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D")
 	return cam.fov if cam else 0.0
+
+
+## Collect the RIDs of every CollisionObject3D in `root`s subtree (for ray excludes).
+func _collect_collision_rids(root: Node, out: Array[RID]) -> void:
+	if root is CollisionObject3D:
+		out.append((root as CollisionObject3D).get_rid())
+	for c in root.get_children():
+		_collect_collision_rids(c, out)
