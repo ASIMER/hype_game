@@ -3,9 +3,10 @@
   One-command portable Windows release for Hype Raiders.
 
   Produces a single self-contained HypeRaiders.exe (the game data .pck is embedded),
-  bundles a README, and zips it as export/v<version>/HypeRaiders-v<version>-win64.zip —
+  bundles a README, and zips it as export/v<version>/windows/HypeRaiders-v<version>-win64.zip —
   ready to hand to friends: they unzip and double-click the exe. Each version exports
-  into its own export/v<version>/ folder, so older releases are never overwritten.
+  into its own export/v<version>/<platform>/ folder (windows/ here, mac/ via
+  export_macos.ps1), so older releases and other platforms are never overwritten.
 
   On first run it installs the matching Godot export templates if they're missing
   (one-time ~700 MB download), then skips that on later runs. Re-run anytime to cut a
@@ -61,9 +62,10 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $verFile = Join-Path $ProjectDir "VERSION"
     if (Test-Path $verFile) { $Version = (Get-Content $verFile -Raw).Trim() } else { $Version = "0.0.0" }
 }
-# Per-version output folder (export/v<Version>/) so releases never overwrite each
-# other — each build wipes + refills ONLY its own version's folder.
-$ExportDir  = Join-Path $ProjectDir "export\v$Version"
+# Per-version, PER-PLATFORM output folder (export/v<Version>/windows/) so releases never
+# overwrite each other — each build wipes + refills ONLY its own platform subfolder
+# (the sibling mac/ build from export_macos.ps1 is untouched).
+$ExportDir  = Join-Path $ProjectDir "export\v$Version\windows"
 
 Write-Host "== Hype Raiders — Windows release build ==" -ForegroundColor Cyan
 Write-Host "  Project : $ProjectDir"
