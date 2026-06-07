@@ -141,7 +141,11 @@ func prewarm(steps_label: String = "Preparing graphics…") -> void:
 ## failure (missing autoload, headless edge) just returns without crashing boot.
 func _compile_materials() -> void:
 	var vp := SubViewport.new()
-	vp.size = Vector2i(16, 16)
+	# NOT tiny: a 16x16 3D buffer + the default env's GLOW made the renderer request an
+	# invalid mip chain ("Too many mipmaps requested (5), maximum allowed (4)") — noisy
+	# errors in editor builds but an ACCESS VIOLATION (instant close) in the release
+	# template. 128x128 keeps every internal mip chain valid.
+	vp.size = Vector2i(128, 128)
 	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(vp)
 
@@ -158,6 +162,10 @@ func _compile_materials() -> void:
 
 	var cam := Camera3D.new()
 	cam.position = Vector3(0, 0, 3)
+	# A plain Environment (no glow/SSAO/SDFGI/fog) for the prewarm camera: the SubViewport
+	# shares the parent World3D, so without this the default_env's post-effects run on the
+	# tiny buffer — pointless for shader prewarm and the source of the mip-chain crash.
+	cam.environment = Environment.new()
 	vp.add_child(cam)
 	cam.make_current()
 
