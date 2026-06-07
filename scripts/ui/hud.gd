@@ -108,7 +108,7 @@ func _build_hud_widgets() -> void:
 	_timer_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_timer_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	# Sit clear of the top-centre compass strip (its bottom edge is ~y=38).
-	_timer_label.offset_top = 46.0
+	_timer_label.offset_top = 80.0
 	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_timer_label.add_theme_font_size_override("font_size", 22)
@@ -116,6 +116,14 @@ func _build_hud_widgets() -> void:
 	_timer_label.add_theme_constant_override("outline_size", 4)
 	_timer_label.text = ""
 	$Root.add_child(_timer_label)
+
+	# Make the wave counter PROMINENT — it was a small grey label tucked behind the
+	# compass strip (easy to miss). Russo One amber, clear of the compass, above the timer.
+	wave_label.offset_top = 44.0
+	wave_label.offset_bottom = 78.0
+	UIStyle.make_header(wave_label, UIStyle.AMBER, 26, 3)
+	wave_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	wave_label.add_theme_constant_override("outline_size", 5)
 
 	# Final-wave warning banner ("STORM INCOMING"), centred a little above middle.
 	# Hidden until Events.final_wave_started; then flashes briefly.
