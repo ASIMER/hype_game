@@ -8,7 +8,7 @@
 ; the RU locale. Palette: bg #12181d, glass #10141880, accent amber #e8a33d, teal #3fb6c9.
 ; Shared in-code factories mirror this in scripts/ui/ui_style.gd (UIStyle).
 
-[ext_resource type="FontFile" uid="uid://bxwn6xlaljjyn" path="res://assets/fonts/Oswald-VariableFont_wght.ttf" id="1_oswald"]
+[ext_resource type="FontFile" uid="uid://bj8mi55f7gaqi" path="res://assets/fonts/Oswald-Regular.ttf" id="1_oswald"]
 [ext_resource type="FontFile" uid="uid://crfxlthyimj7g" path="res://assets/fonts/RussoOne-Regular.ttf" id="2_russo"]
 
 [sub_resource type="FontVariation" id="FV_header"]
