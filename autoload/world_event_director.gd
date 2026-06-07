@@ -322,8 +322,8 @@ func _start_supply_cache() -> void:
 	if wm != null:
 		wm.spawn_reinforcements(Settings.SUPPLY_CACHE_GUARDS, cache_pos, true)
 
-	Events.world_event_started.emit(0, cache_pos, "Supply Cache")
-	Events.notify.emit("Supply cache detected — hold to crack it open", 1)
+	Events.world_event_started.emit(0, cache_pos, tr("Supply Cache"))
+	Events.notify.emit(tr("Supply cache detected — hold to crack it open"), 1)
 
 func _on_cache_cracked() -> void:
 	# Called back from the SupplyCache on successful crack.
@@ -336,7 +336,7 @@ func _end_supply_cache_timeout() -> void:
 		_active_cache.queue_free()
 	_active_cache = null
 	Events.world_event_ended.emit(0, false)
-	Events.notify.emit("Supply cache lost", 2)
+	Events.notify.emit(tr("Supply cache lost"), 2)
 	_active_kind = -1
 
 # ─── EVENT 1: Mini-boss ───────────────────────────────────────────────────────
@@ -369,7 +369,7 @@ func _start_miniboss() -> void:
 				_active_miniboss = children[children.size() - 1]
 
 	# Create a map marker so Lane C can show a skull icon.
-	_active_marker = _make_marker(spawn_pos, 1, "Mini-boss", float(MINIBOSS_MAX_LIFETIME))
+	_active_marker = _make_marker(spawn_pos, 1, tr("Mini-boss"), float(MINIBOSS_MAX_LIFETIME))
 	# Attach to scene root so it persists even if arena is null.
 	var marker_parent: Node = arena if arena != null else get_tree().current_scene
 	if marker_parent != null:
@@ -378,8 +378,8 @@ func _start_miniboss() -> void:
 	_active_kind = 1
 	_event_elapsed = 0.0
 
-	Events.world_event_started.emit(1, spawn_pos, "Mini-boss")
-	Events.notify.emit("Hostile Elite detected — eliminate the target", 2)
+	Events.world_event_started.emit(1, spawn_pos, tr("Mini-boss"))
+	Events.notify.emit(tr("Hostile Elite detected — eliminate the target"), 2)
 
 func _is_elite_node(node: Node) -> bool:
 	# Check the scene file path as a reliable identifier.
@@ -404,10 +404,10 @@ func _end_miniboss(success: bool) -> void:
 		# future co-op pass).
 		MetaProgression.earn(Settings.MINIBOSS_REWARD_CURRENCY)
 		Events.world_event_ended.emit(1, true)
-		Events.notify.emit("Mini-boss eliminated! +" + str(Settings.MINIBOSS_REWARD_CURRENCY) + " credits", 1)
+		Events.notify.emit(tr("Mini-boss eliminated! +%d credits") % Settings.MINIBOSS_REWARD_CURRENCY, 1)
 	else:
 		Events.world_event_ended.emit(1, false)
-		Events.notify.emit("Hostile Elite escaped", 2)
+		Events.notify.emit(tr("Hostile Elite escaped"), 2)
 
 	if is_instance_valid(_active_marker):
 		_active_marker.queue_free()
@@ -422,7 +422,7 @@ func _start_contested_poi() -> void:
 	var wm: Node = _get_wave_manager()
 
 	var poi_pos: Vector3 = _squad_pos()
-	var poi_label: String = "Unknown"
+	var poi_label: String = tr("Unknown")
 
 	if arena != null:
 		var by_tier: Array = _poi_by_tier(arena)
@@ -436,7 +436,7 @@ func _start_contested_poi() -> void:
 			if arena.has_method("get_poi_points"):
 				poi_label = _poi_label_for_index(int(chosen[0]))
 
-	var event_label: String = "Contested: " + poi_label
+	var event_label: String = tr("Contested: %s") % poi_label
 
 	# Create a map marker for the duration.
 	_active_marker = _make_marker(poi_pos, 2, event_label, Settings.CONTESTED_POI_DURATION)
@@ -451,20 +451,20 @@ func _start_contested_poi() -> void:
 		wm.spawn_reinforcements(Settings.CONTESTED_POI_GUARDS, poi_pos, true)
 
 	Events.world_event_started.emit(2, poi_pos, event_label)
-	Events.notify.emit("Hot zone — " + poi_label + " is contested!", 3)
+	Events.notify.emit(tr("Hot zone — %s is contested!") % poi_label, 3)
 
 func _poi_label_for_index(idx: int) -> String:
-	var labels: Array[String] = ["North Tower", "East Warehouse", "Plaza", "SW House", "South Yard", "East Yard"]
+	var labels: Array[String] = [tr("North Tower"), tr("East Warehouse"), tr("Plaza"), tr("SW House"), tr("South Yard"), tr("East Yard")]
 	if idx >= 0 and idx < labels.size():
 		return labels[idx]
-	return "POI"
+	return tr("POI")
 
 func _end_contested_poi(success: bool) -> void:
 	if is_instance_valid(_active_marker):
 		_active_marker.queue_free()
 	_active_marker = null
 	Events.world_event_ended.emit(2, success)
-	Events.notify.emit("Hot zone cleared", 1)
+	Events.notify.emit(tr("Hot zone cleared"), 1)
 	_active_kind = -1
 
 # ─── EVENT 3: Surge ──────────────────────────────────────────────────────────
@@ -481,7 +481,7 @@ func _start_surge() -> void:
 
 	# Create a marker so the map can show the surge zone.
 	var arena: Node = _get_arena()
-	_active_marker = _make_marker(squad_pos, 3, "Surge", Settings.SURGE_DURATION)
+	_active_marker = _make_marker(squad_pos, 3, tr("Surge"), Settings.SURGE_DURATION)
 	var marker_parent: Node = arena if arena != null else get_tree().current_scene
 	if marker_parent != null:
 		marker_parent.add_child(_active_marker)
@@ -490,13 +490,13 @@ func _start_surge() -> void:
 	_event_elapsed = 0.0
 
 	Events.environmental_surge_changed.emit(true, 0)
-	Events.world_event_started.emit(3, squad_pos, "Surge")
-	Events.notify.emit("Enemy surge incoming!", 2)
+	Events.world_event_started.emit(3, squad_pos, tr("Surge"))
+	Events.notify.emit(tr("Enemy surge incoming!"), 2)
 
 func _end_surge(success: bool) -> void:
 	Events.environmental_surge_changed.emit(false, 0)
 	Events.world_event_ended.emit(3, success)
-	Events.notify.emit("Surge subsiding", 0)
+	Events.notify.emit(tr("Surge subsiding"), 0)
 	if is_instance_valid(_active_marker):
 		_active_marker.queue_free()
 	_active_marker = null

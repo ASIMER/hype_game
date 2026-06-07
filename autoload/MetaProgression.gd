@@ -355,7 +355,7 @@ func _apply_milestones() -> void:
 				currency += int(m.get("value", 0))
 				Events.currency_changed.emit(currency)
 		milestones_claimed.append(int(lvl))
-		Events.notify.emit("Raider L%d: %s" % [int(lvl), String(m.get("label", "reward"))], 1)
+		Events.notify.emit(tr("Raider L%d: %s") % [int(lvl), tr(String(m.get("label", "reward")))], 1)
 
 ## The next unclaimed milestone (for the RAIDER tab), or {} if all are claimed.
 func next_milestone() -> Dictionary:

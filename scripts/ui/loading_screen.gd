@@ -97,7 +97,7 @@ func hide_screen() -> void:
 # --------------------------------------------------------------- event-driven
 func _on_arena_build_progress(frac: float, label: String) -> void:
 	if not visible:
-		show_screen("ENTERING RAID…")
+		show_screen(tr("ENTERING RAID…"))
 	set_progress(frac, label)
 	if frac >= 1.0:
 		# Defer one frame so the full bar is visible briefly before it vanishes.
@@ -112,7 +112,9 @@ func _hide_next_frame() -> void:
 ## through a few phases (and, when a real renderer is present, force-compiles a couple
 ## of heavy materials in a tiny off-screen SubViewport so the first frame in-world
 ## isn't a shader-compile hitch). The integrator calls `await LoadingScreen.prewarm()`.
-func prewarm(steps_label: String = "Preparing graphics…") -> void:
+func prewarm(steps_label: String = "") -> void:
+	if steps_label == "":
+		steps_label = tr("Preparing graphics…")
 	var headless := DisplayServer.get_name() == "headless"
 	show_screen(steps_label)
 	if headless:
@@ -122,7 +124,7 @@ func prewarm(steps_label: String = "Preparing graphics…") -> void:
 		hide_screen()
 		return
 
-	var phases := ["Shaders", "Materials", "Icons", "World"]
+	var phases := [tr("Shaders"), tr("Materials"), tr("Icons"), tr("World")]
 	var n := phases.size()
 	for i in range(n):
 		set_progress(float(i) / float(n), phases[i])
@@ -132,7 +134,7 @@ func prewarm(steps_label: String = "Preparing graphics…") -> void:
 			await _compile_materials()
 		else:
 			await get_tree().create_timer(0.05).timeout
-	set_progress(1.0, "Ready")
+	set_progress(1.0, tr("Ready"))
 	await get_tree().process_frame
 	hide_screen()
 

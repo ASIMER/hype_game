@@ -52,7 +52,7 @@ func _on_host() -> void:
 	_apply_name()
 	var err := NetworkManager.host_game()
 	if err == OK:
-		status.text = "Hosting on port %d — configure your loadout…" % Settings.DEFAULT_PORT
+		status.text = tr("Hosting on port %d — configure your loadout…") % Settings.DEFAULT_PORT
 		# Host goes through the Hub (loadout/stash) then DEPLOY; the match begins once
 		# every connected peer has deployed (the existing notify_loaded handshake).
 		if _main().has_method("open_hub"):
@@ -60,7 +60,7 @@ func _on_host() -> void:
 		else:
 			_main().load_arena()
 	else:
-		status.text = "Host failed: %s" % err
+		status.text = tr("Host failed: %s") % err
 
 func _on_join() -> void:
 	var a := ServerBrowser.parse_addr(ip_field.text)
@@ -75,7 +75,7 @@ func _join(ip: String, port: int) -> void:
 		ip = Settings.DEFAULT_IP
 	var err := NetworkManager.join_game(ip, port)
 	if err == OK:
-		status.text = "Connecting to %s:%d…" % [ip, port]
+		status.text = tr("Connecting to %s:%d…") % [ip, port]
 		_pending_ip = ip
 		_pending_port = port
 		# On connect, the client opens its OWN Hub to pick its loadout; DEPLOY loads the
@@ -83,7 +83,7 @@ func _join(ip: String, port: int) -> void:
 		multiplayer.connected_to_server.connect(_on_connected_to_host, CONNECT_ONE_SHOT)
 		multiplayer.connection_failed.connect(_on_join_failed, CONNECT_ONE_SHOT)
 	else:
-		status.text = "Join failed — check IP/port"
+		status.text = tr("Join failed — check IP/port")
 
 var _pending_ip: String = ""
 var _pending_port: int = 0
@@ -101,7 +101,7 @@ func _on_connected_to_host() -> void:
 func _on_join_failed() -> void:
 	if multiplayer.connected_to_server.is_connected(_on_connected_to_host):
 		multiplayer.connected_to_server.disconnect(_on_connected_to_host)
-	status.text = "Join failed — check IP/port (is the host up?)"
+	status.text = tr("Join failed — check IP/port (is the host up?)")
 
 # ---------------------------------------------------------------- server browser
 func _on_servers() -> void:
@@ -122,7 +122,7 @@ func _on_browser_closed() -> void:
 	$Panel.show()
 
 func _on_all_ready() -> void:
-	status.text = "All players ready — match starting!"
+	status.text = tr("All players ready — match starting!")
 
 # ---------------------------------------------------------------- settings / quit
 func _on_settings() -> void:

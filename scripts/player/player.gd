@@ -780,7 +780,7 @@ func _update_interaction() -> void:
 	if best:
 		var item_id := str(best.get("item_id")) if "item_id" in best else "item"
 		var nice := item_id.replace("loot_", "").capitalize()
-		Events.interaction_available.emit("Pick up %s" % nice, best)
+		Events.interaction_available.emit(tr("Pick up %s") % nice, best)
 	else:
 		Events.interaction_cleared.emit()
 
@@ -1058,7 +1058,7 @@ func _update_coop_interaction(delta: float) -> void:
 		# Carrying suppresses the revive channel + prompt.
 		_revive_target = null
 		_revive_progress = 0.0
-		Events.interaction_available.emit("Carrying [release F]", _carry_target)
+		Events.interaction_available.emit(tr("Carrying [release F]"), _carry_target)
 		return
 	# --- Revive (hold E) ---
 	if target == null:
@@ -1067,7 +1067,7 @@ func _update_coop_interaction(delta: float) -> void:
 			_revive_progress = 0.0
 		return
 	# A downed teammate takes priority over loot — show the revive prompt.
-	Events.interaction_available.emit("Revive / Carry [hold E / F]", target)
+	Events.interaction_available.emit(tr("Revive / Carry [hold E / F]"), target)
 	if _act_held("interact"):
 		if target != _revive_target:
 			_revive_target = target
@@ -1078,7 +1078,7 @@ func _update_coop_interaction(delta: float) -> void:
 			_revive_target = null
 			_revive_progress = 0.0
 			_revive_guard_hp = -1.0
-			Events.notify.emit("Revive interrupted", 2)
+			Events.notify.emit(tr("Revive interrupted"), 2)
 			return
 		_revive_progress += delta
 		if _revive_progress >= Settings.REVIVE_CHANNEL_TIME:

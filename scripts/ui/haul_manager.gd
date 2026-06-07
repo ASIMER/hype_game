@@ -54,7 +54,7 @@ func _refresh_weight() -> void:
 	var cap := Stash.capacity()
 	var ratio := clampf(w / cap, 0.0, 2.0) if cap > 0.0 else 1.0
 	_weight_bar.value = ratio * 100.0
-	_weight_label.text = "%.1f / %.1f kg" % [w, cap]
+	_weight_label.text = tr("%.1f / %.1f kg") % [w, cap]
 	var over := w > cap
 	_weight_label.add_theme_color_override("font_color", _COL_RED if over else _COL_OK)
 	# Tint the fill colour of the ProgressBar via a StyleBoxFlat on "fill".
@@ -118,7 +118,7 @@ func _make_row(id: String, cnt: int, item: ItemData) -> Control:
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var display := (item.display_name if item else id)
 	var wt_each := (item.weight if item else 0.0)
-	name_lbl.text = "%s  ×%d  (%.1f kg)" % [display, cnt, wt_each * cnt]
+	name_lbl.text = tr("%s  ×%d  (%.1f kg)") % [display, cnt, wt_each * cnt]
 	name_lbl.add_theme_color_override("font_color",
 		item.rarity_color() if item != null else Color(0.75, 0.75, 0.8))
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -131,21 +131,21 @@ func _make_row(id: String, cnt: int, item: ItemData) -> Control:
 	sell_btn.text = "SELL"
 	sell_btn.custom_minimum_size = Vector2(60, 28)
 	sell_btn.disabled = not can_sell
-	sell_btn.tooltip_text = ("Sell 1 for %d CR" % item.value) if can_sell else "No value"
+	sell_btn.tooltip_text = (tr("Sell 1 for %d CR") % item.value) if can_sell else tr("No value")
 	sell_btn.pressed.connect(_on_sell.bind(id, item))
 	row.add_child(sell_btn)
 
 	var recycle_btn := Button.new()
 	recycle_btn.text = "RECYCLE"
 	recycle_btn.custom_minimum_size = Vector2(80, 28)
-	recycle_btn.tooltip_text = "Recycle 1 into materials"
+	recycle_btn.tooltip_text = tr("Recycle 1 into materials")
 	recycle_btn.pressed.connect(_on_recycle.bind(id))
 	row.add_child(recycle_btn)
 
 	var drop_btn := Button.new()
 	drop_btn.text = "DROP"
 	drop_btn.custom_minimum_size = Vector2(60, 28)
-	drop_btn.tooltip_text = "Discard 1 (no payout)"
+	drop_btn.tooltip_text = tr("Discard 1 (no payout)")
 	drop_btn.pressed.connect(_on_drop.bind(id))
 	row.add_child(drop_btn)
 

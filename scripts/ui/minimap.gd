@@ -191,9 +191,9 @@ func _draw_blackout(c: Vector2) -> void:
 		draw_circle(pt, 1.5, Color(0.1, brightness, 0.1, 0.7))
 	# "SIGNAL LOST" text centred in the disc.
 	var font: Font = ThemeDB.fallback_font
-	draw_string(font, c + Vector2(-38.0, -6.0), "SIGNAL", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+	draw_string(font, c + Vector2(-38.0, -6.0), tr("SIGNAL"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 		Color(0.35, 1.0, 0.35, 0.9))
-	draw_string(font, c + Vector2(-28.0, 10.0), "LOST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+	draw_string(font, c + Vector2(-28.0, 10.0), tr("LOST"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 		Color(0.35, 1.0, 0.35, 0.9))
 
 # Event kind → radar blip color.

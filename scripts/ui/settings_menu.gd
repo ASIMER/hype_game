@@ -278,6 +278,31 @@ func _build_quality_rows() -> void:
 func _build_interface_rows() -> void:
 	var accent := Color(0.247, 0.71, 0.79, 1)
 
+	# --- Language (UI locale) -------------------------------------------------
+	# English is the base/fallback; additional languages = columns in locale/ui.csv.
+	# Static Control texts re-translate LIVE on change (Godot auto-translate).
+	_interface_v.add_child(_make_header("LANGUAGE", accent))
+	var lang_row := HBoxContainer.new()
+	lang_row.add_theme_constant_override("separation", 16)
+	var lang_label := Label.new()
+	lang_label.text = "Language"
+	lang_label.custom_minimum_size = Vector2(220, 0)
+	var lang_opt := OptionButton.new()
+	lang_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Display names stay in their OWN language (the convention for language pickers),
+	# so they are deliberately NOT translated.
+	lang_opt.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	var lang_codes: Array[String] = ["en", "ru"]
+	lang_opt.add_item("English")
+	lang_opt.add_item("Русский")
+	var cur_lang := str(SettingsManager.get_value("language"))
+	var cur_idx := lang_codes.find(cur_lang)
+	lang_opt.selected = cur_idx if cur_idx >= 0 else 0
+	lang_opt.item_selected.connect(func(i): _apply_setting("language", lang_codes[i]))
+	lang_row.add_child(lang_label)
+	lang_row.add_child(lang_opt)
+	_interface_v.add_child(lang_row)
+
 	# --- Statistics overlay section (moved here from the graphics page) ---
 	_interface_v.add_child(_make_header("STATISTICS OVERLAY", accent))
 
@@ -515,19 +540,19 @@ func sync_from_settings() -> void:
 	# Cinematic / beyond ultra.
 	var draw_distance: float = float(g.get_value("draw_distance"))
 	_draw_distance.value = draw_distance
-	_draw_distance_value.text = "%d m" % roundi(58.0 * draw_distance)
+	_draw_distance_value.text = tr("%d m") % roundi(58.0 * draw_distance)
 	var particle_density: float = float(g.get_value("particle_density"))
 	_particle_density.value = particle_density
 	_particle_density_value.text = "%d%%" % roundi(particle_density * 100.0)
 	var terrain_detail: float = float(g.get_value("terrain_detail"))
 	_terrain_detail.value = terrain_detail
-	_terrain_detail_value.text = "%.1fx" % terrain_detail
+	_terrain_detail_value.text = tr("%.1fx") % terrain_detail
 	var volumetric_fog_density: float = float(g.get_value("volumetric_fog_density"))
 	_volumetric_fog_density.value = volumetric_fog_density
 	_volumetric_fog_density_value.text = "%.1f" % volumetric_fog_density
 	var shadow_distance: float = float(g.get_value("shadow_distance"))
 	_shadow_distance.value = shadow_distance
-	_shadow_distance_value.text = "%d m" % roundi(shadow_distance)
+	_shadow_distance_value.text = tr("%d m") % roundi(shadow_distance)
 	var dof_amount: float = float(g.get_value("dof_amount"))
 	_dof_amount.value = dof_amount
 	_dof_amount_value.text = "%d%%" % roundi(dof_amount * 100.0)
@@ -612,7 +637,7 @@ func _on_grass_density(v: float) -> void:
 
 
 func _on_draw_distance(v: float) -> void:
-	_draw_distance_value.text = "%d m" % roundi(58.0 * v)
+	_draw_distance_value.text = tr("%d m") % roundi(58.0 * v)
 	_apply_setting("draw_distance", v)
 	_refresh_preset_label()
 
@@ -622,7 +647,7 @@ func _on_particle_density(v: float) -> void:
 	_refresh_preset_label()
 
 func _on_terrain_detail(v: float) -> void:
-	_terrain_detail_value.text = "%.1fx" % v
+	_terrain_detail_value.text = tr("%.1fx") % v
 	_apply_setting("terrain_detail", v)
 	_refresh_preset_label()
 
@@ -632,7 +657,7 @@ func _on_volumetric_fog_density(v: float) -> void:
 	_refresh_preset_label()
 
 func _on_shadow_distance(v: float) -> void:
-	_shadow_distance_value.text = "%d m" % roundi(v)
+	_shadow_distance_value.text = tr("%d m") % roundi(v)
 	_apply_setting("shadow_distance", v)
 	_refresh_preset_label()
 

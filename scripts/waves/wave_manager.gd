@@ -269,7 +269,7 @@ func _tick_match_timer(delta: float) -> void:
 	# One-shot "storm incoming" warning.
 	if not _warned and GameState.match_time_left <= Settings.FINAL_WAVE_WARN:
 		_warned = true
-		Events.notify.emit("Storm incoming — extract!", 2)
+		Events.notify.emit(tr("Storm incoming — extract!"), 2)
 
 	# Clock expired -> engage the storm (once).
 	if GameState.match_time_left <= 0.0 and not _storm_started:
@@ -283,7 +283,7 @@ func _trigger_storm() -> void:
 	_storm_started = true
 	GameState.final_wave = true
 	Events.final_wave_started.emit()
-	Events.notify.emit("THE STORM HAS ARRIVED", 2)
+	Events.notify.emit(tr("THE STORM HAS ARRIVED"), 2)
 	# Flood IMMEDIATELY, even mid-wave — the storm interrupts whatever is happening so
 	# pressure spikes the instant the clock runs out. Any already-alive enemies are
 	# kept (see _begin_storm_wave) and the cap fills around them.
@@ -538,7 +538,7 @@ func _tick_camp_detection(delta: float) -> void:
 			_camp_timer = 0.0
 			_camp_cooldown = Settings.DIRECTOR_CAMP_COOLDOWN
 			spawn_reinforcements(Settings.DIRECTOR_FLANK_COUNT, centroid, true)
-			Events.notify.emit("Flanked!", 2)
+			Events.notify.emit(tr("Flanked!"), 2)
 	else:
 		# Players dispersed — reset the timer.
 		_camp_timer = 0.0
@@ -642,4 +642,4 @@ func _tick_boss_adds(delta: float) -> void:
 			add_scene = SCENE_GRUNT
 		var boss_pos: Vector3 = (boss as Node3D).global_position if boss is Node3D else Vector3.ZERO
 		spawn_reinforcements(Settings.DIRECTOR_BOSS_ADD_COUNT, boss_pos, true, add_scene)
-		Events.notify.emit("Boss called for backup!", 2)
+		Events.notify.emit(tr("Boss called for backup!"), 2)

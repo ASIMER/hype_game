@@ -50,6 +50,11 @@ window/stretch/aspect="expand"
 
 theme/custom="res://assets/ui/theme.tres"
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://locale/ui.ru.translation")
+locale/fallback="en"
+
 [input]
 
 move_forward={

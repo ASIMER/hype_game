@@ -104,7 +104,7 @@ func _build_ui() -> void:
 
 	# Title.
 	var title := Label.new()
-	title.text = "SQUAD — KILLS"
+	title.text = tr("SQUAD — KILLS")
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
@@ -115,10 +115,10 @@ func _build_ui() -> void:
 
 	# Header row.
 	var header := _make_row_grid()
-	_make_cell(header, "PLAYER", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_LEFT, true)
-	_make_cell(header, "KILLS", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
-	_make_cell(header, "DEATHS", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
-	_make_cell(header, "REVIVES", COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
+	_make_cell(header, tr("PLAYER"), COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_make_cell(header, tr("KILLS"), COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
+	_make_cell(header, tr("DEATHS"), COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
+	_make_cell(header, tr("REVIVES"), COL_DIM, HEADER_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
 	vbox.add_child(header)
 
 	# Container for the per-peer rows (rebuilt each refresh).
@@ -135,7 +135,7 @@ func _build_ui() -> void:
 	_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_total_label.add_theme_font_size_override("font_size", ROW_FONT_SIZE)
 	_total_label.add_theme_color_override("font_color", COL_TEAL)
-	_total_label.text = "TEAM MOBS KILLED: 0"
+	_total_label.text = tr("TEAM MOBS KILLED: 0")
 	vbox.add_child(_total_label)
 
 func _make_separator() -> HSeparator:
@@ -193,7 +193,7 @@ func _rebuild() -> void:
 	for e in entries:
 		_add_row(e, e["pid"] == local_id)
 
-	_total_label.text = "TEAM MOBS KILLED: %d" % GameState.mobs_killed
+	_total_label.text = tr("TEAM MOBS KILLED: %d") % GameState.mobs_killed
 
 ## Sort by kills desc, tie-break by name asc (case-insensitive).
 func _sort_entries(a: Dictionary, b: Dictionary) -> bool:
@@ -231,10 +231,10 @@ func _add_row(e: Dictionary, is_local: bool) -> void:
 	var rv: int = int(e.get("revives", 0))
 	var display_name: String = String(e["name"])
 	if is_local:
-		display_name += "  (you)"
+		display_name += "  " + tr("(you)")
 	# Cohesion badge for the squad medic — a star prefix when revives clears the threshold.
 	if rv >= MEDIC_BADGE_THRESHOLD:
-		display_name = "★ " + display_name + "  ·  MVP medic"
+		display_name = "★ " + display_name + "  ·  " + tr("MVP medic")
 	_make_cell(grid, display_name, name_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_make_cell(grid, str(int(e["kills"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
 	_make_cell(grid, str(int(e["deaths"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)

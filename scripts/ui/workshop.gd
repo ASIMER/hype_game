@@ -33,6 +33,7 @@ const DIFFICULTY_DESCS := [
 	"NORMAL — balanced threat. Recommended for most runs.",
 	"HARD — more enemies, higher damage. Extraction is brutal.",
 ]
+# NOTE: DIFFICULTY_DESCS are tr()-wrapped at point of use (_refresh_difficulty)
 
 # Colours matching the project theme.
 const COL_AMBER  := Color(0.91, 0.64, 0.24, 1.0)   # amber accent
@@ -103,7 +104,7 @@ func _build_weapon_rows() -> void:
 		var name_lbl := Label.new()
 		name_lbl.name = "NameLbl"
 		name_lbl.custom_minimum_size = Vector2(90, 0)
-		name_lbl.text = WEAPON_DISPLAY.get(id, id.to_upper())
+		name_lbl.text = tr(WEAPON_DISPLAY.get(id, id.to_upper()))
 		name_lbl.add_theme_color_override("font_color", COL_WHITE)
 		row.add_child(name_lbl)
 
@@ -116,7 +117,7 @@ func _build_weapon_rows() -> void:
 
 		var check := CheckButton.new()
 		check.name = "Check"
-		check.text = "IN LOADOUT"
+		check.text = tr("IN LOADOUT")
 		check.focus_mode = Control.FOCUS_NONE
 		check.toggled.connect(func(pressed: bool) -> void: _on_weapon_toggled(id, pressed))
 		row.add_child(check)
@@ -124,7 +125,7 @@ func _build_weapon_rows() -> void:
 		var unlock_btn := Button.new()
 		unlock_btn.name = "UnlockBtn"
 		unlock_btn.custom_minimum_size = Vector2(90, 32)
-		unlock_btn.text = "UNLOCK"
+		unlock_btn.text = tr("UNLOCK")
 		unlock_btn.pressed.connect(func() -> void: _on_unlock_pressed(id))
 		row.add_child(unlock_btn)
 
@@ -155,13 +156,13 @@ func _build_upgrade_rows() -> void:
 
 		var title_lbl := Label.new()
 		title_lbl.name = "TitleLbl"
-		title_lbl.text = info["name"]
+		title_lbl.text = tr(info["name"])
 		title_lbl.add_theme_color_override("font_color", COL_WHITE)
 		vname.add_child(title_lbl)
 
 		var desc_lbl := Label.new()
 		desc_lbl.name = "DescLbl"
-		desc_lbl.text = info["desc"]
+		desc_lbl.text = tr(info["desc"])
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
 		desc_lbl.add_theme_font_size_override("font_size", 12)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -187,7 +188,7 @@ func _build_upgrade_rows() -> void:
 		var btn := Button.new()
 		btn.name = "UpgradeBtn"
 		btn.custom_minimum_size = Vector2(90, 32)
-		btn.text = "UPGRADE"
+		btn.text = tr("UPGRADE")
 		btn.pressed.connect(func() -> void: _on_upgrade_pressed(key))
 		row.add_child(btn)
 
@@ -212,7 +213,7 @@ func _refresh() -> void:
 func _refresh_currency() -> void:
 	if not _currency_label:
 		return
-	_currency_label.text = "CR %d" % MetaProgression.currency
+	_currency_label.text = tr("CR %d") % MetaProgression.currency
 
 
 func _refresh_weapon_rows() -> void:
@@ -231,7 +232,7 @@ func _refresh_weapon_rows() -> void:
 		var unlock_btn: Button = ui["unlock_btn"]
 
 		if owned:
-			cost_lbl.text = "OWNED" if not is_free else "FREE"
+			cost_lbl.text = tr("OWNED") if not is_free else tr("FREE")
 			cost_lbl.add_theme_color_override("font_color", COL_DIM)
 			check.visible = true
 			unlock_btn.visible = false
@@ -244,7 +245,7 @@ func _refresh_weapon_rows() -> void:
 			check.button_pressed = in_load
 			check.set_block_signals(false)
 		else:
-			cost_lbl.text = "CR %d" % cost
+			cost_lbl.text = tr("CR %d") % cost
 			var affordable: bool = MetaProgression.currency >= cost
 			cost_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
 			check.visible = false
@@ -265,14 +266,14 @@ func _refresh_upgrade_rows() -> void:
 		var cost_lbl: Label   = ui["cost_lbl"]
 		var btn: Button       = ui["btn"]
 
-		level_lbl.text = "Lv %d / %d" % [lvl, maxl]
+		level_lbl.text = tr("Lv %d / %d") % [lvl, maxl]
 
 		if cost < 0:
-			cost_lbl.text = "MAX"
+			cost_lbl.text = tr("MAX")
 			cost_lbl.add_theme_color_override("font_color", COL_TEAL)
 			btn.disabled = true
 		else:
-			cost_lbl.text = "CR %d" % cost
+			cost_lbl.text = tr("CR %d") % cost
 			var affordable: bool = MetaProgression.currency >= cost
 			cost_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
 			btn.disabled = not affordable
@@ -285,7 +286,7 @@ func _refresh_difficulty() -> void:
 	_diff_option.selected = GameState.difficulty
 	_diff_option.set_block_signals(false)
 	if _diff_desc:
-		_diff_desc.text = DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)]
+		_diff_desc.text = tr(DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)])
 
 
 # ---------------------------------------------------------------- event handlers

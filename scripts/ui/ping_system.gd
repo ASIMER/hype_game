@@ -208,13 +208,13 @@ func _peer_name(peer_id: int) -> String:
 
 func _kind_text(kind: int) -> String:
 	match kind:
-		KIND_ENEMY: return "Enemy"
-		KIND_LOOT: return "Loot — dibs!"
-		KIND_EXTRACTION: return "Extraction"
-		KIND_HELP: return "Help!"
-		KIND_THANKS: return "Thanks"
-		KIND_REGROUP: return "Regroup"
-		_: return "Going here"
+		KIND_ENEMY: return tr("Enemy")
+		KIND_LOOT: return tr("Loot — dibs!")
+		KIND_EXTRACTION: return tr("Extraction")
+		KIND_HELP: return tr("Help!")
+		KIND_THANKS: return tr("Thanks")
+		KIND_REGROUP: return tr("Regroup")
+		_: return tr("Going here")
 
 func _color_for(kind: int) -> Color:
 	match kind:

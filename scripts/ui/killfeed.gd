@@ -59,8 +59,8 @@ func _ready() -> void:
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
 		vp.size_changed.connect(_apply_hud_inset)
-	Events.wave_started.connect(func(w, _c): _push("WAVE %d" % w, COL_WAVE))
-	Events.wave_cleared.connect(func(w): _push("WAVE %d CLEARED" % w, COL_GOOD))
+	Events.wave_started.connect(func(w, _c): _push(tr("WAVE %d") % w, COL_WAVE))
+	Events.wave_cleared.connect(func(w): _push(tr("WAVE %d CLEARED") % w, COL_GOOD))
 	Events.item_picked_up.connect(_on_pickup)
 	Events.entity_died.connect(_on_entity_died)
 	Events.notify.connect(_on_notify)
@@ -114,17 +114,17 @@ func _push(text: String, color: Color) -> void:
 func _on_pickup(_player: Node, item_id: String, count: int) -> void:
 	var name := item_id.capitalize()
 	if count > 1:
-		_push("+ %s x%d" % [name, count], COL_INFO)
+		_push(tr("+ %s x%d") % [name, count], COL_INFO)
 	else:
-		_push("+ %s" % name, COL_INFO)
+		_push(tr("+ %s") % name, COL_INFO)
 
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
 	if entity != null and entity.is_in_group("enemies"):
-		var label := "Enemy"
+		var label := tr("Enemy")
 		if entity is Node and entity.name != "":
 			label = String(entity.name)
-		_push("%s destroyed" % label, COL_DIM)
+		_push(tr("%s destroyed") % label, COL_DIM)
 
 
 func _on_notify(text: String, kind: int) -> void:

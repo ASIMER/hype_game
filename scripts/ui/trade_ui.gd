@@ -172,7 +172,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_trade_pressed()
 		get_viewport().set_input_as_handled()
 	elif _active and event.is_action_pressed("ui_cancel"):
-		_cancel_local("Trade cancelled")
+		_cancel_local(tr("Trade cancelled"))
 		get_viewport().set_input_as_handled()
 
 func _on_trade_pressed() -> void:
@@ -182,11 +182,11 @@ func _on_trade_pressed() -> void:
 	var me: int = GameState.local_peer_id()
 	var partner: int = NetworkManager.nearest_teammate(me)
 	if partner == 0:
-		Events.notify.emit("No teammate nearby to trade", 2)
+		Events.notify.emit(tr("No teammate nearby to trade"), 2)
 		return
 	_partner = partner
 	_open(true)
-	_set_status("Waiting for %s..." % _peer_name(partner))
+	_set_status(tr("Waiting for %s...") % _peer_name(partner))
 	# Ask the partner to open their side.
 	_rpc_request.rpc_id(partner, me)
 
@@ -201,9 +201,9 @@ func _open(initiator: bool) -> void:
 	_bind_local_inventory()
 	_root.visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	_title.text = "TRADE — with %s" % _peer_name(_partner)
+	_title.text = tr("TRADE — with %s") % _peer_name(_partner)
 	if not initiator:
-		_set_status("Trading with %s" % _peer_name(_partner))
+		_set_status(tr("Trading with %s") % _peer_name(_partner))
 	_refresh_all()
 
 ## Closes the window locally and clears all session state. Does NOT message the
@@ -232,7 +232,7 @@ func _cancel_local(reason: String) -> void:
 	Events.notify.emit(reason, 2)
 
 func _on_cancel_pressed() -> void:
-	_cancel_local("Trade cancelled")
+	_cancel_local(tr("Trade cancelled"))
 
 # ------------------------------------------------------------------- offer edits
 func _on_confirm_pressed() -> void:
@@ -337,7 +337,7 @@ func _rpc_cancel() -> void:
 	if multiplayer.get_remote_sender_id() != _partner and multiplayer.get_remote_sender_id() != 1:
 		return
 	_close_local()
-	Events.notify.emit("Partner cancelled the trade", 2)
+	Events.notify.emit(tr("Partner cancelled the trade"), 2)
 
 ## SERVER ONLY: execute the atomic swap. `a` = the driver peer, `b` = its partner.
 ## transfer_item validates each side still has the items (and that they fit), so a
@@ -370,7 +370,7 @@ func _rpc_complete() -> void:
 	if not _active:
 		return
 	_close_local()
-	Events.notify.emit("Trade complete", 1)
+	Events.notify.emit(tr("Trade complete"), 1)
 
 # ----------------------------------------------------------------- rendering
 func _refresh_all() -> void:
@@ -379,8 +379,8 @@ func _refresh_all() -> void:
 	_render_inventory()
 	_render_offer(_my_offer_list, _my_offer, true)
 	_render_offer(_their_offer_list, _their_offer, false)
-	_my_offer_title.text = "YOUR OFFER (%d)" % _offer_total(_my_offer)
-	_their_offer_title.text = "THEIR OFFER (%d)" % _offer_total(_their_offer)
+	_my_offer_title.text = tr("YOUR OFFER (%d)") % _offer_total(_my_offer)
+	_their_offer_title.text = tr("THEIR OFFER (%d)") % _offer_total(_their_offer)
 	_update_status_and_buttons()
 
 func _render_inventory() -> void:
@@ -406,7 +406,7 @@ func _render_inventory() -> void:
 		add_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		add_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		add_btn.disabled = avail <= 0
-		add_btn.tooltip_text = "Click to add one to your offer"
+		add_btn.tooltip_text = tr("Click to add one to your offer")
 		add_btn.pressed.connect(_add_to_offer.bind(id))
 		row.add_child(add_btn)
 
@@ -430,7 +430,7 @@ func _render_offer(list: VBoxContainer, offer: Dictionary, mine: bool) -> void:
 			var minus := Button.new()
 			minus.text = "-"
 			minus.custom_minimum_size = Vector2(28, 0)
-			minus.tooltip_text = "Remove one from your offer"
+			minus.tooltip_text = tr("Remove one from your offer")
 			minus.pressed.connect(_remove_from_offer.bind(String(id)))
 			row.add_child(minus)
 
@@ -439,10 +439,10 @@ func _render_offer(list: VBoxContainer, offer: Dictionary, mine: bool) -> void:
 func _update_status_and_buttons() -> void:
 	# CONFIRM reflects our own confirm latch; disable once we've confirmed.
 	_confirm_btn.disabled = _my_confirm
-	_confirm_btn.text = "CONFIRMED" if _my_confirm else "CONFIRM"
-	var mine := "ready" if _my_confirm else "editing"
-	var theirs := "ready" if _their_confirm else "editing"
-	_set_status("You: %s   |   %s: %s" % [mine, _peer_name(_partner), theirs])
+	_confirm_btn.text = tr("CONFIRMED") if _my_confirm else tr("CONFIRM")
+	var mine: String = tr("ready") if _my_confirm else tr("editing")
+	var theirs: String = tr("ready") if _their_confirm else tr("editing")
+	_set_status(tr("You: %s   |   %s: %s") % [mine, _peer_name(_partner), theirs])
 
 func _set_status(text: String) -> void:
 	if _status != null:
@@ -452,7 +452,7 @@ func _set_status(text: String) -> void:
 func _on_peer_unregistered(peer_id: int) -> void:
 	if _active and peer_id == _partner:
 		_close_local()
-		Events.notify.emit("Partner left — trade cancelled", 2)
+		Events.notify.emit(tr("Partner left — trade cancelled"), 2)
 
 func _bind_local_inventory() -> void:
 	var me_name := str(GameState.local_peer_id())
@@ -494,7 +494,7 @@ func _peer_name(peer_id: int) -> String:
 	var nm: String = String(info.get("name", ""))
 	if nm != "":
 		return nm
-	return "Raider %d" % peer_id
+	return tr("Raider %d") % peer_id
 
 func _clear(node: Node) -> void:
 	if node == null:

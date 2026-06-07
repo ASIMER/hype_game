@@ -313,7 +313,7 @@ class MapDraw extends Control:
 			var tier_str: String = str(tier)
 			draw_string(font, p + Vector2(-3.0, 4.0), tier_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 9,
 				Color(0.0, 0.0, 0.0, 0.72))
-			var label: String = owner_ui.POI_NAMES[i] if i < owner_ui.POI_NAMES.size() else "POI %d" % i
+			var label: String = tr(owner_ui.POI_NAMES[i]) if i < owner_ui.POI_NAMES.size() else tr("POI %d") % i
 			draw_string(font, p + Vector2(8, 4), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
 				Color(tier_col.r, tier_col.g, tier_col.b, 0.95))
 
@@ -338,11 +338,11 @@ class MapDraw extends Control:
 			draw_arc(zp, r + 3.0, 0.0, TAU, 24, col, 2.0)
 			draw_circle(zp, r, Color(col.r, col.g, col.b, 0.4))
 			# "EXTRACT" tag + countdown.
-			var tag := "EXTRACT"
+			var tag := tr("EXTRACT")
 			if remaining > 0.0:
 				tag += "  %ds" % int(ceil(remaining))
 			elif not is_open_z:
-				tag += "  (closed)"
+				tag += "  " + tr("(closed)")
 			draw_string(font, zp + Vector2(10, 4), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col)
 
 	# Event kind → Color accent (distinct per type).
@@ -448,17 +448,17 @@ class MapDraw extends Control:
 	func _draw_overlay_text(font: Font, panel: Rect2) -> void:
 		# Title above the panel.
 		draw_string(font, Vector2(panel.position.x, panel.position.y - 30.0),
-			"TACTICAL MAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.8, 0.9, 1.0, 0.95))
+			tr("TACTICAL MAP"), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.8, 0.9, 1.0, 0.95))
 
 		# Match timer (mm:ss), top-right of the panel header.
 		var left: float = maxf(0.0, GameState.match_time_left)
 		var timer_col := Color(0.85, 0.92, 1.0, 0.95)
 		var timer_txt: String
 		if GameState.final_wave:
-			timer_txt = "FINAL WAVE — STORM"
+			timer_txt = tr("FINAL WAVE — STORM")
 			timer_col = Color(1.0, 0.4, 0.35, 0.95)
 		else:
-			timer_txt = "TIME  %s" % _fmt_time(left)
+			timer_txt = tr("TIME  %s") % _fmt_time(left)
 			if left <= Settings.FINAL_WAVE_WARN and GameState.match_duration > 0.0:
 				timer_col = Color(1.0, 0.5, 0.4, 0.95)
 		draw_string(font, Vector2(panel.position.x + panel.size.x - 230.0, panel.position.y - 30.0),
@@ -466,29 +466,29 @@ class MapDraw extends Control:
 
 		# Wave readout under the timer.
 		draw_string(font, Vector2(panel.position.x + panel.size.x - 230.0, panel.position.y - 8.0),
-			"WAVE  %d" % GameState.current_wave, HORIZONTAL_ALIGNMENT_LEFT, 220.0, 14,
+			tr("WAVE  %d") % GameState.current_wave, HORIZONTAL_ALIGNMENT_LEFT, 220.0, 14,
 			Color(0.7, 0.8, 0.9, 0.85))
 
 		# Legend below the panel — two rows to accommodate the extra event types.
 		var ly: float = panel.position.y + panel.size.y + 18.0
 		var lx: float = panel.position.x
-		_legend_swatch(lx, ly, Color(0.4, 0.85, 1.0), "You")
-		_legend_swatch(lx + 70.0, ly, Color(0.25, 1.0, 0.45), "Evac (open)")
-		_legend_swatch(lx + 200.0, ly, Color(0.55, 0.6, 0.62), "Evac (closed)")
-		_legend_swatch(lx + 340.0, ly, Color(0.85, 0.78, 0.4), "POI")
-		_legend_swatch(lx + 410.0, ly, Color(1.0, 0.32, 0.32), "Enemy")
+		_legend_swatch(lx, ly, Color(0.4, 0.85, 1.0), tr("You"))
+		_legend_swatch(lx + 70.0, ly, Color(0.25, 1.0, 0.45), tr("Evac (open)"))
+		_legend_swatch(lx + 200.0, ly, Color(0.55, 0.6, 0.62), tr("Evac (closed)"))
+		_legend_swatch(lx + 340.0, ly, Color(0.85, 0.78, 0.4), tr("POI"))
+		_legend_swatch(lx + 410.0, ly, Color(1.0, 0.32, 0.32), tr("Enemy"))
 		draw_string(font, Vector2(panel.position.x + panel.size.x - 120.0, ly + 5.0),
-			"[M] close", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.78, 0.86, 0.7))
+			tr("[M] close"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.78, 0.86, 0.7))
 		# Second row: world events + tier key.
 		var ly2: float = ly + 20.0
-		_legend_swatch(lx, ly2, Color(0.95, 0.75, 0.25), "Supply Cache")
-		_legend_swatch(lx + 130.0, ly2, Color(0.95, 0.30, 0.95), "Mini-boss")
-		_legend_swatch(lx + 240.0, ly2, Color(0.30, 0.80, 0.95), "Contested")
-		_legend_swatch(lx + 340.0, ly2, Color(1.00, 0.45, 0.10), "Surge")
+		_legend_swatch(lx, ly2, Color(0.95, 0.75, 0.25), tr("Supply Cache"))
+		_legend_swatch(lx + 130.0, ly2, Color(0.95, 0.30, 0.95), tr("Mini-boss"))
+		_legend_swatch(lx + 240.0, ly2, Color(0.30, 0.80, 0.95), tr("Contested"))
+		_legend_swatch(lx + 340.0, ly2, Color(1.00, 0.45, 0.10), tr("Surge"))
 		# Tier dots.
-		_legend_swatch(lx + 430.0, ly2, Settings.RISK_TIER_COLORS.get(1, Color.WHITE) as Color, "Tier 1")
-		_legend_swatch(lx + 500.0, ly2, Settings.RISK_TIER_COLORS.get(2, Color.WHITE) as Color, "Tier 2")
-		_legend_swatch(lx + 570.0, ly2, Settings.RISK_TIER_COLORS.get(3, Color.WHITE) as Color, "Tier 3")
+		_legend_swatch(lx + 430.0, ly2, Settings.RISK_TIER_COLORS.get(1, Color.WHITE) as Color, tr("Tier 1"))
+		_legend_swatch(lx + 500.0, ly2, Settings.RISK_TIER_COLORS.get(2, Color.WHITE) as Color, tr("Tier 2"))
+		_legend_swatch(lx + 570.0, ly2, Settings.RISK_TIER_COLORS.get(3, Color.WHITE) as Color, tr("Tier 3"))
 
 	func _legend_swatch(x: float, y: float, col: Color, label: String) -> void:
 		draw_circle(Vector2(x, y), 4.0, col)
