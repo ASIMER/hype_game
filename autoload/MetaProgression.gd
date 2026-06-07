@@ -67,6 +67,11 @@ var completed_quests: Array[String] = []
 var equipped_attachments: Dictionary = {}
 ## Permanent per-weapon perks: weapon_id -> { perk_key -> level }.
 var weapon_perks: Dictionary = {}
+## Character customization: permanently UNLOCKED cosmetic part ids (the free defaults are
+## always available) + the currently EQUIPPED variant per category (head/torso/arms/legs/
+## paint). Replicated to other peers from the player at spawn so co-op shows your look.
+var unlocked_cosmetics: Array[String] = []
+var equipped_cosmetics: Dictionary = {}
 ## Daily contracts rotation state.
 var last_daily_date: String = ""
 var daily_quest_ids: Array[String] = []
@@ -226,6 +231,50 @@ func set_bring(b: Dictionary) -> void:
 			clean[String(id)] = n
 	bring = clean
 	save_profile()
+
+# ---------------------------------------------------------------- cosmetics
+## A cosmetic variant is available if it's a FREE starter (cost 0) or has been unlocked.
+func is_cosmetic_unlocked(variant_id: String) -> bool:
+	return ProceduralPlayer.cost_of(variant_id) == 0 or variant_id in unlocked_cosmetics
+
+func cosmetic_cost(variant_id: String) -> int:
+	return ProceduralPlayer.cost_of(variant_id)
+
+## Buy + unlock a cosmetic variant (spends currency). Returns true if newly unlocked.
+func unlock_cosmetic(variant_id: String) -> bool:
+	if is_cosmetic_unlocked(variant_id):
+		return false
+	if ProceduralPlayer.category_of(variant_id) == "":
+		return false
+	if not spend(ProceduralPlayer.cost_of(variant_id)):
+		return false
+	unlocked_cosmetics.append(variant_id)
+	save_profile()
+	Events.cosmetics_changed.emit()
+	return true
+
+func get_equipped_cosmetic(category: String) -> String:
+	var picked: String = String(equipped_cosmetics.get(category, ""))
+	if picked != "" and ProceduralPlayer.category_of(picked) == category:
+		return picked
+	return String(ProceduralPlayer.defaults().get(category, ""))
+
+## Equip an UNLOCKED variant in its category. No-op if locked.
+func set_equipped_cosmetic(variant_id: String) -> void:
+	var cat := ProceduralPlayer.category_of(variant_id)
+	if cat == "" or not is_cosmetic_unlocked(variant_id):
+		return
+	equipped_cosmetics[cat] = variant_id
+	save_profile()
+	Events.cosmetics_changed.emit()
+
+## The full equipped look {head,torso,arms,legs,paint} — handed to the player at spawn
+## and replicated to other peers. Missing/locked categories fall back to the free default.
+func get_cosmetics() -> Dictionary:
+	var out := ProceduralPlayer.defaults()
+	for cat in ProceduralPlayer.CATEGORIES:
+		out[cat] = get_equipped_cosmetic(cat)
+	return out
 
 # ---------------------------------------------------------------- blueprints
 func is_blueprint_known(bp: String) -> bool:
@@ -505,6 +554,8 @@ func save_profile() -> void:
 	cfg.set_value("meta", "completed_quests", completed_quests)
 	cfg.set_value("meta", "equipped_attachments", equipped_attachments)
 	cfg.set_value("meta", "weapon_perks", weapon_perks)
+	cfg.set_value("meta", "unlocked_cosmetics", unlocked_cosmetics)
+	cfg.set_value("meta", "equipped_cosmetics", equipped_cosmetics)
 	cfg.set_value("meta", "last_daily_date", last_daily_date)
 	cfg.set_value("meta", "daily_quest_ids", daily_quest_ids)
 	cfg.set_value("meta", "difficulty", GameState.difficulty)
@@ -562,6 +613,17 @@ func load_profile() -> void:
 	# malformed/newer-shaped value defaults that weapon only, never crashing the load.
 	equipped_attachments = _load_nested_dict(cfg.get_value("meta", "equipped_attachments", {}))
 	weapon_perks = _load_nested_dict(cfg.get_value("meta", "weapon_perks", {}))
+	# Cosmetics: unlocked variant ids + equipped-per-category (defensively coerced; unknown
+	# ids are dropped, and get_equipped_cosmetic() falls back to the free default).
+	var raw_uc: Array = cfg.get_value("meta", "unlocked_cosmetics", [])
+	unlocked_cosmetics.clear()
+	for cid in raw_uc:
+		unlocked_cosmetics.append(String(cid))
+	equipped_cosmetics.clear()
+	var raw_ec: Variant = cfg.get_value("meta", "equipped_cosmetics", {})
+	if raw_ec is Dictionary:
+		for cat in (raw_ec as Dictionary):
+			equipped_cosmetics[String(cat)] = String((raw_ec as Dictionary)[cat])
 	last_daily_date = String(cfg.get_value("meta", "last_daily_date", ""))
 	var raw_dq: Array = cfg.get_value("meta", "daily_quest_ids", [])
 	daily_quest_ids.clear()

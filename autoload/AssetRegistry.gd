@@ -125,7 +125,11 @@ func has_id(id: String) -> bool:
 ## Returns a fresh Node3D containing the model for `id` (CC0 if present, else primitive).
 ## CC0 art is wrapped in a transform-carrying root so per-asset scale/rotation/offset
 ## from the CATALOG make it fit the capsule `size`. Hitboxes are never touched here.
-func get_model(id: String) -> Node3D:
+func get_model(id: String, cosmetics: Dictionary = {}) -> Node3D:
+	# The PLAYER is a procedural modular robot assembled from cosmetic part ids (head/
+	# torso/arms/legs/paint) so it can be customized + swapped per peer. (Was a baked glb.)
+	if id == "player":
+		return ProceduralPlayer.build_player(cosmetics)
 	var entry: Dictionary = CATALOG.get(id, {})
 	var model_path: String = entry.get("model", "")
 	if model_path != "" and ResourceLoader.exists(model_path):

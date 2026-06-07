@@ -194,6 +194,8 @@ signal dailies_rotated()
 signal attachment_changed(weapon_id: String)
 ## A permanent weapon perk was bought.
 signal weapon_perk_changed(weapon_id: String)
+## A character cosmetic was unlocked or equipped (the CHARACTER tab refreshes off this).
+signal cosmetics_changed()
 ## An extraction haul would exceed the stash capacity — show the Manage-Your-Haul beat.
 ## `incoming` is the haul stacks; `over_by` is the excess weight.
 signal haul_overflow(incoming: Array, over_by: float)

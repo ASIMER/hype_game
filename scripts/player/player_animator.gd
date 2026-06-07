@@ -104,6 +104,12 @@ func _ready() -> void:
 		Events.reload_finished.connect(_on_reload_finished)
 
 
+## Re-bind to a freshly rebuilt model (player.gd swaps the body when cosmetics change).
+func reinit() -> void:
+	_visual_model = null
+	_anim_player = null
+	call_deferred("_init_deferred")
+
 ## Called one frame after _ready so the model is present under ModelRoot.
 func _init_deferred() -> void:
 	var model_root: Node3D = _parent.get_node_or_null("ModelRoot") as Node3D

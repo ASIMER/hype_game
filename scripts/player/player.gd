@@ -58,6 +58,13 @@ var _interact_timer: float = 0.0
 ## Movement stance. PUBLIC so the combat lane can read it (stance_spread_mult()).
 enum Stance { STAND, CROUCH, SLIDE }
 var stance: int = Stance.STAND
+
+# --- Character customization (spawn-replicated; see Player.tscn MultiplayerSynchronizer) ---
+## This player's equipped cosmetic part ids {head,torso,arms,legs,paint}. The AUTHORITY
+## sets it from its OWN MetaProgression at spawn; replication_mode=1 syncs it to every peer
+## so remotes render this player's chosen look. The body is (re)built whenever it changes.
+var cosmetics: Dictionary = {}
+var _built_cos_str: String = ""        # signature of the cosmetics the body was last built from
 var _slide_timer: float = 0.0          # counts down during a SLIDE
 var _slide_dir: Vector3 = Vector3.ZERO # locked horizontal entry direction of the slide
 var _cam_base_y: float = 1.5           # CameraPivot's base local Y (cached once in _ready)
@@ -122,9 +129,12 @@ func _ready() -> void:
 	_max_stamina = Settings.MAX_STAMINA * float(_mods.get("stamina_mult", 1.0))
 	_stamina = _max_stamina
 
-	# Fill the visual model from the registry (CC0 glb if present, else primitive).
-	var model: Node3D = AssetRegistry.get_model("player")
-	model_root.add_child(model)
+	# Character look: the AUTHORITY takes its OWN equipped cosmetics from its profile (this
+	# replicates to every peer). Remotes start from {} and rebuild when the synced value
+	# arrives (see the watcher in _physics_process). Build the procedural body now.
+	if is_multiplayer_authority():
+		cosmetics = MetaProgression.get_cosmetics()
+	_build_player_model()
 
 	# Initialise camera from Settings (fov is settings-driven) so ADS/peek lerps have
 	# a known baseline.
@@ -191,7 +201,23 @@ func _net_place(pos: Vector3) -> void:
 	velocity = Vector3.ZERO
 
 
+## (Re)build the procedural body from `cosmetics` and re-init the animator. Runs on every
+## peer (authority builds from its profile; remotes build from the replicated value).
+func _build_player_model() -> void:
+	for c in model_root.get_children():
+		c.queue_free()
+	var model: Node3D = AssetRegistry.get_model("player", cosmetics)
+	model_root.add_child(model)
+	_built_cos_str = str(cosmetics)
+	var anim := get_node_or_null("PlayerAnimator")
+	if anim != null and anim.has_method("reinit"):
+		anim.reinit()
+
 func _physics_process(delta: float) -> void:
+	# Remote peers: rebuild the body when the synced `cosmetics` arrives/changes so this
+	# player's customization shows on every machine. Runs BEFORE the authority gate.
+	if str(cosmetics) != _built_cos_str:
+		_build_player_model()
 	if not is_multiplayer_authority():
 		return
 
