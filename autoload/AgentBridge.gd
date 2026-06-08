@@ -190,6 +190,12 @@ func _handle_line(line: String) -> void:
 			if wc2 and wc2.has_method("refill_ammo"):
 				wc2.refill_ammo()
 			_send({ "ok": wc2 != null })
+		"pickup":
+			# Debug/QA: trigger the local player's nearest in-range loot pickup along the
+			# REAL runtime path (loot_pickup._request_pickup -> client RPC -> server
+			# distance-validation). The harness can't synthesize the "interact" key event
+			# that loot_pickup._unhandled_input listens for, so this is how pickup is tested.
+			_send(_debug_pickup())
 		"render":
 			# Debug: render a logical id's model in isolation (clean 3/4 hero shot) and
 			# save it as a PNG for visual QA of procedural models + inventory icons.
@@ -1077,6 +1083,31 @@ func _snapshot() -> Dictionary:
 	d["world_events"] = wevents
 	d["active_event_kind"] = (int(director.get("_active_kind")) if (director and "_active_kind" in director) else -1)
 	return d
+
+
+## Drives the local player's nearest in-range loot pickup through the real
+## loot_pickup._request_pickup path (so a client exercises the server-validated RPC).
+## Returns the chosen pickup's id + distance, or ok:false if none in range.
+func _debug_pickup() -> Dictionary:
+	var plr: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	if plr == null or not (plr is Node3D):
+		return { "ok": false, "reason": "no local player" }
+	var ppos: Vector3 = (plr as Node3D).global_position
+	var best: Node = null
+	var best_d: float = INF
+	for n in get_tree().get_nodes_in_group("pickups"):
+		if not (n is Node3D) or not is_instance_valid(n):
+			continue
+		var d: float = (n as Node3D).global_position.distance_to(ppos)
+		if d < best_d:
+			best_d = d
+			best = n
+	if best == null or best_d > 3.0:
+		return { "ok": false, "reason": "no pickup in range", "nearest": best_d if best != null else -1.0 }
+	if not best.has_method("_request_pickup"):
+		return { "ok": false, "reason": "pickup has no _request_pickup" }
+	best.call("_request_pickup", plr)
+	return { "ok": true, "id": str(best.get("item_id")), "dist": snappedf(best_d, 0.01) }
 
 
 func _local_player(players: Array) -> Node:

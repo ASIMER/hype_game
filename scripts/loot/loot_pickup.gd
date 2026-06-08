@@ -200,13 +200,15 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 		count = leftover
 
 func _load_item() -> ItemData:
-	# Prefer ItemCatalog autoload (scans all *.tres automatically) when available.
-	if Engine.has_singleton("ItemCatalog"):
-		var catalog := Engine.get_singleton("ItemCatalog")
-		if catalog.has_method("get_item"):
-			var cat_item := catalog.get_item(item_id) as ItemData
-			if cat_item != null:
-				return cat_item
+	# Prefer the ItemCatalog AUTOLOAD (scans every resources/items/*.tres). NOTE: it is a
+	# scene-tree autoload, NOT an Engine singleton — `Engine.has_singleton("ItemCatalog")`
+	# is ALWAYS false, which silently sent every lookup to the tiny ITEM_PATHS fallback so
+	# only its 11 hardcoded ids could ever be picked up. Reach it via /root instead.
+	var catalog: Node = get_tree().root.get_node_or_null("ItemCatalog") if get_tree() != null else null
+	if catalog != null and catalog.has_method("get_item"):
+		var cat_item := catalog.get_item(item_id) as ItemData
+		if cat_item != null:
+			return cat_item
 	# Fallback: direct path lookup for ids registered in ITEM_PATHS.
 	var path: String = ITEM_PATHS.get(item_id, "")
 	if path == "" or not ResourceLoader.exists(path):
