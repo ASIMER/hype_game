@@ -26,6 +26,10 @@ const ITEM_PATHS := {
 const LAYER_LOOT := 1 << 3   # 3d_physics layer_4 "loot"
 const LAYER_PLAYER := 1 << 1 # 3d_physics layer_2 "player"
 
+# Server-side distance gate for a CLIENT's pickup request (the detection Area3D is a
+# 1.2 m sphere; a touch more is lenient for the model's hover offset + sync jitter).
+const PICKUP_RANGE := 2.2
+
 @export var item_id: String = "loot_scrap"
 @export var count: int = 1
 
@@ -142,10 +146,15 @@ func _pickup_requested_rpc(requester_peer_id: int) -> void:
 	var player := _find_player_for_peer(requester_peer_id)
 	if player == null:
 		return
-	# Only honor it if that player is actually overlapping this pickup, so a client
-	# can't grab loot it isn't standing on.
-	if not _players_in_range.has(player):
-		return
+	# Validate by DISTANCE, not by the server-side Area3D overlap. A remote (client)
+	# player's body on the server is moved by its MultiplayerSynchronizer, so its
+	# overlap with this pickup's Area3D is unreliable — `_players_in_range` frequently
+	# misses it and the client could never pick anything up. A distance gate is
+	# deterministic and still stops a client grabbing loot it isn't standing on.
+	if player is Node3D:
+		var d: float = (player as Node3D).global_position.distance_to(global_position)
+		if d > PICKUP_RANGE:
+			return
 	Events.pickup_requested.emit(player, self)
 
 ## Finds the spawned Player node owned by `peer_id` (its multiplayer authority).

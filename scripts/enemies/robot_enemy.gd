@@ -1155,19 +1155,13 @@ func _spawn_loot() -> void:
 	if not ResourceLoader.exists(LOOT_SCENE):
 		print("[RobotEnemy] %s died at %s — LootPickup.tscn not present, no drop" % [enemy_id, global_position])
 		return
-	var packed := load(LOOT_SCENE)
-	if not (packed is PackedScene):
-		return
-	var loot_node: Node = (packed as PackedScene).instantiate()
 	var loot_id: String = LOOT_IDS[randi() % LOOT_IDS.size()]
-	# LootPickup exposes `item_id` (see scripts/loot/loot_pickup.gd) — seed it
-	# before the node enters the tree so _ready() builds the right model.
-	if "item_id" in loot_node:
-		loot_node.set("item_id", loot_id)
 	var container := _loot_container()
-	container.add_child(loot_node, true)
-	if loot_node is Node3D:
-		(loot_node as Node3D).global_position = global_position
+	# Route through LootPickup.spawn_at so the drop goes via the Net/LootSpawner's
+	# custom spawn_function and replicates to clients with the CORRECT id. A raw
+	# add_child here was auto-spawned with the scene's default item_id, so clients
+	# saw the wrong model (or nothing) for every enemy drop.
+	LootPickup.spawn_at(container, global_position, loot_id, 1)
 
 ## Find the sibling Net/Loot container (../../Loot relative to Net/Enemies);
 ## fall back to our own parent so the drop always lands somewhere valid.
