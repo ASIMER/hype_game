@@ -87,6 +87,15 @@ static func _grip(root: Node3D, z: float, y: float, length: float, lean := 18.0)
 	return _part(root, _box(Vector3(0.05, length, 0.07)), _polymer(),
 		Vector3(0, y - length * 0.5, z), Vector3(lean, 0, 0))
 
+## Adds a named Marker3D child (local space, gun faces -Z). Combat FX read "Muzzle" (barrel
+## tip → flash/smoke/tracer origin) and "Eject" (right-side port → shell casings) off the held
+## view-model so the effects leave the actual gun, not the camera.
+static func _mark(root: Node3D, mark_name: String, pos: Vector3) -> void:
+	var m := Marker3D.new()
+	m.name = mark_name
+	m.position = pos
+	root.add_child(m)
+
 # ================================================================= BUILDERS
 
 ## SMG — compact: short receiver, short barrel, vertical-ish box mag, collapsible
@@ -114,6 +123,8 @@ static func _build_smg() -> Node3D:
 	# Top rail + iron sights with glowing rear dot.
 	_rail(root, 0.16, -0.02, 0.085)
 	_iron_sights(root, 0.085, -0.16, 0.07)
+	_mark(root, "Muzzle", Vector3(0, 0.0, -0.37))
+	_mark(root, "Eject", Vector3(0.05, 0.05, -0.02))
 	return root
 
 ## SHOTGUN — wide pump: thick barrel with a tube magazine slung UNDER the barrel,
@@ -141,6 +152,8 @@ static func _build_shotgun() -> Node3D:
 	# A simple bead front sight (no glow needed — keep it gritty) + tiny glow dot.
 	_part(root, _cyl(0.01, 0.03, 6), _steel(), Vector3(0, 0.062, -0.42))
 	_part(root, _box(Vector3(0.012, 0.016, 0.012)), _sight_dot(), Vector3(0, 0.07, -0.42))
+	_mark(root, "Muzzle", Vector3(0, 0.025, -0.45))
+	_mark(root, "Eject", Vector3(0.055, 0.06, 0.02))
 	return root
 
 ## PISTOL — small/short: slide + frame, short barrel, single grip with a flush mag,
@@ -163,6 +176,8 @@ static func _build_pistol() -> Node3D:
 	_part(root, _box(Vector3(0.01, 0.018, 0.01)), _steel(), Vector3(0, 0.065, -0.1))     # front post
 	_part(root, _box(Vector3(0.035, 0.016, 0.01)), _steel(), Vector3(0, 0.062, 0.07))     # rear
 	_part(root, _box(Vector3(0.009, 0.012, 0.009)), _sight_dot(), Vector3(0, 0.07, 0.07)) # glow dot
+	_mark(root, "Muzzle", Vector3(0, 0.03, -0.17))
+	_mark(root, "Eject", Vector3(0.035, 0.05, -0.02))
 	return root
 
 ## DMR — long precision rifle: long receiver, long barrel with a muzzle brake, a
@@ -197,4 +212,6 @@ static func _build_dmr() -> Node3D:
 	_part(root, _cyl(0.034, 0.05, 14), dark, Vector3(0, 0.11, -0.12), Vector3(90, 0, 0))  # objective bell
 	_part(root, _cyl(0.03, 0.02, 14), lens, Vector3(0, 0.11, -0.145), Vector3(90, 0, 0))  # objective lens
 	_part(root, _cyl(0.026, 0.02, 14), lens, Vector3(0, 0.11, 0.12), Vector3(90, 0, 0))   # ocular lens (glow)
+	_mark(root, "Muzzle", Vector3(0, 0.0, -0.56))
+	_mark(root, "Eject", Vector3(0.045, 0.05, 0.0))
 	return root

@@ -41,10 +41,16 @@ var _last_hit_normal: Vector3 = Vector3.ZERO
 const _MUZZLE_FLASH_SCENE := "res://scenes/fx/MuzzleFlash.tscn"
 const _TRACER_SCENE := "res://scenes/fx/Tracer.tscn"
 const _IMPACT_SCENE := "res://scenes/fx/Impact.tscn"
+const _MUZZLE_SMOKE_SCRIPT := "res://scripts/fx/muzzle_smoke.gd"
+const _SHELL_CASINGS_SCRIPT := "res://scripts/fx/shell_casings.gd"
 
 var _muzzle_flash_ps: PackedScene
 var _tracer_ps: PackedScene
 var _impact_ps: PackedScene
+var _muzzle_smoke_script: GDScript
+var _shell_script: GDScript
+## Last WeaponData fired through fire_with — drives the per-class muzzle FX scale / shell count.
+var _last_data: WeaponData = null
 
 func _ready() -> void:
 	if ResourceLoader.exists(_MUZZLE_FLASH_SCENE):
@@ -53,6 +59,10 @@ func _ready() -> void:
 		_tracer_ps = load(_TRACER_SCENE)
 	if ResourceLoader.exists(_IMPACT_SCENE):
 		_impact_ps = load(_IMPACT_SCENE)
+	if ResourceLoader.exists(_MUZZLE_SMOKE_SCRIPT):
+		_muzzle_smoke_script = load(_MUZZLE_SMOKE_SCRIPT)
+	if ResourceLoader.exists(_SHELL_CASINGS_SCRIPT):
+		_shell_script = load(_SHELL_CASINGS_SCRIPT)
 	if not fired.is_connected(_on_fired):
 		fired.connect(_on_fired)
 	if not fired_arc.is_connected(_on_fired_arc):
@@ -85,6 +95,7 @@ func try_fire(from_node: Node3D) -> bool:
 func fire_with(from_node: Node3D, data: WeaponData, eff_spread: float = -1.0) -> bool:
 	if from_node == null or data == null:
 		return false
+	_last_data = data
 	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
 	var pellets: int = maxi(1, data.pellets)
 	# Optional per-weapon muzzle velocity override (flatter trajectory for rifles,
@@ -264,12 +275,32 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 	if host == null:
 		return
 	var muzzle := _muzzle_position()
+	var mscale: float = float(_last_data.muzzle_scale) if _last_data != null else 1.0
 
 	if _muzzle_flash_ps:
 		var mf := _muzzle_flash_ps.instantiate()
 		host.add_child(mf)
 		if mf is Node3D:
 			(mf as Node3D).global_position = muzzle
+		if mf.has_method("set_intensity"):
+			mf.call("set_intensity", mscale)
+
+	# Muzzle smoke puff drifting up off the barrel (builds a light haze on sustained fire).
+	if _muzzle_smoke_script != null:
+		var sm: Node = _muzzle_smoke_script.new()
+		host.add_child(sm)
+		if sm is Node3D:
+			(sm as Node3D).global_position = muzzle
+		if sm.has_method("set_scale_mult"):
+			sm.call("set_scale_mult", mscale)
+
+	# Shell casing ejection from the side port (skip the tube-fed shotgun's per-shot brass).
+	if _shell_script != null and (_last_data == null or _last_data.id != "shotgun"):
+		var et: Transform3D = _eject_transform()
+		var sc: Node = _shell_script.new()
+		host.add_child(sc)
+		if sc is Node3D:
+			(sc as Node3D).global_transform = et
 
 	# Tracer is drawn by _on_fired_arc (which follows the ballistic curve). We only
 	# spawn the impact burst here. (fired_arc always fires alongside fired.)
@@ -304,13 +335,38 @@ func _on_fired_arc(arc_points: PackedVector3Array, _hit_node: Node) -> void:
 			(tr as Tracer).setup(a, b)
 		host.add_child(tr)
 
-## World-space muzzle point. Prefer a sibling "Muzzle" Marker3D if the scene
-## provides one; otherwise use the weapon node itself (sits on the camera).
+## World-space muzzle point. PREFER the held view-model's "Muzzle" marker (so flash/smoke/
+## tracer leave the actual gun barrel in 3rd person), then the camera-anchored "Muzzle"
+## Marker3D, then the weapon node itself.
 func _muzzle_position() -> Vector3:
+	var vm := _view_marker("Muzzle")
+	if vm != null:
+		return vm.global_position
 	var marker := get_node_or_null("Muzzle")
 	if marker is Node3D:
 		return (marker as Node3D).global_position
 	return global_position
+
+## World transform of the shell ejection port (view-model "Eject" marker), else a muzzle-
+## offset fallback. Used to orient the brass casings flying out the side.
+func _eject_transform() -> Transform3D:
+	var ej := _view_marker("Eject")
+	if ej != null and ej.is_inside_tree():
+		return ej.global_transform
+	return Transform3D(Basis.IDENTITY, _muzzle_position())
+
+## The held view-model's "Muzzle"/"Eject" marker, via the owning WeaponController (which holds
+## the authoritative model-holder reference, surviving the reparent to WeaponMount). Null →
+## the caller uses the camera-anchored fallback.
+func _view_marker(mark_name: String) -> Node3D:
+	var ctrl := get_parent()
+	if ctrl == null:
+		return null
+	if mark_name == "Muzzle" and ctrl.has_method("muzzle_node"):
+		return ctrl.muzzle_node()
+	if mark_name == "Eject" and ctrl.has_method("eject_node"):
+		return ctrl.eject_node()
+	return null
 
 ## Where to parent FX so they live in the world, not under the moving camera.
 func _fx_host() -> Node:

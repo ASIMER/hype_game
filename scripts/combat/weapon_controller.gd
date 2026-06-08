@@ -210,11 +210,66 @@ func try_fire(from_node: Node3D) -> bool:
 		return false
 	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
 	_semi_latched = true
+	_apply_fire_kick(data)   # punch the held view-model back/up (springs back in _process)
 	_ammo[data.id] = int(_ammo[data.id]) - 1
 	Events.ammo_changed.emit(int(_ammo[data.id]), int(_reserve.get(data.id, 0)))
 	if int(_ammo[data.id]) <= 0:
 		_begin_reload()
 	return true
+
+# --- View-model recoil kick (cosmetic; springs back so aim is unaffected) -----
+const KICK_BACK := 0.06        # metres the gun punches toward the player per recoil unit
+const KICK_UP := 0.02
+const KICK_PITCH := 0.14       # radians the muzzle flips up
+const KICK_ROLL := 0.09        # random roll for life
+const KICK_SPRING := 15.0      # how fast the kick recovers to rest
+
+var _kick_pos := Vector3.ZERO
+var _kick_rot := Vector3.ZERO   # (pitch, 0, roll) offset from the rest pose
+var _kick_base_pos := Vector3.ZERO
+var _kick_base_rot := Vector3.ZERO
+var _kick_have_base := false
+
+## Adds a recoil impulse to the held view-model (scaled by the weapon's kick/recoil).
+func _apply_fire_kick(data: WeaponData) -> void:
+	if _model_holder == null:
+		return
+	if not _kick_have_base:
+		_kick_base_pos = _model_holder.position
+		_kick_base_rot = _model_holder.rotation
+		_kick_have_base = true
+	var k: float = data.kick_amount() if data != null else 1.0
+	_kick_pos.z += KICK_BACK * k
+	_kick_pos.y += KICK_UP * k
+	_kick_rot.x += KICK_PITCH * k        # +x rotation = muzzle up (model faces -Z)
+	_kick_rot.z += randf_range(-KICK_ROLL, KICK_ROLL) * k
+
+## Springs the view-model kick back to rest each frame.
+func _process_kick(delta: float) -> void:
+	if not _kick_have_base or _model_holder == null:
+		return
+	var s := clampf(1.0 - KICK_SPRING * delta, 0.0, 1.0)
+	_kick_pos *= s
+	_kick_rot *= s
+	_model_holder.position = _kick_base_pos + _kick_pos
+	_model_holder.rotation = _kick_base_rot + _kick_rot
+
+## The held view-model's "Muzzle"/"Eject" markers (under _model_holder, which is reparented to
+## the player's WeaponMount but still referenced here). Combat FX read these so flash/smoke/shells
+## leave the actual gun barrel. Null until a model with markers exists / is in the tree.
+func muzzle_node() -> Node3D:
+	if _model_holder != null:
+		var m := _model_holder.find_child("Muzzle", true, false)
+		if m is Node3D and (m as Node3D).is_inside_tree():
+			return m as Node3D
+	return null
+
+func eject_node() -> Node3D:
+	if _model_holder != null:
+		var e := _model_holder.find_child("Eject", true, false)
+		if e is Node3D and (e as Node3D).is_inside_tree():
+			return e as Node3D
+	return null
 
 ## Effective fire spread (degrees) for a given weapon, given the owning player's
 ## current stance/movement and ADS state. base × stance_mult × (ADS ? SPREAD_MULT_ADS : 1).
@@ -286,6 +341,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				break
 
 func _process(delta: float) -> void:
+	_process_kick(delta)
 	if _cooldown > 0.0:
 		_cooldown -= delta
 	# If try_fire() hasn't been called for a short window, the trigger was released
@@ -340,6 +396,19 @@ func _refresh_model() -> void:
 		var model := AssetRegistry.get_model(d.id)
 		if model:
 			_model_holder.add_child(model)
+	# Guarantee a Muzzle/Eject anchor on the held model so combat FX leave the gun barrel even
+	# for non-procedural (.glb) weapons. Procedural builders already add their own (at the real
+	# barrel tip); only add defaults when none exist (in the unscaled holder space).
+	if _model_holder.find_child("Muzzle", true, false) == null:
+		var muz := Marker3D.new()
+		muz.name = "Muzzle"
+		muz.position = Vector3(0, 0.02, -0.42)
+		_model_holder.add_child(muz)
+	if _model_holder.find_child("Eject", true, false) == null:
+		var ej := Marker3D.new()
+		ej.name = "Eject"
+		ej.position = Vector3(0.05, 0.05, -0.02)
+		_model_holder.add_child(ej)
 
 # --- Reloading --------------------------------------------------------------
 

@@ -213,12 +213,41 @@ func _process(delta: float) -> void:
 func _on_grenade_exploded(_world_pos: Vector3, _damage: float, _radius: float) -> void:
 	_play("explosion")
 
-func _on_weapon_fired(_shooter: Node, _weapon_id: String) -> void:
+## Per-weapon-class gunfire colour so a pistol ≠ an MG (no new audio assets — pitch/volume +
+## an optional low "body" thump on the existing sounds). pitch / volume_db / body-layer.
+const SHOT_CLASS := {
+	"pistol":  { "pitch": 1.18, "vol": 0.0,  "body": false },
+	"rifle":   { "pitch": 1.0,  "vol": 1.0,  "body": true  },
+	"smg":     { "pitch": 1.28, "vol": -3.0, "body": false },
+	"shotgun": { "pitch": 0.72, "vol": 2.5,  "body": true  },
+	"dmr":     { "pitch": 0.86, "vol": 2.5,  "body": true  },
+}
+
+func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	if _last_shot_time >= 0.0 and now - _last_shot_time < SHOT_MIN_INTERVAL:
 		return
 	_last_shot_time = now
-	_play("shot")
+	var cfg: Dictionary = SHOT_CLASS.get(weapon_id, SHOT_CLASS["rifle"])
+	# Main crack — per-class pitch + a small random jitter so it never sounds like one laser.
+	_play_pitched("shot", float(cfg["pitch"]) * randf_range(0.94, 1.06), float(cfg["vol"]))
+	# Low "body" thump layer (reuse explosion pitched way down) for weight on bigger guns.
+	if bool(cfg["body"]):
+		_play_pitched("explosion", 0.35 * randf_range(0.95, 1.05), -16.0)
+
+## Like _play but with a pitch_scale + extra volume trim (for layered gunfire).
+func _play_pitched(id: String, pitch: float, vol_extra: float) -> void:
+	if not enabled:
+		return
+	var stream: AudioStream = _streams.get(id, null)
+	if stream == null:
+		return
+	var p := _pool[_pool_next]
+	_pool_next = (_pool_next + 1) % POOL_SIZE
+	p.stream = stream
+	p.pitch_scale = clampf(pitch, 0.2, 3.0)
+	p.volume_db = master_db + SOUND_DB.get(id, 0.0) + vol_extra
+	p.play()
 
 func _on_damage_dealt(target: Node, _amount: float, _source: Node) -> void:
 	_play_at("hit", target)
@@ -397,6 +426,7 @@ func _play(id: String) -> void:
 	var p := _pool[_pool_next]
 	_pool_next = (_pool_next + 1) % POOL_SIZE
 	p.stream    = stream
+	p.pitch_scale = 1.0   # reset (a prior _play_pitched on this slot may have changed it)
 	p.volume_db = master_db + SOUND_DB.get(id, 0.0)
 	p.play()
 

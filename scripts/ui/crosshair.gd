@@ -14,8 +14,9 @@ var _on_enemy: bool = false
 
 const BASE_SPREAD := 6.0
 const MOVE_SPREAD := 12.0
-const TICK_LEN := 6.0
-const TICK_W := 2.0
+const TICK_LEN := 7.0
+const TICK_W := 2.5
+const OUTLINE := Color(0, 0, 0, 0.75)   # dark underlay so the reticle reads on bright sky
 
 # Degrees → pixels mapping for the REAL fire cone (current_spread_deg). The gap is
 # the minimum tick offset plus a per-degree widening, so a tight 0.6° rifle reads
@@ -93,11 +94,19 @@ func _update_on_enemy() -> void:
 
 func _draw() -> void:
 	var c := size * 0.5
-	var col := Color(1.0, 0.32, 0.3, 0.95) if _on_enemy else Color(1, 1, 1, 0.9)
+	var col := Color(1.0, 0.30, 0.28, 1.0) if _on_enemy else Color(1, 1, 1, 0.95)
 	var s := _spread
-	draw_line(c + Vector2(s, 0), c + Vector2(s + TICK_LEN, 0), col, TICK_W)
-	draw_line(c - Vector2(s, 0), c - Vector2(s + TICK_LEN, 0), col, TICK_W)
-	draw_line(c + Vector2(0, s), c + Vector2(0, s + TICK_LEN), col, TICK_W)
-	draw_line(c - Vector2(0, s), c - Vector2(0, s + TICK_LEN), col, TICK_W)
-	if _ads:
-		draw_circle(c, 1.6, col)
+	# Four ticks (right/left/down/up), each with a dark outline underlay for contrast.
+	_tick(c + Vector2(s, 0), c + Vector2(s + TICK_LEN, 0), col)
+	_tick(c - Vector2(s, 0), c - Vector2(s + TICK_LEN, 0), col)
+	_tick(c + Vector2(0, s), c + Vector2(0, s + TICK_LEN), col)
+	_tick(c - Vector2(0, s), c - Vector2(0, s + TICK_LEN), col)
+	# Centre dot ALWAYS (outlined) — the precise aim point, visible on any background.
+	draw_circle(c, 2.4, OUTLINE)
+	draw_circle(c, 1.5, col)
+
+
+## Draws one crosshair tick with a 1px dark outline underlay then the bright stroke.
+func _tick(a: Vector2, b: Vector2, col: Color) -> void:
+	draw_line(a, b, OUTLINE, TICK_W + 2.0)
+	draw_line(a, b, col, TICK_W)

@@ -22,11 +22,12 @@ const TRAUMA_DECAY      := 1.5        # trauma/sec drain rate
 const SHAKE_ROT_MAX_DEG := 2.8        # max rotation offset (each axis) at full shake
 const SHAKE_POS_MAX     := 0.012      # max positional jitter at full shake (metres)
 
-# --- Recoil constants ---------------------------------------------------------
-const RECOIL_PITCH_BASE := 0.045      # base upward pitch radians per recoil unit
-const RECOIL_YAW_RANGE  := 0.018      # ± random yaw radians per recoil unit
-const RECOIL_SPRING     := 12.0       # spring constant: how fast recoil lerps to zero
-const RECOIL_TRAUMA_ADD := 0.08       # trauma added per shot (pre-scaled by recoil)
+# --- Recoil constants (punchy but RECOVERS — the spring returns aim to centre) ----
+const RECOIL_PITCH_BASE := 0.062      # base upward pitch radians per recoil unit
+const RECOIL_YAW_RANGE  := 0.022      # ± random yaw radians per recoil unit
+const RECOIL_SPRING     := 13.0       # spring constant: how fast recoil lerps to zero
+const RECOIL_TRAUMA_ADD := 0.11       # trauma added per shot (pre-scaled by recoil)
+const FOV_PUNCH_FIRE    := 0.7        # degrees of FOV kick per recoil unit on each shot
 
 # --- FOV punch constants ------------------------------------------------------
 const FOV_PUNCH_NEAR_SCALE := 5.0     # degrees added per recoil unit on grenade nearby
@@ -164,6 +165,8 @@ func _on_weapon_fired(shooter: Node, _weapon_id: String) -> void:
 
 	# Small trauma per shot for micro-shake feel.
 	add_trauma(RECOIL_TRAUMA_ADD * recoil)
+	# Tiny FOV kick per shot for "weight" (decays back via FOV_PUNCH_DECAY).
+	_fov_punch += FOV_PUNCH_FIRE * recoil
 
 
 func _on_damage_dealt(target: Node, amount: float, _source: Node) -> void:

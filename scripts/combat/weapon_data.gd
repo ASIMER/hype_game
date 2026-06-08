@@ -20,3 +20,16 @@ class_name WeaponData
 @export var crit_mult: float = 2.0          # extra multiplier applied on weak-point hits
 # Audible-noise radius multiplier; suppressor lowers it. 1.0 = baseline NOISE_GUNFIRE.
 @export var noise_mult: float = 1.0
+## --- Feel / juice (cosmetic) ---
+## View-model kickback magnitude per shot (0 = use `recoil`). The held gun punches back+up then
+## springs to rest. Set higher for heavy guns (shotgun/DMR), lower for SMG.
+@export var kick: float = 0.0
+## Muzzle FX size multiplier (flash / smoke / shell). 1.0 = baseline; shotgun big, SMG small.
+@export var muzzle_scale: float = 1.0
+## Weapon sound class for per-class gunfire audio (pitch/weight): "pistol"|"rifle"|"smg"|
+## "shotgun"|"dmr". Empty → derived from id.
+@export var sound_class: String = ""
+
+## Effective view-model kick (falls back to recoil when kick is 0).
+func kick_amount() -> float:
+	return kick if kick > 0.0 else recoil

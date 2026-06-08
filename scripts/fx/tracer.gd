@@ -4,7 +4,7 @@ class_name Tracer
 ## ~0.07s then freeing. Purely visual/local — never networked. Set the endpoints
 ## with setup() BEFORE adding to the tree (or any time after _ready()).
 
-const LIFETIME := 0.07
+const LIFETIME := 0.09
 
 var _t := 0.0
 var _from := Vector3.ZERO
@@ -23,8 +23,8 @@ func setup(from_world: Vector3, to_world: Vector3) -> void:
 
 func _ready() -> void:
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.012
-	cyl.bottom_radius = 0.012
+	cyl.top_radius = 0.022
+	cyl.bottom_radius = 0.022
 	cyl.height = 1.0
 	cyl.radial_segments = 6
 	cyl.rings = 0
@@ -35,7 +35,10 @@ func _ready() -> void:
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	_mat.albedo_color = Color(1.0, 0.9, 0.6, 1.0)
+	_mat.albedo_color = Color(1.0, 0.92, 0.62, 1.0)
+	_mat.emission_enabled = true
+	_mat.emission = Color(1.0, 0.8, 0.4)
+	_mat.emission_energy_multiplier = 2.0
 	_mat.disable_receive_shadows = true
 	_mesh_inst.material_override = _mat
 	add_child(_mesh_inst)
