@@ -39,6 +39,7 @@ const DOWNED_HEALTH: float = 30.0     # nominal HP pool while downed (drained by
 var _revive_target: Node = null
 var _revive_progress: float = 0.0
 var _revive_guard_hp: float = -1.0   # reviver HP snapshot at channel start; a drop cancels the revive
+var _revive_ui_shown: bool = false   # whether the revive progress HUD is currently active (anti-spam)
 # Carry side (authority): the downed teammate we are carrying.
 var _carry_target: Node = null
 
@@ -1107,6 +1108,7 @@ func _update_coop_interaction(delta: float) -> void:
 		# Carrying suppresses the revive channel + prompt.
 		_revive_target = null
 		_revive_progress = 0.0
+		_set_revive_ui(-1.0)
 		Events.interaction_available.emit(tr("Carrying [release F]"), _carry_target)
 		return
 	# --- Revive (hold E) ---
@@ -1114,6 +1116,7 @@ func _update_coop_interaction(delta: float) -> void:
 		if _revive_target != null:
 			_revive_target = null
 			_revive_progress = 0.0
+		_set_revive_ui(-1.0)
 		return
 	# A downed teammate takes priority over loot — show the revive prompt.
 	Events.interaction_available.emit(tr("Revive / Carry [hold E / F]"), target)
@@ -1127,17 +1130,32 @@ func _update_coop_interaction(delta: float) -> void:
 			_revive_target = null
 			_revive_progress = 0.0
 			_revive_guard_hp = -1.0
+			_set_revive_ui(-1.0)
 			Events.notify.emit(tr("Revive interrupted"), 2)
 			return
 		_revive_progress += delta
+		# Drive the reviver's HUD progress bar (0..1) so it's clear a revive is in progress.
+		_set_revive_ui(clampf(_revive_progress / Settings.REVIVE_CHANNEL_TIME, 0.0, 1.0))
 		if _revive_progress >= Settings.REVIVE_CHANNEL_TIME:
 			_revive_progress = 0.0
 			var tp := str(target.name).to_int()
 			NetworkManager.request_revive(tp)
 			_revive_target = null
+			_set_revive_ui(-1.0)
 	else:
 		_revive_target = null
 		_revive_progress = 0.0
+		_set_revive_ui(-1.0)
+
+## Emits the reviver-side revive progress to the HUD. frac 0..1 = channeling (fires every
+## frame so the bar fills); frac < 0 = clear (emitted once, then suppressed until active again).
+func _set_revive_ui(frac: float) -> void:
+	if frac >= 0.0:
+		_revive_ui_shown = true
+		Events.revive_channel.emit(frac, _revive_target)
+	elif _revive_ui_shown:
+		_revive_ui_shown = false
+		Events.revive_channel.emit(-1.0, null)
 
 ## Nearest downed-and-not-yet-revived teammate within INTERACT_RANGE (excludes self).
 func _nearest_downed_teammate() -> Node:

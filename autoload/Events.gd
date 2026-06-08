@@ -30,6 +30,9 @@ signal player_health_changed(player: Node, current: float, max_health: float)
 signal player_downed(player: Node, by: Node)
 signal player_revived(player: Node, by: Node)
 signal player_bleedout(player: Node)
+## Local reviver's hold-to-revive channel progress (HUD only, fires on the reviver). frac
+## 0..1 while holding E to revive `target`; frac < 0 (target null) = channel cleared/ended.
+signal revive_channel(frac: float, target: Node)
 ## A squad ping was placed (comms). kind: 0 generic/go-here, 1 enemy, 2 loot, 3 extraction,
 ## 4 help/danger, 5 thanks, 6 regroup. world_pos = marker location; target_path = pinged node (optional).
 signal ping_placed(peer_id: int, kind: int, world_pos: Vector3, target_path: NodePath)
