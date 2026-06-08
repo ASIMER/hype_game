@@ -177,8 +177,39 @@ func _draw() -> void:
 				Color(1.0, 0.3, 0.3), 3.0)
 	# World-event blips (supply cache / miniboss / contested / surge).
 	_draw_event_blips(c, yaw)
+	# Teammates (co-op): green dots; clamped to the rim as an outward chevron when out of range,
+	# so a far teammate reads as "go this way". Downed → amber. Empty in single-player.
+	_draw_teammates(c, yaw)
 	# Player (centre, facing up).
 	draw_circle(c, 3.5, Color(0.4, 0.8, 1.0))
+
+
+func _draw_teammates(c: Vector2, yaw: float) -> void:
+	var ppos: Vector3 = _player.global_position
+	for t in TeammateUtil.list(get_tree()):
+		var tnode: Node3D = t["node"]
+		if not is_instance_valid(tnode):
+			continue
+		var base_col: Color = TeammateUtil.TEAM_DOWN if bool(t["downed"]) else TeammateUtil.TEAM_GREEN
+		var dx := tnode.global_position.x - ppos.x
+		var dz := tnode.global_position.z - ppos.z
+		var planar := sqrt(dx * dx + dz * dz)
+		var pos := _to_radar(tnode.global_position, ppos, yaw)
+		if planar > RANGE:
+			# Beyond range → outward chevron pinned at the rim, pointing toward them.
+			var dir := pos.normalized()
+			if dir.length() < 0.01:
+				dir = Vector2(0, -1)
+			var perp := Vector2(-dir.y, dir.x)
+			var tip := c + pos + dir * 2.0
+			draw_colored_polygon(PackedVector2Array([
+				tip, c + pos - dir * 4.0 + perp * 4.0, c + pos - dir * 4.0 - perp * 4.0]), base_col)
+		else:
+			var r := 3.5
+			if bool(t["downed"]):
+				r = 3.0 + 1.5 * (0.5 + 0.5 * sin(_pulse * 4.0))   # pulse to flag "needs revive"
+			_blip(c, pos, base_col, r)
+			draw_arc(c + pos, r + 1.6, 0.0, TAU, 12, Color(0, 0, 0, 0.5), 1.0)   # thin dark ring for legibility
 
 
 ## Draws the sensor-blackout "SIGNAL LOST" overlay over the minimap disc.

@@ -414,12 +414,21 @@ var instance_tag: String = ""
 var net_port: int = DEFAULT_PORT          # ENet game port (host bind / client connect / discovery reply)
 var discovery_port: int = DISCOVERY_PORT  # LAN-discovery UDP port (defaults to net_port + 1)
 var instance_label: String = ""           # e.g. the worktree branch; shown in the window title
+## EPHEMERAL: when true, PROGRESSION saves (profile/stash) are no-ops — for test runs that must
+## not persist or touch the real save. Set by --no-save.
+var ephemeral_save: bool = false
 
 func _ready() -> void:
 	var args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
 	agent_port = _arg_int(args, "--agent-port", agent_port)
 	if agent_port != AGENT_PORT:
 		instance_tag = str(agent_port)
+	# Any --agent run uses an ISOLATED profile (never the real user://profile.cfg): an explicit
+	# --agent-port suffixes by port; a bare --agent suffixes "agent". Belt-and-suspenders with
+	# --no-save (which also stops progression persisting at all).
+	elif "--agent" in args:
+		instance_tag = "agent"
+	ephemeral_save = "--no-save" in args
 	# Network ports: --net-port sets the game port and (by default) discovery = net_port + 1;
 	# --discovery-port overrides the discovery port explicitly.
 	net_port = _arg_int(args, "--net-port", net_port)

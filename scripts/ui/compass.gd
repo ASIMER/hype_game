@@ -123,3 +123,24 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([
 				Vector2(ax, y - 4), Vector2(ax, y + 4),
 				Vector2(ax + dir * 5.0, y)]), EXTRACT_COL)
+
+	# Teammate markers (co-op): small green UPWARD triangles at the BOTTOM of the strip (so they
+	# never collide with the evac triangles at the top). Downed → amber. Empty in single-player.
+	for t in TeammateUtil.list(get_tree()):
+		var tnode: Node3D = t["node"]
+		if not is_instance_valid(tnode):
+			continue
+		var tcol: Color = TeammateUtil.TEAM_DOWN if bool(t["downed"]) else TeammateUtil.TEAM_GREEN
+		var tto := tnode.global_position - _player.global_position
+		var tinfo := _bearing_to_x(atan2(tto.x, -tto.z), heading)
+		var trel: float = tinfo["rel"]
+		var tx: float = clampf(tinfo["x"], 6.0, STRIP_W - 6.0)
+		var ty := STRIP_H - 6.0
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(tx - 5, ty + 4), Vector2(tx + 5, ty + 4), Vector2(tx, ty - 4)]), tcol)
+		if absf(trel) > FOV * 0.5:
+			var tdir := 1.0 if trel > 0.0 else -1.0
+			var tax := tx + tdir * 8.0
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(tax, ty - 4), Vector2(tax, ty + 4),
+				Vector2(tax + tdir * 5.0, ty)]), tcol)

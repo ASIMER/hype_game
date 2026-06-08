@@ -639,6 +639,8 @@ func player_mods() -> Dictionary:
 
 # ---------------------------------------------------------------- persistence
 func save_profile() -> void:
+	if Settings.ephemeral_save:
+		return   # --no-save test run: progression is not persisted
 	var cfg := ConfigFile.new()
 	cfg.set_value("meta", "save_version", Settings.GAME_VERSION)
 	cfg.set_value("meta", "currency", currency)

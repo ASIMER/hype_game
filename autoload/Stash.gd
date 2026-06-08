@@ -137,6 +137,8 @@ func _path() -> String:
 	return Settings.user_path("stash", "cfg")
 
 func save_stash() -> void:
+	if Settings.ephemeral_save:
+		return   # --no-save test run: stash is not persisted
 	var cfg := ConfigFile.new()
 	cfg.set_value("stash", "save_version", Settings.GAME_VERSION)
 	cfg.set_value("stash", "items", items)

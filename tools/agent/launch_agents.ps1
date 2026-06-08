@@ -48,6 +48,7 @@ param(
   [int]$NetPort = 24565,
   [string]$Label = "",
   [switch]$Menu,
+  [bool]$NoSave = $true,
   [string]$Path = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
   [string]$Godot = "C:\Users\illya\Desktop\godot\Godot_v4.6.3-stable_win64.exe"
 )
@@ -66,11 +67,14 @@ if ([string]::IsNullOrWhiteSpace($Label)) {
 $Label = ($Label -replace '[\\/\s]', '-')
 
 $menuArg = if ($Menu) { " --menu" } else { "" }
+# Ephemeral by default: test runs do NOT persist progression and never touch the real
+# user://profile.cfg (pass -NoSave:$false only for a deliberate persistence test).
+$noSaveArg = if ($NoSave) { " --no-save" } else { "" }
 
-Write-Host "Launching $Count instance(s) from '$Path'  [label=$Label  net-port=$NetPort]..."
+Write-Host "Launching $Count instance(s) from '$Path'  [label=$Label  net-port=$NetPort  no-save=$NoSave]..."
 for ($i = 0; $i -lt $Count; $i++) {
   $port = $BasePort + $i
-  $argList = "--path `"$Path`" -- --agent$menuArg --agent-port $port --net-port $NetPort --label $Label"
+  $argList = "--path `"$Path`" -- --agent$menuArg$noSaveArg --agent-port $port --net-port $NetPort --label $Label"
   $p = Start-Process -FilePath $Godot -ArgumentList $argList -PassThru
   Write-Host ("  instance {0}: PID {1}  control {2}  net {3}  ->  python tools/agent/play.py --port {2} state" -f $i, $p.Id, $port, $NetPort)
 }

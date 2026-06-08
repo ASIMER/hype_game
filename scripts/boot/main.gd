@@ -258,6 +258,9 @@ func load_arena() -> void:
 		# Self-bind to the local player/camera; data flows via Events.ping_placed (networked).
 		if ResourceLoader.exists("res://scenes/ui/PingSystem.tscn"):
 			ui_layer.add_child((load("res://scenes/ui/PingSystem.tscn") as PackedScene).instantiate())
+		# Co-op teammate indicators (nameplates + off-screen arrows). Script-only overlay;
+		# single-player draws nothing.
+		ui_layer.add_child((load("res://scripts/ui/teammate_markers.gd") as GDScript).new())
 		if ResourceLoader.exists("res://scenes/ui/CommsWheel.tscn"):
 			ui_layer.add_child((load("res://scenes/ui/CommsWheel.tscn") as PackedScene).instantiate())
 		# Underwater post-processing overlay (blue-green tint + wobble while the LOCAL
