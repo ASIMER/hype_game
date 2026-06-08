@@ -29,6 +29,12 @@ const LAYER_PLAYER := 1 << 1 # 3d_physics layer_2 "player"
 @export var item_id: String = "loot_scrap"
 @export var count: int = 1
 
+# World position to place at on _ready (set by the spawn_function path). The
+# MultiplayerSpawner returns the node BEFORE it's in the tree, so global_position is
+# applied in _ready from this instead of right after add_child.
+var _spawn_pos: Vector3 = Vector3.ZERO
+var _has_spawn_pos: bool = false
+
 # Players currently overlapping this pickup (for interact-in-range detection).
 var _players_in_range: Array[Node] = []
 
@@ -52,6 +58,9 @@ func _ready() -> void:
 	_model_root = model
 	model.position.y = HOVER
 	_apply_loot_glow()
+
+	if _has_spawn_pos:
+		global_position = _spawn_pos
 
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
@@ -221,6 +230,14 @@ func _get_player_inventory(player: Node) -> Inventory:
 static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> LootPickup:
 	if parent == null:
 		return null
+	# Preferred path: route through the Net/LootSpawner's custom spawn_function so the
+	# id/count/pos travel as REPLICATED spawn data (clients build the correct pickup).
+	# `parent` is the Net/Loot node; the spawner is its sibling Net/LootSpawner.
+	var spawner := _find_loot_spawner(parent)
+	if spawner != null and spawner.spawn_function.is_valid():
+		var data := { "id": id, "count": count, "pos": pos }
+		return spawner.spawn(data) as LootPickup
+	# Fallback (no spawner / function unset, e.g. unit tests): direct add_child.
 	var packed := load("res://scenes/items/LootPickup.tscn") as PackedScene
 	if packed == null:
 		return null
@@ -234,3 +251,28 @@ static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> 
 	parent.add_child(pickup, true)
 	pickup.global_position = pos
 	return pickup
+
+## The MultiplayerSpawner.spawn_function: runs on EVERY peer with the replicated
+## `data` ({id,count,pos}), so each builds an identical pickup. Returns the node; the
+## spawner parents it under its spawn_path (Net/Loot).
+static func _spawn_loot(data: Dictionary) -> Node:
+	var packed := load("res://scenes/items/LootPickup.tscn") as PackedScene
+	if packed == null:
+		return null
+	var pickup := packed.instantiate() as LootPickup
+	if pickup == null:
+		return null
+	pickup.item_id = String(data.get("id", "loot_scrap"))
+	pickup.count = int(data.get("count", 1))
+	pickup._spawn_pos = data.get("pos", Vector3.ZERO)
+	pickup._has_spawn_pos = true
+	return pickup
+
+## Net/Loot (the spawn_path target) has the LootSpawner as a sibling under Net/.
+static func _find_loot_spawner(loot_root: Node) -> MultiplayerSpawner:
+	if loot_root == null:
+		return null
+	var net := loot_root.get_parent()
+	if net == null:
+		return null
+	return net.get_node_or_null("LootSpawner") as MultiplayerSpawner

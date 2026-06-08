@@ -23,6 +23,13 @@ func _ready() -> void:
 	# Discoverable by the map UI (which is nested elsewhere and can't reach us via
 	# current_scene) for POI/zone-of-interest labels.
 	add_to_group("arena")
+	# Loot replicates via a CUSTOM spawn_function so each pickup's id/count/pos travel as
+	# spawn data — auto-spawn would re-instantiate LootPickup.tscn with its scene defaults
+	# on clients (every pickup showed up as "loot_scrap"). Set on EVERY peer (host+client)
+	# so both build the same pickup from the replicated data.
+	var loot_spawner: MultiplayerSpawner = $Net/LootSpawner
+	if loot_spawner != null:
+		loot_spawner.spawn_function = Callable(LootPickup, "_spawn_loot")
 	# The build below is synchronous + heavy (it used to freeze the window). We now
 	# PHASE it: each step emits arena_build_progress (the LoadingScreen advances its bar)
 	# and yields a frame so the bar actually repaints between phases. Making _ready a
@@ -61,11 +68,12 @@ func _ready() -> void:
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
 	_bake_navmesh.call_deferred()
 	# World loot: scatter tier-appropriate pickups at the pre-placed LootCacheMarkers.
-	# Runs AFTER the deferred navmesh bake so ground geometry is final; server-only
-	# (the MultiplayerSpawner under Net/Loot replicates them to clients).
+	# Runs AFTER the deferred navmesh bake so ground geometry is final; server-only.
+	# NOTE: the ACTUAL spawn is deferred to _on_match_started (see below) — exactly like
+	# players. Populating here (during the build) drops loot into Net/Loot BEFORE remote
+	# peers' MultiplayerSpawners exist, so it never replicates → clients saw an empty map.
 	Events.arena_build_progress.emit(0.96, "World loot")
 	await get_tree().process_frame
-	_populate_world_loot()
 	Events.arena_build_progress.emit(1.0, "Ready")
 	# Wave director (server-only logic guarded inside the script). Child of Arena
 	# so its parent-walk finds get_enemy_spawn_point().
@@ -301,6 +309,10 @@ func _on_match_started() -> void:
 		print("[arena] match started — ensuring %d player(s) for peers %s" % [ids.size(), str(ids)])
 	for peer_id in ids:
 		_ensure_player_spawned(peer_id)
+	# World loot is scattered HERE for the same reason players are: only now (after the
+	# synchronized deploy) does every peer have its Net/Loot MultiplayerSpawner, so the
+	# pickups actually replicate to clients. Guarded internally + idempotent.
+	_populate_world_loot()
 	# NOTE: players are spawned ONLY here, after the synchronized deploy guarantees
 	# EVERY peer has loaded its arena (and thus its MultiplayerSpawner). We deliberately
 	# do NOT spawn on peer-register/connect anymore: doing so created a peer's player on
