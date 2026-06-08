@@ -436,6 +436,16 @@ func _handle_line(line: String) -> void:
 			if main and main.has_method("restart_match"):
 				main.restart_match()
 			_send({ "ok": true })
+		"summary":
+			# QA: drive the post-raid RaidSummary buttons ({action:"continue"|"restart"}).
+			var m := get_tree().current_scene
+			var sact := str(json.get("action", "continue"))
+			var ok := false
+			if m and sact == "continue" and m.has_method("_on_summary_continue"):
+				m.call("_on_summary_continue"); ok = true
+			elif m and sact == "restart" and m.has_method("_on_summary_restart"):
+				m.call("_on_summary_restart"); ok = true
+			_send({ "ok": ok })
 		"quit":
 			_send({ "ok": true })
 			get_tree().quit()

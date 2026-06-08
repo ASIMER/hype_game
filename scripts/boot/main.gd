@@ -216,9 +216,17 @@ func load_arena() -> void:
 		_loading.show_screen("ENTERING RAID…")
 	for c in ui_layer.get_children():
 		c.queue_free()
+	# Remove old world children SYNCHRONOUSLY (remove_child, not just queue_free): a
+	# queue_free'd node lingers in the tree until end-of-frame, so the freshly added Arena
+	# would be auto-renamed ("@Arena@2") to avoid the name clash. On a RE-deploy the host
+	# and client can rename differently → their MultiplayerSpawner paths
+	# (.../Arena/Net/PlayerSpawner) stop matching and NOTHING replicates (client grey
+	# screen / empty arena). Detaching now guarantees the new Arena keeps its canonical name.
 	for c in world_root.get_children():
+		world_root.remove_child(c)
 		c.queue_free()
 	var arena: Node = (load(ARENA_PATH) as PackedScene).instantiate()
+	arena.name = "Arena"   # canonical, identical on every peer (spawner-path parity)
 	world_root.add_child(arena)
 	# World-space floating damage numbers (visual only).
 	if DisplayServer.get_name() != "headless" and ResourceLoader.exists("res://scenes/fx/DamageNumbersLayer.tscn"):
@@ -377,6 +385,13 @@ func restart_match() -> void:
 	# Only the offline player or the host may drive a restart.
 	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline and not multiplayer.is_server():
 		return
+	# Co-op host: drive a SYNCHRONIZED re-deploy so EVERY peer reloads its arena and
+	# respawns together. A host-local load_arena() here reloads only the host and leaves
+	# clients flipped to IN_MATCH (via begin_match) with no fresh arena → grey screen.
+	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
+		NetworkManager.request_redeploy()
+		return
+	# Offline / single-player: reload locally.
 	GameState.reset_match()
 	GameState.set_phase(GameState.Phase.IN_MATCH)
 	load_arena()

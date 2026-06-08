@@ -104,6 +104,19 @@ func request_start() -> bool:
 	_begin_deploy.rpc()
 	return true
 
+## Host-driven RESTART / re-deploy of an ALREADY-formed squad (post-raid "Restart", or a
+## re-deploy that shouldn't wait on the lobby ready toggles). Same synchronized path as
+## request_start but WITHOUT the all-ready gate. Critically it clears `_loaded` and tells
+## EVERY peer to reload its arena — a host-local load_arena() would respawn only the host
+## and leave clients in their stale/empty arena (the grey-screen-on-restart bug).
+func request_redeploy() -> bool:
+	if not multiplayer.is_server():
+		return false
+	GameState.reset_match()
+	_loaded.clear()
+	_begin_deploy.rpc()
+	return true
+
 ## Runs on EVERY peer: kick off the local deploy (commit bring-list + load arena).
 @rpc("authority", "call_local", "reliable")
 func _begin_deploy() -> void:
