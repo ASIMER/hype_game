@@ -60,6 +60,10 @@ const RECIPES: PackedStringArray = [
 ]
 
 const QUESTS: PackedStringArray = [
+	"res://resources/quests/bounty_caller_silence.tres",
+	"res://resources/quests/bounty_heavy.tres",
+	"res://resources/quests/bounty_scrapper.tres",
+	"res://resources/quests/bounty_wasp_swarm.tres",
 	"res://resources/quests/daily_extract_item.tres",
 	"res://resources/quests/daily_extract.tres",
 	"res://resources/quests/daily_heavy_killer.tres",
@@ -67,8 +71,15 @@ const QUESTS: PackedStringArray = [
 	"res://resources/quests/daily_loot_hunter.tres",
 	"res://resources/quests/daily_wave_survivor.tres",
 	"res://resources/quests/q_breakers.tres",
+	"res://resources/quests/q_chip_courier.tres",
 	"res://resources/quests/q_cull_grunts.tres",
 	"res://resources/quests/q_elite_hunt.tres",
+	"res://resources/quests/q_first_haul.tres",
+	"res://resources/quests/q_hold_the_line.tres",
+	"res://resources/quests/q_rare_pull.tres",
+	"res://resources/quests/q_silent_cull.tres",
+	"res://resources/quests/q_storm_rider.tres",
+	"res://resources/quests/q_warden_fall.tres",
 	"res://resources/quests/quest_extract_artifact.tres",
 	"res://resources/quests/quest_extract.tres",
 	"res://resources/quests/quest_kill_boss.tres",
@@ -83,7 +94,7 @@ const QUESTS: PackedStringArray = [
 
 const QUESTLINES: PackedStringArray = [
 	"res://resources/questlines/ql_foreman.tres",
-	"res://resources/questlines/ql_salvage.tres",
 	"res://resources/questlines/ql_ghost.tres",
+	"res://resources/questlines/ql_salvage.tres",
 ]
 
