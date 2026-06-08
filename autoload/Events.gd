@@ -191,6 +191,14 @@ signal quest_progress(quest_id: String, current: int, target: int)
 signal quest_completed(quest_id: String)
 ## Daily contracts rotated to a new day's picks.
 signal dailies_rotated()
+## A LOCKED quest's unlock conditions were met → it's now OFFERED (AVAILABLE to accept).
+signal quest_unlocked(quest_id: String)
+## The player manually ACCEPTED an available quest into their active log.
+signal quest_accepted(quest_id: String)
+## A player killed an enemy of archetype `enemy_id` — fires PER-PEER on the killer's own
+## machine (the co-op-correct kill feed, routed via NetworkManager kill attribution). Drives
+## personal kill quests + the QuestDirector's decision-based offering.
+signal player_kill(enemy_id: String)
 
 # --- Gunsmith / haul ---
 ## An attachment was equipped/unequipped on a weapon (Gunsmith reads this).

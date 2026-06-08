@@ -436,6 +436,10 @@ func _handle_line(line: String) -> void:
 			if main and main.has_method("restart_match"):
 				main.restart_match()
 			_send({ "ok": true })
+		"quest":
+			# QA: inspect + drive the quest lifecycle without grinding.
+			# {quest, action:"state"|"offer"|"accept"|"claim"|"stats"|"grantkills"|"evaluate", id?, eid?, n?}
+			_send(_debug_quest(json))
 		"summary":
 			# QA: drive the post-raid RaidSummary buttons ({action:"continue"|"restart"}).
 			var m := get_tree().current_scene
@@ -937,6 +941,9 @@ func _snapshot() -> Dictionary:
 				"vendor_rep": MetaProgression.vendor_rep,
 				"rep_tier": MetaProgression.rep_tier(),
 				"weapon_mastery": MetaProgression.weapon_mastery,
+				"quest_states": MetaProgression.quest_states,
+				"kills_by_type": MetaProgression.kills_by_type,
+				"extractions_total": MetaProgression.extractions_total,
 		},
 		"agent_held": _held,
 		"stash": Stash.items,
@@ -1118,6 +1125,48 @@ func _debug_pickup() -> Dictionary:
 		return { "ok": false, "reason": "pickup has no _request_pickup" }
 	best.call("_request_pickup", plr)
 	return { "ok": true, "id": str(best.get("item_id")), "dist": snappedf(best_d, 0.01) }
+
+
+## QA driver for the quest lifecycle (see the "quest" command).
+func _debug_quest(json: Dictionary) -> Dictionary:
+	var action := str(json.get("action", "state"))
+	var id := str(json.get("id", ""))
+	match action:
+		"offer":
+			return { "ok": Quests.offer(id), "state": Quests.state_of(id) }
+		"accept":
+			return { "ok": Quests.accept(id), "state": Quests.state_of(id) }
+		"claim":
+			return { "ok": Quests.claim(id), "state": Quests.state_of(id) }
+		"evaluate":
+			if has_node("/root/QuestDirector"):
+				get_node("/root/QuestDirector").evaluate_offers()
+			return { "ok": true }
+		"grantkills":
+			# Simulate n personal kills of an archetype: bumps kills_by_type + fires player_kill
+			# (so kill quests advance + the director re-evaluates), exactly like real kills.
+			var eid := str(json.get("eid", "robot_grunt"))
+			var n := int(json.get("n", 1))
+			for _i in range(maxi(0, n)):
+				MetaProgression.record_kill_type(eid)
+				Events.player_kill.emit(eid)
+			MetaProgression.save_profile()
+			return { "ok": true, "eid": eid, "kills": MetaProgression.kills_of(eid) }
+		"stats":
+			return { "ok": true, "kills_by_type": MetaProgression.kills_by_type,
+				"extractions": MetaProgression.extractions_total, "quest_states": MetaProgression.quest_states }
+		_:
+			# "state": full board snapshot.
+			var out: Array = []
+			for q in Quests.all():
+				var qd := q as QuestData
+				out.append({
+					"id": qd.id, "title": qd.title, "state": Quests.state_of(qd.id),
+					"daily": qd.daily, "progress": Quests.progress(qd.id), "target": qd.obj_count,
+					"obj_type": qd.obj_type, "obj_target": qd.obj_target,
+					"unlocked": Quests.is_unlocked(qd), "hint": Quests.unlock_hint(qd),
+				})
+			return { "ok": true, "quests": out }
 
 
 func _local_player(players: Array) -> Node:

@@ -43,8 +43,15 @@ func _on_match_started() -> void:
 ## Called on the KILLER's own machine by NetworkManager (server-auth attribution → the
 ## killer peer). Awards account XP for the kill + mastery to THIS machine's active weapon
 ## (read locally so it's correct per-peer). Works identically in single-player + co-op.
-func credit_kill() -> void:
+func credit_kill(enemy_id: String = "") -> void:
 	MetaProgression.add_xp(Settings.XP_PER_KILL, "kill")
+	# Decision-tracking: record this PERSONAL kill by archetype (drives kill quests + the
+	# QuestDirector's condition-based offering) and broadcast it on the LOCAL bus. add_xp
+	# already saved the profile, so the kill_by_type bump rides the next save.
+	if enemy_id != "":
+		MetaProgression.record_kill_type(enemy_id)
+		MetaProgression.save_profile()
+		Events.player_kill.emit(enemy_id)
 	# Weapon mastery for the local player's active weapon.
 	var local_player: Node = _local_player()
 	if local_player == null:

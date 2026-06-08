@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqcullgrunts01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_cull_grunts"
+title = "Thin the Patrols"
+desc = "The grunt patrols never stop. Cull 10 of them and the Foreman will take notice."
+daily = false
+obj_type = "kill"
+obj_target = "robot_grunt"
+obj_count = 10
+reward_currency = 250
+reward_item_ids = PackedStringArray("loot_scrap")
+reward_item_counts = PackedInt32Array(5)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray()
+prereq = PackedStringArray()
+lore = "Every raid starts the same way: too many grunts, not enough cover. Earn your footing."
+giver = "The Foreman"

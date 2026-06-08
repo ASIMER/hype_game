@@ -63,6 +63,13 @@ var unlocked_blueprints: Array[String] = []
 ## Quest progress: quest id -> current count. completed_quests: ids whose reward was claimed.
 var quest_progress: Dictionary = {}
 var completed_quests: Array[String] = []
+## Iteration-1 quest lifecycle: quest id -> "available"|"active"|"completed"|"claimed".
+## ABSENT = LOCKED (default). Replaces the old implicit "everything active".
+var quest_states: Dictionary = {}
+## Decision-tracking backbone: enemy archetype id -> cumulative PERSONAL kills (the headline
+## counter unlock conditions key off). Cumulative successful extractions live alongside.
+var kills_by_type: Dictionary = {}
+var extractions_total: int = 0
 ## Equipped (AT-RISK) attachments: weapon_id -> { slot -> attachment_id }.
 var equipped_attachments: Dictionary = {}
 ## Permanent per-weapon perks: weapon_id -> { perk_key -> level }.
@@ -287,6 +294,40 @@ func learn_blueprint(bp: String) -> void:
 	unlocked_blueprints.append(bp)
 	save_profile()
 	Events.blueprint_learned.emit(bp)
+
+# ---------------------------------------------------------------- quest lifecycle / decisions
+## Lifecycle state for a quest id ("" = LOCKED, the default for an un-offered quest).
+func quest_state(id: String) -> String:
+	return String(quest_states.get(id, ""))
+
+## Persists a quest's lifecycle state (Quests autoload drives this). "" clears it (→ LOCKED).
+func set_quest_state(id: String, s: String) -> void:
+	if s == "":
+		quest_states.erase(id)
+	else:
+		quest_states[id] = s
+	save_profile()
+
+## Records one personal kill of `enemy_id` (the decision counter unlock conditions read).
+## NOT auto-saved here — callers batch the save (it fires once per kill, very hot).
+func record_kill_type(enemy_id: String) -> void:
+	if enemy_id == "":
+		return
+	kills_by_type[enemy_id] = int(kills_by_type.get(enemy_id, 0)) + 1
+
+## Cumulative personal kills of one archetype, or the grand total across all archetypes.
+func kills_of(enemy_id: String) -> int:
+	return int(kills_by_type.get(enemy_id, 0))
+
+func total_mob_kills() -> int:
+	var n := 0
+	for k in kills_by_type:
+		n += int(kills_by_type[k])
+	return n
+
+## Bumps the cumulative successful-extraction counter (decision stat). Saved by the caller.
+func inc_extractions() -> void:
+	extractions_total += 1
 
 # ---------------------------------------------------------------- stash capacity
 func stash_capacity() -> float:
@@ -552,6 +593,9 @@ func save_profile() -> void:
 	cfg.set_value("meta", "blueprints", unlocked_blueprints)
 	cfg.set_value("meta", "quest_progress", quest_progress)
 	cfg.set_value("meta", "completed_quests", completed_quests)
+	cfg.set_value("meta", "quest_states", quest_states)
+	cfg.set_value("meta", "kills_by_type", kills_by_type)
+	cfg.set_value("meta", "extractions_total", extractions_total)
 	cfg.set_value("meta", "equipped_attachments", equipped_attachments)
 	cfg.set_value("meta", "weapon_perks", weapon_perks)
 	cfg.set_value("meta", "unlocked_cosmetics", unlocked_cosmetics)
@@ -609,6 +653,28 @@ func load_profile() -> void:
 	completed_quests.clear()
 	for qid in raw_cq:
 		completed_quests.append(String(qid))
+	# Iteration-1 quest lifecycle + decision stats (defensively coerced; defaults for old saves).
+	var raw_qs: Variant = cfg.get_value("meta", "quest_states", {})
+	quest_states = {}
+	if raw_qs is Dictionary:
+		for k in (raw_qs as Dictionary):
+			quest_states[String(k)] = String((raw_qs as Dictionary)[k])
+	var raw_kbt: Variant = cfg.get_value("meta", "kills_by_type", {})
+	kills_by_type = {}
+	if raw_kbt is Dictionary:
+		for k in (raw_kbt as Dictionary):
+			kills_by_type[String(k)] = int((raw_kbt as Dictionary)[k])
+	extractions_total = int(cfg.get_value("meta", "extractions_total", 0))
+	# MIGRATION (never wipe): a save that predates the lifecycle has no quest_states — derive
+	# them from legacy data so old contracts don't vanish. Claimed → "claimed"; anything with
+	# recorded progress → "active"; everything else stays LOCKED until the director offers it.
+	if quest_states.is_empty() and (not completed_quests.is_empty() or not quest_progress.is_empty()):
+		for cqid in completed_quests:
+			quest_states[String(cqid)] = "claimed"
+		for pqid in quest_progress:
+			var pid := String(pqid)
+			if not quest_states.has(pid) and int(quest_progress[pqid]) > 0:
+				quest_states[pid] = "active"
 	# Nested weapon->{slot/perk->value} dicts: validate the outer + each inner so a
 	# malformed/newer-shaped value defaults that weapon only, never crashing the load.
 	equipped_attachments = _load_nested_dict(cfg.get_value("meta", "equipped_attachments", {}))

@@ -303,17 +303,20 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 	if not entity.is_in_group("enemies"):
 		return
 	var peer := _peer_of(killer)
+	# Enemy archetype (robot_grunt/heavy/elite/…) — threaded to the killer so its PERSONAL
+	# kills_by_type + kill quests advance on the right machine (the co-op kill-tracking fix).
+	var eid := String(entity.get("enemy_id")) if "enemy_id" in entity else ""
 	if peer > 0:
 		GameState.record_kill(peer)
-		# Credit PROGRESSION (XP + weapon mastery) on the KILLER's own machine. entity_died
-		# fires server-only (enemies are server-auth), so a client never sees its own kill —
-		# we route the credit to the killer peer here (the same server-auth attribution the
-		# scoreboard uses). Host kill → local; client kill → rpc to that peer only. This is
-		# why a client earned no kill-XP before. Exactly one path fires → no double credit.
+		# Credit PROGRESSION (XP + weapon mastery + kill-by-type) on the KILLER's own machine.
+		# entity_died fires server-only (enemies are server-auth), so a client never sees its
+		# own kill — we route the credit to the killer peer here (the same server-auth
+		# attribution the scoreboard uses). Host kill → local; client kill → rpc to that peer
+		# only. This is why a client earned no kill-XP before. Exactly one path fires.
 		if is_offline or peer == multiplayer.get_unique_id():
-			Progression.credit_kill()
+			Progression.credit_kill(eid)
 		else:
-			_credit_kill_rpc.rpc_id(peer)
+			_credit_kill_rpc.rpc_id(peer, eid)
 	else:
 		GameState.mobs_killed += 1   # unattributed (environment/explosion) still counts to the team
 	_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
@@ -322,8 +325,8 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 ## Server → the killer peer: credit your own kill locally (XP + this machine's active
 ## weapon's mastery). Runs on the killer's machine so it reads that peer's own profile + gun.
 @rpc("authority", "call_remote", "reliable")
-func _credit_kill_rpc() -> void:
-	Progression.credit_kill()
+func _credit_kill_rpc(enemy_id: String = "") -> void:
+	Progression.credit_kill(enemy_id)
 
 ## Walk up from a node (hurtbox/weapon/player) to the owning player and return its
 ## peer id (the player node is named str(peer_id)). 0 = no player owner.

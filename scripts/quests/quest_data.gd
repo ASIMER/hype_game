@@ -25,6 +25,19 @@ class_name QuestData
 @export var reward_item_counts: PackedInt32Array = PackedInt32Array()
 @export var reward_blueprints: PackedStringArray = PackedStringArray()
 
+## --- Iteration 1: lifecycle / unlock conditions / chain + lore (all OPTIONAL) ---
+## AND-list of unlock condition clauses, each "<stat><op><value>" (op ∈ >= > <= < == !=).
+## Empty = AVAILABLE from the start. Parsed (NOT eval). Stats the evaluator understands:
+##   kills_by_type.<enemy_id>, mobs_total, raider_level, vendor_rep, currency, xp,
+##   weapon_mastery.<weapon_id>, extractions, quest_claimed.<quest_id>
+## Example: PackedStringArray("kills_by_type.robot_grunt>=10")
+@export var unlock: PackedStringArray = PackedStringArray()
+## Quest ids that must be CLAIMED before this one can be offered (chain links; AND-ed with unlock).
+@export var prereq: PackedStringArray = PackedStringArray()
+## Flavor (shown in the UI). Questline grouping + full lore UI land in Iteration 2.
+@export_multiline var lore: String = ""
+@export var giver: String = ""
+
 ## Reward items as an array of { "id": String, "count": int } dicts.
 func reward_items() -> Array:
 	var out: Array = []

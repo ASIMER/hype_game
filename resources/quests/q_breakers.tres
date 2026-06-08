@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqbreakers01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_breakers"
+title = "Breakers"
+desc = "Heavies shrug off small-arms fire. Bring down 5 of them and you'll have earned a harder target."
+daily = false
+obj_type = "kill"
+obj_target = "robot_heavy"
+obj_count = 5
+reward_currency = 500
+reward_item_ids = PackedStringArray("loot_cell")
+reward_item_counts = PackedInt32Array(3)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray("kills_by_type.robot_grunt>=10")
+prereq = PackedStringArray()
+lore = "Once the patrols learn to fear you, they send the heavies. Good. They break harder."
+giver = "The Foreman"

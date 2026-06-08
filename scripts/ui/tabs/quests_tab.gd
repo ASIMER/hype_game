@@ -31,8 +31,13 @@ func _ready() -> void:
 	_build_layout()
 	Events.quest_progress.connect(_on_quest_event_id_cur_target)
 	Events.quest_completed.connect(_on_quest_event_id)
+	Events.quest_unlocked.connect(_on_quest_event_id)
+	Events.quest_accepted.connect(_on_quest_event_id)
 	Events.stash_changed.connect(_on_stash_changed)
 	Events.dailies_rotated.connect(_on_dailies_rotated)
+	# Opening the QUESTS tab is a natural moment to re-evaluate condition-based offers.
+	if has_node("/root/QuestDirector"):
+		get_node("/root/QuestDirector").evaluate_offers()
 	_refresh()
 
 
@@ -41,6 +46,10 @@ func _exit_tree() -> void:
 		Events.quest_progress.disconnect(_on_quest_event_id_cur_target)
 	if Events.quest_completed.is_connected(_on_quest_event_id):
 		Events.quest_completed.disconnect(_on_quest_event_id)
+	if Events.quest_unlocked.is_connected(_on_quest_event_id):
+		Events.quest_unlocked.disconnect(_on_quest_event_id)
+	if Events.quest_accepted.is_connected(_on_quest_event_id):
+		Events.quest_accepted.disconnect(_on_quest_event_id)
 	if Events.stash_changed.is_connected(_on_stash_changed):
 		Events.stash_changed.disconnect(_on_stash_changed)
 	if Events.dailies_rotated.is_connected(_on_dailies_rotated):
@@ -114,33 +123,53 @@ func _refresh() -> void:
 		child.queue_free()
 
 	var dailies: Array = Quests.get_daily_quests()
-	var standing: Array = Quests.standing()
-	var both_empty: bool = dailies.is_empty() and standing.is_empty()
+	var available: Array = Quests.offered()
+	var active: Array = Quests.accepted()
+	var completed: Array = Quests.claimed_list()
+	var locked: Array = Quests.locked_teasers()
+	var all_empty: bool = dailies.is_empty() and available.is_empty() \
+		and active.is_empty() and completed.is_empty() and locked.is_empty()
 
-	_empty_label.visible = both_empty
-	_cards_container.visible = not both_empty
-
-	if both_empty:
+	_empty_label.visible = all_empty
+	_cards_container.visible = not all_empty
+	if all_empty:
 		return
 
-	# ── DAILY CONTRACTS section ──────────────────────────────────────────────
-	_cards_container.add_child(_build_section_header(
-		tr("DAILY CONTRACTS"), tr("Refreshes each day"), COL_TEAL))
+	# ── AVAILABLE (offered, awaiting ACCEPT) ─────────────────────────────────
+	if not available.is_empty():
+		_cards_container.add_child(_build_section_header(
+			tr("AVAILABLE CONTRACTS"), tr("Accept to add to your active log"), COL_GREEN))
+		for q_var in available:
+			_add_card(q_var, "available")
 
-	for q_var in dailies:
-		var q := q_var as QuestData
-		if q == null:
-			continue
-		_cards_container.add_child(_build_card(q))
+	# ── ACTIVE (dailies are auto-accepted + accepted standing contracts) ─────
+	if not dailies.is_empty() or not active.is_empty():
+		_cards_container.add_child(_build_section_header(
+			tr("ACTIVE CONTRACTS"), tr("%d / %d active") % [Quests.active_count(), Settings.ACTIVE_QUEST_CAP], COL_AMBER))
+		for q_var in dailies:
+			_add_card(q_var, "active")
+		for q_var in active:
+			_add_card(q_var, "active")
 
-	# ── STANDING CONTRACTS section ───────────────────────────────────────────
-	_cards_container.add_child(_build_section_header(tr("CONTRACTS"), "", COL_AMBER))
+	# ── LOCKED (teasers with an unlock hint — the next goals to chase) ────────
+	if not locked.is_empty():
+		_cards_container.add_child(_build_section_header(
+			tr("LOCKED"), tr("Meet the conditions to unlock"), COL_DIM))
+		for q_var in locked:
+			_add_card(q_var, "locked")
 
-	for q_var in standing:
-		var q := q_var as QuestData
-		if q == null:
-			continue
-		_cards_container.add_child(_build_card(q))
+	# ── COMPLETED (claimed history, dim) ─────────────────────────────────────
+	if not completed.is_empty():
+		_cards_container.add_child(_build_section_header(tr("COMPLETED"), "", COL_TEAL))
+		for q_var in completed:
+			_add_card(q_var, "completed")
+
+
+func _add_card(q_var: Variant, mode: String) -> void:
+	var q := q_var as QuestData
+	if q == null:
+		return
+	_cards_container.add_child(_build_card(q, mode))
 
 
 ## Builds a glass-header section strip with an optional sub-note beneath it.
@@ -167,20 +196,34 @@ func _build_section_header(title: String, note: String, accent: Color) -> VBoxCo
 	return sec
 
 
-## Builds a self-contained card PanelContainer for a single QuestData.
-func _build_card(q: QuestData) -> PanelContainer:
+## Builds a self-contained card for a quest, laid out per `mode`:
+##   "available" — desc + reward + ACCEPT button (+ NEW chip)
+##   "active"    — desc + progress bar + reward + CLAIM/IN PROGRESS
+##   "locked"    — title + lore + "🔒 Unlock by: …" hint (teaser; no progress)
+##   "completed" — dim title + reward + CLAIMED tag
+func _build_card(q: QuestData, mode: String = "active") -> PanelContainer:
 	var complete: bool = Quests.is_complete(q)
 	var cur: int = Quests.progress(q.id)
+	var locked: bool = mode == "locked"
+	var claimed: bool = mode == "completed"
 
 	# ── Card panel ───────────────────────────────────────────────────────────
 	var card := PanelContainer.new()
 	card.name = "Quest_" + q.id
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# Base glass panel; override the accent border to signal completion state.
 	var card_sb: StyleBoxFlat = UIStyle.glass_panel()
 	card_sb.border_width_left = 3
-	card_sb.border_color = COL_GREEN if complete else UIStyle.BORDER_LT
+	if mode == "available":
+		card_sb.border_color = COL_GREEN
+	elif complete and mode == "active":
+		card_sb.border_color = COL_GREEN
+	elif locked:
+		card_sb.border_color = COL_DIM
+	else:
+		card_sb.border_color = UIStyle.BORDER_LT
 	card.add_theme_stylebox_override("panel", card_sb)
+	if locked or claimed:
+		card.modulate = Color(1, 1, 1, 0.78)
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "VBox"
@@ -188,7 +231,7 @@ func _build_card(q: QuestData) -> PanelContainer:
 	vbox.add_theme_constant_override("separation", 8)
 	card.add_child(vbox)
 
-	# ── Title row (title + optional DAILY chip) ──────────────────────────────
+	# ── Title row (title + a state chip) ─────────────────────────────────────
 	var title_row := HBoxContainer.new()
 	title_row.name = "TitleRow"
 	title_row.add_theme_constant_override("separation", 8)
@@ -196,57 +239,65 @@ func _build_card(q: QuestData) -> PanelContainer:
 
 	var title_lbl := Label.new()
 	title_lbl.name = "Title"
-	title_lbl.text = tr(q.title)
-	title_lbl.add_theme_color_override("font_color", COL_AMBER)
+	title_lbl.text = ("🔒 " if locked else "") + tr(q.title)
+	title_lbl.add_theme_color_override("font_color", COL_DIM if locked else COL_AMBER)
 	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title_lbl)
 
 	if q.daily:
-		var chip := Label.new()
-		chip.name = "DailyChip"
-		chip.text = "DAILY"
-		chip.add_theme_font_size_override("font_size", 11)
-		chip.add_theme_color_override("font_color", COL_TEAL)
-		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		title_row.add_child(chip)
+		title_row.add_child(_chip("DAILY", COL_TEAL))
+	elif mode == "available":
+		title_row.add_child(_chip(tr("NEW"), COL_GREEN))
+	elif claimed:
+		title_row.add_child(_chip(tr("CLAIMED"), COL_TEAL))
 
-	# ── Description ──────────────────────────────────────────────────────────
-	if q.desc != "":
+	# ── Description / lore ───────────────────────────────────────────────────
+	var body_text: String = q.desc
+	if locked and q.lore != "":
+		body_text = q.lore
+	if body_text != "":
 		var desc_lbl := Label.new()
 		desc_lbl.name = "Desc"
-		desc_lbl.text = tr(q.desc)
+		desc_lbl.text = tr(body_text)
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
 		desc_lbl.add_theme_font_size_override("font_size", 13)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		vbox.add_child(desc_lbl)
 
-	# ── Progress bar + counter ───────────────────────────────────────────────
-	var prog_row := HBoxContainer.new()
-	prog_row.name = "ProgressRow"
-	prog_row.add_theme_constant_override("separation", 10)
-	vbox.add_child(prog_row)
+	# ── Locked teaser: the unlock hint, no progress bar ──────────────────────
+	if locked:
+		var hint := Label.new()
+		hint.name = "UnlockHint"
+		hint.text = Quests.unlock_hint(q)
+		hint.add_theme_color_override("font_color", COL_RED)
+		hint.add_theme_font_size_override("font_size", 13)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.add_child(hint)
 
-	var bar := ProgressBar.new()
-	bar.name = "ProgressBar"
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	bar.custom_minimum_size = Vector2(0, 12)
-	bar.min_value = 0.0
-	bar.max_value = float(maxi(1, q.obj_count))
-	bar.value = float(clampi(cur, 0, q.obj_count))
-	bar.show_percentage = false
-	bar.theme_type_variation = "FillAmber"
-	prog_row.add_child(bar)
-
-	var counter_lbl := Label.new()
-	counter_lbl.name = "Counter"
-	counter_lbl.text = tr("%d / %d") % [clampi(cur, 0, q.obj_count), q.obj_count]
-	counter_lbl.add_theme_color_override("font_color", COL_GREEN if complete else COL_WHITE)
-	counter_lbl.add_theme_font_size_override("font_size", 13)
-	counter_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	prog_row.add_child(counter_lbl)
+	# ── Progress bar + counter (ACTIVE only) ─────────────────────────────────
+	if mode == "active":
+		var prog_row := HBoxContainer.new()
+		prog_row.add_theme_constant_override("separation", 10)
+		vbox.add_child(prog_row)
+		var bar := ProgressBar.new()
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.custom_minimum_size = Vector2(0, 12)
+		bar.min_value = 0.0
+		bar.max_value = float(maxi(1, q.obj_count))
+		bar.value = float(clampi(cur, 0, q.obj_count))
+		bar.show_percentage = false
+		bar.theme_type_variation = "FillAmber"
+		prog_row.add_child(bar)
+		var counter_lbl := Label.new()
+		counter_lbl.text = tr("%d / %d") % [clampi(cur, 0, q.obj_count), q.obj_count]
+		counter_lbl.add_theme_color_override("font_color", COL_GREEN if complete else COL_WHITE)
+		counter_lbl.add_theme_font_size_override("font_size", 13)
+		counter_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		prog_row.add_child(counter_lbl)
 
 	# ── Reward line ──────────────────────────────────────────────────────────
 	var reward_parts: Array[String] = []
@@ -262,7 +313,6 @@ func _build_card(q: QuestData) -> PanelContainer:
 	for bp in q.reward_blueprints:
 		if String(bp) != "":
 			reward_parts.append(tr("Blueprint: %s") % String(bp))
-
 	if not reward_parts.is_empty():
 		var reward_lbl := Label.new()
 		reward_lbl.name = "Reward"
@@ -273,35 +323,44 @@ func _build_card(q: QuestData) -> PanelContainer:
 		reward_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		vbox.add_child(reward_lbl)
 
-	# ── CLAIM / IN PROGRESS button ───────────────────────────────────────────
-	var btn_row := HBoxContainer.new()
-	btn_row.name = "BtnRow"
-	vbox.add_child(btn_row)
-
-	# Spacer to right-align the button.
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn_row.add_child(spacer)
-
-	var claim_btn := Button.new()
-	claim_btn.name = "ClaimBtn"
-	claim_btn.focus_mode = Control.FOCUS_NONE
-	claim_btn.custom_minimum_size = Vector2(140, 36)
-	if complete:
-		claim_btn.text = tr("CLAIM")
-		claim_btn.disabled = false
-		claim_btn.add_theme_color_override("font_color", COL_GREEN)
-		# Capture q.id by value for the closure.
+	# ── Action button (ACCEPT / CLAIM / IN PROGRESS) ─────────────────────────
+	if mode == "available" or mode == "active":
+		var btn_row := HBoxContainer.new()
+		vbox.add_child(btn_row)
+		var spacer := Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn_row.add_child(spacer)
+		var btn := Button.new()
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(140, 36)
 		var quest_id: String = q.id
-		claim_btn.pressed.connect(func() -> void: _on_claim_pressed(quest_id))
-		UIStyle.hover_lift(claim_btn)
-	else:
-		claim_btn.text = tr("IN PROGRESS")
-		claim_btn.disabled = true
-		claim_btn.add_theme_color_override("font_color", COL_DIM)
-	btn_row.add_child(claim_btn)
+		if mode == "available":
+			btn.text = tr("ACCEPT")
+			btn.add_theme_color_override("font_color", COL_GREEN)
+			btn.pressed.connect(func() -> void: _on_accept_pressed(quest_id))
+			UIStyle.hover_lift(btn)
+		elif complete:
+			btn.text = tr("CLAIM")
+			btn.add_theme_color_override("font_color", COL_GREEN)
+			btn.pressed.connect(func() -> void: _on_claim_pressed(quest_id))
+			UIStyle.hover_lift(btn)
+		else:
+			btn.text = tr("IN PROGRESS")
+			btn.disabled = true
+			btn.add_theme_color_override("font_color", COL_DIM)
+		btn_row.add_child(btn)
 
 	return card
+
+
+## Small rounded state chip label.
+func _chip(text: String, col: Color) -> Label:
+	var chip := Label.new()
+	chip.text = text
+	chip.add_theme_font_size_override("font_size", 11)
+	chip.add_theme_color_override("font_color", col)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return chip
 
 
 # ---------------------------------------------------------------- event handlers
@@ -318,6 +377,11 @@ func _on_stash_changed() -> void:
 
 
 func _on_dailies_rotated() -> void:
+	_refresh()
+
+
+func _on_accept_pressed(quest_id: String) -> void:
+	Quests.accept(quest_id)
 	_refresh()
 
 

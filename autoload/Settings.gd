@@ -12,6 +12,9 @@ const DISCOVERY_PORT: int = 24566
 ## Game build version (canonical = the VERSION file at the repo root). Stamped into
 ## save files so loads survive game updates (see MetaProgression/Stash version checks).
 const GAME_VERSION: String = "0.3.0"
+## Max number of non-daily contracts the player can have ACTIVE (accepted) at once.
+## Manual-accept enforces it; dailies are exempt.
+const ACTIVE_QUEST_CAP: int = 6
 # When true, the netcode emits [net]/[arena]/[client] diagnostic prints (connection,
 # roster sync, spawn/replication). Off for normal play; flip on to debug co-op.
 const NET_DEBUG: bool = false
