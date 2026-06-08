@@ -36,7 +36,7 @@ func evaluate_offers() -> void:
 		if qd.offer_weight > 0 and not Quests.has_gate(qd):
 			continue
 		if Quests.offer(qd.id):
-			Events.notify.emit(tr("New contract available: %s") % tr(qd.title), 1)
+			_toast_offer(qd.title)
 
 ## RANDOM pass: offer up to RANDOM_OFFER_PER_RAID weighted contracts from the eligible pool,
 ## respecting the AVAILABLE board cap. Called once per successful raid.
@@ -61,7 +61,14 @@ func roll_random_offer() -> void:
 		if chosen == null:
 			return
 		if Quests.offer(chosen.id):
-			Events.notify.emit(tr("New contract available: %s") % tr(chosen.title), 1)
+			_toast_offer(chosen.title)
+
+## A new-contract toast — but NEVER mid-match (don't distract the player). The contract is
+## still offered + the board updates silently; the player sees the toast next time in the hub.
+func _toast_offer(title: String) -> void:
+	if GameState.phase == GameState.Phase.IN_MATCH:
+		return
+	Events.notify.emit(tr("New contract available: %s") % tr(title), 1)
 
 # --- triggers ----------------------------------------------------------------
 func _on_match_started() -> void:

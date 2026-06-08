@@ -24,6 +24,8 @@ const COL_RED   := Color(0.85, 0.30, 0.25, 1.0)   # incomplete / locked
 # Populated in _build_layout() (called once from _ready).
 var _cards_container: VBoxContainer
 var _empty_label: Label
+var _daily_timer_lbl: Label = null   # live "resets in HH:MM:SS" footer label
+var _tick_accum: float = 0.0
 
 
 func _ready() -> void:
@@ -125,15 +127,15 @@ func _refresh() -> void:
 	for child in _cards_container.get_children():
 		child.queue_free()
 
-	var dailies: Array = Quests.get_daily_quests()
 	# Generic sections show STANDALONE contracts only; questline members render under their line.
+	var dailies_unclaimed: Array = Quests.daily_unclaimed()
+	var has_dailies: bool = not Quests.get_daily_quests().is_empty()
 	var available: Array = _standalone(Quests.offered())
 	var active: Array = _standalone(Quests.accepted())
-	var completed: Array = _standalone(Quests.claimed_list())
 	var locked: Array = _standalone(Quests.locked_teasers())
 	var lines: Array = _visible_lines()
-	var all_empty: bool = dailies.is_empty() and available.is_empty() and active.is_empty() \
-		and completed.is_empty() and locked.is_empty() and lines.is_empty()
+	var all_empty: bool = not has_dailies and available.is_empty() and active.is_empty() \
+		and locked.is_empty() and lines.is_empty()
 
 	_empty_label.visible = all_empty
 	_cards_container.visible = not all_empty
@@ -154,14 +156,20 @@ func _refresh() -> void:
 		for q_var in available:
 			_add_card(q_var, "available")
 
-	# ── ACTIVE (dailies are auto-accepted + accepted standing contracts) ─────
-	if not dailies.is_empty() or not active.is_empty():
+	# ── ACTIVE (accepted standing contracts) ─────────────────────────────────
+	if not active.is_empty():
 		_cards_container.add_child(_build_section_header(
 			tr("ACTIVE CONTRACTS"), tr("%d / %d active") % [Quests.active_count(), Settings.ACTIVE_QUEST_CAP], COL_AMBER))
-		for q_var in dailies:
-			_add_card(q_var, "active")
 		for q_var in active:
 			_add_card(q_var, "active")
+
+	# ── DAILY (un-claimed cards + a "resets in HH:MM:SS" footer; claimed ones drop off) ──
+	if has_dailies:
+		_cards_container.add_child(_build_section_header(
+			tr("DAILY CONTRACTS"), tr("Refreshes each day"), COL_TEAL))
+		for q_var in dailies_unclaimed:
+			_add_card(q_var, "active")
+		_cards_container.add_child(_build_daily_footer())
 
 	# ── LOCKED (teasers with an unlock hint — the next goals to chase) ────────
 	if not locked.is_empty():
@@ -170,11 +178,7 @@ func _refresh() -> void:
 		for q_var in locked:
 			_add_card(q_var, "locked")
 
-	# ── COMPLETED (claimed history, dim) ─────────────────────────────────────
-	if not completed.is_empty():
-		_cards_container.add_child(_build_section_header(tr("COMPLETED"), "", COL_TEAL))
-		for q_var in completed:
-			_add_card(q_var, "completed")
+	# (No COMPLETED section — a claimed contract LEAVES the board.)
 
 
 ## Keeps only standalone (non-questline) quests from an array.
@@ -226,6 +230,50 @@ func _accent_col(accent: int) -> Color:
 		1: return COL_TEAL
 		2: return COL_GREEN
 		_: return COL_AMBER
+
+
+## "Daily contracts reset in HH:MM:SS · X / Y done today" — ticks live via _process.
+func _build_daily_footer() -> Control:
+	var pc := PanelContainer.new()
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pc.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.5))
+	var mc := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		mc.add_theme_constant_override(m, 8)
+	pc.add_child(mc)
+	var lbl := Label.new()
+	lbl.add_theme_color_override("font_color", COL_DIM)
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mc.add_child(lbl)
+	_daily_timer_lbl = lbl
+	_update_daily_timer()
+	return pc
+
+
+func _update_daily_timer() -> void:
+	if _daily_timer_lbl == null or not is_instance_valid(_daily_timer_lbl):
+		return
+	var done: int = Quests.daily_claimed_count()
+	var total: int = Quests.get_daily_quests().size()
+	_daily_timer_lbl.text = tr("Daily contracts reset in %s") % _fmt_hms(Quests.seconds_until_daily_reset()) \
+		+ "   ·   " + tr("%d / %d done today") % [done, total]
+
+
+func _fmt_hms(secs: int) -> String:
+	var h := secs / 3600
+	var m := (secs % 3600) / 60
+	var s := secs % 60
+	return "%02d:%02d:%02d" % [h, m, s]
+
+
+func _process(delta: float) -> void:
+	if _daily_timer_lbl == null or not is_instance_valid(_daily_timer_lbl):
+		return
+	_tick_accum += delta
+	if _tick_accum >= 1.0:
+		_tick_accum = 0.0
+		_update_daily_timer()
 
 
 ## Per-giver reputation strip: one row per known contact (name + tier badge + rep progress bar).

@@ -14,6 +14,10 @@ const COL_DIM   := UIStyle.DIM
 
 var _root: Control = null
 var _holder: CenterContainer = null
+## NEVER draw over live gameplay: while in a match, reward bundles are queued and flushed
+## when the player leaves the match (match_won/lost). Normal play claims in the hub → shown now.
+var _in_match: bool = false
+var _queue: Array = []
 
 
 func _ready() -> void:
@@ -38,6 +42,22 @@ func _ready() -> void:
 	_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_holder)
 	Events.quest_reward_granted.connect(_on_reward)
+	# Shell-vs-raid gate (mirrors fx_overlay): never show over live aim.
+	_in_match = GameState.phase == GameState.Phase.IN_MATCH
+	Events.match_started.connect(func() -> void: _in_match = true)
+	Events.match_won.connect(_on_left_match)
+	Events.match_lost.connect(_on_left_match)
+
+
+## Player left the match → flush any rewards earned/claimed in-match (rare; claims happen in
+## the hub, but this is the hard guarantee). Shows the most recent bundle.
+func _on_left_match() -> void:
+	_in_match = false
+	if _queue.is_empty():
+		return
+	var bundle: Dictionary = _queue.back()
+	_queue.clear()
+	_show(bundle)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -53,6 +73,14 @@ func _close() -> void:
 
 
 func _on_reward(_quest_id: String, rewards: Dictionary) -> void:
+	# Don't interrupt live gameplay — queue and flush when the player leaves the match.
+	if _in_match:
+		_queue.append(rewards)
+		return
+	_show(rewards)
+
+
+func _show(rewards: Dictionary) -> void:
 	for c in _holder.get_children():
 		c.queue_free()
 

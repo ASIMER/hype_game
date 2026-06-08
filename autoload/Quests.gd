@@ -391,6 +391,29 @@ func _today() -> String:
 	var d := Time.get_date_dict_from_system()
 	return "%04d-%02d-%02d" % [d.get("year", 0), d.get("month", 0), d.get("day", 0)]
 
+## Seconds until the daily rotation rolls (next LOCAL midnight) — drives the "resets in …"
+## countdown so the player knows to come back tomorrow.
+func seconds_until_daily_reset() -> int:
+	var t := Time.get_datetime_dict_from_system()
+	var secs_into_day := int(t.get("hour", 0)) * 3600 + int(t.get("minute", 0)) * 60 + int(t.get("second", 0))
+	return maxi(0, 86400 - secs_into_day)
+
+## Today's dailies that are NOT yet claimed (the cards still worth showing).
+func daily_unclaimed() -> Array:
+	var out: Array = []
+	for q in get_daily_quests():
+		if state_of((q as QuestData).id) != "claimed":
+			out.append(q)
+	return out
+
+## How many of today's dailies are already claimed (for the "X / Y done today" footer).
+func daily_claimed_count() -> int:
+	var n := 0
+	for q in get_daily_quests():
+		if state_of((q as QuestData).id) == "claimed":
+			n += 1
+	return n
+
 ## Today's rotating daily contracts (rotates + resets progress on a new day).
 func get_daily_quests() -> Array:
 	if MetaProgression.last_daily_date != _today():

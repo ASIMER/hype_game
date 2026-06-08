@@ -1205,6 +1205,33 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 				get_node("/root/QuestDirector").evaluate_offers()
 			return { "ok": true, "giver": giver, "rep": MetaProgression.giver_rep_of(giver),
 				"tier": MetaProgression.giver_rep_tier(giver) }
+		"sim":
+			# QA: emit an objective event so non-kill quests advance without a full raid.
+			var kind := str(json.get("kind", ""))
+			var n := int(json.get("n", json.get("count", 1)))
+			var sid2 := str(json.get("id", json.get("eid", "")))
+			match kind:
+				"extract":
+					Events.raid_loot_granted.emit([], 0)
+				"extract_item":
+					Events.raid_loot_granted.emit([{ "id": sid2, "count": n }], 0)
+				"wave":
+					Events.wave_cleared.emit(n)
+				"pickup":
+					Events.item_picked_up.emit(_local_player(get_tree().get_nodes_in_group("players")), sid2, n)
+			return { "ok": true, "kind": kind }
+		"reset":
+			# QA: wipe quest lifecycle + decision stats + giver rep for a clean fixture.
+			MetaProgression.quest_states = {}
+			MetaProgression.quest_progress = {}
+			MetaProgression.completed_quests.clear()
+			MetaProgression.kills_by_type = {}
+			MetaProgression.extractions_total = 0
+			MetaProgression.giver_rep = {}
+			MetaProgression.save_profile()
+			if has_node("/root/QuestDirector"):
+				get_node("/root/QuestDirector").evaluate_offers()
+			return { "ok": true }
 		"givers":
 			var gv: Array = []
 			var seen: Dictionary = {}
