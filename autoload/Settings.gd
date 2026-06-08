@@ -20,6 +20,18 @@ const ACTIVE_QUEST_CAP: int = 6
 ## (offered-but-not-accepted) contracts so the board never floods.
 const RANDOM_OFFER_PER_RAID: int = 1
 const AVAILABLE_OFFER_CAP: int = 4
+
+## Per-giver reputation (Iteration 3). Shared tier thresholds for every giver; a contract
+## claimed for a giver grants GIVER_REP_BASELINE_ON_CLAIM even without an explicit reward.
+## GIVER_REP_TIER_REWARDS[tier] = { currency, cosmetic } granted once on crossing that tier.
+const GIVER_REP_TIERS := [0, 3, 7, 12, 18]
+const GIVER_REP_BASELINE_ON_CLAIM: int = 1
+const GIVER_REP_TIER_REWARDS := {
+	1: { "currency": 200 },
+	2: { "currency": 400 },
+	3: { "currency": 700 },
+	4: { "currency": 1200 },
+}
 # When true, the netcode emits [net]/[arena]/[client] diagnostic prints (connection,
 # roster sync, spawn/replication). Off for normal play; flip on to debug co-op.
 const NET_DEBUG: bool = false

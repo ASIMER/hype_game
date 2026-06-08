@@ -70,6 +70,8 @@ var quest_states: Dictionary = {}
 ## counter unlock conditions key off). Cumulative successful extractions live alongside.
 var kills_by_type: Dictionary = {}
 var extractions_total: int = 0
+## Per-giver reputation (Iter 3): giver NPC name -> cumulative rep. Tiers via Settings.GIVER_REP_TIERS.
+var giver_rep: Dictionary = {}
 ## Equipped (AT-RISK) attachments: weapon_id -> { slot -> attachment_id }.
 var equipped_attachments: Dictionary = {}
 ## Permanent per-weapon perks: weapon_id -> { perk_key -> level }.
@@ -260,6 +262,18 @@ func unlock_cosmetic(variant_id: String) -> bool:
 	Events.cosmetics_changed.emit()
 	return true
 
+## Grant a cosmetic WITHOUT spending currency (quest / giver-tier reward, incl. quest-exclusive
+## cost = -1 paints). Returns true if newly unlocked.
+func unlock_cosmetic_free(variant_id: String) -> bool:
+	if variant_id == "" or ProceduralPlayer.category_of(variant_id) == "":
+		return false
+	if variant_id in unlocked_cosmetics or ProceduralPlayer.cost_of(variant_id) == 0:
+		return false   # already owned / a free starter
+	unlocked_cosmetics.append(variant_id)
+	save_profile()
+	Events.cosmetics_changed.emit()
+	return true
+
 func get_equipped_cosmetic(category: String) -> String:
 	var picked: String = String(equipped_cosmetics.get(category, ""))
 	if picked != "" and ProceduralPlayer.category_of(picked) == category:
@@ -328,6 +342,48 @@ func total_mob_kills() -> int:
 ## Bumps the cumulative successful-extraction counter (decision stat). Saved by the caller.
 func inc_extractions() -> void:
 	extractions_total += 1
+
+# ---------------------------------------------------------------- per-giver reputation (Iter 3)
+func giver_rep_of(giver: String) -> int:
+	return int(giver_rep.get(giver, 0))
+
+## Tier index for a giver (mirrors rep_tier over Settings.GIVER_REP_TIERS).
+func giver_rep_tier(giver: String) -> int:
+	var rep := giver_rep_of(giver)
+	var t := 0
+	for i in Settings.GIVER_REP_TIERS.size():
+		if rep >= int(Settings.GIVER_REP_TIERS[i]):
+			t = i
+	return t
+
+## { tier, into, need } toward the next giver tier (need 0 = max).
+func giver_rep_progress(giver: String) -> Dictionary:
+	var t := giver_rep_tier(giver)
+	var base := int(Settings.GIVER_REP_TIERS[t])
+	var nxt := t + 1
+	if nxt >= Settings.GIVER_REP_TIERS.size():
+		return { "tier": t, "into": 0, "need": 0 }
+	var ceiling := int(Settings.GIVER_REP_TIERS[nxt])
+	return { "tier": t, "into": giver_rep_of(giver) - base, "need": ceiling - base }
+
+## Award reputation toward a giver; grants per-tier rewards on tier-up. Emits giver_rep_changed.
+func grant_giver_rep(giver: String, amount: int) -> void:
+	if giver == "" or amount <= 0:
+		return
+	var before := giver_rep_tier(giver)
+	giver_rep[giver] = giver_rep_of(giver) + amount
+	var after := giver_rep_tier(giver)
+	if after > before:
+		for tier in range(before + 1, after + 1):
+			var rw: Dictionary = Settings.GIVER_REP_TIER_REWARDS.get(tier, {})
+			var cur := int(rw.get("currency", 0))
+			if cur > 0:
+				earn(cur)
+			var cos := String(rw.get("cosmetic", ""))
+			if cos != "":
+				unlock_cosmetic_free(cos)
+	save_profile()
+	Events.giver_rep_changed.emit(giver, giver_rep_of(giver), after)
 
 # ---------------------------------------------------------------- stash capacity
 func stash_capacity() -> float:
@@ -596,6 +652,7 @@ func save_profile() -> void:
 	cfg.set_value("meta", "quest_states", quest_states)
 	cfg.set_value("meta", "kills_by_type", kills_by_type)
 	cfg.set_value("meta", "extractions_total", extractions_total)
+	cfg.set_value("meta", "giver_rep", giver_rep)
 	cfg.set_value("meta", "equipped_attachments", equipped_attachments)
 	cfg.set_value("meta", "weapon_perks", weapon_perks)
 	cfg.set_value("meta", "unlocked_cosmetics", unlocked_cosmetics)
@@ -665,6 +722,11 @@ func load_profile() -> void:
 		for k in (raw_kbt as Dictionary):
 			kills_by_type[String(k)] = int((raw_kbt as Dictionary)[k])
 	extractions_total = int(cfg.get_value("meta", "extractions_total", 0))
+	var raw_gr: Variant = cfg.get_value("meta", "giver_rep", {})
+	giver_rep = {}
+	if raw_gr is Dictionary:
+		for k in (raw_gr as Dictionary):
+			giver_rep[String(k)] = int((raw_gr as Dictionary)[k])
 	# MIGRATION (never wipe): a save that predates the lifecycle has no quest_states — derive
 	# them from legacy data so old contracts don't vanish. Claimed → "claimed"; anything with
 	# recorded progress → "active"; everything else stays LOCKED until the director offers it.

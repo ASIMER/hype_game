@@ -20,3 +20,5 @@ prereq = PackedStringArray()
 lore = "Once the patrols learn to fear you, they send the heavies. Good. They break harder."
 giver = "The Foreman"
 questline = "ql_foreman"
+reward_xp = 150
+reward_giver_rep = 2

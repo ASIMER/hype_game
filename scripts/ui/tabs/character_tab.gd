@@ -391,6 +391,11 @@ func _make_variant_cell(vid: String, vname: String, vcost: int,
 		action_btn.disabled = false
 		var vid_cap: String = vid
 		action_btn.pressed.connect(func() -> void: _on_equip(vid_cap))
+	elif vcost < 0:
+		# Quest-exclusive — not for sale, only granted by a quest reward.
+		action_btn.text = tr("★ QUEST REWARD")
+		action_btn.disabled = true
+		action_btn.add_theme_color_override("font_color", COL_AMBER)
 	else:
 		# Locked — show BUY with cost.
 		action_btn.text = tr("BUY (CR %d)") % vcost

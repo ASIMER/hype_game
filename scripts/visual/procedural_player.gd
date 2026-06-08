@@ -78,6 +78,11 @@ const VARIANTS := {
 		{ "id": "paint_gold",    "name": "Gilded",  "cost": 160 },
 		{ "id": "paint_ember",   "name": "Ember",   "cost": 160 },
 		{ "id": "paint_royal",   "name": "Royal",   "cost": 180 },
+		# Quest-exclusive paints (cost = -1 = NOT for sale; granted only by quest rewards).
+		{ "id": "paint_foreman", "name": "Foreman's Mark", "cost": -1 },
+		{ "id": "paint_salvage", "name": "Salvager",       "cost": -1 },
+		{ "id": "paint_ghost",   "name": "Ghost",          "cost": -1 },
+		{ "id": "paint_warden",  "name": "Warden's End",   "cost": -1 },
 	],
 }
 
@@ -93,6 +98,11 @@ const PAINTS := {
 	"paint_gold":    { "primary": Color(0.72, 0.58, 0.22), "secondary": Color(0.25, 0.20, 0.10), "accent": Color(1.00, 0.85, 0.40) },
 	"paint_ember":   { "primary": Color(0.28, 0.20, 0.20), "secondary": Color(0.14, 0.10, 0.10), "accent": Color(1.00, 0.40, 0.15) },
 	"paint_royal":   { "primary": Color(0.28, 0.22, 0.45), "secondary": Color(0.14, 0.11, 0.22), "accent": Color(0.55, 0.65, 1.00) },
+	# Quest-exclusive schemes.
+	"paint_foreman": { "primary": Color(0.36, 0.27, 0.13), "secondary": Color(0.18, 0.14, 0.08), "accent": Color(1.00, 0.72, 0.22) },
+	"paint_salvage": { "primary": Color(0.20, 0.34, 0.36), "secondary": Color(0.10, 0.17, 0.18), "accent": Color(0.30, 0.95, 0.85) },
+	"paint_ghost":   { "primary": Color(0.16, 0.18, 0.22), "secondary": Color(0.08, 0.09, 0.11), "accent": Color(0.60, 0.95, 0.75) },
+	"paint_warden":  { "primary": Color(0.10, 0.10, 0.12), "secondary": Color(0.05, 0.05, 0.06), "accent": Color(1.00, 0.25, 0.30) },
 }
 
 const DEFAULT_PAINT := "paint_raider"

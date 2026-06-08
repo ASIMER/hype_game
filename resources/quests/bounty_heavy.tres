@@ -21,3 +21,5 @@ lore = "Someone upstream keeps losing crews to the heavies. They pay to thin the
 giver = "Bounty Board"
 questline = ""
 offer_weight = 2
+reward_xp = 60
+reward_rep = 2

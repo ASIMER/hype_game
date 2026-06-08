@@ -21,3 +21,5 @@ lore = "Posted on the board, no name attached. The pay is real."
 giver = "Bounty Board"
 questline = ""
 offer_weight = 3
+reward_xp = 60
+reward_rep = 2

@@ -21,3 +21,5 @@ lore = "Scrap is scrap until you need it. Then it's everything."
 giver = "Bounty Board"
 questline = ""
 offer_weight = 4
+reward_xp = 60
+reward_rep = 2

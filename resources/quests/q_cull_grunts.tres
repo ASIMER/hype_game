@@ -20,3 +20,5 @@ prereq = PackedStringArray()
 lore = "Every raid starts the same way: too many grunts, not enough cover. Earn your footing."
 giver = "The Foreman"
 questline = "ql_foreman"
+reward_xp = 80
+reward_giver_rep = 1

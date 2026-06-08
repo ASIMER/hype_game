@@ -118,6 +118,17 @@ func _rebuild() -> void:
 		giver.add_theme_color_override("font_color", COL_TEAL)
 		giver.add_theme_font_size_override("font_size", 13)
 		col.add_child(giver)
+		# Giver standing (tier + progress toward the next).
+		var gp: Dictionary = MetaProgression.giver_rep_progress(giver_name)
+		var gneed: int = int(gp.get("need", 0))
+		var standing := Label.new()
+		if gneed <= 0:
+			standing.text = tr("Standing: Tier %d (max)") % int(gp.get("tier", 0))
+		else:
+			standing.text = tr("Standing: Tier %d  (%d / %d)") % [int(gp.get("tier", 0)), int(gp.get("into", 0)), gneed]
+		standing.add_theme_color_override("font_color", COL_DIM)
+		standing.add_theme_font_size_override("font_size", 12)
+		col.add_child(standing)
 
 	# ── Lore (quest lore, else the questline intro) ──────────────────────────
 	var lore_text: String = q.lore

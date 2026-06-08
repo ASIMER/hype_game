@@ -199,6 +199,12 @@ signal quest_accepted(quest_id: String)
 ## machine (the co-op-correct kill feed, routed via NetworkManager kill attribution). Drives
 ## personal kill quests + the QuestDirector's decision-based offering.
 signal player_kill(enemy_id: String)
+## A claimed quest's full reward bundle was granted (Iter 3) — drives the reward popup.
+## `rewards` = { currency, items:[{id,count}], blueprints:[], xp, rep, skill_points,
+## giver, giver_rep, cosmetics:[], questline_complete:bool, line_title }.
+signal quest_reward_granted(quest_id: String, rewards: Dictionary)
+## Per-giver reputation changed (Iter 3). `giver` = NPC name, `rep` = new total, `tier` = new tier.
+signal giver_rep_changed(giver: String, rep: int, tier: int)
 
 # --- Gunsmith / haul ---
 ## An attachment was equipped/unequipped on a weapon (Gunsmith reads this).

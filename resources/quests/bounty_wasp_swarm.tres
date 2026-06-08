@@ -21,3 +21,5 @@ lore = "Every wasp you drop is a pair of eyes the warden loses."
 giver = "Bounty Board"
 questline = ""
 offer_weight = 3
+reward_xp = 60
+reward_rep = 2

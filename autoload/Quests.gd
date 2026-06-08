@@ -127,13 +127,46 @@ func claim(id: String) -> bool:
 		return false
 	if not (id in MetaProgression.completed_quests):
 		MetaProgression.completed_quests.append(id)
+	# --- Base rewards (currency / items / blueprints) ---
 	if q.reward_currency > 0:
 		MetaProgression.earn(q.reward_currency)
 	for it in q.reward_items():
 		Stash.add(String(it["id"]), int(it["count"]))
 	for bp in q.reward_blueprints:
 		MetaProgression.learn_blueprint(String(bp))
-	MetaProgression.set_quest_state(id, "claimed")   # persists
+	# --- Rich rewards (Iter 3): xp / vendor-rep / skill points / cosmetics / giver rep ---
+	var line := questline_of(id)
+	var giver := q.giver
+	if giver == "" and line != null:
+		giver = line.giver
+	if q.reward_xp > 0:
+		MetaProgression.add_xp(q.reward_xp, "quest")
+	if q.reward_rep > 0:
+		MetaProgression.grant_rep(q.reward_rep)
+	if q.reward_skill_points > 0:
+		MetaProgression.skill_points += q.reward_skill_points
+	var unlocked_cos: Array = []
+	for cos in q.reward_cosmetics:
+		if MetaProgression.unlock_cosmetic_free(String(cos)):
+			unlocked_cos.append(String(cos))
+	var grep: int = q.reward_giver_rep + Settings.GIVER_REP_BASELINE_ON_CLAIM
+	if giver != "":
+		MetaProgression.grant_giver_rep(giver, grep)
+	MetaProgression.set_quest_state(id, "claimed")   # persists (incl. skill_points)
+	# Questline completion (all steps claimed)?
+	var ql_complete := false
+	var line_title := ""
+	if line != null:
+		line_title = line.title
+		var lp := line_progress(line)
+		ql_complete = int(lp.get("total", 0)) > 0 and int(lp.get("done", 0)) >= int(lp.get("total", 0))
+	# Reward bundle for the popup overlay.
+	Events.quest_reward_granted.emit(id, {
+		"currency": q.reward_currency, "items": q.reward_items(), "blueprints": Array(q.reward_blueprints),
+		"xp": q.reward_xp, "rep": q.reward_rep, "skill_points": q.reward_skill_points,
+		"giver": giver, "giver_rep": (grep if giver != "" else 0), "cosmetics": unlocked_cos,
+		"questline_complete": ql_complete, "line_title": line_title,
+	})
 	# A newly-claimed prereq may unlock the next link in a chain.
 	if has_node("/root/QuestDirector"):
 		get_node("/root/QuestDirector").evaluate_offers()
@@ -315,6 +348,8 @@ func _stat(key: String) -> float:
 		return float(MetaProgression.weapon_mastery_level(key.substr(15)))
 	if key.begins_with("quest_claimed."):
 		return 1.0 if is_claimed(key.substr(14)) else 0.0
+	if key.begins_with("giver_rep."):
+		return float(MetaProgression.giver_rep_of(key.substr(10)))
 	match key:
 		"mobs_total": return float(MetaProgression.total_mob_kills())
 		"raider_level": return float(MetaProgression.raider_level)

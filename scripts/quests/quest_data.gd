@@ -46,6 +46,15 @@ class_name QuestData
 ## prereq paths). >0 = eligible for the QuestDirector's per-raid weighted random offer.
 @export var offer_weight: int = 0
 
+## --- Iteration 3: rich rewards (all optional, granted in Quests.claim on top of currency/
+## items/blueprints) ---
+@export var reward_xp: int = 0
+@export var reward_rep: int = 0               # generic VENDOR reputation
+@export var reward_skill_points: int = 0
+@export var reward_giver_rep: int = 0         # reputation toward THIS quest's giver
+## Cosmetic ids to permanently UNLOCK (incl. quest-exclusive paints, cost = -1).
+@export var reward_cosmetics: PackedStringArray = PackedStringArray()
+
 ## Reward items as an array of { "id": String, "count": int } dicts.
 func reward_items() -> Array:
 	var out: Array = []

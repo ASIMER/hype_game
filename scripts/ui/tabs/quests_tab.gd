@@ -33,6 +33,7 @@ func _ready() -> void:
 	Events.quest_completed.connect(_on_quest_event_id)
 	Events.quest_unlocked.connect(_on_quest_event_id)
 	Events.quest_accepted.connect(_on_quest_event_id)
+	Events.giver_rep_changed.connect(_on_giver_rep_changed)
 	Events.stash_changed.connect(_on_stash_changed)
 	Events.dailies_rotated.connect(_on_dailies_rotated)
 	# Opening the QUESTS tab is a natural moment to re-evaluate condition-based offers.
@@ -50,6 +51,8 @@ func _exit_tree() -> void:
 		Events.quest_unlocked.disconnect(_on_quest_event_id)
 	if Events.quest_accepted.is_connected(_on_quest_event_id):
 		Events.quest_accepted.disconnect(_on_quest_event_id)
+	if Events.giver_rep_changed.is_connected(_on_giver_rep_changed):
+		Events.giver_rep_changed.disconnect(_on_giver_rep_changed)
 	if Events.stash_changed.is_connected(_on_stash_changed):
 		Events.stash_changed.disconnect(_on_stash_changed)
 	if Events.dailies_rotated.is_connected(_on_dailies_rotated):
@@ -137,6 +140,9 @@ func _refresh() -> void:
 	if all_empty:
 		return
 
+	# ── STANDING (per-giver reputation) ──────────────────────────────────────
+	_build_giver_standing()
+
 	# ── QUESTLINES (story groups: header strip + the line's current step) ────
 	for line_var in lines:
 		_build_questline_group(line_var as QuestLine)
@@ -220,6 +226,66 @@ func _accent_col(accent: int) -> Color:
 		1: return COL_TEAL
 		2: return COL_GREEN
 		_: return COL_AMBER
+
+
+## Per-giver reputation strip: one row per known contact (name + tier badge + rep progress bar).
+func _build_giver_standing() -> void:
+	var givers: Array[String] = []
+	for l in Quests.questlines():
+		var g1: String = (l as QuestLine).giver
+		if g1 != "" and not (g1 in givers):
+			givers.append(g1)
+	for q in Quests.all():
+		var g2: String = (q as QuestData).giver
+		if g2 != "" and not (g2 in givers):
+			givers.append(g2)
+	if givers.is_empty():
+		return
+	_cards_container.add_child(_build_section_header(
+		tr("STANDING"), tr("Reputation with your contacts"), COL_TEAL))
+	for g in givers:
+		_cards_container.add_child(_giver_row(g))
+
+
+func _giver_row(giver: String) -> PanelContainer:
+	var prog: Dictionary = MetaProgression.giver_rep_progress(giver)
+	var tier: int = int(prog.get("tier", 0))
+	var into: int = int(prog.get("into", 0))
+	var need: int = int(prog.get("need", 0))
+	var pc := PanelContainer.new()
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pc.add_theme_stylebox_override("panel", UIStyle.glass_panel())
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 12)
+	var mc := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		mc.add_theme_constant_override(m, 8)
+	mc.add_child(hb)
+	pc.add_child(mc)
+	var name_lbl := Label.new()
+	name_lbl.text = giver
+	name_lbl.add_theme_color_override("font_color", COL_AMBER)
+	name_lbl.add_theme_font_size_override("font_size", 15)
+	name_lbl.custom_minimum_size = Vector2(180, 0)
+	hb.add_child(name_lbl)
+	hb.add_child(_chip(tr("TIER %d") % tier, COL_TEAL))
+	var bar := ProgressBar.new()
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.custom_minimum_size = Vector2(0, 10)
+	bar.show_percentage = false
+	bar.theme_type_variation = "FillAmber"
+	if need <= 0:
+		bar.min_value = 0; bar.max_value = 1; bar.value = 1   # max tier
+	else:
+		bar.min_value = 0; bar.max_value = need; bar.value = clampi(into, 0, need)
+	hb.add_child(bar)
+	var amt := Label.new()
+	amt.text = (tr("MAX") if need <= 0 else "%d / %d" % [into, need])
+	amt.add_theme_color_override("font_color", COL_DIM)
+	amt.add_theme_font_size_override("font_size", 12)
+	hb.add_child(amt)
+	return pc
 
 
 func _add_card(q_var: Variant, mode: String) -> void:
@@ -452,6 +518,10 @@ func _on_stash_changed() -> void:
 
 
 func _on_dailies_rotated() -> void:
+	_refresh()
+
+
+func _on_giver_rep_changed(_giver: String, _rep: int, _tier: int) -> void:
 	_refresh()
 
 

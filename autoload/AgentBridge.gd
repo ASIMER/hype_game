@@ -944,6 +944,7 @@ func _snapshot() -> Dictionary:
 				"quest_states": MetaProgression.quest_states,
 				"kills_by_type": MetaProgression.kills_by_type,
 				"extractions_total": MetaProgression.extractions_total,
+				"giver_rep": MetaProgression.giver_rep,
 				"questlines": _questlines_meta(),
 		},
 		"agent_held": _held,
@@ -1196,6 +1197,28 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 		"stats":
 			return { "ok": true, "kills_by_type": MetaProgression.kills_by_type,
 				"extractions": MetaProgression.extractions_total, "quest_states": MetaProgression.quest_states }
+		"grantrep":
+			# QA: bump a giver's reputation to test tier unlocks + exclusive-contract offers.
+			var giver := str(json.get("giver", ""))
+			MetaProgression.grant_giver_rep(giver, int(json.get("n", 1)))
+			if has_node("/root/QuestDirector"):
+				get_node("/root/QuestDirector").evaluate_offers()
+			return { "ok": true, "giver": giver, "rep": MetaProgression.giver_rep_of(giver),
+				"tier": MetaProgression.giver_rep_tier(giver) }
+		"givers":
+			var gv: Array = []
+			var seen: Dictionary = {}
+			for l in Quests.questlines():
+				seen[(l as QuestLine).giver] = true
+			for q in Quests.all():
+				if (q as QuestData).giver != "":
+					seen[(q as QuestData).giver] = true
+			for g in seen:
+				if String(g) == "":
+					continue
+				gv.append({ "giver": g, "rep": MetaProgression.giver_rep_of(g),
+					"tier": MetaProgression.giver_rep_tier(g) })
+			return { "ok": true, "givers": gv }
 		_:
 			# "state": full board snapshot.
 			var out: Array = []

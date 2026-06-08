@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://ccontractvex01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "contract_vex"
+title = "Vex's Private Stock"
+desc = "Vex trusts you with the big orders now. Extract 3 Artifacts for her broker."
+daily = false
+obj_type = "extract_item"
+obj_target = "loot_artifact"
+obj_count = 3
+reward_currency = 1600
+reward_item_ids = PackedStringArray("loot_data_chip")
+reward_item_counts = PackedInt32Array(2)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray("giver_rep.Quartermaster Vex>=2")
+prereq = PackedStringArray()
+lore = "\"Bring me three and I'll forget how many crates you've lost.\" — Vex"
+giver = "Quartermaster Vex"
+questline = ""
+offer_weight = 0
+reward_xp = 500
+reward_giver_rep = 4
+reward_skill_points = 1

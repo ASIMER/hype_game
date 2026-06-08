@@ -21,3 +21,7 @@ lore = "Patrols, heavies, elites — all of it was the Foreman measuring you for
 giver = "The Foreman"
 questline = "ql_foreman"
 offer_weight = 0
+reward_xp = 600
+reward_giver_rep = 3
+reward_skill_points = 1
+reward_cosmetics = PackedStringArray("paint_warden")
