@@ -944,6 +944,7 @@ func _snapshot() -> Dictionary:
 				"quest_states": MetaProgression.quest_states,
 				"kills_by_type": MetaProgression.kills_by_type,
 				"extractions_total": MetaProgression.extractions_total,
+				"questlines": _questlines_meta(),
 		},
 		"agent_held": _held,
 		"stash": Stash.items,
@@ -1127,6 +1128,16 @@ func _debug_pickup() -> Dictionary:
 	return { "ok": true, "id": str(best.get("item_id")), "dist": snappedf(best_d, 0.01) }
 
 
+## Compact per-questline progress for state.meta (line id -> {done,total,current}).
+func _questlines_meta() -> Dictionary:
+	var out: Dictionary = {}
+	for l in Quests.questlines():
+		var ql := l as QuestLine
+		var lp: Dictionary = Quests.line_progress(ql)
+		out[ql.id] = { "done": lp.get("done", 0), "total": lp.get("total", 0), "current": lp.get("current_id", "") }
+	return out
+
+
 ## QA driver for the quest lifecycle (see the "quest" command).
 func _debug_quest(json: Dictionary) -> Dictionary:
 	var action := str(json.get("action", "state"))
@@ -1142,6 +1153,36 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 			if has_node("/root/QuestDirector"):
 				get_node("/root/QuestDirector").evaluate_offers()
 			return { "ok": true }
+		"roll":
+			# Force one per-raid weighted random offer (test the random board without raiding).
+			if has_node("/root/QuestDirector"):
+				get_node("/root/QuestDirector").roll_random_offer()
+			return { "ok": true, "available": Quests.available_count() }
+		"detail":
+			# QA: open the rich detail modal for `id` (the harness can't click the ⓘ button).
+			var sc := get_tree().current_scene
+			var host: Node = null
+			for n in sc.find_children("*", "CanvasLayer", true, false):
+				host = n
+				break
+			if host == null:
+				host = sc
+			var modal: Node = (load("res://scripts/ui/quest_detail.gd") as GDScript).new()
+			host.add_child(modal)
+			modal.call("open", id)
+			return { "ok": true }
+		"lines":
+			var lines: Array = []
+			for l in Quests.questlines():
+				var ql := l as QuestLine
+				var lp: Dictionary = Quests.line_progress(ql)
+				var steps: Array = []
+				for s in Quests.line_steps(ql):
+					steps.append({ "id": (s as QuestData).id, "state": Quests.state_of((s as QuestData).id) })
+				lines.append({ "id": ql.id, "title": ql.title, "giver": ql.giver,
+					"done": lp.get("done", 0), "total": lp.get("total", 0),
+					"current": lp.get("current_id", ""), "steps": steps })
+			return { "ok": true, "lines": lines }
 		"grantkills":
 			# Simulate n personal kills of an archetype: bumps kills_by_type + fires player_kill
 			# (so kill quests advance + the director re-evaluates), exactly like real kills.
@@ -1164,6 +1205,7 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 					"id": qd.id, "title": qd.title, "state": Quests.state_of(qd.id),
 					"daily": qd.daily, "progress": Quests.progress(qd.id), "target": qd.obj_count,
 					"obj_type": qd.obj_type, "obj_target": qd.obj_target,
+					"questline": qd.questline, "offer_weight": qd.offer_weight,
 					"unlocked": Quests.is_unlocked(qd), "hint": Quests.unlock_hint(qd),
 				})
 			return { "ok": true, "quests": out }

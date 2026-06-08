@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqwardenfall01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_warden_fall"
+title = "The Warden Falls"
+desc = "The warden Bastion runs this district. End it and the Foreman's ladder is climbed."
+daily = false
+obj_type = "kill"
+obj_target = "robot_boss"
+obj_count = 1
+reward_currency = 1500
+reward_item_ids = PackedStringArray("loot_artifact")
+reward_item_counts = PackedInt32Array(2)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray()
+prereq = PackedStringArray("q_elite_hunt")
+lore = "Patrols, heavies, elites — all of it was the Foreman measuring you for this. Don't waste it."
+giver = "The Foreman"
+questline = "ql_foreman"
+offer_weight = 0

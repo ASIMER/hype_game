@@ -12,3 +12,4 @@ obj_target = ""
 obj_count = 3
 reward_currency = 250
 reward_blueprints = PackedStringArray("bp_ammo")
+offer_weight = 2

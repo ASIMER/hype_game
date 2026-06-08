@@ -15,3 +15,4 @@ reward_currency = 600
 reward_item_ids = PackedStringArray("loot_cell", "loot_chemicals")
 reward_item_counts = PackedInt32Array(5, 3)
 reward_blueprints = PackedStringArray("bp_drum_mag")
+offer_weight = 2

@@ -15,6 +15,11 @@ const GAME_VERSION: String = "0.3.0"
 ## Max number of non-daily contracts the player can have ACTIVE (accepted) at once.
 ## Manual-accept enforces it; dailies are exempt.
 const ACTIVE_QUEST_CAP: int = 6
+## Quest random-pool offering (Iteration 2): how many weighted random contracts the
+## QuestDirector offers per successful raid, and the cap on simultaneously-AVAILABLE
+## (offered-but-not-accepted) contracts so the board never floods.
+const RANDOM_OFFER_PER_RAID: int = 1
+const AVAILABLE_OFFER_CAP: int = 4
 # When true, the netcode emits [net]/[arena]/[client] diagnostic prints (connection,
 # roster sync, spawn/replication). Off for normal play; flip on to debug co-op.
 const NET_DEBUG: bool = false

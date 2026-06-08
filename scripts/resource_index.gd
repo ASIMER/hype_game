@@ -66,6 +66,9 @@ const QUESTS: PackedStringArray = [
 	"res://resources/quests/daily_kills.tres",
 	"res://resources/quests/daily_loot_hunter.tres",
 	"res://resources/quests/daily_wave_survivor.tres",
+	"res://resources/quests/q_breakers.tres",
+	"res://resources/quests/q_cull_grunts.tres",
+	"res://resources/quests/q_elite_hunt.tres",
 	"res://resources/quests/quest_extract_artifact.tres",
 	"res://resources/quests/quest_extract.tres",
 	"res://resources/quests/quest_kill_boss.tres",
@@ -76,5 +79,11 @@ const QUESTS: PackedStringArray = [
 	"res://resources/quests/standing_boss_hunter.tres",
 	"res://resources/quests/standing_chiprunner.tres",
 	"res://resources/quests/standing_wave_veteran.tres",
+]
+
+const QUESTLINES: PackedStringArray = [
+	"res://resources/questlines/ql_foreman.tres",
+	"res://resources/questlines/ql_salvage.tres",
+	"res://resources/questlines/ql_ghost.tres",
 ]
 

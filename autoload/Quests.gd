@@ -12,11 +12,14 @@ extends Node
 ## co-op-correct) rather than the server-only Events.entity_died.
 
 const QUESTS_DIR := "res://resources/quests/"
+const QUESTLINES_DIR := "res://resources/questlines/"
 
 var _quests: Array = []   # QuestData
+var _lines: Array = []     # QuestLine
 
 func _ready() -> void:
 	_scan()
+	_scan_lines()
 	# Objective hooks — advance matching ACTIVE quests as gameplay happens.
 	# Kills come via player_kill (fires per-peer on the killer's machine), NOT entity_died
 	# (server-only) — so a co-op client's kill quests actually advance.
@@ -45,6 +48,28 @@ func _add_quest(res: Resource, seen: Dictionary) -> void:
 	if res is QuestData and (res as QuestData).id != "" and not seen.has((res as QuestData).id):
 		seen[(res as QuestData).id] = true
 		_quests.append(res)
+
+## Scans resources/questlines/ (same dual DirAccess + ResourceIndex fallback as _scan).
+func _scan_lines() -> void:
+	_lines.clear()
+	var seen: Dictionary = {}
+	var dir := DirAccess.open(QUESTLINES_DIR)
+	if dir != null:
+		dir.list_dir_begin()
+		var f := dir.get_next()
+		while f != "":
+			if not dir.current_is_dir() and (f.ends_with(".tres") or f.ends_with(".res")):
+				_add_line(load(QUESTLINES_DIR + f), seen)
+			f = dir.get_next()
+		dir.list_dir_end()
+	for p in ResourceIndex.QUESTLINES:
+		if ResourceLoader.exists(p):
+			_add_line(load(p), seen)
+
+func _add_line(res: Resource, seen: Dictionary) -> void:
+	if res is QuestLine and (res as QuestLine).id != "" and not seen.has((res as QuestLine).id):
+		seen[(res as QuestLine).id] = true
+		_lines.append(res)
 
 # ---------------------------------------------------------------- queries
 func all() -> Array:
@@ -128,6 +153,15 @@ func active_count() -> int:
 func offered() -> Array:
 	return _by_state(["available"], false)
 
+## Number of non-daily contracts currently AVAILABLE (offered, awaiting accept) — board cap.
+func available_count() -> int:
+	var n := 0
+	for q in _quests:
+		var qd := q as QuestData
+		if not qd.daily and state_of(qd.id) == "available":
+			n += 1
+	return n
+
 ## Accepted contracts incl. completed-not-claimed (the ACTIVE section), non-daily.
 func accepted() -> Array:
 	return _by_state(["active", "completed"], false)
@@ -167,6 +201,71 @@ func standing() -> Array:
 	for q in _quests:
 		if not (q as QuestData).daily and not is_claimed((q as QuestData).id):
 			out.append(q)
+	return out
+
+# ---------------------------------------------------------------- questlines (Iter 2)
+## A quest is "gated" if it has explicit unlock clauses or prereqs (offered on conditions,
+## not from the random pool).
+func has_gate(q: QuestData) -> bool:
+	return q != null and (not q.unlock.is_empty() or not q.prereq.is_empty())
+
+func questlines() -> Array:
+	return _lines
+
+func line_by_id(id: String) -> QuestLine:
+	for l in _lines:
+		if (l as QuestLine).id == id:
+			return l
+	return null
+
+## The QuestLine that contains `quest_id`, or null (standalone).
+func questline_of(quest_id: String) -> QuestLine:
+	var q := quest_by_id(quest_id)
+	if q != null and q.questline != "":
+		return line_by_id(q.questline)
+	for l in _lines:
+		if quest_id in (l as QuestLine).quest_ids:
+			return l
+	return null
+
+## Ordered QuestData steps of a line (skips ids with no resource).
+func line_steps(line: QuestLine) -> Array:
+	var out: Array = []
+	if line == null:
+		return out
+	for sid in line.quest_ids:
+		var q := quest_by_id(String(sid))
+		if q != null:
+			out.append(q)
+	return out
+
+func line_step_index(line: QuestLine, quest_id: String) -> int:
+	if line == null:
+		return -1
+	for i in line.quest_ids.size():
+		if String(line.quest_ids[i]) == quest_id:
+			return i
+	return -1
+
+## { done: claimed steps, total: step count, current_id: first non-claimed step ("" = all done) }.
+func line_progress(line: QuestLine) -> Dictionary:
+	var done := 0
+	var current := ""
+	if line != null:
+		for sid in line.quest_ids:
+			if is_claimed(String(sid)):
+				done += 1
+			elif current == "":
+				current = String(sid)
+	return { "done": done, "total": (line.quest_ids.size() if line != null else 0), "current_id": current }
+
+## Weighted-eligible random-pool quests: LOCKED, offer_weight>0, prereqs claimed (is_unlocked).
+func random_pool() -> Array:
+	var out: Array = []
+	for q in _quests:
+		var qd := q as QuestData
+		if qd.offer_weight > 0 and state_of(qd.id) == "" and is_unlocked(qd):
+			out.append(qd)
 	return out
 
 # ---------------------------------------------------------------- unlock conditions

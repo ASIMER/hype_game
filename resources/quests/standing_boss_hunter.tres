@@ -15,3 +15,4 @@ reward_currency = 800
 reward_item_ids = PackedStringArray("loot_artifact", "loot_circuit_pack")
 reward_item_counts = PackedInt32Array(2, 1)
 reward_blueprints = PackedStringArray("bp_suppressor")
+offer_weight = 2

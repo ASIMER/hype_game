@@ -123,17 +123,23 @@ func _refresh() -> void:
 		child.queue_free()
 
 	var dailies: Array = Quests.get_daily_quests()
-	var available: Array = Quests.offered()
-	var active: Array = Quests.accepted()
-	var completed: Array = Quests.claimed_list()
-	var locked: Array = Quests.locked_teasers()
-	var all_empty: bool = dailies.is_empty() and available.is_empty() \
-		and active.is_empty() and completed.is_empty() and locked.is_empty()
+	# Generic sections show STANDALONE contracts only; questline members render under their line.
+	var available: Array = _standalone(Quests.offered())
+	var active: Array = _standalone(Quests.accepted())
+	var completed: Array = _standalone(Quests.claimed_list())
+	var locked: Array = _standalone(Quests.locked_teasers())
+	var lines: Array = _visible_lines()
+	var all_empty: bool = dailies.is_empty() and available.is_empty() and active.is_empty() \
+		and completed.is_empty() and locked.is_empty() and lines.is_empty()
 
 	_empty_label.visible = all_empty
 	_cards_container.visible = not all_empty
 	if all_empty:
 		return
+
+	# ── QUESTLINES (story groups: header strip + the line's current step) ────
+	for line_var in lines:
+		_build_questline_group(line_var as QuestLine)
 
 	# ── AVAILABLE (offered, awaiting ACCEPT) ─────────────────────────────────
 	if not available.is_empty():
@@ -163,6 +169,57 @@ func _refresh() -> void:
 		_cards_container.add_child(_build_section_header(tr("COMPLETED"), "", COL_TEAL))
 		for q_var in completed:
 			_add_card(q_var, "completed")
+
+
+## Keeps only standalone (non-questline) quests from an array.
+func _standalone(arr: Array) -> Array:
+	var out: Array = []
+	for q_var in arr:
+		var q := q_var as QuestData
+		if q != null and q.questline == "":
+			out.append(q)
+	return out
+
+## Questlines that have anything worth showing (a current step that isn't a far-off lock with
+## no progress yet shows as a teaser; fully-claimed lines collapse to a single done header).
+func _visible_lines() -> Array:
+	return Quests.questlines()
+
+## Renders a questline as a tinted header strip ("⛓ TITLE — Step X/Y · giver") + its CURRENT
+## step card (available→ACCEPT / active→progress+CLAIM / locked→teaser). Full step list = modal.
+func _build_questline_group(line: QuestLine) -> void:
+	if line == null:
+		return
+	var lp: Dictionary = Quests.line_progress(line)
+	var total: int = int(lp.get("total", 0))
+	var done: int = int(lp.get("done", 0))
+	var current_id: String = String(lp.get("current_id", ""))
+	var accent: Color = _accent_col(line.accent)
+	var sub: String
+	if current_id == "":
+		sub = tr("Questline complete")
+	else:
+		sub = "%s %d / %d · %s" % [tr("Step"), done + 1, total, line.giver]
+	_cards_container.add_child(_build_section_header("⛓ " + tr(line.title), sub, accent))
+	if current_id == "":
+		return
+	var step: QuestData = Quests.quest_by_id(current_id)
+	if step == null:
+		return
+	var st := Quests.state_of(current_id)
+	var mode := "locked"
+	if st == "available":
+		mode = "available"
+	elif st == "active" or st == "completed":
+		mode = "active"
+	_add_card(step, mode)
+
+
+func _accent_col(accent: int) -> Color:
+	match accent:
+		1: return COL_TEAL
+		2: return COL_GREEN
+		_: return COL_AMBER
 
 
 func _add_card(q_var: Variant, mode: String) -> void:
@@ -251,6 +308,24 @@ func _build_card(q: QuestData, mode: String = "active") -> PanelContainer:
 		title_row.add_child(_chip(tr("NEW"), COL_GREEN))
 	elif claimed:
 		title_row.add_child(_chip(tr("CLAIMED"), COL_TEAL))
+
+	# DETAILS button → opens the rich lore/giver/step modal.
+	var details_btn := Button.new()
+	details_btn.text = "ⓘ"
+	details_btn.focus_mode = Control.FOCUS_NONE
+	details_btn.custom_minimum_size = Vector2(34, 30)
+	details_btn.tooltip_text = tr("Details")
+	var detail_id: String = q.id
+	details_btn.pressed.connect(func() -> void: _open_detail(detail_id))
+	title_row.add_child(details_btn)
+
+	# ── Giver byline ─────────────────────────────────────────────────────────
+	if q.giver != "":
+		var giver_lbl := Label.new()
+		giver_lbl.text = "— " + q.giver
+		giver_lbl.add_theme_color_override("font_color", COL_TEAL)
+		giver_lbl.add_theme_font_size_override("font_size", 12)
+		vbox.add_child(giver_lbl)
 
 	# ── Description / lore ───────────────────────────────────────────────────
 	var body_text: String = q.desc
@@ -378,6 +453,24 @@ func _on_stash_changed() -> void:
 
 func _on_dailies_rotated() -> void:
 	_refresh()
+
+
+## Opens the rich detail modal for a quest, hosted on the nearest CanvasLayer so it overlays
+## the whole Hub. Refreshes the tab when an ACCEPT/CLAIM happens inside the modal.
+func _open_detail(quest_id: String) -> void:
+	var modal := QuestDetail.new()
+	_modal_host().add_child(modal)
+	modal.open(quest_id)
+	modal.changed.connect(_refresh)
+
+
+func _modal_host() -> Node:
+	var n: Node = self
+	while n != null:
+		if n is CanvasLayer:
+			return n
+		n = n.get_parent()
+	return self
 
 
 func _on_accept_pressed(quest_id: String) -> void:

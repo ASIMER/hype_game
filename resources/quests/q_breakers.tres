@@ -19,3 +19,4 @@ unlock = PackedStringArray("kills_by_type.robot_grunt>=10")
 prereq = PackedStringArray()
 lore = "Once the patrols learn to fear you, they send the heavies. Good. They break harder."
 giver = "The Foreman"
+questline = "ql_foreman"

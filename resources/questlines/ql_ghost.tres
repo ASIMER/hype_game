@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestLine" load_steps=2 format=3 uid="uid://cqlghost01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_line.gd" id="1_ql"]
+
+[resource]
+script = ExtResource("1_ql")
+id = "ql_ghost"
+title = "Ghost Protocol"
+intro = "A voice called Signal cuts into your comms between raids. Outlast the storm, silence the callers, and it might just tell you who it is."
+giver = "Signal"
+quest_ids = PackedStringArray("q_hold_the_line", "q_storm_rider", "q_silent_cull")
+accent = 2

@@ -38,7 +38,7 @@ $PresetName   = "macOS"
 # can't enumerate a res:// directory inside a PCK.
 function Write-ResourceIndex {
     param([string]$Proj)
-    $cats = [ordered]@{ ITEMS = "resources/items"; ATTACHMENTS = "resources/attachments"; RECIPES = "resources/recipes"; QUESTS = "resources/quests" }
+    $cats = [ordered]@{ ITEMS = "resources/items"; ATTACHMENTS = "resources/attachments"; RECIPES = "resources/recipes"; QUESTS = "resources/quests"; QUESTLINES = "resources/questlines" }
     $lines = @(
         "extends RefCounted",
         "class_name ResourceIndex",

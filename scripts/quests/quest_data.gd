@@ -34,9 +34,17 @@ class_name QuestData
 @export var unlock: PackedStringArray = PackedStringArray()
 ## Quest ids that must be CLAIMED before this one can be offered (chain links; AND-ed with unlock).
 @export var prereq: PackedStringArray = PackedStringArray()
-## Flavor (shown in the UI). Questline grouping + full lore UI land in Iteration 2.
+## Flavor (shown in the UI detail modal). Falls back to the questline `intro` if empty.
 @export_multiline var lore: String = ""
 @export var giver: String = ""
+
+## --- Iteration 2: questline grouping + random-pool offering ---
+## Back-reference to the owning QuestLine.id ("" = standalone contract). The line's
+## `quest_ids` is the source of truth for step order; this is for O(1) grouping.
+@export var questline: String = ""
+## Random-pool eligibility/weight. 0 = NEVER random-offered (only the ungated / condition /
+## prereq paths). >0 = eligible for the QuestDirector's per-raid weighted random offer.
+@export var offer_weight: int = 0
 
 ## Reward items as an array of { "id": String, "count": int } dicts.
 func reward_items() -> Array:

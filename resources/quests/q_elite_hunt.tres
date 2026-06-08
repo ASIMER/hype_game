@@ -19,3 +19,4 @@ unlock = PackedStringArray()
 prereq = PackedStringArray("q_breakers")
 lore = "You broke the patrols, then the heavies. Now the warden sends its best. Finish this."
 giver = "The Foreman"
+questline = "ql_foreman"
