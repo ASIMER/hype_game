@@ -369,6 +369,13 @@ func get_enemy_spawn_point(index: int) -> Transform3D:
 	xform.origin = snap_to_navmesh(xform.origin)
 	return xform
 
+## Number of enemy spawn markers available. Lets the wave manager rescan EVERY
+## marker (not just index % n) when picking a spawn far from the players.
+func enemy_marker_count() -> int:
+	if enemy_spawn_markers == null:
+		return 0
+	return enemy_spawn_markers.get_child_count()
+
 ## Returns the nearest point on the baked navigation map to `pos`, or `pos`
 ## unchanged if the map isn't ready / the closest point is implausibly far (a sign
 ## the map hasn't synced yet). Also used by enemy stuck-recovery.

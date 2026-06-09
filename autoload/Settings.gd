@@ -346,10 +346,19 @@ const ENEMY_STATS := {
 # (wave_manager._enemy_count_for_wave); player_damage scales outgoing weapon damage
 # (a small assist on Easy / handicap on Hard). Normal is the 1.0 baseline.
 const DIFFICULTY_MODS := {
-	0: { "enemy_health": 0.72, "enemy_damage": 0.70, "enemy_count": 0.75, "player_damage": 1.25 }, # EASY
+	0: { "enemy_health": 0.55, "enemy_damage": 0.50, "enemy_count": 0.60, "player_damage": 1.40 }, # EASY
 	1: { "enemy_health": 1.00, "enemy_damage": 1.00, "enemy_count": 1.00, "player_damage": 1.00 }, # NORMAL
-	2: { "enemy_health": 1.40, "enemy_damage": 1.30, "enemy_count": 1.30, "player_damage": 0.90 }, # HARD
+	2: { "enemy_health": 1.45, "enemy_damage": 1.40, "enemy_count": 1.35, "player_damage": 0.90 }, # HARD
 }
+
+# Minimum spawn distance (m) from the nearest player, by spawn kind. If a chosen
+# marker is closer than this, the wave manager rescans all enemy markers and picks
+# the farthest one so enemies approach from across the map instead of popping in on
+# top of the player. Reinforcements/flanks deliberately stay closer (a flank), but
+# never literally inside melee range.
+const SPAWN_MIN_DIST_WAVE: float = 28.0
+const SPAWN_MIN_DIST_PATROL: float = 22.0
+const SPAWN_MIN_DIST_REINFORCE: float = 14.0
 
 ## Returns the multiplier dict for a GameState.Difficulty value (falls back to Normal).
 func difficulty_mods(d: int = -1) -> Dictionary:

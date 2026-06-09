@@ -159,9 +159,18 @@ func _on_match_started() -> void:
 	_storm = false
 	_storm_started = false
 	Events.match_timer_changed.emit(GameState.match_time_left, GameState.match_duration)
+	# Surface the active difficulty so the player can SEE the selected level took effect.
+	Events.notify.emit(tr("Difficulty: %s") % tr(_difficulty_name()), 2)
 	# Spawn pre-first-wave patrols so the map feels alive from second one.
 	_spawn_patrols()
 	_start_next_wave()
+
+## Human-readable name of the active difficulty (English source string = CSV key).
+func _difficulty_name() -> String:
+	match GameState.difficulty:
+		GameState.Difficulty.EASY: return "EASY"
+		GameState.Difficulty.HARD: return "HARD"
+		_: return "NORMAL"
 
 func _start_next_wave() -> void:
 	# NOTE: between-wave patrols PERSIST across wave starts (they live in _patrols, which is
@@ -344,6 +353,45 @@ func _scene_for_spawn() -> String:
 	var pick: String = pool[randi() % pool.size()]
 	return pick if ResourceLoader.exists(pick) else SCENE_GRUNT
 
+## World positions of every living (Node3D) player. Reused by the spawn-distance
+## helpers and the camp detector.
+func _player_positions() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for pl in get_tree().get_nodes_in_group("players"):
+		if pl is Node3D and is_instance_valid(pl):
+			out.append((pl as Node3D).global_position)
+	return out
+
+## Distance from `pos` to the nearest player position (INF if none).
+func _nearest_dist(pos: Vector3, players: Array[Vector3]) -> float:
+	var nd: float = INF
+	for p in players:
+		nd = minf(nd, pos.distance_to(p))
+	return nd
+
+## Returns a spawn transform at least `min_dist` from every player. If the marker
+## chosen for `index` is too close, rescan ALL enemy markers and pick the one whose
+## nearest-player distance is largest (each is already navmesh-snapped). Falls back to
+## the original marker when no players exist or no marker is farther.
+func _spawn_xform_far(index: int, min_dist: float) -> Transform3D:
+	var base: Transform3D = _arena.get_enemy_spawn_point(index)
+	var players := _player_positions()
+	if players.is_empty():
+		return base
+	var base_d: float = _nearest_dist(base.origin, players)
+	if base_d >= min_dist:
+		return base
+	var best: Transform3D = base
+	var best_d: float = base_d
+	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 0
+	for i in n:
+		var x: Transform3D = _arena.get_enemy_spawn_point(i)
+		var d: float = _nearest_dist(x.origin, players)
+		if d > best_d:
+			best_d = d
+			best = x
+	return best
+
 ## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
 ## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.
 func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE, as_hunter: bool = true) -> void:
@@ -363,8 +411,9 @@ func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE, as_hunter: bool 
 		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
 	# Position at a spawn marker after entering the tree (global_transform needs it).
+	# Keep it well away from the players so waves approach instead of popping in on top.
 	if enemy is Node3D and _arena:
-		(enemy as Node3D).global_transform = _arena.get_enemy_spawn_point(index)
+		(enemy as Node3D).global_transform = _spawn_xform_far(index, Settings.SPAWN_MIN_DIST_WAVE)
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
 
@@ -487,8 +536,10 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
+	# Reinforcements/flanks are deliberately closer than waves, but never inside melee
+	# range of the player.
 	if enemy is Node3D and _arena:
-		(enemy as Node3D).global_transform = _arena.get_enemy_spawn_point(index)
+		(enemy as Node3D).global_transform = _spawn_xform_far(index, Settings.SPAWN_MIN_DIST_REINFORCE)
 	# Reinforcements count toward alive enemies (wave-clear accounting).
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
@@ -585,9 +636,10 @@ func _spawn_patrol_enemy(index: int, scene_path: String) -> void:
 		enemy.hunter = false
 	_enemies_container.add_child(enemy, true)
 	if enemy is Node3D and _arena:
-		# Offset the patrol index to spread them away from wave spawn markers.
+		# Offset the patrol index to spread them away from wave spawn markers, and keep
+		# them clearly away from the players so they can be discovered, not spawned onto.
 		var marker_offset: int = 8 + index
-		(enemy as Node3D).global_transform = _arena.get_enemy_spawn_point(marker_offset)
+		(enemy as Node3D).global_transform = _spawn_xform_far(marker_offset, Settings.SPAWN_MIN_DIST_PATROL)
 	# Track in _patrols, NOT _alive_enemies.
 	_patrols.append(enemy)
 	Events.enemy_spawned.emit(enemy)
