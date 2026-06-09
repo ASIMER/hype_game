@@ -170,6 +170,10 @@ const NOISE_IDLE: float = 2.5                # barely-moving hum (still faintly 
 # A noise this loud or louder at the enemy counts as a "spike" → CHASE straight away
 # (instead of the cautious INVESTIGATE walk-to-the-sound). Fraction of the heard radius.
 const NOISE_CHASE_FRACTION: float = 0.45
+# A non-hunter patrol NOTICES a player within this radius even without clean line-of-sight or
+# loud footsteps (so a patrol you walk right up to engages instead of standing idle). Beyond it,
+# the normal hearing/LOS stealth applies. Read by robot_enemy's perception.
+const PROXIMITY_AGGRO_RADIUS: float = 9.0
 # INVESTIGATE behaviour: move to the last-heard point at this speed mult, look around,
 # then give up after GIVEUP seconds with no confirmation and return to PATROL.
 const INVESTIGATE_SPEED_MULT: float = 0.8

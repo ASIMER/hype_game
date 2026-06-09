@@ -398,6 +398,12 @@ func snap_to_navmesh(pos: Vector3) -> Vector3:
 		return pos
 	return snapped
 
+## World positions of the player spawn markers. The wave manager uses these as the side-of-river
+## reference for the FIRST spawns of a match, before any player node has registered in the
+## "players" group, so early enemies still spawn on the bank the players will appear on.
+func get_player_spawn_points() -> Array[Vector3]:
+	return _marker_positions(player_spawn_markers)
+
 ## Returns the risk tier (1 low … 3 high) for a POI identified either by its
 ## integer index into the _POI_DEFS insertion order, or by its String name.
 ## Falls back to tier 1 for unknown indices/names.

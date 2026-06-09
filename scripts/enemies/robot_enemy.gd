@@ -318,20 +318,25 @@ func _physics_process(delta: float) -> void:
 	else:
 		_target = null
 
+	# A non-hunter NOTICES a player who comes CLOSE even without clean LOS / loud steps —
+	# so a patrol you walk right up to engages instead of standing there. Long-range stealth
+	# is unchanged (beyond this radius it still needs hearing/LOS).
+	var near := _target != null and dist <= Settings.PROXIMITY_AGGRO_RADIUS
+
 	# Hunters always know where the player is (forced LOS + unlimited detect), so they
 	# leave their nest and close in; they still ATTACK only inside attack range.
 	if hunter and _target != null:
 		current_state = _fsm.evaluate(_target, dist, true, 1.0e9, _stat_attack_range)
 	elif current_state != State.INVESTIGATE:
-		current_state = _fsm.evaluate(_target, dist, has_los, _stat_detect, _stat_attack_range)
+		current_state = _fsm.evaluate(_target, dist, has_los or near, _stat_detect, _stat_attack_range)
 	else:
 		# While investigating, promote to CHASE/ATTACK the moment LOS is confirmed
-		# within detect. evaluate() has no INVESTIGATE case (it would return INVESTIGATE
-		# unchanged), so seed the FSM into CHASE first, then let evaluate resolve
-		# CHASE→ATTACK (or back to PATROL if the gap reopens). Falls through to cascade.
-		if _target != null and has_los and dist <= _stat_detect:
+		# within detect — or the player gets close. evaluate() has no INVESTIGATE case (it
+		# would return INVESTIGATE unchanged), so seed the FSM into CHASE first, then let
+		# evaluate resolve CHASE→ATTACK (or back to PATROL if the gap reopens).
+		if _target != null and (has_los or near) and dist <= _stat_detect:
 			_fsm.state = State.CHASE
-			current_state = _fsm.evaluate(_target, dist, has_los, _stat_detect, _stat_attack_range)
+			current_state = _fsm.evaluate(_target, dist, has_los or near, _stat_detect, _stat_attack_range)
 
 	# Cascading alert edge detection: the moment we enter CHASE, wake nearby non-hunters.
 	if current_state == State.CHASE and not _was_chasing:

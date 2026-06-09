@@ -371,7 +371,17 @@ func _player_positions() -> Array[Vector3]:
 			dead = bool(h.is_dead)
 		if not downed and not dead:
 			up.append(pos)
-	return up if not up.is_empty() else all
+	if not up.is_empty():
+		return up
+	if not all.is_empty():
+		return all
+	# No player nodes yet (the very first spawns of a match fire before players register in the
+	# "players" group). Use the player SPAWN markers as the side-of-river reference so early
+	# enemies still spawn on the bank the players will appear on, not stranded across the river.
+	if _arena != null and _arena.has_method("get_player_spawn_points"):
+		var pts: Array[Vector3] = _arena.get_player_spawn_points()
+		return pts
+	return all
 
 ## True when `pos` is on the SAME side of the river as at least one player (the straight line
 ## to that player doesn't cross the deep channel). The river splits the map into two banks
@@ -396,8 +406,10 @@ func _crosses_river(a: Vector3, b: Vector3) -> bool:
 	return false
 
 ## Pick a spawn transform on the player's side of the river so the enemy can actually walk in.
-## Round-robin from `index` (the wave still spreads across markers) and return the FIRST marker
-## that's same-side as a player; fall back to the index marker if none qualify / no players.
+## Collect EVERY same-side marker, then spread enemies evenly across them (index % count). The
+## old version returned the FIRST same-side marker from `index`, which mapped most wave indices
+## to the SAME marker → a whole wave piled onto one point (stacked, shoved up by collision —
+## "боты падают сверху в одну точку"). Falls back to the index marker if none qualify / no players.
 func _spawn_xform(index: int) -> Transform3D:
 	if _arena == null:
 		return Transform3D.IDENTITY
@@ -405,12 +417,13 @@ func _spawn_xform(index: int) -> Transform3D:
 	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 0
 	if players.is_empty() or n <= 0:
 		return _arena.get_enemy_spawn_point(index)
-	for k in n:
-		var i: int = (index + k) % n
-		var x: Transform3D = _arena.get_enemy_spawn_point(i)
-		if _spawn_ok_for_players(x.origin, players):
-			return x
-	return _arena.get_enemy_spawn_point(index)
+	var ok: Array[int] = []
+	for i in n:
+		if _spawn_ok_for_players(_arena.get_enemy_spawn_point(i).origin, players):
+			ok.append(i)
+	if ok.is_empty():
+		return _arena.get_enemy_spawn_point(index)
+	return _arena.get_enemy_spawn_point(ok[index % ok.size()])
 
 ## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
 ## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.
