@@ -255,10 +255,18 @@ static func _river_t(x: float, z: float) -> float:
 	var dist: float = _river_dist(x, z)
 	return 1.0 - smoothstep(RIVER_CHANNEL_HALF - 0.6, RIVER_CHANNEL_HALF, dist)
 
+## Longitudinal depth scale that SHALLOWS the river's south terminus into a gentle pond. The
+## centerline ends at z=80 (the OLD map edge, now MID-map): without this the channel ended in a
+## full-depth ~2.7 m rounded bowl. Tapering to ×0.5 (≈1.35 m) over z∈[60,80] makes a clean
+## shallowing pond while staying ABOVE the navmesh agent_max_climb (0.5 m) so the two banks stay
+## disconnected exactly as before (enemies still cross only at the bridge). PURE.
+static func _river_depth_scale(z: float) -> float:
+	return lerp(1.0, 0.5, smoothstep(60.0, 80.0, z))
+
 ## Effective carve depth at (x,z) in METRES below the local banks (used for COLORING the
 ## wet bed and the riverbed material bands). PURE.
 static func _river_carve(x: float, z: float) -> float:
-	return RIVER_MAX_DEPTH * _river_profile(_river_dist(x, z))
+	return RIVER_MAX_DEPTH * _river_profile(_river_dist(x, z)) * _river_depth_scale(z)
 
 # ---------------------------------------------------------------- height field
 ## PURE height function. Other systems sample this; the mesh uses the identical math.
@@ -293,7 +301,7 @@ static func height_at(x: float, z: float) -> float:
 	# local depth below the banks, the channel tracks the rolling hills instead of becoming
 	# a pit where the hills dip. Pads still win via the `open` blend below → the channel
 	# never crosses a building/extraction pad (it flattens to PAD_Y there).
-	var depth: float = RIVER_MAX_DEPTH * _river_profile(_river_dist(x, z))
+	var depth: float = RIVER_MAX_DEPTH * _river_profile(_river_dist(x, z)) * _river_depth_scale(z)
 	if depth > 0.0:
 		raw = hills - depth + berm
 	var h: float = lerp(PAD_Y, raw, open)
