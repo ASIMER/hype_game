@@ -353,76 +353,64 @@ func _scene_for_spawn() -> String:
 	var pick: String = pool[randi() % pool.size()]
 	return pick if ResourceLoader.exists(pick) else SCENE_GRUNT
 
-## World positions of every living (Node3D) player. Reused by the spawn-distance
-## helpers and the camp detector.
+## World positions of the players enemies will actually chase — alive and NOT downed
+## (matching robot_enemy._find_nearest_player, which ignores downed players). Falls back to
+## ALL players if everyone is downed, so spawn-side selection still has something to work with.
 func _player_positions() -> Array[Vector3]:
-	var out: Array[Vector3] = []
+	var up: Array[Vector3] = []
+	var all: Array[Vector3] = []
 	for pl in get_tree().get_nodes_in_group("players"):
-		if pl is Node3D and is_instance_valid(pl):
-			out.append((pl as Node3D).global_position)
-	return out
-
-## Distance from `pos` to the nearest player position (INF if none).
-func _nearest_dist(pos: Vector3, players: Array[Vector3]) -> float:
-	var nd: float = INF
-	for p in players:
-		nd = minf(nd, pos.distance_to(p))
-	return nd
-
-## Returns a spawn transform that's a sane distance from the players: at least
-## `min_dist` away (so enemies don't pop in on top) but as CLOSE to that buffer as
-## possible and REACHABLE on the navmesh (so they actually walk in instead of being
-## banished to the far corner across the river). If the marker chosen for `index` is
-## already fine, it's kept (preserving the per-index spread); otherwise we pick the
-## nearest reachable marker beyond the buffer, with a little randomness so a wave
-## doesn't all pile onto one marker.
-##
-## NOTE: this REPLACED a buggy version that returned the single FARTHEST marker for
-## every too-close enemy — that clustered whole waves on the opposite river bank
-## (~145 m, one bridge crossing) so the AI appeared to never reach the player.
-func _spawn_xform_far(index: int, min_dist: float) -> Transform3D:
-	var base: Transform3D = _arena.get_enemy_spawn_point(index)
-	var players := _player_positions()
-	if players.is_empty():
-		return base
-	var base_d: float = _nearest_dist(base.origin, players)
-	# Keep the index-chosen marker when it's already far enough AND reachable.
-	if base_d >= min_dist and _reachable_from_players(base.origin, players):
-		return base
-	# Collect every marker, tagged with nearest-player distance + reachability.
-	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 0
-	var candidates: Array = []        # [dist, Transform3D] with dist >= min_dist AND reachable
-	var reachable_any: Array = []     # [dist, Transform3D] reachable at ANY distance (fallback)
-	for i in n:
-		var x: Transform3D = _arena.get_enemy_spawn_point(i)
-		var d: float = _nearest_dist(x.origin, players)
-		if not _reachable_from_players(x.origin, players):
+		if not (pl is Node3D) or not is_instance_valid(pl):
 			continue
-		reachable_any.append([d, x])
-		if d >= min_dist:
-			candidates.append([d, x])
-	# Prefer reachable markers beyond the buffer; pick among the CLOSEST few (not the
-	# farthest) so enemies start a fair-but-fightable distance away and spread out.
-	if not candidates.is_empty():
-		candidates.sort_custom(func(a, b): return a[0] < b[0])
-		var pick_pool: int = mini(3, candidates.size())
-		return candidates[randi() % pick_pool][1]
-	# No reachable marker beyond the buffer — take the FARTHEST reachable one we have
-	# (best effort to honour the buffer), else fall back to the index marker.
-	if not reachable_any.is_empty():
-		reachable_any.sort_custom(func(a, b): return a[0] > b[0])
-		return reachable_any[0][1]
-	return base
+		var pos: Vector3 = (pl as Node3D).global_position
+		all.append(pos)
+		var downed: bool = pl.has_method("is_downed") and pl.is_downed()
+		var dead: bool = false
+		var h: Node = pl.get_node_or_null("Health")
+		if h != null and "is_dead" in h:
+			dead = bool(h.is_dead)
+		if not downed and not dead:
+			up.append(pos)
+	return up if not up.is_empty() else all
 
-## True when `pos` can path to at least one of the players (or reachability can't be
-## evaluated yet). Thin wrapper over arena.navmesh_reachable.
-func _reachable_from_players(pos: Vector3, players: Array[Vector3]) -> bool:
-	if _arena == null or not _arena.has_method("navmesh_reachable"):
-		return true
+## True when `pos` is on the SAME side of the river as at least one player (the straight line
+## to that player doesn't cross the deep channel). The river splits the map into two banks
+## joined only by a narrow bridge/ford; an enemy spawned on the WRONG bank can't path to the
+## player and just jitters in place ("боты не идут"). Spawning same-side means a direct walk-in,
+## no fragile river crossing. Returns true if it can't be evaluated (no players).
+func _spawn_ok_for_players(pos: Vector3, players: Array[Vector3]) -> bool:
 	for p in players:
-		if _arena.navmesh_reachable(pos, p):
+		if not _crosses_river(pos, p):
 			return true
 	return false
+
+## Sample the straight XZ segment a→b; true if any sample lies over the deep river channel.
+func _crosses_river(a: Vector3, b: Vector3) -> bool:
+	const SAMPLES: int = 16
+	for i in range(SAMPLES + 1):
+		var t: float = float(i) / float(SAMPLES)
+		var x: float = lerpf(a.x, b.x, t)
+		var z: float = lerpf(a.z, b.z, t)
+		if ProceduralTerrain._river_dist(x, z) < ProceduralTerrain.RIVER_CHANNEL_HALF:
+			return true
+	return false
+
+## Pick a spawn transform on the player's side of the river so the enemy can actually walk in.
+## Round-robin from `index` (the wave still spreads across markers) and return the FIRST marker
+## that's same-side as a player; fall back to the index marker if none qualify / no players.
+func _spawn_xform(index: int) -> Transform3D:
+	if _arena == null:
+		return Transform3D.IDENTITY
+	var players := _player_positions()
+	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 0
+	if players.is_empty() or n <= 0:
+		return _arena.get_enemy_spawn_point(index)
+	for k in n:
+		var i: int = (index + k) % n
+		var x: Transform3D = _arena.get_enemy_spawn_point(i)
+		if _spawn_ok_for_players(x.origin, players):
+			return x
+	return _arena.get_enemy_spawn_point(index)
 
 ## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
 ## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.
@@ -442,10 +430,9 @@ func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE, as_hunter: bool 
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
-	# Position at a spawn marker after entering the tree (global_transform needs it).
-	# Keep it well away from the players so waves approach instead of popping in on top.
+	# Position at a spawn marker the player can actually reach (avoids the wrong river bank).
 	if enemy is Node3D and _arena:
-		(enemy as Node3D).global_transform = _spawn_xform_far(index, Settings.SPAWN_MIN_DIST_WAVE)
+		(enemy as Node3D).global_transform = _spawn_xform(index)
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
 
@@ -568,10 +555,8 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
-	# Reinforcements/flanks are deliberately closer than waves, but never inside melee
-	# range of the player.
 	if enemy is Node3D and _arena:
-		(enemy as Node3D).global_transform = _spawn_xform_far(index, Settings.SPAWN_MIN_DIST_REINFORCE)
+		(enemy as Node3D).global_transform = _spawn_xform(index)
 	# Reinforcements count toward alive enemies (wave-clear accounting).
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
@@ -668,10 +653,10 @@ func _spawn_patrol_enemy(index: int, scene_path: String) -> void:
 		enemy.hunter = false
 	_enemies_container.add_child(enemy, true)
 	if enemy is Node3D and _arena:
-		# Offset the patrol index to spread them away from wave spawn markers, and keep
-		# them clearly away from the players so they can be discovered, not spawned onto.
+		# Offset the patrol index to spread them away from wave spawn markers; still keep it
+		# to a marker the player can reach.
 		var marker_offset: int = 8 + index
-		(enemy as Node3D).global_transform = _spawn_xform_far(marker_offset, Settings.SPAWN_MIN_DIST_PATROL)
+		(enemy as Node3D).global_transform = _spawn_xform(marker_offset)
 	# Track in _patrols, NOT _alive_enemies.
 	_patrols.append(enemy)
 	Events.enemy_spawned.emit(enemy)

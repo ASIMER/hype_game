@@ -369,8 +369,8 @@ func get_enemy_spawn_point(index: int) -> Transform3D:
 	xform.origin = snap_to_navmesh(xform.origin)
 	return xform
 
-## Number of enemy spawn markers available. Lets the wave manager rescan EVERY
-## marker (not just index % n) when picking a spawn far from the players.
+## Number of enemy spawn markers. Lets the wave manager round-robin over all markers
+## (not just index % n) when it needs to pick a spawn the player can actually reach.
 func enemy_marker_count() -> int:
 	if enemy_spawn_markers == null:
 		return 0
@@ -397,24 +397,6 @@ func snap_to_navmesh(pos: Vector3) -> Vector3:
 	if snapped.distance_to(pos) > 14.0:
 		return pos
 	return snapped
-
-## True when a walkable navmesh path exists from `from` to `to` (the path actually
-## arrives within `tol` of `to`). Used by the wave spawner so it never drops an enemy
-## on a navmesh patch it can't path off (e.g. the wrong side of the river). Returns
-## true when the map isn't ready yet (don't block spawns) — the enemy's stuck-recovery
-## handles the rare not-yet-synced case.
-func navmesh_reachable(from: Vector3, to: Vector3, tol: float = 4.0) -> bool:
-	if nav_region == null:
-		return true
-	var map := nav_region.get_navigation_map()
-	if not map.is_valid() or NavigationServer3D.map_get_iteration_id(map) == 0:
-		return true
-	var path: PackedVector3Array = NavigationServer3D.map_get_path(map, from, to, true)
-	if path.size() < 2:
-		return false
-	# The path is clamped to the navmesh; if its final point lands near `to`, the two
-	# points are on the same connected region (reachable).
-	return path[path.size() - 1].distance_to(to) <= tol
 
 ## Returns the risk tier (1 low … 3 high) for a POI identified either by its
 ## integer index into the _POI_DEFS insertion order, or by its String name.

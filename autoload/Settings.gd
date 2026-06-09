@@ -351,15 +351,6 @@ const DIFFICULTY_MODS := {
 	2: { "enemy_health": 1.45, "enemy_damage": 1.40, "enemy_count": 1.35, "player_damage": 0.90 }, # HARD
 }
 
-# Minimum spawn distance (m) from the nearest player, by spawn kind. If a chosen
-# marker is closer than this, the wave manager rescans all enemy markers and picks
-# the farthest one so enemies approach from across the map instead of popping in on
-# top of the player. Reinforcements/flanks deliberately stay closer (a flank), but
-# never literally inside melee range.
-const SPAWN_MIN_DIST_WAVE: float = 28.0
-const SPAWN_MIN_DIST_PATROL: float = 22.0
-const SPAWN_MIN_DIST_REINFORCE: float = 14.0
-
 ## Returns the multiplier dict for a GameState.Difficulty value (falls back to Normal).
 func difficulty_mods(d: int = -1) -> Dictionary:
 	if d < 0:
