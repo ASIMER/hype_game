@@ -369,28 +369,60 @@ func _nearest_dist(pos: Vector3, players: Array[Vector3]) -> float:
 		nd = minf(nd, pos.distance_to(p))
 	return nd
 
-## Returns a spawn transform at least `min_dist` from every player. If the marker
-## chosen for `index` is too close, rescan ALL enemy markers and pick the one whose
-## nearest-player distance is largest (each is already navmesh-snapped). Falls back to
-## the original marker when no players exist or no marker is farther.
+## Returns a spawn transform that's a sane distance from the players: at least
+## `min_dist` away (so enemies don't pop in on top) but as CLOSE to that buffer as
+## possible and REACHABLE on the navmesh (so they actually walk in instead of being
+## banished to the far corner across the river). If the marker chosen for `index` is
+## already fine, it's kept (preserving the per-index spread); otherwise we pick the
+## nearest reachable marker beyond the buffer, with a little randomness so a wave
+## doesn't all pile onto one marker.
+##
+## NOTE: this REPLACED a buggy version that returned the single FARTHEST marker for
+## every too-close enemy — that clustered whole waves on the opposite river bank
+## (~145 m, one bridge crossing) so the AI appeared to never reach the player.
 func _spawn_xform_far(index: int, min_dist: float) -> Transform3D:
 	var base: Transform3D = _arena.get_enemy_spawn_point(index)
 	var players := _player_positions()
 	if players.is_empty():
 		return base
 	var base_d: float = _nearest_dist(base.origin, players)
-	if base_d >= min_dist:
+	# Keep the index-chosen marker when it's already far enough AND reachable.
+	if base_d >= min_dist and _reachable_from_players(base.origin, players):
 		return base
-	var best: Transform3D = base
-	var best_d: float = base_d
+	# Collect every marker, tagged with nearest-player distance + reachability.
 	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 0
+	var candidates: Array = []        # [dist, Transform3D] with dist >= min_dist AND reachable
+	var reachable_any: Array = []     # [dist, Transform3D] reachable at ANY distance (fallback)
 	for i in n:
 		var x: Transform3D = _arena.get_enemy_spawn_point(i)
 		var d: float = _nearest_dist(x.origin, players)
-		if d > best_d:
-			best_d = d
-			best = x
-	return best
+		if not _reachable_from_players(x.origin, players):
+			continue
+		reachable_any.append([d, x])
+		if d >= min_dist:
+			candidates.append([d, x])
+	# Prefer reachable markers beyond the buffer; pick among the CLOSEST few (not the
+	# farthest) so enemies start a fair-but-fightable distance away and spread out.
+	if not candidates.is_empty():
+		candidates.sort_custom(func(a, b): return a[0] < b[0])
+		var pick_pool: int = mini(3, candidates.size())
+		return candidates[randi() % pick_pool][1]
+	# No reachable marker beyond the buffer — take the FARTHEST reachable one we have
+	# (best effort to honour the buffer), else fall back to the index marker.
+	if not reachable_any.is_empty():
+		reachable_any.sort_custom(func(a, b): return a[0] > b[0])
+		return reachable_any[0][1]
+	return base
+
+## True when `pos` can path to at least one of the players (or reachability can't be
+## evaluated yet). Thin wrapper over arena.navmesh_reachable.
+func _reachable_from_players(pos: Vector3, players: Array[Vector3]) -> bool:
+	if _arena == null or not _arena.has_method("navmesh_reachable"):
+		return true
+	for p in players:
+		if _arena.navmesh_reachable(pos, p):
+			return true
+	return false
 
 ## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
 ## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.

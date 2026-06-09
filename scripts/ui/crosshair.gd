@@ -93,9 +93,17 @@ func _update_on_enemy() -> void:
 
 
 func _draw() -> void:
-	var c := size * 0.5
+	# Centre on the VIEWPORT, not this Control's own `size`. A runtime-created full-rect
+	# Control can have its anchor-resolved `size` still report (0,0), which drew the whole
+	# reticle into the top-left corner — i.e. "no crosshair". The control sits at origin so
+	# its local space == screen space; the viewport centre is the true screen centre.
+	var vp := get_viewport_rect().size
+	var c := vp * 0.5
+	if c == Vector2.ZERO:
+		c = size * 0.5   # last-ditch fallback (headless / no viewport)
 	var col := Color(1.0, 0.30, 0.28, 1.0) if _on_enemy else Color(1, 1, 1, 0.95)
-	var s := _spread
+	# Clamp so an unexpectedly large spread can never fling the ticks off-screen.
+	var s := clampf(_spread, 0.0, maxf(8.0, minf(vp.x, vp.y) * 0.25))
 	# Four ticks (right/left/down/up), each with a dark outline underlay for contrast.
 	_tick(c + Vector2(s, 0), c + Vector2(s + TICK_LEN, 0), col)
 	_tick(c - Vector2(s, 0), c - Vector2(s + TICK_LEN, 0), col)

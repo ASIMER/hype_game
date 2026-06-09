@@ -398,6 +398,24 @@ func snap_to_navmesh(pos: Vector3) -> Vector3:
 		return pos
 	return snapped
 
+## True when a walkable navmesh path exists from `from` to `to` (the path actually
+## arrives within `tol` of `to`). Used by the wave spawner so it never drops an enemy
+## on a navmesh patch it can't path off (e.g. the wrong side of the river). Returns
+## true when the map isn't ready yet (don't block spawns) — the enemy's stuck-recovery
+## handles the rare not-yet-synced case.
+func navmesh_reachable(from: Vector3, to: Vector3, tol: float = 4.0) -> bool:
+	if nav_region == null:
+		return true
+	var map := nav_region.get_navigation_map()
+	if not map.is_valid() or NavigationServer3D.map_get_iteration_id(map) == 0:
+		return true
+	var path: PackedVector3Array = NavigationServer3D.map_get_path(map, from, to, true)
+	if path.size() < 2:
+		return false
+	# The path is clamped to the navmesh; if its final point lands near `to`, the two
+	# points are on the same connected region (reachable).
+	return path[path.size() - 1].distance_to(to) <= tol
+
 ## Returns the risk tier (1 low … 3 high) for a POI identified either by its
 ## integer index into the _POI_DEFS insertion order, or by its String name.
 ## Falls back to tier 1 for unknown indices/names.
