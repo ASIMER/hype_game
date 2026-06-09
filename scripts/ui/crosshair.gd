@@ -16,7 +16,7 @@ const BASE_SPREAD := 6.0
 const MOVE_SPREAD := 12.0
 const TICK_LEN := 7.0
 const TICK_W := 2.5
-const OUTLINE := Color(0, 0, 0, 0.75)   # dark underlay so the reticle reads on bright sky
+const OUTLINE := Color(0.5, 0.5, 0.5, 0.3)   # soft grey semi-transparent shadow (not harsh black)
 
 # Degrees → pixels mapping for the REAL fire cone (current_spread_deg). The gap is
 # the minimum tick offset plus a per-degree widening, so a tight 0.6° rifle reads
