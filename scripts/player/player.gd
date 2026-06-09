@@ -97,6 +97,11 @@ var _noise_inited: bool = false
 
 const GRENADE_SCENE := "res://scenes/items/Grenade.tscn"
 
+# --- Active power-cache buffs (timed; authority-local) -----------------------
+# id -> time_left (seconds). Effects read live via the buff_*_mult() getters + _tick_buffs.
+var _buffs: Dictionary = {}
+var _overshield: float = 0.0   # remaining absorb pool from the Overshield power
+
 
 func _enter_tree() -> void:
 	# AUTHORITY FROM NAME. The server names each spawned Player str(peer_id) before
@@ -128,6 +133,8 @@ func _ready() -> void:
 	health.current = health.max_health
 	health.health_changed.connect(_on_health_changed)
 	health.died.connect(_on_died)
+	# Power-cache buffs intercept incoming damage (Overshield absorb + Juggernaut armor).
+	health.damage_filter = _filter_incoming_damage
 	_max_stamina = Settings.MAX_STAMINA * float(_mods.get("stamina_mult", 1.0))
 	_stamina = _max_stamina
 
@@ -223,6 +230,9 @@ func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		return
 
+	# Active power-cache buffs: count down + apply per-frame effects (regen/overshield decay).
+	_tick_buffs(delta)
+
 	# DOWNED: crawl-only physics, no combat/stance; bleedout + self-revive handled inside.
 	if downed:
 		_downed_physics(delta)
@@ -311,6 +321,8 @@ func _physics_process(delta: float) -> void:
 			# Carrying a downed buddy is slow + heavy (sidearm only).
 			if is_carrying():
 				speed *= Settings.CARRY_SPEED_MULT
+			# Active power-cache buff (Swift / Frenzy).
+			speed *= buff_speed_mult()
 			velocity.x = move_dir.x * speed
 			velocity.z = move_dir.z * speed
 
@@ -782,7 +794,8 @@ func _droplet_mesh() -> Mesh:
 ## Sprint stamina: drain while sprinting, regen otherwise; lock sprint once empty
 ## until it recovers past STAMINA_SPRINT_MIN. Broadcasts for the HUD stamina bar.
 func _update_stamina(delta: float, sprinting: bool) -> void:
-	if sprinting:
+	# Adrenaline buff: stamina never drains (sprint forever).
+	if sprinting and not _has_buff("adrenaline"):
 		_stamina = maxf(0.0, _stamina - Settings.STAMINA_DRAIN * delta)
 		if _stamina <= 0.0:
 			_sprint_locked = true
@@ -815,8 +828,11 @@ func _update_interaction() -> void:
 	_interact_target = best
 	if best:
 		var item_id := str(best.get("item_id")) if "item_id" in best else "item"
-		var nice := item_id.replace("loot_", "").capitalize()
-		Events.interaction_available.emit(tr("Pick up %s") % nice, best)
+		if item_id == "power_cache":
+			Events.interaction_available.emit(tr("Open Power Cache"), best)
+		else:
+			var nice := item_id.replace("loot_", "").capitalize()
+			Events.interaction_available.emit(tr("Pick up %s") % nice, best)
 	else:
 		Events.interaction_cleared.emit()
 
@@ -832,6 +848,118 @@ func _on_item_use(item_id: String) -> void:
 		Settings.SELF_REVIVE_ITEM, "self_revive":
 			if downed:
 				_self_revive()
+
+# --- Active power-cache buffs ------------------------------------------------
+## Server → opener: roll a power, play the NON-BLOCKING reveal, then apply it AFTER the reveal.
+## Runs on the opener's own client (its authority), so it rolls from THAT player's unlocked pool
+## and the buff is applied locally (correct in co-op). The game never pauses during the reveal.
+@rpc("any_peer", "call_local", "reliable")
+func begin_power_open() -> void:
+	if not is_multiplayer_authority():
+		return
+	var pool: Array = MetaProgression.available_powers()
+	if pool.is_empty():
+		pool = ["berserk"]
+	var rolled: String = String(pool[randi() % pool.size()])
+	Events.power_reveal_started.emit(rolled)
+	# Apply ONLY once the reveal reel has finished (never before the animation).
+	var t := get_tree().create_timer(Settings.POWER_REVEAL_TIME)
+	t.timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			apply_power(rolled))
+
+## Grant a timed buff (called on the owning authority after the cache reveal finishes).
+func apply_power(power_id: String) -> void:
+	if not is_multiplayer_authority():
+		return
+	var def: Dictionary = Settings.POWERS.get(power_id, {})
+	if def.is_empty():
+		return
+	var dur: float = float(def.get("dur", 20.0))
+	_buffs[power_id] = dur
+	if String(def.get("field", "")) == "overshield":
+		_overshield = maxf(_overshield, float(def.get("mag", 0.0)))
+	Events.buff_applied.emit(self, power_id, dur)
+
+func _has_buff(power_id: String) -> bool:
+	return _buffs.has(power_id)
+
+## Sum of magnitudes for every active buff whose POWERS.field matches `field` (+ Frenzy, which
+## boosts damage/fire/speed together). Returns the additive bonus (e.g. 0.6 = +60%).
+func _buff_sum(field: String) -> float:
+	var total: float = 0.0
+	for id in _buffs:
+		var def: Dictionary = Settings.POWERS.get(id, {})
+		var f: String = String(def.get("field", ""))
+		if f == field:
+			total += float(def.get("mag", 0.0))
+		elif f == "frenzy" and (field == "damage" or field == "fire_rate" or field == "speed"):
+			total += float(def.get("mag", 0.0))
+	return total
+
+func buff_damage_mult() -> float:
+	return 1.0 + _buff_sum("damage")
+
+func buff_fire_rate_mult() -> float:
+	return 1.0 + _buff_sum("fire_rate")
+
+func buff_speed_mult() -> float:
+	return 1.0 + _buff_sum("speed")
+
+## Reload-time multiplier (<1 = faster). Adrenaline speeds reloads.
+func buff_reload_mult() -> float:
+	var a: float = _buff_sum("adrenaline")
+	return 1.0 / (1.0 + a) if a > 0.0 else 1.0
+
+## Fraction of dealt damage returned as healing (Lifesteal).
+func buff_lifesteal_frac() -> float:
+	return _buff_sum("lifesteal")
+
+## Damage filter set on Health: Juggernaut armor reduces, then Overshield absorbs the rest.
+func _filter_incoming_damage(amount: float, _source: Node) -> float:
+	var armor: float = clampf(_buff_sum("armor"), 0.0, 0.9)
+	amount *= (1.0 - armor)
+	if _overshield > 0.0:
+		var absorbed: float = minf(_overshield, amount)
+		_overshield -= absorbed
+		amount -= absorbed
+	return amount
+
+## Heal a fraction of damage just dealt to an enemy (Lifesteal). Called from the local weapon.
+func on_dealt_damage(amount: float) -> void:
+	if not is_multiplayer_authority() or downed or health == null or health.is_dead:
+		return
+	var frac: float = buff_lifesteal_frac()
+	if frac > 0.0 and amount > 0.0:
+		health.heal(amount * frac)
+
+## Per-frame: count buffs down, apply regen, expire + revert. Authority-only.
+func _tick_buffs(delta: float) -> void:
+	if _buffs.is_empty():
+		return
+	var regen: float = _buff_sum("regen")
+	if regen > 0.0 and not downed and health != null and not health.is_dead \
+			and health.current < health.max_health:
+		health.heal(regen * delta)
+	var expired: Array = []
+	for id in _buffs:
+		_buffs[id] = float(_buffs[id]) - delta
+		if float(_buffs[id]) <= 0.0:
+			expired.append(id)
+	for id in expired:
+		_buffs.erase(id)
+		if String(Settings.POWERS.get(id, {}).get("field", "")) == "overshield":
+			_overshield = 0.0
+		Events.buff_expired.emit(self, String(id))
+
+## Snapshot of active buffs for the HUD / harness: [{ id, name, time_left, color }].
+func active_buffs() -> Array:
+	var out: Array = []
+	for id in _buffs:
+		var def: Dictionary = Settings.POWERS.get(id, {})
+		out.append({ "id": String(id), "name": String(def.get("name", id)),
+			"time_left": float(_buffs[id]), "color": def.get("color", Color.WHITE) })
+	return out
 
 
 ## This peer's own player configures its STARTING consumables from its OWN profile's

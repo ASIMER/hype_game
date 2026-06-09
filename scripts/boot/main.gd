@@ -246,6 +246,9 @@ func load_arena() -> void:
 		if ResourceLoader.exists("res://scenes/ui/HUD.tscn"):
 			var hud: Node = (load("res://scenes/ui/HUD.tscn") as PackedScene).instantiate()
 			ui_layer.add_child(hud)
+			# Power-cache reveal reel + active-buff strip (non-blocking, side of the screen).
+			if ResourceLoader.exists("res://scripts/ui/power_reveal.gd"):
+				ui_layer.add_child((load("res://scripts/ui/power_reveal.gd") as GDScript).new())
 		if ResourceLoader.exists("res://scenes/ui/InventoryUI.tscn"):
 			var inv_ui: Node = (load("res://scenes/ui/InventoryUI.tscn") as PackedScene).instantiate()
 			ui_layer.add_child(inv_ui)

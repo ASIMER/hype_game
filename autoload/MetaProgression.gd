@@ -100,6 +100,8 @@ var weapon_mastery: Dictionary = {}
 ## applied exactly once; plus the accumulated permanent stash bonus from "stash" milestones.
 var milestones_claimed: Array = []
 var milestone_stash_bonus: float = 0.0
+## Power-cache buffs unlocked with skill points (the non-free ones). Free powers always roll.
+var unlocked_powers: Array = []
 
 ## Set once if a save from a NEWER game version was loaded this session (so the
 ## version-mismatch toast fires at most once per file per session).
@@ -549,6 +551,37 @@ func _skill_factor(key: String) -> float:
 	var per := float(Settings.SKILLS.get(key, {}).get("per", 0.0))
 	return 1.0 + per * skill_level(key)
 
+# ---------------------------------------------------------------- power caches
+## True if power `id` can roll from a cache (free powers always, others once unlocked).
+func is_power_unlocked(id: String) -> bool:
+	var def: Dictionary = Settings.POWERS.get(id, {})
+	if def.is_empty():
+		return false
+	if bool(def.get("free", false)):
+		return true
+	return unlocked_powers.has(id)
+
+## Spend skill points to unlock a non-free power. Returns true on success.
+func unlock_power(id: String) -> bool:
+	var def: Dictionary = Settings.POWERS.get(id, {})
+	if def.is_empty() or bool(def.get("free", false)) or unlocked_powers.has(id):
+		return false
+	var cost: int = int(def.get("cost", 1))
+	if skill_points < cost:
+		return false
+	skill_points -= cost
+	unlocked_powers.append(id)
+	save_profile()
+	return true
+
+## Ids of every power that can currently roll from a cache (free ∪ unlocked).
+func available_powers() -> Array:
+	var out: Array = []
+	for id in Settings.POWERS:
+		if is_power_unlocked(String(id)):
+			out.append(String(id))
+	return out
+
 # ---------------------------------------------------------------- vendor reputation
 ## The rep tier for the current vendor_rep (index into REP_TIER_THRESHOLDS).
 func rep_tier() -> int:
@@ -671,6 +704,7 @@ func save_profile() -> void:
 	cfg.set_value("meta", "weapon_mastery", weapon_mastery)
 	cfg.set_value("meta", "milestones_claimed", milestones_claimed)
 	cfg.set_value("meta", "milestone_stash_bonus", milestone_stash_bonus)
+	cfg.set_value("meta", "unlocked_powers", unlocked_powers)
 	cfg.save(_save_path())
 
 func load_profile() -> void:
@@ -774,5 +808,10 @@ func load_profile() -> void:
 	for ml in raw_ms:
 		milestones_claimed.append(int(ml))
 	milestone_stash_bonus = float(cfg.get_value("meta", "milestone_stash_bonus", 0.0))
+	var raw_up: Array = cfg.get_value("meta", "unlocked_powers", [])
+	unlocked_powers.clear()
+	for pid in raw_up:
+		if Settings.POWERS.has(String(pid)):
+			unlocked_powers.append(String(pid))
 	# Back-fill any milestone the saved level qualifies for but predates this feature.
 	_apply_milestones()

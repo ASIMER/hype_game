@@ -428,6 +428,11 @@ func _handle_line(line: String) -> void:
 				"currency": MetaProgression.currency })
 		"crosshair":
 			_send(_debug_crosshair())
+		"power":
+			# QA: drive power caches. {action:"open"} plays the full reveal→buff on the local
+			# player; {action:"grant", id:"berserk"} applies a buff instantly (skip the reveal);
+			# {action:"unlock", id} unlocks a power for skill points; {action:"list"}.
+			_send(_debug_power(json))
 		"screenshot":
 			_screenshot(str(json.get("name", "shot")))   # replies asynchronously
 		"restart":
@@ -632,6 +637,31 @@ func _debug_prog(json: Dictionary) -> Dictionary:
 
 ## Debug: raycast from the camera forward and report what the crosshair is on — entity,
 ## whether the ray lines up on the enemy's weak-point sphere, distance. Verify aim before firing.
+func _debug_power(json: Dictionary) -> Dictionary:
+	var action := str(json.get("action", "list"))
+	if action == "list":
+		return { "ok": true, "available": MetaProgression.available_powers(),
+			"all": Settings.POWERS.keys() }
+	if action == "unlock":
+		var ok := MetaProgression.unlock_power(str(json.get("id", "")))
+		return { "ok": ok, "available": MetaProgression.available_powers() }
+	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	if p == null:
+		return { "ok": false, "error": "no player" }
+	match action:
+		"open":
+			if p.has_method("begin_power_open"):
+				p.begin_power_open()
+				return { "ok": true }
+			return { "ok": false, "error": "no begin_power_open" }
+		"grant":
+			var id := str(json.get("id", "berserk"))
+			if p.has_method("apply_power"):
+				p.apply_power(id)
+				return { "ok": true, "id": id }
+			return { "ok": false, "error": "no apply_power" }
+	return { "ok": false, "error": "unknown action" }
+
 func _debug_crosshair() -> Dictionary:
 	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
 	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") if p else null
@@ -1015,6 +1045,7 @@ func _snapshot() -> Dictionary:
 		"carrying": (p.is_carrying() if p.has_method("is_carrying") else false),
 		"self_revives": int(p.get("_self_revives")) if p.get("_self_revives") != null else 0,
 		"shields": int(p.get("_shields")) if p.get("_shields") != null else 0,
+		"buffs": (p.active_buffs() if p.has_method("active_buffs") else []),
 		"crosshair": _debug_crosshair(),
 		"wdbg": {
 			"weapons": (wc.get("_weapons").size() if (wc and wc.get("_weapons") != null) else 0),

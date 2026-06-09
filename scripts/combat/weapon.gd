@@ -221,6 +221,9 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 			var dealt := dmg
 			if is_crit:
 				dealt *= crit_mult
+			# Active power-cache damage buff (Berserk / Frenzy) on the firing player.
+			if shooter != null and shooter.has_method("buff_damage_mult"):
+				dealt *= float(shooter.buff_damage_mult())
 			# Server-authoritative damage: the host applies directly; a CLIENT routes
 			# the hit to the server (its local apply_hit would only damage its OWN copy
 			# of the enemy, never the authoritative one → the enemy never dies in co-op).
@@ -239,6 +242,9 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 			if emit_numbers and _is_enemy(hit_node):
 				# Report the damage actually applied (incl. the hurtbox's own multiplier).
 				Events.damage_number.emit(hit_point, dealt * hb.damage_multiplier, is_crit)
+			# Lifesteal buff: heal the shooter for a fraction of damage dealt to an enemy.
+			if shooter != null and shooter.has_method("on_dealt_damage") and _is_enemy(hit_node):
+				shooter.on_dealt_damage(dealt * hb.damage_multiplier)
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)

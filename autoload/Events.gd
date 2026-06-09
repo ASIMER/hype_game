@@ -21,6 +21,15 @@ signal grenade_thrown(player: Node, from_pos: Vector3, dir: Vector3)
 signal grenade_exploded(world_pos: Vector3, damage: float, radius: float)
 signal player_healed(player: Node, amount: float)
 
+# --- Power caches / timed buffs (Vampire-Survivors-style) ---
+## A power cache was opened by `player`. The opener's HUD plays the non-blocking side reveal.
+signal power_cache_opened(player: Node, cache: Node)
+## Drive the LOCAL reveal reel: spin then land on `power_id`. Fires on the opener only.
+signal power_reveal_started(power_id: String)
+## A timed buff became active / expired on `player` (HUD active-buff strip + FX).
+signal buff_applied(player: Node, power_id: String, duration: float)
+signal buff_expired(player: Node, power_id: String)
+
 # --- Player ---
 signal local_player_spawned(player: Node)
 signal player_health_changed(player: Node, current: float, max_health: float)

@@ -21,6 +21,8 @@ var _milestone_label: Label       = null   # "Next milestone: L5 — +25 Stash C
 var _skill_rows: VBoxContainer    = null   # one row per Settings.SKILLS key
 var _skill_buy_btns: Dictionary   = {}     # key -> Button
 var _skill_pip_labels: Dictionary = {}     # key -> Label showing "3 / 5"
+var _power_buy_btns: Dictionary   = {}     # power id -> Button (unlock for skill points)
+var _power_status_lbls: Dictionary = {}    # power id -> Label (FREE / OWNED / cost)
 var _rep_tier_label: Label        = null   # "TIER 2 · 10% discount"
 var _rep_bar: ProgressBar         = null
 var _rep_label: Label             = null   # "450 / 800 rep to Tier 3"
@@ -253,6 +255,86 @@ func _build_skill_rows() -> void:
 		row.add_child(buy_btn)
 		_skill_buy_btns[key] = buy_btn
 
+	_build_power_rows()
+
+
+## Power-cache buffs you UNLOCK with skill points (free ones always roll; these add to the pool
+## a map cache can grant). Appended under the skill rows so it shares the skill-point economy.
+func _build_power_rows() -> void:
+	_power_buy_btns.clear()
+	_power_status_lbls.clear()
+
+	var head := Label.new()
+	head.text = tr("POWER CACHES (unlock to roll)")
+	head.add_theme_color_override("font_color", COL_AMBER)
+	head.add_theme_font_size_override("font_size", 13)
+	_skill_rows.add_child(head)
+
+	for pid in Settings.POWERS:
+		var info: Dictionary = Settings.POWERS[pid]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_skill_rows.add_child(row)
+
+		var text_col := VBoxContainer.new()
+		text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(text_col)
+		var name_lbl := Label.new()
+		name_lbl.text = tr(String(info.get("name", pid)))
+		name_lbl.add_theme_color_override("font_color", info.get("color", COL_WHITE))
+		name_lbl.add_theme_font_size_override("font_size", 14)
+		text_col.add_child(name_lbl)
+		var desc_lbl := Label.new()
+		desc_lbl.text = tr(String(info.get("desc", "")))
+		desc_lbl.add_theme_color_override("font_color", COL_DIM)
+		desc_lbl.add_theme_font_size_override("font_size", 12)
+		text_col.add_child(desc_lbl)
+
+		var status := Label.new()
+		status.custom_minimum_size = Vector2(56, 0)
+		status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(status)
+		_power_status_lbls[String(pid)] = status
+
+		var btn := Button.new()
+		btn.text = "UNLOCK"
+		btn.custom_minimum_size = Vector2(78, 30)
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var pk := String(pid)
+		btn.pressed.connect(func() -> void: _on_unlock_power(pk))
+		UIStyle.hover_lift(btn)
+		row.add_child(btn)
+		_power_buy_btns[String(pid)] = btn
+
+
+func _on_unlock_power(pid: String) -> void:
+	MetaProgression.unlock_power(pid)
+	_refresh_level()
+	_refresh_skills()
+
+
+func _refresh_powers() -> void:
+	for pid in _power_buy_btns:
+		var info: Dictionary = Settings.POWERS.get(pid, {})
+		var free: bool = bool(info.get("free", false))
+		var owned: bool = MetaProgression.is_power_unlocked(String(pid))
+		var cost: int = int(info.get("cost", 1))
+		var status: Label = _power_status_lbls.get(pid)
+		if status != null:
+			if free:
+				status.text = tr("FREE"); status.add_theme_color_override("font_color", COL_GREEN)
+			elif owned:
+				status.text = tr("OWNED"); status.add_theme_color_override("font_color", COL_GREEN)
+			else:
+				status.text = tr("%d SP") % cost; status.add_theme_color_override("font_color", COL_AMBER)
+		var btn: Button = _power_buy_btns.get(pid)
+		if btn != null:
+			btn.visible = not free and not owned
+			btn.disabled = MetaProgression.skill_points < cost
+
 
 ## Rebuilds mastery rows from the current loadout of known/unlocked weapons.
 func _rebuild_mastery_rows() -> void:
@@ -404,6 +486,7 @@ func _refresh_skills() -> void:
 			else:
 				btn.text     = tr("BUY")
 				btn.disabled = (MetaProgression.skill_points <= 0)
+	_refresh_powers()
 
 
 func _refresh_rep() -> void:

@@ -265,6 +265,25 @@ const SKILLS := {
 	"gunner":    { "name": "Gunner", "desc": "+4% weapon damage / level", "max": 5, "field": "damage_mult", "per": 0.04 },
 }
 
+# --- Power caches: timed buffs (Vampire-Survivors-style) ----------------------
+# A Power Cache on the map, when opened, plays a non-blocking side reveal reel then grants ONE
+# of these as a TIMED buff (~20-30s). `field` is the buff kind read at runtime by player/weapon.
+# `mag` is the effect magnitude (mult delta, flat, or fraction depending on field). `free` powers
+# can roll from raid 1; the rest are UNLOCKED with skill points (`cost`) in the RAIDER tab. `color`
+# tints the reveal/icon. Pool that can roll = MetaProgression.available_powers().
+const POWER_REVEAL_TIME: float = 2.6            # length of the non-blocking lottery reveal
+const POWERS := {
+	"berserk":    { "name": "Berserk",    "desc": "+60% weapon damage",        "field": "damage",      "mag": 0.60, "dur": 22.0, "color": Color(0.95, 0.32, 0.26), "rarity": 1, "free": true,  "cost": 0 },
+	"rapidfire":  { "name": "Rapid Fire",  "desc": "+45% fire rate",            "field": "fire_rate",   "mag": 0.45, "dur": 22.0, "color": Color(0.98, 0.74, 0.25), "rarity": 1, "free": true,  "cost": 0 },
+	"swift":      { "name": "Swift",       "desc": "+35% move speed",           "field": "speed",       "mag": 0.35, "dur": 25.0, "color": Color(0.30, 0.80, 0.95), "rarity": 1, "free": true,  "cost": 0 },
+	"overshield": { "name": "Overshield",  "desc": "Absorb 90 damage",          "field": "overshield",  "mag": 90.0, "dur": 30.0, "color": Color(0.40, 0.70, 1.00), "rarity": 1, "free": true,  "cost": 0 },
+	"regen":      { "name": "Regen",       "desc": "Heal 9 HP/sec",             "field": "regen",       "mag": 9.0,  "dur": 20.0, "color": Color(0.36, 0.90, 0.55), "rarity": 1, "free": true,  "cost": 0 },
+	"lifesteal":  { "name": "Lifesteal",   "desc": "Heal 30% of damage dealt",  "field": "lifesteal",   "mag": 0.30, "dur": 22.0, "color": Color(0.80, 0.25, 0.55), "rarity": 2, "free": false, "cost": 1 },
+	"juggernaut": { "name": "Juggernaut",  "desc": "−45% damage taken",         "field": "armor",       "mag": 0.45, "dur": 24.0, "color": Color(0.75, 0.78, 0.85), "rarity": 2, "free": false, "cost": 1 },
+	"adrenaline": { "name": "Adrenaline",  "desc": "Infinite stamina + reload", "field": "adrenaline",  "mag": 0.40, "dur": 24.0, "color": Color(0.95, 0.55, 0.20), "rarity": 2, "free": false, "cost": 1 },
+	"frenzy":     { "name": "Frenzy",      "desc": "+40% damage, fire & speed",  "field": "frenzy",      "mag": 0.40, "dur": 18.0, "color": Color(1.00, 0.40, 0.85), "rarity": 3, "free": false, "cost": 2 },
+}
+
 # --- Progression: Vendor Reputation (Batch 3) --------------------------------
 # Cumulative rep thresholds per tier (index = tier; rep >= threshold → that tier).
 const REP_TIER_THRESHOLDS := [0, 300, 800, 1600, 2800]

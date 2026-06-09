@@ -87,6 +87,20 @@ func _stance_mult() -> float:
 		return float(p.stance_spread_mult())
 	return 1.0
 
+## Active power-cache fire-rate buff (Rapid Fire / Frenzy), 1.0 if none.
+func _buff_fire_rate_mult() -> float:
+	var p := _owner_body()
+	if p != null and p.has_method("buff_fire_rate_mult"):
+		return float(p.buff_fire_rate_mult())
+	return 1.0
+
+## Active reload-speed buff (Adrenaline), 1.0 if none (<1 = faster).
+func _buff_reload_mult() -> float:
+	var p := _owner_body()
+	if p != null and p.has_method("buff_reload_mult"):
+		return float(p.buff_reload_mult())
+	return 1.0
+
 func _load_weapons() -> void:
 	_weapons.clear()
 	# Resolve which weapons to bring: the meta-progression loadout (ids) if any
@@ -208,7 +222,7 @@ func try_fire(from_node: Node3D) -> bool:
 	# can't bypass it — the spread is applied where the authoritative dir is computed).
 	if not _weapon.fire_with(from_node, data, _effective_spread(data)):
 		return false
-	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
+	_cooldown = 1.0 / maxf(0.1, data.fire_rate * _buff_fire_rate_mult())
 	_semi_latched = true
 	_apply_fire_kick(data)   # punch the held view-model back/up (springs back in _process)
 	_ammo[data.id] = int(_ammo[data.id]) - 1
@@ -423,7 +437,7 @@ func _begin_reload() -> void:
 	if cur >= d.mag_size or spare <= 0:
 		return
 	_reloading = true
-	_reload_timer = d.reload_time
+	_reload_timer = maxf(0.1, d.reload_time * _buff_reload_mult())
 	Events.reload_started.emit(d.id)
 
 func _finish_reload() -> void:

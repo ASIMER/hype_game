@@ -467,6 +467,25 @@ func _populate_world_loot() -> void:
 				continue
 			var jitter := Vector3(randf_range(-1.2, 1.2), 0.0, randf_range(-1.2, 1.2))
 			LootPickup.spawn_at(loot, cache_pos + jitter, id, 1)
+	_populate_power_caches()
+
+
+## Scatter a few Power Caches (Vampire-Survivors-style buff chests) at POI centres, snapped to
+## the navmesh so they sit on walkable ground. Server-only; replicated via the Net/Loot spawner
+## like world loot. Opening one (interact) plays the non-blocking reveal then grants a timed buff.
+func _populate_power_caches() -> void:
+	if not GameState.is_local_authority_server():
+		return
+	var poi_points: Array[Vector3] = get_poi_points()
+	if poi_points.is_empty():
+		return
+	# One cache near a handful of POIs (offset a few metres so it's not inside a building).
+	for i in range(poi_points.size()):
+		if i % 2 != 0:
+			continue   # ~half the POIs get a cache, spread around the map
+		var pos: Vector3 = poi_points[i] + Vector3(randf_range(-2.5, 2.5), 0.0, randf_range(-2.5, 2.5))
+		pos = snap_to_navmesh(pos)
+		LootPickup.spawn_at(loot, pos, "power_cache", 1)
 
 
 func _pick_marker(container: Node, index: int) -> Node3D:

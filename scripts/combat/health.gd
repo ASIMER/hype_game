@@ -20,6 +20,9 @@ signal died(killer: Node)
 var current: float
 var is_dead: bool = false
 var _last_attacker: Node = null
+## Optional owner-set hook to transform incoming damage BEFORE it hits HP: (amount, source)->amount.
+## The player sets this for armor / overshield buffs; enemies leave it unset (no-op).
+var damage_filter: Callable = Callable()
 
 func _ready() -> void:
 	current = max_health
@@ -29,6 +32,10 @@ func _ready() -> void:
 func take_damage(amount: float, source: Node = null) -> void:
 	if is_dead or invulnerable or amount <= 0.0:
 		return
+	if damage_filter.is_valid():
+		amount = float(damage_filter.call(amount, source))
+		if amount <= 0.0:
+			return
 	_last_attacker = source
 	current = maxf(0.0, current - amount)
 	health_changed.emit(current, max_health)

@@ -82,13 +82,20 @@ func _process(delta: float) -> void:
 ## A rarity-coloured glow: an OmniLight for UNCOMMON+, plus a soft light pillar for
 ## RARE+ so valuable drops read across the arena.
 func _apply_loot_glow() -> void:
-	var item: ItemData = ItemCatalog.get_item(item_id)
-	if item == null:
-		return
-	var rarity: int = item.rarity
-	if rarity < 1:
-		return   # common loot stays unlit to avoid light spam
-	var col: Color = item.rarity_color()
+	var rarity: int
+	var col: Color
+	if item_id == "power_cache":
+		# Power caches always glow brightly (gold) with a tall pillar so they're findable.
+		rarity = 2
+		col = Color(0.98, 0.80, 0.30)
+	else:
+		var item: ItemData = ItemCatalog.get_item(item_id)
+		if item == null:
+			return
+		rarity = item.rarity
+		if rarity < 1:
+			return   # common loot stays unlit to avoid light spam
+		col = item.rarity_color()
 	var light := OmniLight3D.new()
 	light.light_color = col
 	light.light_energy = 1.4
@@ -180,6 +187,14 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 	if not GameState.is_local_authority_server():
 		return
 	if not is_instance_valid(player):
+		return
+	# Power cache: NOT inventory loot — consume it and trigger the opener's non-blocking
+	# reveal (the buff applies on THEIR client after the reveal animation finishes).
+	if item_id == "power_cache":
+		if player.has_method("begin_power_open"):
+			player.begin_power_open.rpc_id(player.get_multiplayer_authority())
+		Events.power_cache_opened.emit(player, self)
+		queue_free()
 		return
 	var inv := _get_player_inventory(player)
 	if inv == null:

@@ -15,6 +15,10 @@ enum Prim { CAPSULE, BOX, SPHERE, CYLINDER }
 # differently-authored CC0 art lines up with the capsule `size`. They never touch
 # collision shapes — those live in the scenes and are unchanged.
 const CATALOG := {
+	# Power cache — a glowing chest the player opens for a timed buff (Vampire-Survivors-style).
+	# Procedural chest if a builder exists, else a gold box; the loot-glow pillar makes it pop.
+	"power_cache": { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(0.9, 0.7, 0.7), "color": Color(0.96, 0.78, 0.28) },
 	# Kenney Starter-Kit-3D-Platformer character.glb (CC0). Authored ~1.1m tall,
 	# feet at y=0, facing +Z; scale up to capsule height and spin 180° to face -Z.
 	"player": { "model": "res://assets/models/characters/raider.glb", "icon": "",
