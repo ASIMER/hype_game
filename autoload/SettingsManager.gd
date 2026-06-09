@@ -42,6 +42,8 @@ const DEFAULTS := {
 	"dof_amount": 0.0,            # 0.0..0.2 far depth-of-field blur amount (immediate; 0 = none)
 	"volumetric_fog": false,      # enable the global froxel volumetric fog (immediate)
 	"local_fog": false,           # spawn localized FogVolume zones at POIs (rebuild-bound)
+	"climate_zones": true,        # spawn localized rain/snow/desert zones at the far landmarks (rebuild-bound)
+	"climate_density": 1.0,       # 0.0..2.0 climate precipitation/haze density multiplier (immediate)
 	"god_rays": false,            # sun light shafts through the volumetric fog (immediate)
 	"dof": false,                 # cinematic far depth-of-field (immediate)
 	"terrain_parallax": false,    # parallax-occlusion mapping on the ground (rebuild-bound; heavy)
@@ -156,6 +158,8 @@ const QUALITY_PRESETS := {
 	"dof_amount":             [0.0,  0.0,  0.0,  0.06, 0.08],
 	"volumetric_fog":         [false, false, false, true, true],
 	"local_fog":              [false, false, false, true,  true],
+	"climate_zones":          [true,  true,  true,  true,  true],
+	"climate_density":        [0.5,   0.7,   1.0,   1.0,   1.2],
 	"god_rays":               [false, false, true, true, true],
 	"dof":                    [false, false, false, true, true],
 	"terrain_parallax":       [false, false, false, true, true],
@@ -263,7 +267,7 @@ func apply(key: String) -> void:
 		"ssr", "ssil", "reflection_probes", "voxelgi", \
 		"draw_distance", "particle_density", "terrain_detail", "volumetric_fog_density", \
 		"shadow_distance", "dof_amount", "volumetric_fog", "local_fog", "god_rays", \
-		"dof", "terrain_parallax":
+		"dof", "terrain_parallax", "climate_zones", "climate_density":
 			_apply_quality_lever()
 		"language": _apply_language(str(v))
 		"show_fps", "show_detailed_stats", "stats_display_mode": _apply_stats_overlay()
@@ -357,6 +361,8 @@ func _apply_quality_lever() -> void:
 	Settings.terrain_detail_scale = clampf(float(get_value("terrain_detail")), 1.0, 2.0)
 	Settings.terrain_parallax_enabled = bool(get_value("terrain_parallax"))
 	Settings.local_fog_enabled = bool(get_value("local_fog"))
+	Settings.climate_zones_enabled = bool(get_value("climate_zones"))
+	Settings.climate_density = clampf(float(get_value("climate_density")), 0.0, 2.0)
 	Events.graphics_quality_changed.emit(int(get_value("graphics_quality")))
 
 ## Push the current overlay config to the StatsOverlay (instanced in main.gd).

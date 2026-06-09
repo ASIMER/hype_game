@@ -445,6 +445,8 @@ var draw_distance_scale: float = 1.0         # multiplies flora/grass visibility
 var terrain_detail_scale: float = 1.0        # multiplies ground-mesh subdivision density
 var terrain_parallax_enabled: bool = false   # parallax-occlusion mapping baked into the ground material
 var local_fog_enabled: bool = false          # spawn localized FogVolume zones at POIs
+var climate_zones_enabled: bool = true       # spawn localized rain/snow/desert zones at the far landmarks
+var climate_density: float = 1.0             # multiplies climate precipitation amount + fog density (0..2)
 
 # --- Multi-instance / git-worktree parallelism -----------------------------
 # To run several game instances at once (each driven by its own agent, often from a

@@ -163,6 +163,8 @@ func _apply_graphics_quality(level: int) -> void:
 			_env.volumetric_fog_detail_spread = 2.6
 		# Rescale the local fog zones' density from the settings slider (live, no rebuild).
 		ProceduralFogZones.apply_density(get_tree().current_scene if get_tree() else null)
+		# Same live rescale for the localized climate zones (particle amount_ratio + fog density).
+		ProceduralClimateZones.apply_density(get_tree().current_scene if get_tree() else null)
 	# God rays: let the sun cast volumetric shafts THROUGH the global fog (no-op when
 	# volumetric fog is off). Shadow distance also lives on the sun. Guard non-null.
 	if _sun != null:

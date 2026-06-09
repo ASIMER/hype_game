@@ -63,6 +63,11 @@ func _ready() -> void:
 	Events.arena_build_progress.emit(0.86, "Fog zones")
 	await get_tree().process_frame
 	_build_fog_zones()
+	# Localized climate zones (rain/snow/desert) at the 3 far-quadrant landmarks. Render-only,
+	# per-peer cosmetic, headless-skipped inside. After fog zones so both share the build budget.
+	Events.arena_build_progress.emit(0.88, "Climate")
+	await get_tree().process_frame
+	_build_climate_zones()
 	Events.arena_build_progress.emit(0.90, "Navmesh")
 	await get_tree().process_frame
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
@@ -181,6 +186,20 @@ func _build_fog_zones() -> void:
 		if n > 0:
 			spawn_center = acc / float(n)
 	script.build(self, poi_markers, spawn_center)
+
+## Localized climate zones (rain over the Temple, snow over the Lodge, sand-haze over the
+## Ruins) at the 3 far-quadrant landmarks. GUARDED (load-by-path) so the arena runs even
+## without the file; the builder early-returns on headless and when Settings.climate_zones_enabled
+## is off. Render-only + deterministic (placement from the POI markers), so it never touches the
+## navmesh/collision/netcode.
+func _build_climate_zones() -> void:
+	var path := "res://scripts/visual/procedural_climate_zones.gd"
+	if not ResourceLoader.exists(path):
+		return
+	var script: GDScript = load(path)
+	if script == null:
+		return
+	script.build(self, poi_markers)
 
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a

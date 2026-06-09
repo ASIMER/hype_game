@@ -53,12 +53,15 @@ var _terrain_detail: HSlider
 var _terrain_detail_value: Label
 var _volumetric_fog_density: HSlider
 var _volumetric_fog_density_value: Label
+var _climate_density: HSlider
+var _climate_density_value: Label
 var _shadow_distance: HSlider
 var _shadow_distance_value: Label
 var _dof_amount: HSlider
 var _dof_amount_value: Label
 var _toggle_volumetric_fog: CheckButton
 var _toggle_local_fog: CheckButton
+var _toggle_climate_zones: CheckButton
 var _toggle_god_rays: CheckButton
 var _toggle_dof: CheckButton
 var _toggle_terrain_parallax: CheckButton
@@ -266,6 +269,13 @@ func _build_quality_rows() -> void:
 	_volumetric_fog_density.value_changed.connect(_on_volumetric_fog_density)
 	_graphics_v.add_child(vfd_row[0])
 
+	# Climate Density (rain/snow/sand precipitation + haze multiplier at the far landmarks).
+	var cd_row := _make_slider_row("Climate Density", 0.0, 2.0, 0.1)
+	_climate_density = cd_row[1]
+	_climate_density_value = cd_row[2]
+	_climate_density.value_changed.connect(_on_climate_density)
+	_graphics_v.add_child(cd_row[0])
+
 	# Shadow Distance.
 	var sd_row := _make_slider_row("Shadow Distance", 60.0, 250.0, 10.0)
 	_shadow_distance = sd_row[1]
@@ -283,6 +293,7 @@ func _build_quality_rows() -> void:
 	# Cinematic toggles.
 	_toggle_volumetric_fog = _add_toggle_row("Volumetric Fog", "volumetric_fog", "")
 	_toggle_local_fog = _add_toggle_row("Local Fog Zones", "local_fog", next_raid)
+	_toggle_climate_zones = _add_toggle_row("Climate Zones (rain/snow/desert)", "climate_zones", next_raid)
 	_toggle_god_rays = _add_toggle_row("God Rays", "god_rays", "")
 	_toggle_dof = _add_toggle_row("Depth of Field", "dof", "")
 	_toggle_terrain_parallax = _add_toggle_row("Terrain Parallax (POM)", "terrain_parallax", "(applies next raid; heavy)")
@@ -567,6 +578,9 @@ func sync_from_settings() -> void:
 	var volumetric_fog_density: float = float(g.get_value("volumetric_fog_density"))
 	_volumetric_fog_density.value = volumetric_fog_density
 	_volumetric_fog_density_value.text = "%.1f" % volumetric_fog_density
+	var climate_density: float = float(g.get_value("climate_density"))
+	_climate_density.value = climate_density
+	_climate_density_value.text = "%.1f" % climate_density
 	var shadow_distance: float = float(g.get_value("shadow_distance"))
 	_shadow_distance.value = shadow_distance
 	_shadow_distance_value.text = tr("%d m") % roundi(shadow_distance)
@@ -575,6 +589,7 @@ func sync_from_settings() -> void:
 	_dof_amount_value.text = "%d%%" % roundi(dof_amount * 100.0)
 	_toggle_volumetric_fog.button_pressed = bool(g.get_value("volumetric_fog"))
 	_toggle_local_fog.button_pressed = bool(g.get_value("local_fog"))
+	_toggle_climate_zones.button_pressed = bool(g.get_value("climate_zones"))
 	_toggle_god_rays.button_pressed = bool(g.get_value("god_rays"))
 	_toggle_dof.button_pressed = bool(g.get_value("dof"))
 	_toggle_terrain_parallax.button_pressed = bool(g.get_value("terrain_parallax"))
@@ -673,6 +688,11 @@ func _on_terrain_detail(v: float) -> void:
 func _on_volumetric_fog_density(v: float) -> void:
 	_volumetric_fog_density_value.text = "%.1f" % v
 	_apply_setting("volumetric_fog_density", v)
+	_refresh_preset_label()
+
+func _on_climate_density(v: float) -> void:
+	_climate_density_value.text = "%.1f" % v
+	_apply_setting("climate_density", v)
 	_refresh_preset_label()
 
 func _on_shadow_distance(v: float) -> void:
