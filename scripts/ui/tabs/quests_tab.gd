@@ -27,10 +27,20 @@ var _empty_label: Label
 var _daily_timer_lbl: Label = null   # live "resets in HH:MM:SS" footer label
 var _tick_accum: float = 0.0
 
+# Responsive columns: each section's quest cards go into a GridContainer whose column count is
+# computed from the tab width (UILayout.columns_for) so a single card never stretches full-width
+# on a wide/ultrawide monitor — more columns appear as the window widens. Recomputed on `resized`.
+const _CARD_W := 480.0       # target quest-card width (px)
+const _MAX_COLS := 5
+var _grids: Array[GridContainer] = []   # all section card-grids (for resize recompute)
+var _current_grid: GridContainer = null # the grid the next _add_card() fills
+
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
 	_build_layout()
+	# Reflow the card grids whenever the tab (and thus the window) resizes.
+	resized.connect(_apply_columns)
 	Events.quest_progress.connect(_on_quest_event_id_cur_target)
 	Events.quest_completed.connect(_on_quest_event_id)
 	Events.quest_unlocked.connect(_on_quest_event_id)
@@ -123,9 +133,11 @@ func _refresh() -> void:
 	if not _cards_container:
 		return
 
-	# Clear all existing section nodes.
+	# Clear all existing section nodes + the per-section grids tracked for resize.
 	for child in _cards_container.get_children():
 		child.queue_free()
+	_grids.clear()
+	_current_grid = null
 
 	# Generic sections show STANDALONE contracts only; questline members render under their line.
 	var dailies_unclaimed: Array = Quests.daily_unclaimed()
@@ -153,6 +165,7 @@ func _refresh() -> void:
 	if not available.is_empty():
 		_cards_container.add_child(_build_section_header(
 			tr("AVAILABLE CONTRACTS"), tr("Accept to add to your active log"), COL_GREEN))
+		_begin_card_grid()
 		for q_var in available:
 			_add_card(q_var, "available")
 
@@ -160,6 +173,7 @@ func _refresh() -> void:
 	if not active.is_empty():
 		_cards_container.add_child(_build_section_header(
 			tr("ACTIVE CONTRACTS"), tr("%d / %d active") % [Quests.active_count(), Settings.ACTIVE_QUEST_CAP], COL_AMBER))
+		_begin_card_grid()
 		for q_var in active:
 			_add_card(q_var, "active")
 
@@ -167,18 +181,23 @@ func _refresh() -> void:
 	if has_dailies:
 		_cards_container.add_child(_build_section_header(
 			tr("DAILY CONTRACTS"), tr("Refreshes each day"), COL_TEAL))
+		_begin_card_grid()
 		for q_var in dailies_unclaimed:
 			_add_card(q_var, "active")
+		_current_grid = null   # the footer is a full-width strip, not a card
 		_cards_container.add_child(_build_daily_footer())
 
 	# ── LOCKED (teasers with an unlock hint — the next goals to chase) ────────
 	if not locked.is_empty():
 		_cards_container.add_child(_build_section_header(
 			tr("LOCKED"), tr("Meet the conditions to unlock"), COL_DIM))
+		_begin_card_grid()
 		for q_var in locked:
 			_add_card(q_var, "locked")
 
 	# (No COMPLETED section — a claimed contract LEAVES the board.)
+	# Apply the responsive column count once the tree has laid out (size.x is valid).
+	_apply_columns.call_deferred()
 
 
 ## Keeps only standalone (non-questline) quests from an array.
@@ -216,6 +235,7 @@ func _build_questline_group(line: QuestLine) -> void:
 	var step: QuestData = Quests.quest_by_id(current_id)
 	if step == null:
 		return
+	_begin_card_grid()
 	var st := Quests.state_of(current_id)
 	var mode := "locked"
 	if st == "available":
@@ -340,7 +360,33 @@ func _add_card(q_var: Variant, mode: String) -> void:
 	var q := q_var as QuestData
 	if q == null:
 		return
-	_cards_container.add_child(_build_card(q, mode))
+	var target: Node = _current_grid if _current_grid != null else _cards_container
+	target.add_child(_build_card(q, mode))
+
+
+## Column count that fits the current tab width (minus the inner margins + scrollbar).
+func _columns_now() -> int:
+	return UILayout.columns_for(size.x - 56.0, _CARD_W, 12.0, _MAX_COLS)
+
+
+## Start a fresh responsive card-grid under _cards_container; subsequent _add_card() fills it.
+func _begin_card_grid() -> void:
+	var grid := GridContainer.new()
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	grid.columns = _columns_now()
+	_cards_container.add_child(grid)
+	_grids.append(grid)
+	_current_grid = grid
+
+
+## Re-apply the responsive column count to every section grid (on resize / after a rebuild).
+func _apply_columns() -> void:
+	var cols: int = _columns_now()
+	for g in _grids:
+		if is_instance_valid(g):
+			g.columns = cols
 
 
 ## Builds a glass-header section strip with an optional sub-note beneath it.

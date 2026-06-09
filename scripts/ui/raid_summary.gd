@@ -30,19 +30,25 @@ const COL_DIM   := UIStyle.DIM
 @onready var _title: Label                = $Root/Panel/VBox/Title
 @onready var _subtitle: Label             = $Root/Panel/VBox/Subtitle
 @onready var _sep_top: HSeparator         = $Root/Panel/VBox/SepTop
-@onready var _loot_section: VBoxContainer = $Root/Panel/VBox/LootSection
-@onready var _loot_header: Label          = $Root/Panel/VBox/LootSection/LootHeader
-@onready var _loot_list: VBoxContainer    = $Root/Panel/VBox/LootSection/LootList
-@onready var _currency_label: Label       = $Root/Panel/VBox/LootSection/CurrencyLabel
-@onready var _bp_section: VBoxContainer   = $Root/Panel/VBox/BpSection
-@onready var _bp_header: Label            = $Root/Panel/VBox/BpSection/BpHeader
-@onready var _bp_list: VBoxContainer      = $Root/Panel/VBox/BpSection/BpList
-@onready var _quest_section: VBoxContainer = $Root/Panel/VBox/QuestSection
-@onready var _quest_header: Label          = $Root/Panel/VBox/QuestSection/QuestHeader
-@onready var _quest_list: VBoxContainer    = $Root/Panel/VBox/QuestSection/QuestList
+# The item sections now live inside a bounded ScrollContainer (Scroll/Content) so a big
+# haul scrolls instead of pushing the footer buttons off-screen.
+@onready var _scroll: ScrollContainer      = $Root/Panel/VBox/Scroll
+@onready var _content: VBoxContainer       = $Root/Panel/VBox/Scroll/Content
+@onready var _loot_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/LootSection
+@onready var _loot_header: Label          = $Root/Panel/VBox/Scroll/Content/LootSection/LootHeader
+@onready var _loot_list: VBoxContainer    = $Root/Panel/VBox/Scroll/Content/LootSection/LootList
+@onready var _currency_label: Label       = $Root/Panel/VBox/Scroll/Content/LootSection/CurrencyLabel
+@onready var _bp_section: VBoxContainer   = $Root/Panel/VBox/Scroll/Content/BpSection
+@onready var _bp_header: Label            = $Root/Panel/VBox/Scroll/Content/BpSection/BpHeader
+@onready var _bp_list: VBoxContainer      = $Root/Panel/VBox/Scroll/Content/BpSection/BpList
+@onready var _quest_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/QuestSection
+@onready var _quest_header: Label          = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestHeader
+@onready var _quest_list: VBoxContainer    = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestList
 @onready var _sep_bot: HSeparator          = $Root/Panel/VBox/SepBot
 @onready var _btn_continue: Button         = $Root/Panel/VBox/Buttons/ContinueBtn
 @onready var _btn_restart: Button          = $Root/Panel/VBox/Buttons/RestartBtn
+# Set true when WE paused the tree (solo) so we only unpause our own pause.
+var _did_pause: bool = false
 
 # ── Progression section (injected dynamically before _sep_bot in _ready) ─────
 var _prog_section: VBoxContainer = null
@@ -121,9 +127,8 @@ func _ready() -> void:
 	UIStyle.hover_lift(_btn_continue)
 	UIStyle.hover_lift(_btn_restart)
 
-	# ── Inject progression section into the VBox before the bottom separator ──
-	var vbox: VBoxContainer = get_node_or_null("Root/Panel/VBox") as VBoxContainer
-	if vbox != null and _sep_bot != null:
+	# ── Inject the progression section at the END of the SCROLLABLE content ──
+	if _content != null:
 		_prog_section = VBoxContainer.new()
 		_prog_section.name = "ProgSection"
 		_prog_section.add_theme_constant_override("separation", 4)
@@ -138,10 +143,8 @@ func _ready() -> void:
 		_prog_list.add_theme_constant_override("separation", 3)
 		_prog_section.add_child(_prog_list)
 
-		# Insert before the bottom separator so buttons stay at the bottom.
-		var sep_idx: int = _sep_bot.get_index()
-		vbox.add_child(_prog_section)
-		vbox.move_child(_prog_section, sep_idx)
+		# Last section inside the scroll (above the fixed footer buttons).
+		_content.add_child(_prog_section)
 
 	hide()
 
@@ -271,6 +274,18 @@ func _show_summary(won: bool) -> void:
 		_btn_restart.visible = true
 		_btn_restart.text = tr("RESTART SQUAD") if coop else tr("RESTART")
 
+	# Bound the scrollable middle to ~62% of the screen height so the panel (header + scroll +
+	# footer buttons) always fits on-screen and a big haul scrolls instead of pushing the
+	# Continue/Restart buttons out of view.
+	if _scroll != null:
+		var vh: float = get_viewport().get_visible_rect().size.y
+		_scroll.custom_minimum_size.y = clampf(vh * 0.62, 240.0, 760.0)
+	# Pause the world when truly SOLO (offline, or a host with no connected peers) — a real
+	# co-op session with peers can't pause the shared sim, so it stays running there.
+	_did_pause = NetworkManager.is_offline or multiplayer.get_peers().is_empty()
+	if _did_pause:
+		get_tree().paused = true
+
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	show()
 	# Animate the panel in once visible (pop_in requires is_inside_tree).
@@ -365,8 +380,11 @@ func _make_item_row(id: String, count: int) -> HBoxContainer:
 	if tex != null:
 		var icon_rect := TextureRect.new()
 		icon_rect.texture = tex
+		# EXPAND_IGNORE_SIZE is REQUIRED — without it the TextureRect adopts the icon's
+		# native 256px size and renders HUGE; with it the icon respects custom_minimum_size.
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon_rect.custom_minimum_size = Vector2(24, 24)
+		icon_rect.custom_minimum_size = Vector2(32, 32)
 		icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(icon_rect)
 	else:
@@ -415,10 +433,19 @@ func _clear_children(container: Control) -> void:
 # ── Button handlers ───────────────────────────────────────────────────────────
 
 func _on_continue() -> void:
+	_unpause_if_ours()
 	hide()
 	continue_requested.emit()
 
 
 func _on_restart() -> void:
+	_unpause_if_ours()
 	hide()
 	restart_requested.emit()
+
+
+## Clear the tree pause only if WE set it (solo), so we never unpause someone else's pause.
+func _unpause_if_ours() -> void:
+	if _did_pause:
+		_did_pause = false
+		get_tree().paused = false

@@ -25,6 +25,8 @@ var _beacon_core: MeshInstance3D = null
 var _beacon_pillar: MeshInstance3D = null
 var _beacon_light: OmniLight3D = null
 var _beacon_rings: Array[MeshInstance3D] = []
+var _beacon_spin_ring: MeshInstance3D = null       # slowly-rotating glowing ground ring
+var _beacon_decal: Decal = null                    # soft radial ground glow (recoloured on flip)
 var _beacon_mats: Array[StandardMaterial3D] = []   # all tinted mats (recolour on flip)
 var _beacon_time: float = 0.0
 var _beacon_pulse_base: float = 1.0          # 1.0 open / dimmer when closed
@@ -184,10 +186,13 @@ func _is_player(body: Node) -> bool:
 ## glowing core, a tall additive light pillar, an OmniLight3D, and animated rings.
 ## Cheap on headless (skips meshes/lights — pure server keeps zero visual cost).
 func _build_beacon() -> void:
-	# De-emphasise the prior translucent placeholder box (named "Beacon" in Arena.tscn).
-	var old: Node = get_node_or_null("Beacon")
-	if old is MeshInstance3D:
-		(old as MeshInstance3D).visible = false
+	# Hide BOTH placeholder boxes from Arena.tscn: the styled translucent "Beacon" AND the
+	# plain unlit "Mesh" — the latter renders as a DEFAULT GREY CUBE (no material override) and
+	# was the "ugly grey box" obscuring this beacon. Hiding it in code covers all 12 zones.
+	for placeholder in ["Beacon", "Mesh"]:
+		var old: Node = get_node_or_null(placeholder)
+		if old is MeshInstance3D:
+			(old as MeshInstance3D).visible = false
 
 	if DisplayServer.get_name() == "headless":
 		# Dedicated server: no visuals needed, and no _process animation.
@@ -258,6 +263,47 @@ func _build_beacon() -> void:
 		_beacon.add_child(ring)
 		_beacon_rings.append(ring)
 
+	# ── "Divine light" upgrade ───────────────────────────────────────────────────
+	# A wide god-ray CONE beaming DOWN from the sky onto the zone (wide at the top, narrowing
+	# to the ground) — additive + soft so it reads as a shaft of light from above, not solid.
+	var beam := MeshInstance3D.new()
+	var beam_mesh := CylinderMesh.new()
+	beam_mesh.top_radius = 6.0
+	beam_mesh.bottom_radius = 1.3
+	beam_mesh.height = 22.0
+	beam_mesh.radial_segments = 24
+	beam.mesh = beam_mesh
+	beam.material_override = _additive(tint, 0.6)   # softer than the central pillar
+	beam.position = Vector3(0, 11.0, 0)
+	_beacon.add_child(beam)
+
+	# A flat glowing RING flush on the ground that slowly SPINS — the "крутящийся круг".
+	_beacon_spin_ring = MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 2.4
+	torus.outer_radius = 3.0
+	torus.rings = 32
+	torus.ring_segments = 10
+	_beacon_spin_ring.mesh = torus
+	_beacon_spin_ring.material_override = _additive(tint, 2.8)
+	_beacon_spin_ring.position = Vector3(0, 0.12, 0)
+	_beacon.add_child(_beacon_spin_ring)
+
+	# A soft radial ground glow so the circle reads on the terrain (reuses the climate-zone
+	# radial mask). Pure emissive — modulate carries the green/amber tint, recoloured on flip.
+	_beacon_decal = Decal.new()
+	_beacon_decal.size = Vector3(9.0, 6.0, 9.0)
+	var glow_tex: Texture2D = ProceduralClimateZones._radial_texture()
+	_beacon_decal.texture_albedo = glow_tex
+	_beacon_decal.texture_emission = glow_tex
+	_beacon_decal.emission_energy = 1.8
+	_beacon_decal.albedo_mix = 0.25
+	_beacon_decal.modulate = tint
+	_beacon_decal.upper_fade = 0.4
+	_beacon_decal.lower_fade = 0.4
+	_beacon_decal.position = Vector3(0, 1.0, 0)
+	_beacon.add_child(_beacon_decal)
+
 	_apply_beacon_tint()
 	set_process(true)
 
@@ -299,6 +345,9 @@ func _apply_beacon_tint() -> void:
 	# A bigger, brighter pillar when open.
 	if _beacon_pillar != null:
 		_beacon_pillar.scale = Vector3(1.0, 1.0, 1.0) if _open else Vector3(0.7, 0.7, 0.7)
+	# The ground glow decal carries its tint via modulate (not in _beacon_mats).
+	if _beacon_decal != null:
+		_beacon_decal.modulate = tint
 	_beacon_pulse_base = energy_mul
 
 ## Animate the beacon: a gentle core pulse + expanding/fading rings + a slow pillar
@@ -314,6 +363,9 @@ func _process(delta: float) -> void:
 		if cm != null:
 			cm.emission_energy_multiplier = (6.0 * _beacon_pulse_base) * pulse
 		_beacon_core.scale = Vector3.ONE * (1.0 + 0.06 * sin(_beacon_time * 3.0))
+	# Slowly spin the glowing ground ring (the "spinning glowing circle").
+	if _beacon_spin_ring != null:
+		_beacon_spin_ring.rotation.y += delta * 0.6
 	# Pillar subtle vertical shimmer.
 	if _beacon_pillar != null:
 		var pm := _beacon_pillar.material_override as StandardMaterial3D

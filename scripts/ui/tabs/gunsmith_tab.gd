@@ -52,10 +52,19 @@ var _selected_weapon: String = ""
 ## Weapon selector button refs: weapon_id -> Button
 var _weapon_btns: Dictionary = {}
 
+# Responsive columns: the attachment-slot rows + perk rows go into GridContainers whose column
+# count is computed from the tab width, so a single slot/perk never stretches full-width on a
+# wide/ultrawide monitor. Recomputed on `resized`. (See UILayout.columns_for.)
+const _CELL_W := 520.0       # target slot/perk cell width (px)
+const _MAX_COLS := 3
+var _grids: Array[GridContainer] = []   # slot + perk grids (for resize recompute)
+
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
 	_build_layout()
+	# Reflow the slot/perk grids whenever the tab (and thus the window) resizes.
+	resized.connect(_apply_columns)
 	Events.attachment_changed.connect(_on_data_changed)
 	Events.weapon_perk_changed.connect(_on_data_changed)
 	Events.currency_changed.connect(_on_currency_changed)
@@ -175,12 +184,28 @@ func _rebuild_weapon_bar() -> void:
 func _rebuild_content() -> void:
 	for c in _content_body.get_children():
 		c.queue_free()
+	_grids.clear()
 
 	if _selected_weapon.is_empty():
 		return
 
 	_build_attachments_section()
 	_build_perks_section()
+	# Apply responsive columns once the tree has laid out (size.x is valid).
+	_apply_columns.call_deferred()
+
+
+## Column count that fits the current tab width (minus the panel padding + scrollbar).
+func _columns_now() -> int:
+	return UILayout.columns_for(size.x - 64.0, _CELL_W, 12.0, _MAX_COLS)
+
+
+## Re-apply the responsive column count to the slot + perk grids (on resize / after a rebuild).
+func _apply_columns() -> void:
+	var cols: int = _columns_now()
+	for g in _grids:
+		if is_instance_valid(g):
+			g.columns = cols
 
 
 ## Builds the ATTACHMENT SLOTS panel for _selected_weapon.
@@ -199,11 +224,14 @@ func _build_attachments_section() -> void:
 	var slots_panel := _make_panel()
 	_content_body.add_child(slots_panel)
 
-	var slots_vbox := VBoxContainer.new()
-	slots_vbox.name = "SlotsVBox"
-	slots_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slots_vbox.add_theme_constant_override("separation", 12)
-	slots_panel.add_child(slots_vbox)
+	var slots_grid := GridContainer.new()
+	slots_grid.name = "SlotsGrid"
+	slots_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slots_grid.add_theme_constant_override("h_separation", 12)
+	slots_grid.add_theme_constant_override("v_separation", 12)
+	slots_grid.columns = _columns_now()
+	slots_panel.add_child(slots_grid)
+	_grids.append(slots_grid)
 
 	# Collect all owned attachments once (saves repeated catalog iterations).
 	var owned_atts: Array[String] = _owned_attachments_for(_selected_weapon)
@@ -211,7 +239,7 @@ func _build_attachments_section() -> void:
 	var equipped: Dictionary = MetaProgression.get_equipped(_selected_weapon)
 
 	for slot_id in SLOTS:
-		slots_vbox.add_child(_build_slot_row(slot_id, equipped, owned_atts))
+		slots_grid.add_child(_build_slot_row(slot_id, equipped, owned_atts))
 
 
 ## Builds one attachment slot row: label | current att name + stat delta | dropdown | CLEAR.
@@ -328,15 +356,18 @@ func _build_perks_section() -> void:
 	var perks_panel := _make_panel()
 	_content_body.add_child(perks_panel)
 
-	var perks_vbox := VBoxContainer.new()
-	perks_vbox.name = "PerksVBox"
-	perks_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	perks_vbox.add_theme_constant_override("separation", 10)
-	perks_panel.add_child(perks_vbox)
+	var perks_grid := GridContainer.new()
+	perks_grid.name = "PerksGrid"
+	perks_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	perks_grid.add_theme_constant_override("h_separation", 12)
+	perks_grid.add_theme_constant_override("v_separation", 10)
+	perks_grid.columns = _columns_now()
+	perks_panel.add_child(perks_grid)
+	_grids.append(perks_grid)
 
 	for raw_key in MetaProgression.WEAPON_PERKS:
 		var key: String = String(raw_key)
-		perks_vbox.add_child(_build_perk_row(key))
+		perks_grid.add_child(_build_perk_row(key))
 
 
 ## Builds one perk row: name + desc | Lv N/max | cost | BUY button.
