@@ -260,6 +260,17 @@ func _show_summary(won: bool) -> void:
 	# Progression section.
 	_show_progression_section()
 
+	# Button policy: in CO-OP only the squad leader (host) may RESTART the whole squad —
+	# a client's restart used to no-op and strand the player. Clients see CONTINUE only.
+	# Single-player keeps both. (See main.restart_match — non-leader restarts degrade to
+	# CONTINUE as a safety net regardless.)
+	var coop := multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline
+	if coop and not GameState.is_leader():
+		_btn_restart.visible = false
+	else:
+		_btn_restart.visible = true
+		_btn_restart.text = tr("RESTART SQUAD") if coop else tr("RESTART")
+
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	show()
 	# Animate the panel in once visible (pop_in requires is_inside_tree).

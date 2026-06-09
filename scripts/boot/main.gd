@@ -330,6 +330,12 @@ func _on_summary_continue() -> void:
 	open_hub(_deploy_mode)
 
 func _on_summary_restart() -> void:
+	# In co-op only the leader (host) can drive a restart; a client restart would no-op
+	# and strand the player on a dead screen. Degrade a non-leader restart to CONTINUE
+	# (return to the Hub) so nobody ever gets stuck.
+	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline and not multiplayer.is_server():
+		_on_summary_continue()
+		return
 	_raid_summary = null
 	restart_match()
 
@@ -388,8 +394,11 @@ func _on_quit_to_menu() -> void:
 	_show_menu()
 
 func restart_match() -> void:
-	# Only the offline player or the host may drive a restart.
+	# Only the offline player or the host may drive a restart. A co-op CLIENT can't —
+	# degrade gracefully to CONTINUE (back to the Hub) instead of a no-op that would
+	# leave the player stranded if the summary was already hidden.
 	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline and not multiplayer.is_server():
+		_on_summary_continue()
 		return
 	# Co-op host: drive a SYNCHRONIZED re-deploy so EVERY peer reloads its arena and
 	# respawns together. A host-local load_arena() here reloads only the host and leaves
