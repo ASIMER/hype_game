@@ -71,6 +71,14 @@ const _POI_RECTS: Array = [
 	[-52.0, 30.0, 7.5 + 8.0, 7.5 + 8.0],
 	[-30.0, 50.0, 9.0 + 8.0, 8.0 + 8.0],
 	[50.0, 42.0, 9.0 + 8.0, 8.0 + 8.0],
+	# 6 NEW far-quadrant POIs (half-w/half-d + 8 m margin) so flora stops clipping the
+	# temple/lodge/ruins/etc. Must match arena.gd _POI_DEFS.
+	[160.0, -10.0, 11.0 + 8.0, 9.0 + 8.0],   # POI_SnowLodge
+	[205.0, 40.0, 10.0 + 8.0, 8.0 + 8.0],    # POI_SnowDepot
+	[0.0, 158.0, 12.0 + 8.0, 11.0 + 8.0],    # POI_DesertRuins
+	[45.0, 205.0, 8.0 + 8.0, 7.0 + 8.0],     # POI_RuinColumns
+	[160.0, 158.0, 11.0 + 8.0, 11.0 + 8.0],  # POI_Temple
+	[205.0, 205.0, 7.0 + 8.0, 7.0 + 8.0],    # POI_ShrineHouse
 ]
 # Circular keep-outs (cx, cz, radius): plaza, the three extraction zones, spawn.
 const _CIRCLES: Array = [

@@ -62,16 +62,16 @@ emission = Color(0.3, 0.5, 0.6, 1)
 emission_energy_multiplier = 0.15
 
 [sub_resource type="BoxShape3D" id="Box_perim_NS"]
-size = Vector3(162, 10, 2)
+size = Vector3(322, 10, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_perim_NS"]
-size = Vector3(162, 10, 2)
+size = Vector3(322, 10, 2)
 
 [sub_resource type="BoxShape3D" id="Box_perim_EW"]
-size = Vector3(2, 10, 162)
+size = Vector3(2, 10, 322)
 
 [sub_resource type="BoxMesh" id="Mesh_perim_EW"]
-size = Vector3(2, 10, 162)
+size = Vector3(2, 10, 322)
 
 [sub_resource type="StandardMaterial3D" id="Mat_extract"]
 transparency = 1
@@ -1247,7 +1247,7 @@ shape = SubResource("Shape_b20")
 [node name="Walls" type="Node3D" parent="."]
 
 [node name="WallNorth" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -80)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 5, -80)
 collision_layer = 1
 collision_mask = 0
 
@@ -1259,7 +1259,7 @@ mesh = SubResource("Mesh_perim_NS")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="WallSouth" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 80)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 5, 240)
 collision_layer = 1
 collision_mask = 0
 
@@ -1271,7 +1271,7 @@ mesh = SubResource("Mesh_perim_NS")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="WallEast" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 240, 5, 80)
 collision_layer = 1
 collision_mask = 0
 
@@ -1283,7 +1283,7 @@ mesh = SubResource("Mesh_perim_EW")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="WallWest" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 5, 80)
 collision_layer = 1
 collision_mask = 0
 
@@ -1465,6 +1465,150 @@ shape = SubResource("Box_extract")
 mesh = SubResource("Mesh_extract")
 
 [node name="Beacon" type="MeshInstance3D" parent="ExtractionZone3"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone4" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 2, 30)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone4"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone4"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone4"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone5" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 2, -30)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone5"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone5"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone5"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone6" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 175, 2, 60)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone6"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone6"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone6"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone7" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 2, 130)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone7"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone7"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone7"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone8" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 2, 130)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone8"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone8"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone8"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone9" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 2, 200)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone9"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone9"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone9"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone10" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 2, 120)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone10"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone10"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone10"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone11" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 2, 130)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone11"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone11"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone11"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone12" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 130, 2, 200)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone12"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone12"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone12"]
 material_override = SubResource("Mat_extract")
 mesh = SubResource("Mesh_extract")
 

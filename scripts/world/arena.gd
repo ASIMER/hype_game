@@ -284,6 +284,19 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 		var pile := ProceduralBuildings.rubble_pile(i * 137 + 11)
 		pile.position = spots[i]
 		scatter.add_child(pile)
+	# NEW quadrants (NE/SW/SE): rubble across the open areas for cover + landscape interest, so
+	# the new biomes don't read as empty. These have no flat pad, so they sit on the rolling
+	# terrain via height_at (rocks following the hills look natural). Clear of POIs/evac zones.
+	var new_spots: Array[Vector2] = [
+		Vector2(110, -45), Vector2(185, 5), Vector2(130, 60), Vector2(215, 10),     # NE snow
+		Vector2(-55, 100), Vector2(30, 165), Vector2(-60, 195), Vector2(10, 210),   # SW desert
+		Vector2(110, 180), Vector2(180, 105), Vector2(210, 160), Vector2(150, 210), # SE rain
+	]
+	for j in range(new_spots.size()):
+		var s2: Vector2 = new_spots[j]
+		var pile2 := ProceduralBuildings.rubble_pile((spots.size() + j) * 137 + 11)
+		pile2.position = Vector3(s2.x, ProceduralTerrain.height_at(s2.x, s2.y), s2.y)
+		scatter.add_child(pile2)
 
 ## Gives the ground a richer weathered material + a faint large-scale tint plane for
 ## depth. Collision stays the flat box at y=0 (untouched) so the navmesh is unchanged.
@@ -487,14 +500,7 @@ func _populate_world_loot() -> void:
 	if poi_points.is_empty():
 		return
 	for cache_pos in cache_points:
-		# Find the nearest POI centre.
-		var best_idx: int = 0
-		var best_dist: float = INF
-		for i in range(poi_points.size()):
-			var d: float = poi_points[i].distance_to(cache_pos)
-			if d < best_dist:
-				best_dist = d
-				best_idx = i
+		var best_idx: int = _nearest_poi_index(cache_pos, poi_points)
 		var tier: int = get_poi_tier(best_idx)
 		var count_to_spawn: int = int(Settings.RISK_TIER_CACHE_COUNT.get(tier, 2))
 		for _i in range(count_to_spawn):
@@ -503,7 +509,59 @@ func _populate_world_loot() -> void:
 				continue
 			var jitter := Vector3(randf_range(-1.2, 1.2), 0.0, randf_range(-1.2, 1.2))
 			LootPickup.spawn_at(loot, cache_pos + jitter, id, 1)
+	# GENEROUS: scatter findable loot across the OPEN areas of the new quadrants too (not just
+	# at the POI caches), so the new biomes have things to find between landmarks.
+	_scatter_field_loot(poi_points)
 	_populate_power_caches()
+
+## Index of the nearest POI centre to `pos` (−1 if there are no POIs). Shared by the cache
+## loop + the field-loot scatter so both derive the loot tier the same way.
+func _nearest_poi_index(pos: Vector3, poi_points: Array[Vector3]) -> int:
+	var best_idx: int = -1
+	var best_dist: float = INF
+	for i in range(poi_points.size()):
+		var d: float = poi_points[i].distance_to(pos)
+		if d < best_dist:
+			best_dist = d
+			best_idx = i
+	return best_idx
+
+## Server-only: scatter "field loot" across the OPEN areas of the 3 NEW quadrants (the L-shaped
+## region where x>82 OR z>82 — the original NW quadrant keeps its current density). Walks a grid,
+## jitters each point, skips anything inside a POI footprint (the POI caches already cover those),
+## derives the tier from the nearest POI, snaps to the navmesh (ground), and spawns 1-2 items.
+## Host-authoritative + replicated via the Net/Loot spawner exactly like the cache loot.
+func _scatter_field_loot(poi_points: Array[Vector3]) -> void:
+	var step: float = 28.0
+	var lo: float = -60.0
+	var hi: float = 212.0   # inset from the new walls (240/−80) so loot stays off the berm
+	var x: float = lo
+	while x <= hi:
+		var z: float = lo
+		while z <= hi:
+			# NEW region only (NE/SW/SE) — skip the original NW quadrant (x≤82 AND z≤82).
+			if x <= 82.0 and z <= 82.0:
+				z += step
+				continue
+			var px: float = x + randf_range(-step * 0.4, step * 0.4)
+			var pz: float = z + randf_range(-step * 0.4, step * 0.4)
+			var flat := Vector3(px, 0.0, pz)
+			var pidx: int = _nearest_poi_index(flat, poi_points)
+			# Keep loot in the OPEN — skip points sitting on a POI building footprint.
+			if pidx >= 0 and poi_points[pidx].distance_to(flat) < 16.0:
+				z += step
+				continue
+			var tier: int = get_poi_tier(pidx) if pidx >= 0 else 1
+			var pos: Vector3 = snap_to_navmesh(Vector3(px, 0.6, pz))
+			var count: int = 2 if tier >= 3 else 1   # richer biomes drop a bit more
+			for _i in range(count):
+				var id: String = LootTables.roll_by_tier(tier)
+				if id == "":
+					continue
+				var j := Vector3(randf_range(-0.8, 0.8), 0.0, randf_range(-0.8, 0.8))
+				LootPickup.spawn_at(loot, pos + j, id, 1)
+			z += step
+		x += step
 
 
 ## Scatter a few Power Caches (Vampire-Survivors-style buff chests) at POI centres, snapped to
@@ -515,13 +573,23 @@ func _populate_power_caches() -> void:
 	var poi_points: Array[Vector3] = get_poi_points()
 	if poi_points.is_empty():
 		return
-	# One cache near a handful of POIs (offset a few metres so it's not inside a building).
+	# Original NW POIs: ~half get a cache (i%2). EVERY new-quadrant POI (index ≥ 6) gets one so
+	# the new biomes all have a booster (was only the even ones → SnowLodge/DesertRuins/Temple).
 	for i in range(poi_points.size()):
-		if i % 2 != 0:
-			continue   # ~half the POIs get a cache, spread around the map
+		var is_new_poi: bool = i >= 6
+		if i % 2 != 0 and not is_new_poi:
+			continue
 		var pos: Vector3 = poi_points[i] + Vector3(randf_range(-2.5, 2.5), 0.0, randf_range(-2.5, 2.5))
 		pos = snap_to_navmesh(pos)
 		LootPickup.spawn_at(loot, pos, "power_cache", 1)
+	# Plus a couple of scattered boosters in the OPEN areas of each new biome (between POIs).
+	var extra_caches: Array[Vector3] = [
+		Vector3(130.0, 0.6, 12.0), Vector3(195.0, 0.6, 15.0),    # NE snow
+		Vector3(-30.0, 0.6, 185.0), Vector3(60.0, 0.6, 175.0),   # SW desert
+		Vector3(135.0, 0.6, 135.0), Vector3(195.0, 0.6, 185.0),  # SE rain
+	]
+	for c in extra_caches:
+		LootPickup.spawn_at(loot, snap_to_navmesh(c), "power_cache", 1)
 
 
 func _pick_marker(container: Node, index: int) -> Node3D:

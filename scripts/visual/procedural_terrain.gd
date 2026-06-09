@@ -144,8 +144,15 @@ static func _collect_pads(poi_defs: Dictionary) -> void:
 		else:
 			_pads.append({"kind": "rect", "x": px, "z": pz,
 				"hw": w * 0.5 + 6.0, "hd": dd * 0.5 + 6.0, "fall": 8.0})
-	# Extraction zones (r=10) — already inside POI pads but enforced.
-	for zc in [Vector2(45.0, -28.0), Vector2(-30.0, 50.0), Vector2(-52.0, 30.0)]:
+	# Extraction zones (r=10) — flatten a pad under each so the evac beacon sits clean. The
+	# original 3 are in the NW quadrant; the 9 new ones (3 per new biome — NE/SW/SE) sit in
+	# open ground and MUST match the ExtractionZone* node positions in Arena.tscn.
+	for zc in [
+		Vector2(45.0, -28.0), Vector2(-30.0, 50.0), Vector2(-52.0, 30.0),  # NW (original)
+		Vector2(120.0, 30.0), Vector2(200.0, -30.0), Vector2(175.0, 60.0),  # NE snow
+		Vector2(-40.0, 130.0), Vector2(55.0, 130.0), Vector2(-20.0, 200.0), # SW desert
+		Vector2(120.0, 120.0), Vector2(200.0, 130.0), Vector2(130.0, 200.0),# SE rain
+	]:
 		_pads.append({"kind": "circle", "x": zc.x, "z": zc.y, "r": 10.0, "fall": 8.0})
 	# Player spawn cluster (r=16 at (59,60)).
 	_pads.append({"kind": "circle", "x": 59.0, "z": 60.0, "r": 16.0, "fall": 9.0})
