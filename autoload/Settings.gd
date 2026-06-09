@@ -48,15 +48,19 @@ const TERRAIN_HILL_AMP: float = 3.5       # max rolling-hill height (m); keep sl
 const TERRAIN_RIM_HEIGHT: float = 7.0     # rocky berm height near the perimeter walls
 const RIVER_WIDTH: float = 5.0            # river channel width (m)
 const RIVER_DEPTH: float = 0.45           # ≤ navmesh agent_max_climb 0.5 → walkable ford everywhere
-# Flora budgets (MultiMesh where possible; trees/boulders are individual nodes)
-const FLORA_TREES: int = 80
-const FLORA_BUSHES: int = 60
-const FLORA_GRASS_PATCHES: int = 14000    # near grass layer (MultiMesh; fine dense blades)
-const FLORA_GRASS_FAR: int = 3000         # sparse far grass layer (larger tufts)
+# Flora budgets (MultiMesh where possible; trees/boulders are individual nodes).
+# 4× MAP: counts scaled ~2.5× for the 320×320 world (the scatter spreads EVENLY across the
+# whole rectangle via per-cell acceptance, so these are expected totals, not corner caps).
+# GRASS is density-driven (per-cell probability + spatial tiling) so its budgets are unused
+# for placement now — only the visibility ranges below matter.
+const FLORA_TREES: int = 200
+const FLORA_BUSHES: int = 150
+const FLORA_GRASS_PATCHES: int = 14000    # (legacy) near grass layer count — grass is now density-driven, kept for ref
+const FLORA_GRASS_FAR: int = 3000         # (legacy) far grass layer count — grass is now density-driven, kept for ref
 const GRASS_VIS_RANGE: float = 58.0       # near-layer visibility_range_end (m); wider so grass doesn't pop on the 160m map
 const GRASS_FAR_RANGE: float = 90.0       # far-layer visibility_range_end (m)
-const FLORA_STONES: int = 400             # small render-only stones (MultiMesh)
-const FLORA_BOULDERS: int = 14            # big collidable cover rocks
+const FLORA_STONES: int = 1000            # small render-only stones (MultiMesh)
+const FLORA_BOULDERS: int = 36            # big collidable cover rocks
 # Building interior lighting (shadowless warm omnis; budget ≤ ~14 lights map-wide)
 const INTERIOR_LIGHT_ENERGY: float = 2.6
 const INTERIOR_LIGHT_RANGE: float = 10.0
@@ -137,8 +141,8 @@ const FINAL_WAVE_SPAWN_INTERVAL: float = 0.5 # and spawns much faster
 
 # Atmosphere / mood — ambient particle density + how long the day→storm visual
 # transition takes when the final wave begins (world_atmosphere.gd reads these).
-const ATMOSPHERE_DUST := 90       # ambient dust-mote particle count
-const ATMOSPHERE_EMBERS := 40     # drifting ember particle count
+const ATMOSPHERE_DUST := 170      # ambient dust-mote particle count (4× map → ~2× to hold density)
+const ATMOSPHERE_EMBERS := 70     # drifting ember particle count
 const STORM_TWEEN_TIME := 6.0     # seconds to lerp sky/fog/light into the storm look
 
 # Ballistics — shots now arc under gravity (bullet drop). The shot is resolved as a

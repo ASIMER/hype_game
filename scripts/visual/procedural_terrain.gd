@@ -20,9 +20,29 @@ class_name ProceduralTerrain
 ##
 ## PARSE TRAP (warnings-as-errors): never `var x := <Variant>` — all locals are typed.
 
-const HALF: float = 80.0          # playable half-extent (±80 X/Z)
-const RIM_INNER: float = 64.0     # berm starts ramping up here
-const RIM_OUTER: float = 78.0     # berm reaches full height by here (just inside walls)
+const HALF: float = 80.0          # ORIGINAL quadrant half-extent (the NW quadrant is ±80)
+const RIM_INNER: float = 64.0     # (legacy) berm start vs distance-from-centre
+const RIM_OUTER: float = 78.0     # (legacy) berm full vs distance-from-centre
+
+# --- World rectangle (4× expansion). The original 160×160 map is the NW quadrant
+# (X∈[-80,80], Z∈[-80,80]); the world grows EAST (+X) and SOUTH (+Z) to 320×320. ALL
+# original content keeps its coordinates — only the bounds + new content extend.
+const SPAN: float = 320.0                       # full edge length (4× area vs the old 160)
+const X_MIN: float = -80.0
+const Z_MIN: float = -80.0
+const X_MAX: float = -80.0 + 320.0              # 240
+const Z_MAX: float = -80.0 + 320.0              # 240
+const WORLD_CX: float = 80.0                    # rectangle centre X ((X_MIN+X_MAX)/2)
+const WORLD_CZ: float = 80.0                    # rectangle centre Z
+# Perimeter berm rings the RECTANGLE: it ramps up as the distance to the NEAREST wall
+# drops from RIM_MARGIN_INNER (start) to RIM_MARGIN_OUTER (full berm) — same 16 m..2 m feel.
+const RIM_MARGIN_INNER: float = 16.0
+const RIM_MARGIN_OUTER: float = 2.0
+
+## Perimeter-berm ramp 0..1 by distance to the nearest rectangle wall (1 = at/over the wall).
+static func _edge_ramp(x: float, z: float) -> float:
+	var wd: float = min(min(x - X_MIN, X_MAX - x), min(z - Z_MIN, Z_MAX - z))
+	return 1.0 - smoothstep(RIM_MARGIN_OUTER, RIM_MARGIN_INNER, wd)
 
 # Terrain blend colors — authored as NATURAL sRGB. The ground albedo is a BAKED sRGB
 # TEXTURE (_bake_ground_texture): _color_srgb() writes these straight into an FORMAT_RGB8
@@ -258,12 +278,11 @@ static func height_at(x: float, z: float) -> float:
 	# --- rolling hills: FBM, wavelength ~25-45 m, amp ≤ TERRAIN_HILL_AMP.
 	var freq: float = 1.0 / 32.0   # ~32 m features
 	var hills: float = _fbm(x * freq, z * freq) * Settings.TERRAIN_HILL_AMP
-	# --- perimeter berm: ramp 0→RIM_HEIGHT between RIM_INNER..RIM_OUTER on |x| or |z|,
+	# --- perimeter berm: ramps up near the RECTANGLE walls (rings the whole 320×320 map),
 	# with rocky noise on top. Slopes here may exceed 47° (unclimbable scenery).
-	var edge: float = max(abs(x), abs(z))
 	var berm: float = 0.0
-	if edge > RIM_INNER:
-		var ramp: float = smoothstep(RIM_INNER, RIM_OUTER, edge)
+	var ramp: float = _edge_ramp(x, z)
+	if ramp > 0.0:
 		var rock: float = _fbm(x * 0.18, z * 0.18) * 1.4
 		berm = ramp * (Settings.TERRAIN_RIM_HEIGHT + rock)
 	var raw: float = hills + berm
@@ -300,10 +319,9 @@ static func _bank_top(x: float, z: float) -> float:
 		return PAD_Y
 	var freq: float = 1.0 / 32.0
 	var hills: float = _fbm(x * freq, z * freq) * Settings.TERRAIN_HILL_AMP
-	var edge: float = max(abs(x), abs(z))
 	var berm: float = 0.0
-	if edge > RIM_INNER:
-		var ramp: float = smoothstep(RIM_INNER, RIM_OUTER, edge)
+	var ramp: float = _edge_ramp(x, z)
+	if ramp > 0.0:
 		var rock: float = _fbm(x * 0.18, z * 0.18) * 1.4
 		berm = ramp * (Settings.TERRAIN_RIM_HEIGHT + rock)
 	return lerp(PAD_Y, hills + berm, open)
@@ -385,9 +403,10 @@ static func _build_ground(root: Node3D) -> void:
 	# detail 1.0 the cell == TERRAIN_CELL exactly → the mesh is byte-identical to before
 	# (height_at sampling is unchanged; only the sample DENSITY changes). Pure / deterministic.
 	var detail: float = clampf(Settings.terrain_detail_scale, 1.0, 2.0)
-	var cell: float = maxf(Settings.TERRAIN_CELL / detail, 0.5)
-	var n: int = int(round((HALF * 2.0) / cell))   # cells per side (80 at detail 1.0)
-	var verts: int = n + 1                          # 81 verts per side at detail 1.0
+	# Bigger map → a slightly larger min cell so the 320×320 grid stays a sane tri count.
+	var cell: float = maxf(Settings.TERRAIN_CELL / detail, 0.8)
+	var n: int = int(round(SPAN / cell))            # cells per side over the 320 m rectangle
+	var verts: int = n + 1
 
 	# Precompute height + per-vertex color/normal grids. Building the surface from
 	# EXPLICIT arrays (add_surface_from_arrays) guarantees the ARRAY_COLOR is stored —
@@ -396,8 +415,8 @@ static func _build_ground(root: Node3D) -> void:
 	heights.resize(verts * verts)
 	for iz in range(verts):
 		for ix in range(verts):
-			var x: float = -HALF + float(ix) * cell
-			var z: float = -HALF + float(iz) * cell
+			var x: float = X_MIN + float(ix) * cell
+			var z: float = Z_MIN + float(iz) * cell
 			heights[iz * verts + ix] = height_at(x, z)
 
 	# Smooth per-vertex normals + UVs from central differences on the height grid.
@@ -412,8 +431,8 @@ static func _build_ground(root: Node3D) -> void:
 	grid_uv.resize(verts * verts)
 	for iz in range(verts):
 		for ix in range(verts):
-			var x: float = -HALF + float(ix) * cell
-			var z: float = -HALF + float(iz) * cell
+			var x: float = X_MIN + float(ix) * cell
+			var z: float = Z_MIN + float(iz) * cell
 			var hc: float = heights[iz * verts + ix]
 			var hl: float = heights[iz * verts + max(ix - 1, 0)]
 			var hr: float = heights[iz * verts + min(ix + 1, verts - 1)]
@@ -425,8 +444,8 @@ static func _build_ground(root: Node3D) -> void:
 			var idx: int = iz * verts + ix
 			grid_pos[idx] = Vector3(x, hc, z)
 			grid_nrm[idx] = nrm
-			# UV maps the whole ±HALF map 1:1 onto [0..1]² so the baked texture aligns.
-			grid_uv[idx] = Vector2((x + HALF) / (HALF * 2.0), (z + HALF) / (HALF * 2.0))
+			# UV maps the whole rectangle 1:1 onto [0..1]² so the baked texture aligns.
+			grid_uv[idx] = Vector2((x - X_MIN) / SPAN, (z - Z_MIN) / SPAN)
 
 	# Build the triangle soup (positions/normals/uvs) + collision faces in one pass.
 	var mverts := PackedVector3Array()
@@ -990,17 +1009,21 @@ static func _arc_v(samples: Array[Vector2], i: int) -> float:
 static func _build_backdrop(root: Node3D) -> void:
 	var container := Node3D.new()
 	container.name = "MountainBackdrop"
+	# Ring the bigger 320×320 map: centre on the world centre (80,80), well outside the walls.
+	container.position = Vector3(WORLD_CX, 0.0, WORLD_CZ)
 	root.add_child(container)
 	var rock_mat := StandardMaterial3D.new()
 	rock_mat.albedo_color = Color(0.32, 0.33, 0.36)
 	rock_mat.roughness = 1.0
-	var count: int = 10
+	var count: int = 14
 	for i in range(count):
 		var ang: float = (TAU * float(i) / float(count)) + _hf(i * 7 + 1) * 0.4
-		var rad: float = 115.0 + _hf(i * 13 + 3) * 55.0          # 115..170
-		# Height scales with distance: near edge (115) ≈18-25 m, far edge (170) up to ~45 m.
-		var dist_t: float = clamp((rad - 115.0) / 55.0, 0.0, 1.0)
-		var height: float = lerp(18.0, 45.0, dist_t) + (_hf(i * 17 + 5) - 0.5) * 6.0
+		# rad ≥ 235 keeps every peak OUTSIDE the rectangle even toward a corner (the SE/etc.
+		# corners sit ~226 m from the centre 80,80); 235..335 rings the whole 320 m world.
+		var rad: float = 235.0 + _hf(i * 13 + 3) * 100.0        # 235..335 (beyond the corner wall dist)
+		# Height scales with distance: near ring ≈30 m, far ring up to ~68 m (taller — farther).
+		var dist_t: float = clamp((rad - 235.0) / 100.0, 0.0, 1.0)
+		var height: float = lerp(30.0, 68.0, dist_t) + (_hf(i * 17 + 5) - 0.5) * 10.0
 		var base_r: float = height * (0.7 + _hf(i * 19 + 2) * 0.4)
 		var px: float = cos(ang) * rad
 		var pz: float = sin(ang) * rad

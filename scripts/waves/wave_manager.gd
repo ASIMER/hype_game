@@ -50,6 +50,12 @@ const WAVE_POOLS := {
 var _arena: Node3D = null
 var _enemies_container: Node = null
 var _alive_enemies: Array[Node] = []
+# Monotonic spawn counter (server-only — wave spawning is authority-gated, so this never
+# needs to match across peers). Drives a golden-angle horizontal RING offset per spawn so
+# consecutive enemies reusing the SAME marker don't land on the IDENTICAL snapped point and
+# VERTICALLY STACK (CharacterBody collision shoves a pile straight up → enemies climbing to
+# Y=100+/200+ at one X,Z — the "боты лезут в одну точку вверх" pile). See _jittered_spawn.
+var _spawn_seq: int = 0
 var _wave_active: bool = false
 var _started: bool = false
 var _wave_total: int = 0      # enemies to spawn this wave
@@ -416,14 +422,31 @@ func _spawn_xform(index: int) -> Transform3D:
 	var players := _player_positions()
 	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 0
 	if players.is_empty() or n <= 0:
-		return _arena.get_enemy_spawn_point(index)
+		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
 	var ok: Array[int] = []
 	for i in n:
 		if _spawn_ok_for_players(_arena.get_enemy_spawn_point(i).origin, players):
 			ok.append(i)
 	if ok.is_empty():
-		return _arena.get_enemy_spawn_point(index)
-	return _arena.get_enemy_spawn_point(ok[index % ok.size()])
+		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
+	return _jittered_spawn(_arena.get_enemy_spawn_point(ok[index % ok.size()]))
+
+## Spread each spawn around its marker on a small golden-angle DISC so a burst of enemies that
+## share one marker forms a flat ring (collision resolves them HORIZONTALLY) instead of a
+## vertical pile that climbs the Y axis. The offset point is re-snapped to the navmesh so it
+## stays walkable; if the snap can't run (map not synced) the small offset is harmless. Uses
+## the monotonic `_spawn_seq` so even callers that reuse `index` (reinforcements/flanks) get
+## distinct points.
+func _jittered_spawn(xform: Transform3D) -> Transform3D:
+	var k: int = _spawn_seq
+	_spawn_seq += 1
+	var ang: float = float(k) * 2.39996323            # golden angle (rad) — even angular spread
+	var rad: float = 1.5 + float(k % 5) * 0.7         # 1.5 .. 4.3 m rings, cycling
+	var p: Vector3 = xform.origin + Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
+	if _arena != null and _arena.has_method("snap_to_navmesh"):
+		p = _arena.snap_to_navmesh(p)
+	xform.origin = p
+	return xform
 
 ## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
 ## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.

@@ -38,6 +38,19 @@ static func _hf(n: int) -> float:
 static func _hrange(n: int, lo: float, hi: float) -> float:
 	return lo + _hf(n) * (hi - lo)
 
+# ---------------------------------------------------------------- world rectangle
+# The map grew 4× (E+S): the original 160×160 field is the NW quadrant; the world is
+# now the rectangle X∈[X_MIN,X_MAX], Z∈[Z_MIN,Z_MAX] (centre 80,80). Mirrors the bounds
+# in procedural_terrain.gd. ALL scatter spans this rectangle (NOT the old origin-centred
+# ±70), and uses EVEN per-cell acceptance — never a fill-from-a-corner cap — so the new
+# +X/+Z quadrants are populated, not barren.
+const X_MIN: float = -80.0
+const X_MAX: float = 240.0
+const Z_MIN: float = -80.0
+const Z_MAX: float = 240.0
+const WORLD_CX: float = 80.0
+const WORLD_CZ: float = 80.0
+
 # ---------------------------------------------------------------- terrain hook
 ## Resolved once in build(): the terrain GDScript (or null when terrain-dev's file
 ## isn't present yet). Stored as a plain Variant so the guarded call is cheap.
@@ -69,10 +82,10 @@ const _CIRCLES: Array = [
 ]
 
 ## True when (x,z) is inside any structure/zone/spawn keep-out OR off the playable
-## field. `allow_berm` lets boulders sit a little further out (|coord| up to 75).
+## field. `allow_berm` lets boulders sit a little closer to the perimeter wall (inset 5 vs 8).
 static func _blocked(x: float, z: float, allow_berm: bool = false) -> bool:
-	var limit: float = 75.0 if allow_berm else 72.0
-	if absf(x) > limit or absf(z) > limit:
+	var inset: float = 5.0 if allow_berm else 8.0
+	if x < X_MIN + inset or x > X_MAX - inset or z < Z_MIN + inset or z > Z_MAX - inset:
 		return true
 	for r in _CIRCLES:
 		var dx: float = x - float(r[0])
@@ -206,19 +219,25 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 	for i in range(_TREE_MODELS.size()):
 		buckets.append([] as Array[Transform3D])
 
+	# EVEN spread over the whole rectangle: walk the grid across X_MIN..X_MAX / Z_MIN..Z_MAX
+	# and accept a per-cell PROBABILITY tuned so the expected total ≈ FLORA_TREES — NOT a
+	# fill-until-target cap (which would pile every tree into the NW corner and leave the new
+	# +X/+Z quadrants bare). The river/keep-out losses just thin it locally.
 	var target: int = Settings.FLORA_TREES
 	var placed: int = 0
 	var step: float = 7.0
-	var half: float = 70.0
+	var nx: int = int((X_MAX - X_MIN) / step)
+	var nz: int = int((Z_MAX - Z_MIN) / step)
+	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 95)
 	var gx: int = 0
-	var x: float = -half
-	while x <= half and placed < target:
+	var x: float = X_MIN + step * 0.5
+	while x <= X_MAX - step * 0.5:
 		var gz: int = 0
-		var z: float = -half
-		while z <= half and placed < target:
+		var z: float = Z_MIN + step * 0.5
+		while z <= Z_MAX - step * 0.5:
 			var cell: int = _h(seed * 911 + gx * 257 + gz * 31 + 7)
-			# Accept ~62% of cells; jitter keeps them off a visible lattice.
-			if (cell % 100) < 62:
+			# Jitter keeps accepted sites off a visible lattice.
+			if (cell % 100) < accept:
 				var px: float = x + _hrange(cell + 1, -2.6, 2.6)
 				var pz: float = z + _hrange(cell + 2, -2.6, 2.6)
 				if not _blocked(px, pz):
@@ -278,18 +297,21 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 	for i in range(_BUSH_MODELS.size()):
 		buckets.append([] as Array[Transform3D])
 
+	# Same even-spread model as the trees (probability tuned to the rectangle, not a corner cap).
 	var target: int = Settings.FLORA_BUSHES
 	var placed: int = 0
 	var step: float = 6.5
-	var half: float = 70.0
+	var nx: int = int((X_MAX - X_MIN) / step)
+	var nz: int = int((Z_MAX - Z_MIN) / step)
+	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 90)
 	var gx: int = 0
-	var x: float = -half + 3.0
-	while x <= half and placed < target:
+	var x: float = X_MIN + step * 0.5
+	while x <= X_MAX - step * 0.5:
 		var gz: int = 0
-		var z: float = -half + 3.0
-		while z <= half and placed < target:
+		var z: float = Z_MIN + step * 0.5
+		while z <= Z_MAX - step * 0.5:
 			var cell: int = _h(seed * 1303 + gx * 193 + gz * 47 + 17)
-			if (cell % 100) < 40:
+			if (cell % 100) < accept:
 				var px: float = x + _hrange(cell + 1, -2.4, 2.4)
 				var pz: float = z + _hrange(cell + 2, -2.4, 2.4)
 				if not _blocked(px, pz):
@@ -336,12 +358,14 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 ## silently lossy in Godot 4.6 here). Density uses a clumped jittered grid; keep-out / river
 ## instances aren't emitted. Fully deterministic (_h/_hf).
 const GRASS_TILE_M: float = 16.0  # spatial-tile edge (m) for the MultiMesh-LOD cull fix
-# DENSITY (local, since Settings.FLORA_GRASS_PATCHES isn't ours to edit): over-provision the
-# near layer to a solid carpet. Finer grid => more candidate cells per tile; the higher cap
-# lets them actually emit. Tiling + the 45 m visibility bubble keep on-screen draw bounded,
-# so the global count is cheap headroom-wise.
-const NEAR_GRASS_CAP: int = 26000     # near-layer instance budget (60k was too heavy for weak/shared GPUs)
-const NEAR_GRASS_GRID: float = 0.7    # near-layer nominal blade spacing (m) (relaxed from 0.52 so the count fills naturally)
+# DENSITY model (4× map): grass is now PER-CELL-PROBABILITY-driven, not a global instance cap.
+# `NEAR_GRASS_DENSITY` is the base near-layer acceptance at quality q=1.0, CALIBRATED so the
+# per-16m-tile blade count matches the old budgeted map (~340 blades/tile → identical weak-GPU
+# per-frame load, since tiling means only the ~45 m visible bubble of tiles ever draws). The
+# total count just scales with the bigger area; per-frame cost does not. (0.5 × the natural
+# clumped grid ≈ the old 26k-over-the-old-field budget.)
+const NEAR_GRASS_DENSITY: float = 0.5 # base near-layer per-cell acceptance at q=1 (tile-density calibrated)
+const NEAR_GRASS_GRID: float = 0.7    # near-layer nominal blade spacing (m)
 # Clumping density floor: the old 0.4x minimum carved big bald gaps. Raise the floor so the
 # field is uniformly dense with only gentle density variation (no bare patches).
 const GRASS_CLUMP_FLOOR: float = 0.85 # min per-clump emission weight (was 0.40)
@@ -382,9 +406,17 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	# Draw-distance lever (0.5..2.0, read at build) multiplies the near/far grass visibility
 	# ranges; 1.0 keeps the current cutoffs.
 	var dd: float = clampf(Settings.draw_distance_scale, 0.5, 2.0)
-	var near_target: int = maxi(1, int(NEAR_GRASS_CAP * q))
+	# 4× MAP NOTE: the grass is now DENSITY-driven, not capped by a global instance budget.
+	# A fixed NEAR_GRASS_CAP over the 4× area would (a) only fill the NW corner before the cap
+	# bit, leaving the +X/+Z quadrants bald, and (b) under-cover. Because grass is SPATIALLY
+	# TILED (each tile its own MMI with a ~GRASS_VIS_RANGE visibility bubble), only the handful
+	# of tiles around the camera ever draw — so per-frame cost is bounded by the SAME visible
+	# bubble no matter how big the map is. We therefore keep the SAME per-tile blade density as
+	# the old map (identical weak-GPU per-frame load) and just let the total count scale with
+	# the larger area. `q × NEAR_GRASS_DENSITY` is the per-cell acceptance (calibrated so q=1
+	# reproduces the old budgeted per-tile density).
 	var near_xforms: Array[Transform3D] = _grass_transforms(
-		seed, near_target, NEAR_GRASS_GRID, 4099, 1.0, true)
+		seed, q * NEAR_GRASS_DENSITY, NEAR_GRASS_GRID, 4099, 1.0, true)
 	var near_root := Node3D.new()
 	near_root.name = "Grass_Near"
 	root.add_child(near_root)
@@ -392,10 +424,10 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 		0.0, Settings.GRASS_VIS_RANGE * dd, 8.0)
 
 	# FAR layer: fewer, larger tufts, picks up where near begins to drop out. Tiled too —
-	# its AABB is otherwise also map-wide, so without tiling it'd never cull either.
-	var far_target: int = maxi(1, int(mini(Settings.FLORA_GRASS_FAR, 2000) * q))
+	# its AABB is otherwise also map-wide, so without tiling it'd never cull either. Sparser
+	# acceptance (×0.45) keeps it the thin big-tuft backdrop layer.
 	var far_xforms: Array[Transform3D] = _grass_transforms(
-		seed, far_target, 2.2, 5557, 1.6, false)
+		seed, q * 0.45, 2.2, 5557, 1.6, false)
 	var far_root := Node3D.new()
 	far_root.name = "Grass_Far"
 	root.add_child(far_root)
@@ -418,8 +450,8 @@ static func _emit_grass_tiled(parent: Node3D, prefix: String, mesh: ArrayMesh,
 	var buckets: Dictionary = {}
 	for xf in xforms:
 		var p: Vector3 = xf.origin
-		var gx: int = int(floor((p.x + 80.0) / GRASS_TILE_M))
-		var gz: int = int(floor((p.z + 80.0) / GRASS_TILE_M))
+		var gx: int = int(floor((p.x - X_MIN) / GRASS_TILE_M))
+		var gz: int = int(floor((p.z - Z_MIN) / GRASS_TILE_M))
 		var key: int = gx * 1000 + gz
 		if not buckets.has(key):
 			buckets[key] = []
@@ -454,38 +486,43 @@ static func _emit_grass_tiled(parent: Node3D, prefix: String, mesh: ArrayMesh,
 		tiles += 1
 	return tiles
 
-## Build a deterministic grass transform list on a jittered grid with CLUMPING: a coarse
-## ~6 m hash field scales emission per cell (some patches 1.6× denser, some 0.4× sparser)
-## so the field reads as natural patches, not a uniform lawn. `grid` = nominal spacing (m),
-## `salt` separates the near/far hash streams, `scale_mul` sizes the tufts, `clump`
-## toggles the density variation. Keeps every existing keep-out / river guard.
-static func _grass_transforms(seed: int, target: int, grid: float, salt: int,
+## Build a deterministic grass transform list on a jittered grid over the WHOLE world
+## rectangle with CLUMPING: a coarse ~6 m hash field scales emission per cell (some patches
+## denser, some sparser) so the field reads as natural patches, not a uniform lawn. `grid` =
+## nominal spacing (m), `density` = base per-cell acceptance probability (the quality lever;
+## 1.0 = full), `salt` separates the near/far hash streams, `scale_mul` sizes the tufts,
+## `clump` toggles the patchy density variation. Keeps every keep-out / river guard.
+##
+## 4× MAP: spans X_MIN..X_MAX / Z_MIN..Z_MAX with EVEN per-cell acceptance (no fill-from-a-
+## corner instance cap) so every quadrant is grassed; tiling in _emit_grass_tiled bounds the
+## per-frame draw to the visible bubble. A high safety_cap only guards a degenerate run.
+static func _grass_transforms(seed: int, density: float, grid: float, salt: int,
 		scale_mul: float, clump: bool) -> Array[Transform3D]:
 	var xforms: Array[Transform3D] = []
-	var half: float = 70.0
-	var side: int = int(ceil((half * 2.0) / grid))
-	# We over-provide grid cells; clumping + keep-out loss thin them. Emit until budget.
+	var nx: int = int(ceil((X_MAX - X_MIN) / grid))
+	var nz: int = int(ceil((Z_MAX - Z_MIN) / grid))
 	var i: int = 0
 	var placed: int = 0
-	var cells: int = side * side
-	while i < cells and placed < target:
-		var cx: int = i % side
-		var cz: int = i / side
+	var cells: int = nx * nz
+	var safety_cap: int = 400000
+	while i < cells and placed < safety_cap:
+		var cx: int = i % nx
+		var cz: int = i / nx
 		i += 1
 		var hcell: int = _h(seed * salt + cx * 131 + cz * 71 + 3)
-		var bx: float = -half + (float(cx) + 0.5) * grid
-		var bz: float = -half + (float(cz) + 0.5) * grid
-		# Clumping: coarse ~6 m field decides this cell's emission probability/scale.
-		var dens_mul: float = 1.0
+		var bx: float = X_MIN + (float(cx) + 0.5) * grid
+		var bz: float = Z_MIN + (float(cz) + 0.5) * grid
+		# Per-cell emission weight: base `density` × (optional) coarse ~6 m clump field.
+		var dens_mul: float = density
 		if clump:
-			var clx: int = int(floor((bx + half) / 6.0))
-			var clz: int = int(floor((bz + half) / 6.0))
+			var clx: int = int(floor((bx - X_MIN) / 6.0))
+			var clz: int = int(floor((bz - Z_MIN) / 6.0))
 			var cf: float = _hf(_h(seed * 769 + clx * 211 + clz * 97 + 5))
 			# Map the clump field to an emission weight; floor raised so no bald patches.
-			dens_mul = GRASS_CLUMP_FLOOR + cf * GRASS_CLUMP_RANGE
-			# Probabilistically skip cells in sparse clumps (deterministic per-cell hash).
-			if _hf(hcell + 9) > dens_mul:
-				continue
+			dens_mul = (GRASS_CLUMP_FLOOR + cf * GRASS_CLUMP_RANGE) * density
+		# Probabilistically skip cells per the (clumped) density (deterministic per-cell hash).
+		if _hf(hcell + 9) > dens_mul:
+			continue
 		var px: float = bx + _hrange(hcell + 1, -grid * 0.5, grid * 0.5)
 		var pz: float = bz + _hrange(hcell + 2, -grid * 0.5, grid * 0.5)
 		if _blocked(px, pz):
@@ -585,23 +622,28 @@ static func _build_stones(root: Node3D, seed: int) -> void:
 	mat_b.roughness = 0.95
 	mat_b.metallic = 0.0
 
+	# Even spread over the rectangle (probability tuned to FLORA_STONES, not a corner cap).
 	var target: int = Settings.FLORA_STONES
 	var xforms_a: Array[Transform3D] = []
 	var xforms_b: Array[Transform3D] = []
-	var side: int = int(ceil(sqrt(float(target) * 2.8)))
-	var span: float = 140.0
-	var ystep: float = span / float(side)
+	var step: float = 4.5
+	var nx: int = int((X_MAX - X_MIN) / step)
+	var nz: int = int((Z_MAX - Z_MIN) / step)
+	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 90)
 	var i: int = 0
 	var placed: int = 0
-	while i < side * side and placed < target:
-		var cx: int = i % side
-		var cz: int = i / side
-		var hcell: int = _h(seed * 3217 + cx * 149 + cz * 89 + 13)
-		var bx: float = -70.0 + (float(cx) + 0.5) * ystep
-		var bz: float = -70.0 + (float(cz) + 0.5) * ystep
-		var px: float = bx + _hrange(hcell + 1, -ystep * 0.5, ystep * 0.5)
-		var pz: float = bz + _hrange(hcell + 2, -ystep * 0.5, ystep * 0.5)
+	var cells: int = nx * nz
+	while i < cells:
+		var cx: int = i % nx
+		var cz: int = i / nx
 		i += 1
+		var hcell: int = _h(seed * 3217 + cx * 149 + cz * 89 + 13)
+		if (hcell % 100) >= accept:
+			continue
+		var bx: float = X_MIN + (float(cx) + 0.5) * step
+		var bz: float = Z_MIN + (float(cz) + 0.5) * step
+		var px: float = bx + _hrange(hcell + 1, -step * 0.5, step * 0.5)
+		var pz: float = bz + _hrange(hcell + 2, -step * 0.5, step * 0.5)
 		if _blocked(px, pz):
 			continue
 		var gy: float = _ground_y(px, pz)
@@ -663,15 +705,16 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 		buckets.append([] as Array[Transform3D])
 
 	var target: int = Settings.FLORA_BOULDERS
-	# Golden-angle ring of candidate positions (deterministic).
+	# Golden-angle ring of candidate positions (deterministic), centred on the world
+	# rectangle (80,80) and widened to reach the new +X/+Z quadrants (rad 20..150 m).
 	var candidates: Array = []
-	var n_cand: int = 64
+	var n_cand: int = 200
 	for k in range(n_cand):
 		var hk: int = _h(seed * 4099 + k * 37 + 9)
 		var ang: float = float(k) * 2.39996323  # golden angle (rad)
-		var rad: float = _hrange(hk + 1, 18.0, 68.0)
-		var cx: float = cos(ang) * rad + _hrange(hk + 2, -4.0, 4.0)
-		var cz: float = sin(ang) * rad + _hrange(hk + 3, -4.0, 4.0)
+		var rad: float = _hrange(hk + 1, 20.0, 150.0)
+		var cx: float = WORLD_CX + cos(ang) * rad + _hrange(hk + 2, -4.0, 4.0)
+		var cz: float = WORLD_CZ + sin(ang) * rad + _hrange(hk + 3, -4.0, 4.0)
 		candidates.append(Vector2(cx, cz))
 
 	var placed: Array[Vector2] = []

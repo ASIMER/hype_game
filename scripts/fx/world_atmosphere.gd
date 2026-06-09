@@ -16,8 +16,12 @@ class_name WorldAtmosphere
 ## drops sun_energy/exposure on the live SkyDome so the cinematic clouds go dark
 ## and overcast.
 
-const MAP_HALF := 80.0          # 160x160 map -> +/-80
-const DUST_BOX := Vector3(160.0, 30.0, 160.0)
+# 4× MAP: the world is the rectangle X∈[-80,240], Z∈[-80,240] (320×320, centre 80,80). The
+# ambient particle fields cover the whole rectangle, centred on (80,80) — not the old origin.
+const MAP_SPAN := 320.0         # full world edge (was 160)
+const WORLD_CX := 80.0          # rectangle centre X
+const WORLD_CZ := 80.0          # rectangle centre Z
+const DUST_BOX := Vector3(320.0, 30.0, 320.0)
 
 var _dust: GPUParticles3D
 var _embers: GPUParticles3D
@@ -200,9 +204,11 @@ func _build_dust() -> void:
 	p.preprocess = 18.0
 	p.randomness = 1.0
 	p.fixed_fps = 20
-	p.visibility_aabb = AABB(Vector3(-MAP_HALF, -2.0, -MAP_HALF), Vector3(160.0, 34.0, 160.0))
+	p.visibility_aabb = AABB(
+		Vector3(WORLD_CX - MAP_SPAN * 0.5, -2.0, WORLD_CZ - MAP_SPAN * 0.5),
+		Vector3(MAP_SPAN, 34.0, MAP_SPAN))
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	p.position = Vector3(0.0, 14.0, 0.0)
+	p.position = Vector3(WORLD_CX, 14.0, WORLD_CZ)
 
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -236,13 +242,15 @@ func _build_embers() -> void:
 	p.preprocess = 9.0
 	p.randomness = 1.0
 	p.fixed_fps = 24
-	p.visibility_aabb = AABB(Vector3(-MAP_HALF, -2.0, -MAP_HALF), Vector3(160.0, 30.0, 160.0))
+	p.visibility_aabb = AABB(
+		Vector3(WORLD_CX - MAP_SPAN * 0.5, -2.0, WORLD_CZ - MAP_SPAN * 0.5),
+		Vector3(MAP_SPAN, 30.0, MAP_SPAN))
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	p.position = Vector3(0.0, 1.0, 0.0)
+	p.position = Vector3(WORLD_CX, 1.0, WORLD_CZ)
 
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(MAP_HALF, 4.0, MAP_HALF)
+	pm.emission_box_extents = Vector3(MAP_SPAN * 0.5, 4.0, MAP_SPAN * 0.5)
 	pm.direction = Vector3(0.1, 1.0, 0.0)
 	pm.spread = 25.0
 	pm.gravity = Vector3(0.0, 1.2, 0.0)
