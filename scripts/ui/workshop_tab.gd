@@ -255,15 +255,45 @@ func _build_upgrade_rows() -> void:
 
 		var row := HBoxContainer.new()
 		row.name = "Row_" + key
-		row.add_theme_constant_override("separation", 10)
+		row.add_theme_constant_override("separation", 12)
+
+		var acc: Color = info.get("color", COL_TEAL)
+
+		# Icon cell (accent-bordered glass tile + the upgrade's game-icons texture, tinted by
+		# its accent colour) on the LEFT — recognisable at a glance, no need to read the text.
+		var cell := Panel.new()
+		cell.custom_minimum_size = Vector2(46, 46)
+		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var csb := StyleBoxFlat.new()
+		csb.bg_color = Color(0.09, 0.10, 0.13, 0.95)
+		csb.set_border_width_all(2)
+		csb.border_color = Color(acc, 0.85)
+		csb.set_corner_radius_all(5)
+		cell.add_theme_stylebox_override("panel", csb)
+		var utex: Texture2D = MetaProgression.upgrade_icon(key)
+		if utex != null:
+			var itex := TextureRect.new()
+			itex.texture = utex
+			itex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			itex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			itex.set_anchors_preset(Control.PRESET_FULL_RECT)
+			itex.offset_left = 7
+			itex.offset_top = 7
+			itex.offset_right = -7
+			itex.offset_bottom = -7
+			itex.modulate = acc
+			itex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cell.add_child(itex)
+		row.add_child(cell)
 
 		var vname := VBoxContainer.new()
-		vname.custom_minimum_size = Vector2(160, 0)
+		vname.custom_minimum_size = Vector2(150, 0)
 		vname.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 		var title_lbl := Label.new()
 		title_lbl.text = info["name"]
-		title_lbl.add_theme_color_override("font_color", COL_WHITE)
+		title_lbl.add_theme_color_override("font_color", acc)
 		vname.add_child(title_lbl)
 
 		var desc_lbl := Label.new()

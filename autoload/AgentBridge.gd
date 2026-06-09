@@ -433,6 +433,15 @@ func _handle_line(line: String) -> void:
 			# player; {action:"grant", id:"berserk"} applies a buff instantly (skip the reveal);
 			# {action:"unlock", id} unlocks a power for skill points; {action:"list"}.
 			_send(_debug_power(json))
+		"upgrade":
+			# QA: set a permanent credit-upgrade level without grinding to verify it changes a
+			# stat. {key:"player_health", level:5}. Restart the match for it to apply at spawn.
+			var ukey := str(json.get("key", ""))
+			if MetaProgression.UPGRADES.has(ukey):
+				MetaProgression.upgrades[ukey] = int(json.get("level", 0))
+				_send({ "ok": true, "key": ukey, "level": int(json.get("level", 0)) })
+			else:
+				_send({ "ok": false, "error": "unknown upgrade", "keys": MetaProgression.UPGRADES.keys() })
 		"screenshot":
 			_screenshot(str(json.get("name", "shot")))   # replies asynchronously
 		"restart":
@@ -1052,6 +1061,7 @@ func _snapshot() -> Dictionary:
 		"shields": int(p.get("_shields")) if p.get("_shields") != null else 0,
 		"buffs": (p.active_buffs() if p.has_method("active_buffs") else []),
 		"stamina": float(p.get("_stamina")) if p.get("_stamina") != null else 0.0,
+		"max_stamina": float(p.get("_max_stamina")) if p.get("_max_stamina") != null else 0.0,
 		"speed": Vector2(p.velocity.x, p.velocity.z).length() if p is Node3D else 0.0,
 		"crosshair": _debug_crosshair(),
 		"wdbg": {

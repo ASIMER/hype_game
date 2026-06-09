@@ -28,16 +28,36 @@ const MAX_LOADOUT := 3
 #   key            -> { name, desc, max_level, base_cost, effect (per level) }
 const UPGRADES := {
 	"player_health": { "name": "Reinforced Frame", "desc": "+8% max health per level",
-		"max_level": 5, "base_cost": 250, "effect": 0.08 },
+		"max_level": 5, "base_cost": 250, "effect": 0.08,
+		"icon": "res://assets/ui/icons/upgrades/player_health.svg", "color": Color(0.45, 0.86, 0.50) },
 	"reload_speed":  { "name": "Quick Hands", "desc": "-7% reload time per level",
-		"max_level": 5, "base_cost": 250, "effect": 0.07 },
+		"max_level": 5, "base_cost": 250, "effect": 0.07,
+		"icon": "res://assets/ui/icons/upgrades/reload_speed.svg", "color": Color(0.96, 0.74, 0.30) },
 	"stamina":       { "name": "Conditioning", "desc": "+10% stamina per level",
-		"max_level": 5, "base_cost": 200, "effect": 0.10 },
+		"max_level": 5, "base_cost": 200, "effect": 0.10,
+		"icon": "res://assets/ui/icons/upgrades/stamina.svg", "color": Color(0.34, 0.80, 0.92) },
 	"weapon_damage": { "name": "Calibrated Barrels", "desc": "+6% weapon damage per level",
-		"max_level": 5, "base_cost": 350, "effect": 0.06 },
+		"max_level": 5, "base_cost": 350, "effect": 0.06,
+		"icon": "res://assets/ui/icons/upgrades/weapon_damage.svg", "color": Color(0.96, 0.50, 0.28) },
 	"stash_capacity": { "name": "Stash Expansion", "desc": "+25 stash weight capacity per level",
-		"max_level": 6, "base_cost": 300, "effect": 25.0 },
+		"max_level": 6, "base_cost": 300, "effect": 25.0,
+		"icon": "res://assets/ui/icons/upgrades/stash_capacity.svg", "color": Color(0.32, 0.74, 0.78) },
 }
+
+## Cached upgrade-icon textures (loaded once; null if missing/headless). Drawn tinted by the
+## upgrade's accent colour in the WORKSHOP upgrade rows. Mirrors Settings.power_icon().
+static var _upgrade_icon_cache: Dictionary = {}
+static func upgrade_icon(key: String) -> Texture2D:
+	if _upgrade_icon_cache.has(key):
+		return _upgrade_icon_cache[key]
+	var path: String = String(UPGRADES.get(key, {}).get("icon", ""))
+	var tex: Texture2D = null
+	if path != "" and ResourceLoader.exists(path):
+		var res := load(path)
+		if res is Texture2D:
+			tex = res
+	_upgrade_icon_cache[key] = tex
+	return tex
 
 # Permanent PER-WEAPON perk catalog (bought in the Gunsmith; never lost). Applied in
 # weapon_controller._load_weapons. effect is per level; key meaning per the field used.
