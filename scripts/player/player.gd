@@ -40,6 +40,7 @@ var _revive_target: Node = null
 var _revive_progress: float = 0.0
 var _revive_guard_hp: float = -1.0   # reviver HP snapshot at channel start; a drop cancels the revive
 var _revive_ui_shown: bool = false   # whether the revive progress HUD is currently active (anti-spam)
+var _coop_prompt_active: bool = false # whether the shared "[E]" prompt is currently showing a coop (revive/carry) hint, so we clear it on leave
 # Carry side (authority): the downed teammate we are carrying.
 var _carry_target: Node = null
 
@@ -794,10 +795,17 @@ func _update_stamina(delta: float, sprinting: bool) -> void:
 ## Finds the nearest loot pickup within INTERACT_RANGE and emits the "[E]" prompt
 ## (or clears it). Loot is picked up with E by loot_pickup; this just informs.
 func _update_interaction() -> void:
+	# If the pickup we were pointing at got TAKEN (freed), the prompt would otherwise stick:
+	# in Godot a freed Object compares == null, so the `best == _interact_target` early-return
+	# below would read null == <freed> as true and skip the clear. Normalize the freed/invalid
+	# target to null and clear the stale "[E] Pick up" hint first.
+	if _interact_target != null and not is_instance_valid(_interact_target):
+		_interact_target = null
+		Events.interaction_cleared.emit()
 	var best: Node = null
 	var best_d := Settings.INTERACT_RANGE
 	for n in get_tree().get_nodes_in_group("pickups"):
-		if n is Node3D:
+		if n is Node3D and is_instance_valid(n):
 			var d := global_position.distance_to((n as Node3D).global_position)
 			if d < best_d:
 				best_d = d
@@ -1110,6 +1118,7 @@ func _update_coop_interaction(delta: float) -> void:
 		_revive_progress = 0.0
 		_set_revive_ui(-1.0)
 		Events.interaction_available.emit(tr("Carrying [release F]"), _carry_target)
+		_coop_prompt_active = true
 		return
 	# --- Revive (hold E) ---
 	if target == null:
@@ -1117,9 +1126,15 @@ func _update_coop_interaction(delta: float) -> void:
 			_revive_target = null
 			_revive_progress = 0.0
 		_set_revive_ui(-1.0)
+		# Left the downed teammate — clear the shared "[E]" prompt so the revive/carry hint
+		# doesn't stick (the loot update below re-shows a loot prompt if one is in range).
+		if _coop_prompt_active:
+			_coop_prompt_active = false
+			Events.interaction_cleared.emit()
 		return
 	# A downed teammate takes priority over loot — show the revive prompt.
 	Events.interaction_available.emit(tr("Revive / Carry [hold E / F]"), target)
+	_coop_prompt_active = true
 	if _act_held("interact"):
 		if target != _revive_target:
 			_revive_target = target
