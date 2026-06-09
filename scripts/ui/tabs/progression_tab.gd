@@ -277,6 +277,18 @@ func _build_power_rows() -> void:
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_skill_rows.add_child(row)
 
+		# Power icon (tinted by the power colour; game-icons.net CC BY 3.0).
+		var icon_tex: Texture2D = Settings.power_icon(String(pid))
+		if icon_tex != null:
+			var icon := TextureRect.new()
+			icon.texture = icon_tex
+			icon.custom_minimum_size = Vector2(28, 28)
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon.modulate = info.get("color", COL_WHITE)
+			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(icon)
+
 		var text_col := VBoxContainer.new()
 		text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(text_col)

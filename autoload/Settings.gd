@@ -272,17 +272,33 @@ const SKILLS := {
 # can roll from raid 1; the rest are UNLOCKED with skill points (`cost`) in the RAIDER tab. `color`
 # tints the reveal/icon. Pool that can roll = MetaProgression.available_powers().
 const POWER_REVEAL_TIME: float = 2.6            # length of the non-blocking lottery reveal
+# Power icons are CC BY 3.0 from game-icons.net (see docs/ASSETS.md / tools/art/fetch_power_icons.ps1).
 const POWERS := {
-	"berserk":    { "name": "Berserk",    "desc": "+60% weapon damage",        "field": "damage",      "mag": 0.60, "dur": 22.0, "color": Color(0.95, 0.32, 0.26), "rarity": 1, "free": true,  "cost": 0 },
-	"rapidfire":  { "name": "Rapid Fire",  "desc": "+45% fire rate",            "field": "fire_rate",   "mag": 0.45, "dur": 22.0, "color": Color(0.98, 0.74, 0.25), "rarity": 1, "free": true,  "cost": 0 },
-	"swift":      { "name": "Swift",       "desc": "+35% move speed",           "field": "speed",       "mag": 0.35, "dur": 25.0, "color": Color(0.30, 0.80, 0.95), "rarity": 1, "free": true,  "cost": 0 },
-	"overshield": { "name": "Overshield",  "desc": "Absorb 90 damage",          "field": "overshield",  "mag": 90.0, "dur": 30.0, "color": Color(0.40, 0.70, 1.00), "rarity": 1, "free": true,  "cost": 0 },
-	"regen":      { "name": "Regen",       "desc": "Heal 9 HP/sec",             "field": "regen",       "mag": 9.0,  "dur": 20.0, "color": Color(0.36, 0.90, 0.55), "rarity": 1, "free": true,  "cost": 0 },
-	"lifesteal":  { "name": "Lifesteal",   "desc": "Heal 30% of damage dealt",  "field": "lifesteal",   "mag": 0.30, "dur": 22.0, "color": Color(0.80, 0.25, 0.55), "rarity": 2, "free": false, "cost": 1 },
-	"juggernaut": { "name": "Juggernaut",  "desc": "−45% damage taken",         "field": "armor",       "mag": 0.45, "dur": 24.0, "color": Color(0.75, 0.78, 0.85), "rarity": 2, "free": false, "cost": 1 },
-	"adrenaline": { "name": "Adrenaline",  "desc": "Infinite stamina + reload", "field": "adrenaline",  "mag": 0.40, "dur": 24.0, "color": Color(0.95, 0.55, 0.20), "rarity": 2, "free": false, "cost": 1 },
-	"frenzy":     { "name": "Frenzy",      "desc": "+40% damage, fire & speed",  "field": "frenzy",      "mag": 0.40, "dur": 18.0, "color": Color(1.00, 0.40, 0.85), "rarity": 3, "free": false, "cost": 2 },
+	"berserk":    { "name": "Berserk",    "desc": "+60% weapon damage",        "field": "damage",      "mag": 0.60, "dur": 22.0, "color": Color(0.95, 0.32, 0.26), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/berserk.svg" },
+	"rapidfire":  { "name": "Rapid Fire",  "desc": "+45% fire rate",            "field": "fire_rate",   "mag": 0.45, "dur": 22.0, "color": Color(0.98, 0.74, 0.25), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/rapidfire.svg" },
+	"swift":      { "name": "Swift",       "desc": "+35% move speed",           "field": "speed",       "mag": 0.35, "dur": 25.0, "color": Color(0.30, 0.80, 0.95), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/swift.svg" },
+	"overshield": { "name": "Overshield",  "desc": "Absorb 90 damage",          "field": "overshield",  "mag": 90.0, "dur": 30.0, "color": Color(0.40, 0.70, 1.00), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/overshield.svg" },
+	"regen":      { "name": "Regen",       "desc": "Heal 9 HP/sec",             "field": "regen",       "mag": 9.0,  "dur": 20.0, "color": Color(0.36, 0.90, 0.55), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/regen.svg" },
+	"lifesteal":  { "name": "Lifesteal",   "desc": "Heal 30% of damage dealt",  "field": "lifesteal",   "mag": 0.30, "dur": 22.0, "color": Color(0.80, 0.25, 0.55), "rarity": 2, "free": false, "cost": 1, "icon": "res://assets/ui/icons/powers/lifesteal.svg" },
+	"juggernaut": { "name": "Juggernaut",  "desc": "−45% damage taken",         "field": "armor",       "mag": 0.45, "dur": 24.0, "color": Color(0.75, 0.78, 0.85), "rarity": 2, "free": false, "cost": 1, "icon": "res://assets/ui/icons/powers/juggernaut.svg" },
+	"adrenaline": { "name": "Adrenaline",  "desc": "Infinite stamina + reload", "field": "adrenaline",  "mag": 0.40, "dur": 24.0, "color": Color(0.95, 0.55, 0.20), "rarity": 2, "free": false, "cost": 1, "icon": "res://assets/ui/icons/powers/adrenaline.svg" },
+	"frenzy":     { "name": "Frenzy",      "desc": "+40% damage, fire & speed",  "field": "frenzy",      "mag": 0.40, "dur": 18.0, "color": Color(1.00, 0.40, 0.85), "rarity": 3, "free": false, "cost": 2, "icon": "res://assets/ui/icons/powers/frenzy.svg" },
 }
+
+## Cached power-icon textures (loaded once; null if missing/headless). Drawn tinted by the power
+## colour in the reveal reel / active-buff strip / RAIDER tab.
+static var _power_icon_cache: Dictionary = {}
+static func power_icon(power_id: String) -> Texture2D:
+	if _power_icon_cache.has(power_id):
+		return _power_icon_cache[power_id]
+	var path: String = String(POWERS.get(power_id, {}).get("icon", ""))
+	var tex: Texture2D = null
+	if path != "" and ResourceLoader.exists(path):
+		var res := load(path)
+		if res is Texture2D:
+			tex = res
+	_power_icon_cache[power_id] = tex
+	return tex
 
 # --- Progression: Vendor Reputation (Batch 3) --------------------------------
 # Cumulative rep thresholds per tier (index = tier; rep >= threshold → that tier).

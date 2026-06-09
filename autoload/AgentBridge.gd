@@ -660,6 +660,11 @@ func _debug_power(json: Dictionary) -> Dictionary:
 				p.apply_power(id)
 				return { "ok": true, "id": id }
 			return { "ok": false, "error": "no apply_power" }
+		"clear":
+			# QA: wipe active buffs so each can be measured in isolation.
+			p.set("_buffs", {})
+			p.set("_overshield", 0.0)
+			return { "ok": true }
 	return { "ok": false, "error": "unknown action" }
 
 func _debug_crosshair() -> Dictionary:
@@ -1046,6 +1051,8 @@ func _snapshot() -> Dictionary:
 		"self_revives": int(p.get("_self_revives")) if p.get("_self_revives") != null else 0,
 		"shields": int(p.get("_shields")) if p.get("_shields") != null else 0,
 		"buffs": (p.active_buffs() if p.has_method("active_buffs") else []),
+		"stamina": float(p.get("_stamina")) if p.get("_stamina") != null else 0.0,
+		"speed": Vector2(p.velocity.x, p.velocity.z).length() if p is Node3D else 0.0,
 		"crosshair": _debug_crosshair(),
 		"wdbg": {
 			"weapons": (wc.get("_weapons").size() if (wc and wc.get("_weapons") != null) else 0),

@@ -94,14 +94,20 @@ func _draw_reveal(vp: Vector2) -> void:
 	# Header.
 	var head := tr("ACTIVATED!") if landed else tr("POWER CACHE")
 	draw_string(font, origin + Vector2(14.0, 22.0), head, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - 28.0, 15, accent)
-	# Reel card (colored, with the power's initial) — a tiny pop when it lands.
+	# Reel card: a dark tile + the power's ICON tinted by its colour (falls back to the initial
+	# letter if the icon asset is missing). A tiny pop when it lands.
 	var pop := 1.0 + (0.12 * sin(_t * 22.0) if landed else 0.0)
 	var cs := CARD * pop
 	var cpos := origin + Vector2(16.0, 36.0) + Vector2((CARD - cs) * 0.5, (CARD - cs) * 0.5)
-	draw_rect(Rect2(cpos, Vector2(cs, cs)), Color(col, 0.9), true)
-	draw_rect(Rect2(cpos, Vector2(cs, cs)), Color(1, 1, 1, 0.85 if landed else 0.4), false, 2.0)
-	var initial := String(def.get("name", _face)).substr(0, 1).to_upper()
-	draw_string(font, cpos + Vector2(cs * 0.5 - 9.0, cs * 0.5 + 11.0), initial, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(0, 0, 0, 0.8))
+	draw_rect(Rect2(cpos, Vector2(cs, cs)), Color(0.05, 0.06, 0.08, 0.9), true)
+	draw_rect(Rect2(cpos, Vector2(cs, cs)), Color(col, 0.85 if landed else 0.45), false, 2.0)
+	var icon := Settings.power_icon(_face)
+	if icon != null:
+		var pad := cs * 0.14
+		draw_texture_rect(icon, Rect2(cpos + Vector2(pad, pad), Vector2(cs - pad * 2.0, cs - pad * 2.0)), false, col)
+	else:
+		var initial := String(def.get("name", _face)).substr(0, 1).to_upper()
+		draw_string(font, cpos + Vector2(cs * 0.5 - 9.0, cs * 0.5 + 11.0), initial, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, col)
 	# Name + desc (only meaningful once landed, but show the cycling name for flavour).
 	var name_x := origin.x + 16.0 + CARD + 14.0
 	draw_string(font, Vector2(name_x, origin.y + 58.0), String(def.get("name", _face)),
@@ -123,10 +129,13 @@ func _draw_buff_strip(vp: Vector2) -> void:
 	for b in buffs:
 		var col: Color = b.get("color", Color.WHITE)
 		var secs := int(ceil(float(b.get("time_left", 0.0))))
-		draw_rect(Rect2(Vector2(x, y), Vector2(168.0, 22.0)), Color(0.03, 0.05, 0.07, 0.7), true)
-		draw_rect(Rect2(Vector2(x, y), Vector2(4.0, 22.0)), col, true)   # accent bar
-		draw_string(font, Vector2(x + 12.0, y + 16.0), String(b.get("name", "")),
-			HORIZONTAL_ALIGNMENT_LEFT, 120.0, 13, Color(0.93, 0.95, 0.97))
-		draw_string(font, Vector2(x + 130.0, y + 16.0), "%ds" % secs,
+		draw_rect(Rect2(Vector2(x, y), Vector2(176.0, 24.0)), Color(0.03, 0.05, 0.07, 0.72), true)
+		draw_rect(Rect2(Vector2(x, y), Vector2(4.0, 24.0)), col, true)   # accent bar
+		var icon := Settings.power_icon(String(b.get("id", "")))
+		if icon != null:
+			draw_texture_rect(icon, Rect2(Vector2(x + 9.0, y + 3.0), Vector2(18.0, 18.0)), false, col)
+		draw_string(font, Vector2(x + 32.0, y + 17.0), String(b.get("name", "")),
+			HORIZONTAL_ALIGNMENT_LEFT, 108.0, 13, Color(0.93, 0.95, 0.97))
+		draw_string(font, Vector2(x + 138.0, y + 17.0), "%ds" % secs,
 			HORIZONTAL_ALIGNMENT_RIGHT, 34.0, 13, col)
-		y += 26.0
+		y += 28.0
