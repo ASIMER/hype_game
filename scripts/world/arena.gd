@@ -185,6 +185,11 @@ func _build_fog_zones() -> void:
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a
 ## courtyard (open center) so the zone stays reachable, roofless and walkable.
+## NOTE: the POIMarkers children in Arena.tscn MUST be in the SAME ORDER as these keys —
+## get_poi_tier(idx) indexes _POI_DEFS.keys() by the POIMarker index, and power/loot caches
+## map by POIMarker order. The first 6 are the ORIGINAL NW-quadrant POIs (unchanged); the next
+## 6 are the new POIs across the +X/+Z quadrants (paired with the Phase-3 climate zones):
+## NE→snow (lodge+depot), SW→desert (ruins×2), SE→rain (temple+shrine house).
 const _POI_DEFS := {
 	"POI_NorthTower":    {"theme": "tower",     "x": -40.0, "z": -45.0, "w": 17.0, "d": 15.0, "court": false},
 	"POI_EastWarehouse": {"theme": "warehouse", "x":  45.0, "z": -28.0, "w": 22.0, "d": 18.0, "court": true},
@@ -192,6 +197,15 @@ const _POI_DEFS := {
 	"POI_SWHouse":       {"theme": "house",     "x": -52.0, "z":  30.0, "w": 15.0, "d": 15.0, "court": true},
 	"POI_SouthYard":     {"theme": "yard",      "x": -30.0, "z":  50.0, "w": 18.0, "d": 16.0, "court": true},
 	"POI_EastYard":      {"theme": "yard",      "x":  50.0, "z":  42.0, "w": 18.0, "d": 16.0, "court": false},
+	# --- NE quadrant: SNOW (alpine) ---
+	"POI_SnowLodge":     {"theme": "snow_lodge",   "x": 160.0, "z": -10.0, "w": 22.0, "d": 18.0, "court": false},
+	"POI_SnowDepot":     {"theme": "warehouse",    "x": 205.0, "z":  40.0, "w": 20.0, "d": 16.0, "court": false},
+	# --- SW quadrant: DESERT (ruins) ---
+	"POI_DesertRuins":   {"theme": "desert_ruins", "x":   0.0, "z": 158.0, "w": 24.0, "d": 22.0, "court": false},
+	"POI_RuinColumns":   {"theme": "desert_ruins", "x":  45.0, "z": 205.0, "w": 16.0, "d": 14.0, "court": false},
+	# --- SE quadrant: RAIN (Japanese temple) ---
+	"POI_Temple":        {"theme": "temple",       "x": 160.0, "z": 158.0, "w": 22.0, "d": 22.0, "court": false},
+	"POI_ShrineHouse":   {"theme": "house",        "x": 205.0, "z": 205.0, "w": 14.0, "d": 14.0, "court": false},
 }
 
 ## Tears down the old crude POI cubes and instances a themed ProceduralBuildings
@@ -211,11 +225,14 @@ func _build_poi_structures() -> void:
 		var court: bool = def["court"]
 		var building: Node3D = null
 		match theme:
-			"tower":     building = ProceduralBuildings.build_tower(fp)
-			"warehouse": building = ProceduralBuildings.build_warehouse(fp, court)
-			"house":     building = ProceduralBuildings.build_house(fp, court)
-			"yard":      building = ProceduralBuildings.build_container_yard(fp, court)
-			"plaza":     building = ProceduralBuildings.build_plaza_cover()
+			"tower":        building = ProceduralBuildings.build_tower(fp)
+			"warehouse":    building = ProceduralBuildings.build_warehouse(fp, court)
+			"house":        building = ProceduralBuildings.build_house(fp, court)
+			"yard":         building = ProceduralBuildings.build_container_yard(fp, court)
+			"plaza":        building = ProceduralBuildings.build_plaza_cover()
+			"temple":       building = ProceduralBuildings.build_temple(fp)
+			"snow_lodge":   building = ProceduralBuildings.build_snow_lodge(fp)
+			"desert_ruins": building = ProceduralBuildings.build_desert_ruins(fp)
 		if building == null:
 			continue
 		building.name = poi_name

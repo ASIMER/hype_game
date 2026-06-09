@@ -83,6 +83,44 @@ static func mat_container(sid: int) -> StandardMaterial3D:
 	# Corrugated baked normal/albedo ribs (vertical, ~8 cm pitch) with rust streaks.
 	return ProcMaterials.corrugated(c, sid * 37 + 6)
 
+# --- Themed materials for the 3 new climate-zone landmarks (temple / lodge / ruins).
+## Red lacquered timber — temple columns/beams/torii. Vivid + low grime/roughness so the red
+## reads through the bright daylight (the weathered grime overlay otherwise greys it out).
+static func mat_lacquer(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.70, 0.10, 0.08), 0.05, 0.45, 0.24,
+		sid * 23 + 3, Vector3(0.06, 0.06, 0.06), true, 0.6, true)
+
+## Dark temple/lodge roof timber — broad grime, matte.
+static func mat_roofwood(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.15, 0.11, 0.09), 0.0, 0.82, 0.45,
+		sid * 31 + 2, Vector3(0.10, 0.10, 0.10), true, 0.7, true)
+
+## Off-white temple/lodge plaster wall — light grime.
+static func mat_plaster(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.84, 0.81, 0.74), 0.0, 0.9, 0.38,
+		sid * 41 + 9, Vector3(0.07, 0.07, 0.07), true, 0.6, true)
+
+## Warm timber logs — alpine lodge walls. Vertical streaks read as plank/log grain.
+static func mat_timber(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.streaked(Color(0.34, 0.22, 0.13), 0.0, 0.85, 0.5,
+		sid * 29 + 5, 0.7, true)
+
+## Bright snow — roof caps / lodge accents. Slightly glossy so it catches light.
+static func mat_snow(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.90, 0.93, 0.98), 0.0, 0.62, 0.25,
+		sid * 37 + 1, Vector3(0.05, 0.05, 0.05), true, 0.5, false)
+
+## Warm sandstone — desert ruins walls/columns/obelisk. Saturated tan with lighter grime so
+## it reads sandy (not blown-out white) under the strong sun.
+static func mat_sandstone(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.74, 0.55, 0.31), 0.0, 0.9, 0.4,
+		sid * 19 + 7, Vector3(0.11, 0.11, 0.11), true, 0.75, true)
+
+## Darker weathered sandstone for caps / shadowed blocks.
+static func mat_sandstone_dark(sid: int = 0) -> StandardMaterial3D:
+	return ProcMaterials.weathered(Color(0.56, 0.41, 0.23), 0.0, 0.92, 0.42,
+		sid * 17 + 4, Vector3(0.12, 0.12, 0.12), true, 0.75, true)
+
 # ---------------------------------------------------------------- seed helper
 ## Cheap deterministic positive hash of an int → big positive int.
 static func _h(n: int) -> int:
@@ -125,6 +163,29 @@ static func _solid(parent: Node3D, size: Vector3, mat: StandardMaterial3D,
 static func _decor(parent: Node3D, size: Vector3, mat: StandardMaterial3D,
 		offset: Vector3, rot_deg: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	return ProceduralModels._part(parent, ProceduralModels._box(size), mat, offset, rot_deg)
+
+## A vertical collidable CYLINDER (round column / obelisk shaft) — both renders and collides
+## (StaticBody3D + CylinderShape3D on layer 1) so the navmesh routes around it. Base at the
+## given `offset` centre (offset.y is the cylinder CENTRE, like _solid). `seg` controls how
+## round it looks (4 = a square pillar/obelisk, 12 = a smooth column).
+static func _solid_cyl(parent: Node3D, radius: float, height: float, mat: StandardMaterial3D,
+		offset: Vector3, seg: int = 12, rot_y_deg: float = 0.0) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.transform = Transform3D(Basis.from_euler(Vector3(0.0, deg_to_rad(rot_y_deg), 0.0)), offset)
+	var mi := MeshInstance3D.new()
+	mi.mesh = ProceduralModels._cyl(radius, height, seg)
+	mi.material_override = mat
+	body.add_child(mi)
+	var col := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = height
+	col.shape = shape
+	body.add_child(col)
+	parent.add_child(body)
+	return body
 
 ## A warm interior ceiling lamp at `pos`: a render-only fixture (dark housing disc +
 ## an emissive warm-glowing disc) PLUS a real OmniLight3D so robots indoors are clearly
@@ -512,6 +573,227 @@ static func build_container_yard(footprint: Vector2, courtyard: bool = true) -> 
 	_decor(root, Vector3(0.16, 3.0, 0.16), pole_mat, Vector3(pole_x, 1.5, pole_z))
 	_light_fixture(root, Vector3(pole_x, 3.0, pole_z), 400)
 	return root
+
+# ================================================================ CLIMATE-ZONE LANDMARKS
+# Three themed landmarks for the new quadrants (paired with the localized climate zones in
+# Phase 3): RAIN→Japanese Temple, SNOW→Alpine Lodge, DESERT→Sandstone Ruins. All deterministic
+# from the footprint; collidable cores so the navmesh routes around them.
+
+## JAPANESE TEMPLE (rain zone): a tiered pagoda on a stone podium + a red torii gate + two
+## stone lanterns. Plaster cores (collidable) with red lacquer corner posts and wide dark
+## overhanging eave roofs; a 4-sided pyramid + gold finial on top.
+static func build_temple(footprint: Vector2) -> Node3D:
+	var root := Node3D.new()
+	var w: float = footprint.x
+	var d: float = footprint.y
+	var sid: int = int(w * 23.0 + d * 7.0)
+	var lacquer := mat_lacquer(sid)
+	var roofw := mat_roofwood(sid)
+	var plaster := mat_plaster(sid)
+	var stone := mat_concrete(sid + 11)
+	# Stone podium + front steps (toward +Z).
+	var pod_w: float = w * 0.78
+	var pod_d: float = d * 0.78
+	_solid(root, Vector3(pod_w, 0.7, pod_d), stone, Vector3(0, 0.35, 0))
+	_solid(root, Vector3(pod_w * 0.5, 0.5, 0.8), stone, Vector3(0, 0.25, pod_d * 0.5 + 0.2))
+	_solid(root, Vector3(pod_w * 0.6, 0.25, 1.0), stone, Vector3(0, 0.12, pod_d * 0.5 + 0.9))
+	# Pagoda: 3 shrinking tiers.
+	var tiers: int = 3
+	var base_tw: float = w * 0.46
+	var base_td: float = d * 0.46
+	var sh: float = 2.6
+	var y: float = 0.7
+	for t in range(tiers):
+		var shrink: float = 1.0 - 0.18 * float(t)
+		var tw: float = base_tw * shrink
+		var td: float = base_td * shrink
+		var cy: float = y + sh * 0.5
+		# Plaster tier core.
+		_solid(root, Vector3(tw, sh, td), plaster, Vector3(0, cy, 0))
+		# Four red lacquer corner posts.
+		var px: float = tw * 0.5 - 0.18
+		var pz: float = td * 0.5 - 0.18
+		_solid(root, Vector3(0.3, sh, 0.3), lacquer, Vector3(-px, cy, -pz))
+		_solid(root, Vector3(0.3, sh, 0.3), lacquer, Vector3(px, cy, -pz))
+		_solid(root, Vector3(0.3, sh, 0.3), lacquer, Vector3(-px, cy, pz))
+		_solid(root, Vector3(0.3, sh, 0.3), lacquer, Vector3(px, cy, pz))
+		# Wide overhanging eave roof (dark slab) + a red underside band.
+		var eave_w: float = tw + 1.8
+		var eave_d: float = td + 1.8
+		_decor(root, Vector3(eave_w, 0.28, eave_d), roofw, Vector3(0, y + sh + 0.14, 0))
+		_decor(root, Vector3(eave_w * 0.96, 0.12, eave_d * 0.96), lacquer, Vector3(0, y + sh - 0.04, 0))
+		# Upturned eave corner accents (a slight pagoda lilt).
+		var ex: float = eave_w * 0.5
+		var ez: float = eave_d * 0.5
+		var ay: float = y + sh + 0.34
+		_decor(root, Vector3(0.6, 0.18, 0.6), roofw, Vector3(-ex, ay, -ez), Vector3(-16.0, 0, 16.0))
+		_decor(root, Vector3(0.6, 0.18, 0.6), roofw, Vector3(ex, ay, -ez), Vector3(-16.0, 0, -16.0))
+		_decor(root, Vector3(0.6, 0.18, 0.6), roofw, Vector3(-ex, ay, ez), Vector3(16.0, 0, 16.0))
+		_decor(root, Vector3(0.6, 0.18, 0.6), roofw, Vector3(ex, ay, ez), Vector3(16.0, 0, -16.0))
+		y += sh + 0.4
+	# Top 4-sided pyramid roof + gold finial spire.
+	var cap_r: float = base_td * 0.5 * pow(0.82, float(tiers)) + 0.9
+	ProceduralModels._part(root, ProceduralModels._cone(cap_r, 1.6, 4), roofw,
+		Vector3(0, y + 0.8, 0), Vector3(0, 45.0, 0))
+	var gold := ProcMaterials.emissive(Color(0.95, 0.8, 0.35), 0.6, Color(0.5, 0.42, 0.18))
+	_decor(root, Vector3(0.14, 1.6, 0.14), gold, Vector3(0, y + 2.4, 0))
+	ProceduralModels._part(root, ProceduralModels._sphere(0.28), gold, Vector3(0, y + 3.2, 0))
+	# Torii gate in front (+Z) + two flanking stone lanterns.
+	_build_torii(root, lacquer, roofw, w * 0.34, Vector3(0, 0, pod_d * 0.5 + 3.4))
+	_build_lantern(root, stone, Vector3(-pod_w * 0.34, 0, pod_d * 0.5 + 1.6))
+	_build_lantern(root, stone, Vector3(pod_w * 0.34, 0, pod_d * 0.5 + 1.6))
+	return root
+
+## A torii gate: two red posts + a lower tie-beam (nuki) + a wide upturned top lintel (kasagi).
+static func _build_torii(parent: Node3D, post_mat: StandardMaterial3D,
+		beam_mat: StandardMaterial3D, span: float, base: Vector3) -> void:
+	var h: float = 4.6
+	var post_r: float = 0.22
+	_solid(parent, Vector3(post_r * 2.0, h, post_r * 2.0), post_mat, base + Vector3(-span, h * 0.5, 0))
+	_solid(parent, Vector3(post_r * 2.0, h, post_r * 2.0), post_mat, base + Vector3(span, h * 0.5, 0))
+	_decor(parent, Vector3(span * 2.0 + 0.8, 0.32, 0.5), post_mat, base + Vector3(0, h * 0.78, 0))
+	_decor(parent, Vector3(span * 2.0 + 2.2, 0.42, 0.7), beam_mat, base + Vector3(0, h + 0.2, 0))
+	_decor(parent, Vector3(1.0, 0.3, 0.7), beam_mat, base + Vector3(-(span + 1.0), h + 0.4, 0), Vector3(0, 0, 11.0))
+	_decor(parent, Vector3(1.0, 0.3, 0.7), beam_mat, base + Vector3(span + 1.0, h + 0.4, 0), Vector3(0, 0, -11.0))
+	_decor(parent, Vector3(span * 2.0 + 1.0, 0.16, 0.36), beam_mat, base + Vector3(0, h + 0.46, 0))
+
+## A stone lantern: stacked base/post/platform/light-box/cap + a warm emissive panel & light.
+static func _build_lantern(parent: Node3D, stone_mat: StandardMaterial3D, base: Vector3) -> void:
+	_solid(parent, Vector3(0.7, 0.3, 0.7), stone_mat, base + Vector3(0, 0.15, 0))
+	_solid(parent, Vector3(0.24, 1.2, 0.24), stone_mat, base + Vector3(0, 0.9, 0))
+	_solid(parent, Vector3(0.62, 0.18, 0.62), stone_mat, base + Vector3(0, 1.6, 0))
+	var glow := ProcMaterials.emissive(Color(1.0, 0.72, 0.36), 2.4)
+	_decor(parent, Vector3(0.5, 0.5, 0.5), glow, base + Vector3(0, 1.95, 0))
+	ProceduralModels._part(parent, ProceduralModels._cone(0.5, 0.42, 4), stone_mat,
+		base + Vector3(0, 2.45, 0), Vector3(0, 45.0, 0))
+	var light := OmniLight3D.new()
+	light.position = base + Vector3(0, 2.0, 0)
+	light.shadow_enabled = false
+	light.light_color = Color(1.0, 0.78, 0.5)
+	light.light_energy = 1.6
+	light.omni_range = 7.0
+	parent.add_child(light)
+
+## ALPINE LODGE (snow zone): two timber A-frame cabins with steep snow-laden roofs, a stone
+## chimney, and a small woodpile. Collidable timber cores + render-only tilted roof panels
+## (tilted-box collision isn't supported by _solid; these are landmarks, not enterable).
+static func build_snow_lodge(footprint: Vector2) -> Node3D:
+	var root := Node3D.new()
+	var w: float = footprint.x
+	var d: float = footprint.y
+	var sid: int = int(w * 29.0 + d * 11.0)
+	var timber := mat_timber(sid)
+	var roofw := mat_roofwood(sid + 3)
+	var snow := mat_snow(sid)
+	var stone := mat_concrete(sid + 5)
+	# Main cabin + a smaller second cabin set back (+X/+Z).
+	_build_aframe(root, timber, roofw, snow, Vector3(-w * 0.16, 0, 0), w * 0.5, d * 0.6, 5.0, sid)
+	_build_aframe(root, timber, roofw, snow, Vector3(w * 0.28, 0, d * 0.18), w * 0.34, d * 0.4, 3.8, sid + 17)
+	# Stone chimney on the main cabin (above the ridge) with a snow cap + a faint hearth ember.
+	var ch_base := Vector3(-w * 0.16 - w * 0.2, 0, -d * 0.16)
+	_solid(root, Vector3(0.9, 6.2, 0.9), stone, ch_base + Vector3(0, 3.1, 0))
+	_decor(root, Vector3(1.06, 0.3, 1.06), snow, ch_base + Vector3(0, 6.32, 0))
+	var ember := ProcMaterials.emissive(Color(1.0, 0.5, 0.2), 2.0)
+	_decor(root, Vector3(0.5, 0.2, 0.5), ember, ch_base + Vector3(0, 6.5, 0))
+	# Woodpile (stacked logs) near the main cabin entrance (+Z) as cover.
+	var logmat := mat_timber(sid + 9)
+	var wpx: float = -w * 0.16 + 1.9
+	var wpz: float = d * 0.32
+	_solid(root, Vector3(2.0, 0.32, 0.32), logmat, Vector3(wpx, 0.16, wpz))
+	_solid(root, Vector3(2.0, 0.32, 0.32), logmat, Vector3(wpx, 0.16, wpz + 0.34))
+	_solid(root, Vector3(2.0, 0.32, 0.32), logmat, Vector3(wpx, 0.48, wpz + 0.17))
+	return root
+
+## One A-frame cabin centred at `base`: a solid timber core (collision) + two steep tilted roof
+## panels meeting at a ridge (render-only) capped with snow + front/back gables and a dark door.
+static func _build_aframe(parent: Node3D, timber: StandardMaterial3D, roofw: StandardMaterial3D,
+		snow: StandardMaterial3D, base: Vector3, fw: float, dd: float, H: float, sid: int) -> void:
+	var hw: float = fw * 0.5
+	# Solid lower core (navmesh routes around it).
+	var core_h: float = H * 0.42
+	_solid(parent, Vector3(fw * 0.86, core_h, dd * 0.9), timber, base + Vector3(0, core_h * 0.5, 0))
+	# Two roof panels from ground (±hw) up to the ridge (0,H). Render-only tilted boxes.
+	var slant: float = sqrt(hw * hw + H * H)
+	var ang: float = rad_to_deg(atan2(H, hw))
+	_decor(parent, Vector3(slant, 0.34, dd), roofw, base + Vector3(-hw * 0.5, H * 0.5, 0), Vector3(0, 0, ang))
+	_decor(parent, Vector3(slant, 0.34, dd), roofw, base + Vector3(hw * 0.5, H * 0.5, 0), Vector3(0, 0, -ang))
+	# Snow caps on the outer face of each panel.
+	_decor(parent, Vector3(slant * 0.98, 0.16, dd * 0.98), snow, base + Vector3(-hw * 0.5 - 0.12, H * 0.5 + 0.14, 0), Vector3(0, 0, ang))
+	_decor(parent, Vector3(slant * 0.98, 0.16, dd * 0.98), snow, base + Vector3(hw * 0.5 + 0.12, H * 0.5 + 0.14, 0), Vector3(0, 0, -ang))
+	# Front + back gable panels under the ridge.
+	var gable := ProcMaterials.weathered(Color(0.30, 0.20, 0.12), 0.0, 0.85, 0.45,
+		sid * 7 + 1, Vector3(0.08, 0.08, 0.08), true, 0.7, true)
+	_decor(parent, Vector3(fw * 0.5, H * 0.7, 0.2), gable, base + Vector3(0, H * 0.4, dd * 0.5))
+	_decor(parent, Vector3(fw * 0.5, H * 0.7, 0.2), gable, base + Vector3(0, H * 0.4, -dd * 0.5))
+	# Dark doorway + a warm window glow on the front gable (+Z).
+	var dark := mat_concrete_dark(sid + 2)
+	_decor(parent, Vector3(1.1, 1.9, 0.12), dark, base + Vector3(0, 0.95, dd * 0.5 + 0.06))
+	var winglow := ProcMaterials.emissive(Color(1.0, 0.8, 0.45), 1.8)
+	_decor(parent, Vector3(0.7, 0.7, 0.1), winglow, base + Vector3(fw * 0.22, 1.3, dd * 0.5 + 0.06))
+
+## DESERT RUINS (desert zone): broken sandstone perimeter walls with toppled gaps, a colonnade
+## of standing + broken round columns, and a central obelisk. All sandstone, collidable.
+static func build_desert_ruins(footprint: Vector2) -> Node3D:
+	var root := Node3D.new()
+	var w: float = footprint.x
+	var d: float = footprint.y
+	var sid: int = int(w * 19.0 + d * 13.0)
+	var sand := mat_sandstone(sid)
+	var sand_d := mat_sandstone_dark(sid)
+	# Low sandstone platform.
+	_solid(root, Vector3(w * 0.8, 0.5, d * 0.8), sand_d, Vector3(0, 0.25, 0))
+	# Broken perimeter walls along the 4 edges.
+	var ex: float = w * 0.5 * 0.72
+	var ez: float = d * 0.5 * 0.72
+	_ruin_wall(root, sand, sid + 1, Vector3(0, 0, -ez), w * 0.7, false)
+	_ruin_wall(root, sand, sid + 2, Vector3(0, 0, ez), w * 0.7, false)
+	_ruin_wall(root, sand, sid + 3, Vector3(-ex, 0, 0), d * 0.7, true)
+	_ruin_wall(root, sand, sid + 4, Vector3(ex, 0, 0), d * 0.7, true)
+	# Colonnade of round columns (some broken) on an inner ring.
+	var cols: int = 6
+	for i in range(cols):
+		var hk: int = _h(sid * 31 + i * 7)
+		var a: float = TAU * float(i) / float(cols)
+		var rr: float = min(ex, ez) * 0.58
+		var cxp: float = cos(a) * rr
+		var czp: float = sin(a) * rr
+		var broken: bool = (hk % 100) < 40
+		var col_h: float = 4.2 if not broken else (1.2 + _hf(hk + 1) * 1.6)
+		_solid_cyl(root, 0.42, col_h, sand, Vector3(cxp, 0.5 + col_h * 0.5, czp), 10)
+		if not broken:
+			_solid(root, Vector3(1.1, 0.4, 1.1), sand_d, Vector3(cxp, 0.5 + col_h + 0.2, czp))
+		else:
+			var fx: float = cxp + (_hf(hk + 2) - 0.5) * 2.4
+			var fz: float = czp + (_hf(hk + 3) - 0.5) * 2.4
+			_solid_cyl(root, 0.42, 0.7, sand_d, Vector3(fx, 0.85, fz), 10, 90.0)
+	# Central obelisk: a 4-sided shaft + a pyramidion cap.
+	var ob_h: float = 8.5
+	_solid_cyl(root, 0.66, ob_h, sand, Vector3(0, 0.5 + ob_h * 0.5, 0), 4, 45.0)
+	ProceduralModels._part(root, ProceduralModels._cone(0.95, 1.3, 4), sand,
+		Vector3(0, 0.5 + ob_h + 0.65, 0), Vector3(0, 45.0, 0))
+	# A couple of half-buried blocks for ground detail.
+	_solid(root, Vector3(1.6, 0.7, 1.2), sand_d, Vector3(ex * 0.4, 0.35, -ez * 0.5), 24.0)
+	_solid(root, Vector3(1.2, 0.6, 1.8), sand, Vector3(-ex * 0.5, 0.3, ez * 0.45), 58.0)
+	return root
+
+## A broken sandstone wall running along X (or along Z if `along_z`), centred at `base`, total
+## `length`, built from a few segments of varying height with toppled GAPS + fallen blocks.
+static func _ruin_wall(parent: Node3D, mat: StandardMaterial3D, sid: int, base: Vector3,
+		length: float, along_z: bool) -> void:
+	var segs: int = 5
+	var seg_len: float = length / float(segs)
+	for i in range(segs):
+		var hk: int = _h(sid * 13 + i * 5)
+		var toppled: bool = (hk % 100) < 30
+		var hgt: float = 0.6 if toppled else (1.6 + _hf(hk + 1) * 1.8)
+		var off: float = -length * 0.5 + (float(i) + 0.5) * seg_len
+		var pos: Vector3 = base + (Vector3(0, hgt * 0.5, off) if along_z else Vector3(off, hgt * 0.5, 0))
+		var sz: Vector3 = Vector3(0.55, hgt, seg_len * 0.92) if along_z else Vector3(seg_len * 0.92, hgt, 0.55)
+		_solid(parent, sz, mat, pos)
+		if toppled:
+			var jitter: float = (_hf(hk + 2) - 0.5) * 1.4
+			var bpos: Vector3 = base + (Vector3(1.1, 0.2, off + jitter) if along_z else Vector3(off + jitter, 0.2, 1.1))
+			_solid(parent, Vector3(1.0, 0.4, 0.7), mat, bpos, float(_h(hk + 3) % 40))
 
 ## Tiny deterministic seed source so rubble varies per call site.
 static func sd_seed(n: int) -> int:

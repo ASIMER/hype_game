@@ -17,14 +17,18 @@ class_name MapUI
 ## in any state. Root node is named "MapUI" and exposes set_open(bool) so the
 ## AgentBridge QA hook can drive it.
 
-# World bounds: the arena is 160x160 centred at the origin → +/-80 on x and z.
-const WORLD_HALF := 80.0
+# World bounds: the arena is now a 320×320 rectangle X∈[-80,240], Z∈[-80,240] (the original
+# 160×160 map is the NW quadrant). The map is mapped from (coord - WORLD_MIN)/WORLD_SPAN.
+const WORLD_MIN := -80.0
+const WORLD_SPAN := 320.0
 # Panel inset from the screen edges (px).
 const PANEL_MARGIN := 64.0
 # POI display names in the order arena.get_poi_points() returns them (POIMarkers
-# children order, per CLAUDE.md / arena docs).
+# children order, per CLAUDE.md / arena docs). First 6 = original NW quadrant; next 6 = the
+# new far-quadrant POIs (NE snow, SW desert, SE rain).
 const POI_NAMES := [
 	"North Tower", "East Warehouse", "Plaza", "SW House", "South Yard", "East Yard",
+	"Snow Lodge", "Snow Depot", "Desert Ruins", "Ruin Columns", "Temple", "Shrine House",
 ]
 
 # Cached per-zone extraction-window state from Events.extraction_window_changed:
@@ -213,13 +217,19 @@ func _poi_tier(index: int) -> int:
 		"SW House":       tier = int(Settings.POI_RISK_TIERS.get("POI_SWHouse", 1))
 		"South Yard":     tier = int(Settings.POI_RISK_TIERS.get("POI_SouthYard", 1))
 		"East Yard":      tier = int(Settings.POI_RISK_TIERS.get("POI_EastYard", 1))
+		"Snow Lodge":     tier = int(Settings.POI_RISK_TIERS.get("POI_SnowLodge", 1))
+		"Snow Depot":     tier = int(Settings.POI_RISK_TIERS.get("POI_SnowDepot", 1))
+		"Desert Ruins":   tier = int(Settings.POI_RISK_TIERS.get("POI_DesertRuins", 1))
+		"Ruin Columns":   tier = int(Settings.POI_RISK_TIERS.get("POI_RuinColumns", 1))
+		"Temple":         tier = int(Settings.POI_RISK_TIERS.get("POI_Temple", 1))
+		"Shrine House":   tier = int(Settings.POI_RISK_TIERS.get("POI_ShrineHouse", 1))
 	return clampi(tier, 1, 3)
 
 ## World (x,z) → panel-local pixel coords. NORTH-UP, world-aligned (no yaw):
-## +x → right, +z (south) → down. Maps +/-WORLD_HALF onto the panel rect.
+## +x → right, +z (south) → down. Maps the 320×320 world rectangle onto the panel rect.
 func world_to_panel(wpos: Vector3, panel: Rect2) -> Vector2:
-	var nx: float = clampf((wpos.x + WORLD_HALF) / (WORLD_HALF * 2.0), 0.0, 1.0)
-	var nz: float = clampf((wpos.z + WORLD_HALF) / (WORLD_HALF * 2.0), 0.0, 1.0)
+	var nx: float = clampf((wpos.x - WORLD_MIN) / WORLD_SPAN, 0.0, 1.0)
+	var nz: float = clampf((wpos.z - WORLD_MIN) / WORLD_SPAN, 0.0, 1.0)
 	return panel.position + Vector2(nx * panel.size.x, nz * panel.size.y)
 
 func get_player() -> Node3D:

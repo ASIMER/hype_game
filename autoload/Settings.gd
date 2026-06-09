@@ -220,6 +220,14 @@ const POI_RISK_TIERS := {
 	"POI_SWHouse":      1,
 	"POI_SouthYard":    2,
 	"POI_EastYard":     3,
+	# New far-quadrant POIs: the themed landmarks are high-risk/high-reward (tier 3), their
+	# fillers tier 2 — the long trek out to the new quadrants should pay off.
+	"POI_SnowLodge":    3,
+	"POI_SnowDepot":    2,
+	"POI_DesertRuins":  3,
+	"POI_RuinColumns":  2,
+	"POI_Temple":       3,
+	"POI_ShrineHouse":  2,
 }
 # Per-tier loot rarity band [min, max] (ItemData.Rarity: 0 COMMON…4 LEGENDARY). The
 # loot_tables roll picks within the band, weighted toward the lower (commoner) end.

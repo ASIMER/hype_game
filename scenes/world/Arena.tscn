@@ -1327,6 +1327,24 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 6)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, 50)
 [node name="E10" type="Marker3D" parent="EnemySpawnMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 1, 42)
+[node name="E11" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 145, 1, -10)
+[node name="E12" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 178, 1, -2)
+[node name="E13" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 1, 24)
+[node name="E14" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 1, 158)
+[node name="E15" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 1, 150)
+[node name="E16" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 1, 188)
+[node name="E17" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 144, 1, 160)
+[node name="E18" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 178, 1, 150)
+[node name="E19" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 1, 196)
 
 [node name="POIMarkers" type="Node3D" parent="."]
 [node name="POI_NorthTower" type="Marker3D" parent="POIMarkers"]
@@ -1341,6 +1359,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 1.0, 30)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1.0, 50)
 [node name="POI_EastYard" type="Marker3D" parent="POIMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 1.0, 42)
+[node name="POI_SnowLodge" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 1.0, -10)
+[node name="POI_SnowDepot" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 205, 1.0, 40)
+[node name="POI_DesertRuins" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 158)
+[node name="POI_RuinColumns" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 1.0, 205)
+[node name="POI_Temple" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 1.0, 158)
+[node name="POI_ShrineHouse" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 205, 1.0, 205)
 
 [node name="LootCacheMarkers" type="Node3D" parent="."]
 [node name="L0" type="Marker3D" parent="LootCacheMarkers"]
@@ -1365,6 +1395,30 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0.6, 50)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 5.4, 42)
 [node name="L10" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.6, 42)
+[node name="L11" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 152, 0.6, -4)
+[node name="L12" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 168, 0.6, -16)
+[node name="L13" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 199, 0.6, 34)
+[node name="L14" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 211, 0.6, 46)
+[node name="L15" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.6, 152)
+[node name="L16" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.6, 164)
+[node name="L17" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39, 0.6, 199)
+[node name="L18" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 51, 0.6, 211)
+[node name="L19" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 152, 0.6, 152)
+[node name="L20" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 168, 0.6, 164)
+[node name="L21" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 199, 0.6, 199)
+[node name="L22" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 211, 0.6, 211)
 
 [node name="ExtractionZone" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 2, -28)
