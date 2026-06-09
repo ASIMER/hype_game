@@ -660,6 +660,60 @@
       "norm_label": "main()"
     },
     {
+      "label": "fetch_power_icons.ps1",
+      "file_type": "code",
+      "source_file": "tools/art/fetch_power_icons.ps1",
+      "source_location": "L1",
+      "id": "art_fetch_power_icons",
+      "community": 73,
+      "norm_label": "fetch_power_icons.ps1"
+    },
+    {
+      "label": "Strip-Bg()",
+      "file_type": "code",
+      "source_file": "tools/art/fetch_power_icons.ps1",
+      "source_location": "L26",
+      "id": "art_fetch_power_icons_strip_bg",
+      "community": 73,
+      "norm_label": "strip-bg()"
+    },
+    {
+      "label": "fetch_upgrade_icons.ps1",
+      "file_type": "code",
+      "source_file": "tools/art/fetch_upgrade_icons.ps1",
+      "source_location": "L1",
+      "id": "art_fetch_upgrade_icons",
+      "community": 74,
+      "norm_label": "fetch_upgrade_icons.ps1"
+    },
+    {
+      "label": "Strip-Bg()",
+      "file_type": "code",
+      "source_file": "tools/art/fetch_upgrade_icons.ps1",
+      "source_location": "L20",
+      "id": "art_fetch_upgrade_icons_strip_bg",
+      "community": 74,
+      "norm_label": "strip-bg()"
+    },
+    {
+      "label": "fetch_real_audio.ps1",
+      "file_type": "code",
+      "source_file": "tools/audio/fetch_real_audio.ps1",
+      "source_location": "L1",
+      "id": "audio_fetch_real_audio",
+      "community": 75,
+      "norm_label": "fetch_real_audio.ps1"
+    },
+    {
+      "label": "Fetch()",
+      "file_type": "code",
+      "source_file": "tools/audio/fetch_real_audio.ps1",
+      "source_location": "L17",
+      "id": "audio_fetch_real_audio_fetch",
+      "community": 75,
+      "norm_label": "fetch()"
+    },
+    {
       "label": "gen_audio.py",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
@@ -682,7 +736,7 @@
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L27",
-      "id": "str",
+      "id": "tools_audio_gen_audio_py_str",
       "community": 0,
       "norm_label": "str"
     },
@@ -1236,6 +1290,42 @@
       "norm_label": "slow low-tension pad/pulse loop (a few seconds, loopable).     layered detuned"
     },
     {
+      "label": "trim_shots.py",
+      "file_type": "code",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L1",
+      "id": "audio_trim_shots",
+      "community": 70,
+      "norm_label": "trim_shots.py"
+    },
+    {
+      "label": "trim()",
+      "file_type": "code",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L23",
+      "id": "audio_trim_shots_trim",
+      "community": 70,
+      "norm_label": "trim()"
+    },
+    {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L23",
+      "id": "tools_audio_trim_shots_py_str",
+      "community": 70,
+      "norm_label": "str"
+    },
+    {
+      "label": "main()",
+      "file_type": "code",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L76",
+      "id": "audio_trim_shots_main",
+      "community": 70,
+      "norm_label": "main()"
+    },
+    {
       "label": "CLAUDE.md",
       "file_type": "document",
       "source_file": "CLAUDE.md",
@@ -1293,16 +1383,25 @@
       "label": "Localization (en base + ru; scalable)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L83",
+      "source_location": "L84",
       "id": "claude_localization_en_base_ru_scalable",
       "community": 59,
       "norm_label": "localization (en base + ru; scalable)"
     },
     {
+      "label": "UI look (\"military glass\" \u2014 theme-first)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L87",
+      "id": "claude_ui_look_military_glass_theme_first",
+      "community": 59,
+      "norm_label": "ui look (\"military glass\" \u2014 theme-first)"
+    },
+    {
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L86",
+      "source_location": "L93",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1311,7 +1410,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L100",
+      "source_location": "L107",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1320,7 +1419,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L103",
+      "source_location": "L110",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -1698,7 +1797,7 @@
       "label": "Deferred (planned, not this batch)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L30",
+      "source_location": "L37",
       "id": "docs_assets_deferred_planned_not_this_batch",
       "community": 60,
       "norm_label": "deferred (planned, not this batch)"
@@ -1707,7 +1806,7 @@
       "label": "Rejected",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L41",
+      "source_location": "L48",
       "id": "docs_assets_rejected",
       "community": 60,
       "norm_label": "rejected"
@@ -1716,7 +1815,7 @@
       "label": "Other vetted sources (for future searches)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L53",
+      "source_location": "L60",
       "id": "docs_assets_other_vetted_sources_for_future_searches",
       "community": 60,
       "norm_label": "other vetted sources (for future searches)"
@@ -1725,7 +1824,7 @@
       "label": "Credits",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L69",
+      "source_location": "L76",
       "id": "docs_assets_credits",
       "community": 60,
       "norm_label": "credits"
@@ -2019,6 +2118,15 @@
       "norm_label": "quick manual test (no game)"
     },
     {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L27",
+      "community": 0,
+      "norm_label": "str",
+      "id": "str"
+    },
+    {
       "label": "Release / packaging (portable Windows build)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
@@ -2108,7 +2216,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "hype-game mcp server config",
       "id": "mcp_json_hype_game_server"
     },
@@ -2121,7 +2229,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "hype raiders project guide (claude.md)",
       "id": "claudemd_project_guide"
     },
@@ -2134,7 +2242,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "decoupled-autoloads-via-events-bus pattern",
       "id": "claudemd_decoupled_autoloads"
     },
@@ -2147,7 +2255,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "offlinemultiplayerpeer authority model",
       "id": "claudemd_offline_peer_authority"
     },
@@ -2160,7 +2268,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "self-play test harness (--agent + play.py)",
       "id": "claudemd_self_play_harness"
     },
@@ -2186,7 +2294,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "agent-teams parallel work pattern",
       "id": "claudemd_agent_teams"
     },
@@ -2199,7 +2307,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": ".claude/settings.json graphify pretooluse hooks",
       "id": "settings_json_graphify_hooks"
     },
@@ -2212,7 +2320,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "agentbridge (self-play control server)",
       "id": "agentbridge_agentbridge"
     },
@@ -2225,7 +2333,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "agentbridge.activate",
       "id": "agentbridge_activate"
     },
@@ -2277,7 +2385,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -2381,7 +2489,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "guarded-fallback resolution (glb to procedural to primitive)",
       "id": "assetregistry_fallback_chain"
     },
@@ -2394,7 +2502,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "audiomanager (events-driven sfx)",
       "id": "audiomanager_audiomanager"
     },
@@ -2407,7 +2515,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "audiomanager._play / _play_at",
       "id": "audiomanager_play"
     },
@@ -2459,7 +2567,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 68,
       "norm_label": "crafting.learn_items (item to blueprint map)",
       "id": "crafting_learn_items"
     },
@@ -2472,7 +2580,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 68,
       "norm_label": "crafting.buy_blueprint",
       "id": "crafting_buy_blueprint"
     },
@@ -2485,7 +2593,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "events (global signal bus)",
       "id": "events_events"
     },
@@ -2498,7 +2606,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -2511,7 +2619,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 72,
       "norm_label": "extractiondirector._apply_windows",
       "id": "extractiondirector_apply_windows"
     },
@@ -2524,7 +2632,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "gamestate (match-level shared state)",
       "id": "gamestate_gamestate"
     },
@@ -2537,7 +2645,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -2693,7 +2801,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 68,
       "norm_label": "quests.claim (grant reward once)",
       "id": "quests_claim"
     },
@@ -2745,7 +2853,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -2758,7 +2866,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 68,
       "norm_label": "raidmanager._deposit",
       "id": "raidmanager_deposit"
     },
@@ -2836,7 +2944,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 68,
       "norm_label": "metaprogression.learn_blueprint",
       "id": "metaprogression_learn_blueprint"
     },
@@ -2849,7 +2957,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -2862,7 +2970,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 11,
       "norm_label": "networkmanager.start_offline (offlinemultiplayerpeer)",
       "id": "networkmanager_start_offline"
     },
@@ -2888,7 +2996,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "networkmanager.notify_loaded (load gate)",
       "id": "networkmanager_notify_loaded"
     },
@@ -2901,7 +3009,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "networkmanager.begin_match",
       "id": "networkmanager_begin_match"
     },
@@ -2927,7 +3035,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "networkmanager.broadcast_shot",
       "id": "networkmanager_broadcast_shot"
     },
@@ -2953,7 +3061,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "networkmanager.sync_match_timer / sync_wave",
       "id": "networkmanager_sync_match_timer"
     },
@@ -2992,7 +3100,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 72,
       "norm_label": "serverbrowser.scan_lan",
       "id": "serverbrowser_scan_lan"
     },
@@ -3044,7 +3152,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 72,
       "norm_label": "settings (tunable constants)",
       "id": "settings_settings"
     },
@@ -3057,7 +3165,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "settings.enemy_stats (per-archetype table)",
       "id": "settings_enemy_stats"
     },
@@ -3070,7 +3178,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "settings.difficulty_mods / difficulty_mods",
       "id": "settings_difficulty_mods"
     },
@@ -3902,7 +4010,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -3915,7 +4023,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -4084,7 +4192,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 1,
       "norm_label": "remoteshotfx",
       "id": "fx_remote_shot_fx_remoteshotfx"
     },
@@ -5103,7 +5211,7 @@
       "label": "ProceduralBuildings._solid",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "proceduralbuildings._solid",
       "id": "visual_procedural_buildings_solid"
     },
@@ -5111,7 +5219,7 @@
       "label": "ProceduralBuildings.build_tower",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_tower",
       "id": "visual_procedural_buildings_build_tower"
     },
@@ -5119,7 +5227,7 @@
       "label": "ProceduralBuildings.build_warehouse",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_warehouse",
       "id": "visual_procedural_buildings_build_warehouse"
     },
@@ -5127,7 +5235,7 @@
       "label": "ProceduralBuildings.build_house",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_house",
       "id": "visual_procedural_buildings_build_house"
     },
@@ -5135,7 +5243,7 @@
       "label": "ProceduralBuildings.build_container_yard",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_container_yard",
       "id": "visual_procedural_buildings_build_container_yard"
     },
@@ -5151,7 +5259,7 @@
       "label": "ProceduralModels.build",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "proceduralmodels.build",
       "id": "visual_procedural_models_build"
     },
@@ -5159,7 +5267,7 @@
       "label": "ProceduralModels._part",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "proceduralmodels._part",
       "id": "visual_procedural_models_part"
     },
@@ -5239,7 +5347,7 @@
       "label": "Arena._build_poi_structures",
       "file_type": "code",
       "source_file": "scripts/world/arena.gd",
-      "community": 1,
+      "community": 2,
       "norm_label": "arena._build_poi_structures",
       "id": "world_arena_build_poi_structures"
     },
@@ -6100,6 +6208,36 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "tools/art/fetch_power_icons.ps1",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "art_fetch_power_icons",
+      "target": "art_fetch_power_icons_strip_bg",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/art/fetch_upgrade_icons.ps1",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "art_fetch_upgrade_icons",
+      "target": "art_fetch_upgrade_icons_strip_bg",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/fetch_real_audio.ps1",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "audio_fetch_real_audio",
+      "target": "audio_fetch_real_audio_fetch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L124",
       "weight": 1.0,
@@ -6479,6 +6617,17 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_write_wav",
       "target": "str"
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "audio_gen_audio_write_wav",
+      "target": "tools_audio_gen_audio_py_str",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -8161,6 +8310,48 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "audio_trim_shots",
+      "target": "audio_trim_shots_main",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "audio_trim_shots",
+      "target": "audio_trim_shots_trim",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L78",
+      "weight": 1.0,
+      "source": "audio_trim_shots_main",
+      "target": "audio_trim_shots_trim",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/trim_shots.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "audio_trim_shots_trim",
+      "target": "tools_audio_trim_shots_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "weight": 1.0,
@@ -8194,9 +8385,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L83",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_localization_en_base_ru_scalable",
-      "confidence_score": 1.0
+      "target": "claude_localization_en_base_ru_scalable"
     },
     {
       "relation": "contains",
@@ -8257,6 +8448,16 @@
       "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
       "target": "claude_top_conventions_gotchas"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L87",
+      "weight": 1.0,
+      "source": "claude_hype_raiders_project_guide_read_me_first",
+      "target": "claude_ui_look_military_glass_theme_first",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12083,5 +12284,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "40a9b1f3c121d69a3ab53b28a12ca35dde087940"
+  "built_at_commit": "f63fde8fa4e85c69129ea5cba4d4a1b9903a521d"
 }

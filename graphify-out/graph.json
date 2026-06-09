@@ -1347,7 +1347,7 @@
       "label": "Run / test / validate (most important for a new session)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L12",
+      "source_location": "L14",
       "id": "claude_run_test_validate_most_important_for_a_new_session",
       "community": 59,
       "norm_label": "run / test / validate (most important for a new session)"
@@ -1356,7 +1356,7 @@
       "label": "Release / packaging (portable Windows + macOS builds)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L36",
+      "source_location": "L38",
       "id": "claude_release_packaging_portable_windows_macos_builds",
       "community": 59,
       "norm_label": "release / packaging (portable windows + macos builds)"
@@ -1365,7 +1365,7 @@
       "label": "Self-play harness in 6 lines (how to actually test gameplay)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L39",
+      "source_location": "L41",
       "id": "claude_self_play_harness_in_6_lines_how_to_actually_test_gameplay",
       "community": 59,
       "norm_label": "self-play harness in 6 lines (how to actually test gameplay)"
@@ -1374,7 +1374,7 @@
       "label": "Architecture at a glance",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L49",
+      "source_location": "L51",
       "id": "claude_architecture_at_a_glance",
       "community": 59,
       "norm_label": "architecture at a glance"
@@ -1383,7 +1383,7 @@
       "label": "Localization (en base + ru; scalable)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L84",
+      "source_location": "L86",
       "id": "claude_localization_en_base_ru_scalable",
       "community": 59,
       "norm_label": "localization (en base + ru; scalable)"
@@ -1392,7 +1392,7 @@
       "label": "UI look (\"military glass\" \u2014 theme-first)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L87",
+      "source_location": "L89",
       "id": "claude_ui_look_military_glass_theme_first",
       "community": 59,
       "norm_label": "ui look (\"military glass\" \u2014 theme-first)"
@@ -1401,7 +1401,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L93",
+      "source_location": "L95",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1410,7 +1410,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L107",
+      "source_location": "L109",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1419,7 +1419,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L110",
+      "source_location": "L112",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -6211,9 +6211,9 @@
       "source_file": "tools/art/fetch_power_icons.ps1",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "art_fetch_power_icons",
-      "target": "art_fetch_power_icons_strip_bg",
-      "confidence_score": 1.0
+      "target": "art_fetch_power_icons_strip_bg"
     },
     {
       "relation": "contains",
@@ -6221,9 +6221,9 @@
       "source_file": "tools/art/fetch_upgrade_icons.ps1",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "art_fetch_upgrade_icons",
-      "target": "art_fetch_upgrade_icons_strip_bg",
-      "confidence_score": 1.0
+      "target": "art_fetch_upgrade_icons_strip_bg"
     },
     {
       "relation": "contains",
@@ -6231,9 +6231,9 @@
       "source_file": "tools/audio/fetch_real_audio.ps1",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_fetch_real_audio",
-      "target": "audio_fetch_real_audio_fetch",
-      "confidence_score": 1.0
+      "target": "audio_fetch_real_audio_fetch"
     },
     {
       "relation": "contains",
@@ -6625,9 +6625,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_write_wav",
-      "target": "tools_audio_gen_audio_py_str",
-      "confidence_score": 1.0
+      "target": "tools_audio_gen_audio_py_str"
     },
     {
       "relation": "references",
@@ -8313,9 +8313,9 @@
       "source_file": "tools/audio/trim_shots.py",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_trim_shots",
-      "target": "audio_trim_shots_main",
-      "confidence_score": 1.0
+      "target": "audio_trim_shots_main"
     },
     {
       "relation": "contains",
@@ -8323,9 +8323,9 @@
       "source_file": "tools/audio/trim_shots.py",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_trim_shots",
-      "target": "audio_trim_shots_trim",
-      "confidence_score": 1.0
+      "target": "audio_trim_shots_trim"
     },
     {
       "relation": "calls",
@@ -8334,9 +8334,9 @@
       "source_file": "tools/audio/trim_shots.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_trim_shots_main",
-      "target": "audio_trim_shots_trim",
-      "confidence_score": 1.0
+      "target": "audio_trim_shots_trim"
     },
     {
       "relation": "references",
@@ -8345,9 +8345,9 @@
       "source_file": "tools/audio/trim_shots.py",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_trim_shots_trim",
-      "target": "tools_audio_trim_shots_py_str",
-      "confidence_score": 1.0
+      "target": "tools_audio_trim_shots_py_str"
     },
     {
       "relation": "contains",
@@ -8455,9 +8455,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L87",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_ui_look_military_glass_theme_first",
-      "confidence_score": 1.0
+      "target": "claude_ui_look_military_glass_theme_first"
     },
     {
       "relation": "contains",
@@ -12284,5 +12284,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "f63fde8fa4e85c69129ea5cba4d4a1b9903a521d"
+  "built_at_commit": "cb272f7e25c775c4a020f37ed6811eaa32aa4ae9"
 }
