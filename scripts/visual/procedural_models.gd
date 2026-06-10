@@ -30,7 +30,11 @@ const ENEMY_BUILDERS := [
 	"robot_avalanche",
 	"robot_oni",
 	"robot_kappa",
-	"robot_raiju"
+	"robot_raiju",
+	"robot_snow_golem",
+	"robot_dune_warden",
+	"robot_oni_chief",
+	"robot_specter",
 ]
 const ITEM_BUILDERS := [
 	"loot_medkit",
@@ -95,6 +99,14 @@ static func build(id: String) -> Node3D:
 			return build_robot_kappa()
 		"robot_raiju":
 			return build_robot_raiju()
+		"robot_snow_golem":
+			return build_robot_snow_golem()
+		"robot_dune_warden":
+			return build_robot_dune_warden()
+		"robot_oni_chief":
+			return build_robot_oni_chief()
+		"robot_specter":
+			return build_robot_specter()
 		"loot_medkit":
 			return build_medkit()
 		"loot_cell":
@@ -1261,6 +1273,230 @@ static func build_robot_raiju() -> Node3D:
 				0.045,
 				leg_mat
 			)
+	return root
+
+
+# ================================================================= BIOME MINIBOSSES (v0.3)
+# Oversized landmark threats — each is the silhouette of its biome's grunt scaled up
+# with extra plating. They reuse the SAME named animation parts as their base archetype
+# (slammer Fist0/Fist1 + Core, strafer Skirt + Eye, oni back-seal, flyer RotorHub + Body
+# + Core) so the inherited _animate_visual binds with no script change. ModelRoot at y=0.
+
+
+## SNOW miniboss — Snow Golem: a colossal icy avalanche. Huge plated torso, massive
+## shoulder slabs, two oversized "Fist0"/"Fist1" boxes (raised during the slam windup),
+## a glowing pale-cyan chest "Core". ~2.6 m tall.
+static func build_robot_snow_golem() -> Node3D:
+	var root := Node3D.new()
+	var glow_col := Color(0.55, 0.85, 1.0)  # pale cyan
+	var plate := ProcMaterials.weathered(
+		Color(0.62, 0.78, 0.95), 0.5, 0.5, 0.45, 83, Vector3(0.6, 0.6, 0.6), false
+	)
+	var dark := _mat(Color(0.2, 0.26, 0.34), 0.5, 0.55)
+	var core_mat := _mat(glow_col, 0.0, 0.3, glow_col, 6.0)
+	var ice := _mat(Color(0.72, 0.9, 1.0), 0.1, 0.22)
+
+	# Thick legs + wide pelvis block.
+	_part(root, _box(Vector3(0.4, 0.95, 0.46)), dark, Vector3(0.36, 0.48, 0))
+	_part(root, _box(Vector3(0.4, 0.95, 0.46)), dark, Vector3(-0.36, 0.48, 0))
+	_part(root, _box(Vector3(1.15, 0.4, 0.66)), plate, Vector3(0, 1.12, 0))
+	# Massive armored torso + the glowing chest core (-Z face).
+	_part(root, _box(Vector3(1.55, 1.3, 0.95)), plate, Vector3(0, 2.05, 0))
+	var core := _part(root, _sphere(0.22, false, 8, 12), core_mat, Vector3(0, 2.1, -0.5))
+	core.name = "Core"
+	# Huge shoulder slabs (jagged ice crown on top of each).
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		_part(root, _box(Vector3(0.58, 0.5, 0.7)), ice, Vector3(side * 1.02, 2.6, 0))
+		_part(
+			root,
+			_cone(0.12, 0.4, 6),
+			ice,
+			Vector3(side * 1.02, 2.95, 0),
+			Vector3(0, 0, side * -10.0)
+		)
+	# Small sensor head sunk between the shoulders.
+	_part(root, _box(Vector3(0.4, 0.32, 0.4)), dark, Vector3(0, 2.86, -0.06))
+	_part(root, _box(Vector3(0.28, 0.06, 0.06)), core_mat, Vector3(0, 2.86, -0.28))
+	# OVERSIZED fists on arm struts, under pivots so the slam windup can RAISE them.
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var fist := Node3D.new()
+		fist.name = "Fist%d" % i
+		fist.position = Vector3(side * 1.28, 1.3, -0.12)
+		root.add_child(fist)
+		_strut(root, Vector3(side * 1.02, 2.5, 0), Vector3(side * 1.28, 1.65, -0.12), 0.14, dark)
+		_part(fist, _box(Vector3(0.6, 0.6, 0.66)), plate, Vector3(0, 0, 0))
+		_part(fist, _box(Vector3(0.64, 0.22, 0.28)), dark, Vector3(0, -0.22, -0.24))
+		# Icy knuckle spikes.
+		for k in 3:
+			_part(
+				fist,
+				_cone(0.06, 0.2, 5),
+				ice,
+				Vector3(-0.18 + float(k) * 0.18, 0.0, -0.38),
+				Vector3(-90, 0, 0)
+			)
+	return root
+
+
+## DESERT miniboss — Dune Warden: a heavy sand-skirted strafing gunner. Wide spinning
+## "Skirt" sand cone, twin torso, a triple barrel cluster (-Z) named "Barrel", an amber
+## sensor "Eye". The strafer animator only spins the Skirt + pulses the Eye, but the
+## barrel cluster keeps the heavy-gunner read. ~2 m tall.
+static func build_robot_dune_warden() -> Node3D:
+	var root := Node3D.new()
+	var glow_col := Color(0.95, 0.62, 0.22)  # desert amber
+	var sand := ProcMaterials.weathered(
+		Color(0.82, 0.65, 0.3), 0.4, 0.6, 0.5, 89, Vector3(0.6, 0.6, 0.6), false
+	)
+	var dark := _mat(Color(0.24, 0.21, 0.16), 0.5, 0.5)
+	var eye_mat := _mat(glow_col, 0.0, 0.3, glow_col, 6.0)
+	var plate := _mat(Color(0.6, 0.46, 0.26), 0.6, 0.45)
+	var gun := _mat(Color(0.28, 0.25, 0.2), 0.65, 0.4)
+
+	# WIDE spinning sand skirt: a big inverted dust cone + 5 angled vanes under "Skirt".
+	var skirt := Node3D.new()
+	skirt.name = "Skirt"
+	root.add_child(skirt)
+	_part(skirt, _cone(0.85, 1.3, 16), sand, Vector3(0, 0.66, 0))
+	for i in 5:
+		var ang := TAU * float(i) / 5.0
+		_part(
+			skirt,
+			_box(Vector3(0.08, 0.66, 0.38)),
+			plate,
+			Vector3(cos(ang) * 0.52, 0.6, sin(ang) * 0.52),
+			Vector3(0, rad_to_deg(-ang), 16)
+		)
+	# Heavy torso column + shoulder ring + domed head.
+	_part(root, _cyl(0.4, 0.7, 14), dark, Vector3(0, 1.62, 0))
+	_part(root, _cyl(0.5, 0.14, 14), plate, Vector3(0, 1.36, 0))
+	_part(root, _sphere(0.36, true, 8, 14), sand, Vector3(0, 2.0, 0))
+	# Single amber sensor eye (-Z) + rear vents.
+	var eye := _part(root, _sphere(0.14, false, 8, 12), eye_mat, Vector3(0, 1.92, -0.34))
+	eye.name = "Eye"
+	_part(root, _box(Vector3(0.14, 0.26, 0.06)), dark, Vector3(0.22, 1.7, 0.36), Vector3(0, 15, 0))
+	_part(
+		root, _box(Vector3(0.14, 0.26, 0.06)), dark, Vector3(-0.22, 1.7, 0.36), Vector3(0, -15, 0)
+	)
+	# Triple barrel cluster on a side arm (-Z), under "Barrel".
+	var barrel := Node3D.new()
+	barrel.name = "Barrel"
+	barrel.position = Vector3(0.62, 1.6, -0.2)
+	root.add_child(barrel)
+	_part(barrel, _box(Vector3(0.24, 0.24, 0.34)), gun, Vector3(0, 0, 0))
+	for i in 3:
+		var off := -0.1 + float(i) * 0.1
+		_part(barrel, _cyl(0.05, 0.6, 8), gun, Vector3(off, 0.02, -0.42), Vector3(-90, 0, 0))
+	return root
+
+
+## RAIN miniboss — Oni Chief: a hulking crimson temple-guardian. Broad lacquered torso,
+## horned kabuto head, a glowing oni mask "Core" (-Z), a heavy club arm, and a bright
+## BACK-PLATE seal (+Z) hinting the scene's ×3 weak point. ~2.4 m tall.
+static func build_robot_oni_chief() -> Node3D:
+	var root := Node3D.new()
+	var glow_col := Color(0.75, 0.18, 0.15)  # crimson
+	var armor := ProcMaterials.weathered(
+		Color(0.36, 0.16, 0.14), 0.55, 0.5, 0.55, 97, Vector3(0.6, 0.6, 0.6), false
+	)
+	var lacquer := _mat(Color(0.62, 0.14, 0.13), 0.3, 0.4)
+	var dark := _mat(Color(0.14, 0.12, 0.13), 0.5, 0.55)
+	var mask := _mat(glow_col, 0.0, 0.3, glow_col, 6.0)
+	var gold := _mat(Color(0.85, 0.68, 0.25), 0.7, 0.35)
+
+	# Legs + skirt plates (kusazuri).
+	_part(root, _box(Vector3(0.34, 0.8, 0.36)), dark, Vector3(0.28, 0.4, 0))
+	_part(root, _box(Vector3(0.34, 0.8, 0.36)), dark, Vector3(-0.28, 0.4, 0))
+	for i in 5:
+		var a := -0.6 + float(i) * 0.3
+		_part(
+			root, _box(Vector3(0.3, 0.4, 0.07)), lacquer, Vector3(a, 0.95, -0.32), Vector3(8, 0, 0)
+		)
+		_part(
+			root, _box(Vector3(0.3, 0.4, 0.07)), lacquer, Vector3(a, 0.95, 0.32), Vector3(-8, 0, 0)
+		)
+	# Broad torso + chest cords + shoulder sode plates.
+	_part(root, _box(Vector3(1.2, 1.1, 0.7)), armor, Vector3(0, 1.72, 0))
+	_part(root, _box(Vector3(0.6, 0.6, 0.05)), gold, Vector3(0, 1.78, -0.36))
+	_part(root, _box(Vector3(0.52, 0.6, 0.36)), lacquer, Vector3(0.8, 2.06, 0), Vector3(0, 0, -10))
+	_part(root, _box(Vector3(0.52, 0.6, 0.36)), lacquer, Vector3(-0.8, 2.06, 0), Vector3(0, 0, 10))
+	# Kabuto head: helmet dome + horns + the glowing oni mask (-Z).
+	_part(root, _sphere(0.3, true, 8, 12), armor, Vector3(0, 2.5, 0))
+	_part(root, _cone(0.06, 0.42, 6), gold, Vector3(0.15, 2.78, -0.06), Vector3(0, 0, -22))
+	_part(root, _cone(0.06, 0.42, 6), gold, Vector3(-0.15, 2.78, -0.06), Vector3(0, 0, 22))
+	var face := _part(root, _box(Vector3(0.32, 0.26, 0.07)), mask, Vector3(0, 2.42, -0.3))
+	face.name = "Core"
+	# Heavy club arm (right): a thick spiked tetsubo angled down-forward.
+	_strut(root, Vector3(0.8, 1.78, 0), Vector3(1.06, 1.2, -0.24), 0.1, dark)
+	_part(root, _box(Vector3(0.2, 0.95, 0.2)), dark, Vector3(1.12, 0.85, -0.5), Vector3(30, 0, 0))
+	for k in 4:
+		_part(
+			root,
+			_cone(0.06, 0.16, 5),
+			gold,
+			Vector3(1.12, 0.62 + float(k) * 0.18, -0.62),
+			Vector3(-60, 0, 0)
+		)
+	# Left fist.
+	_strut(root, Vector3(-0.8, 1.78, 0), Vector3(-1.0, 1.26, -0.12), 0.1, dark)
+	_part(root, _box(Vector3(0.3, 0.3, 0.32)), armor, Vector3(-1.0, 1.14, -0.14))
+	# BACK seal — a bright glowing plate marking the scene's ×3 weak point (+Z).
+	_part(root, _box(Vector3(0.4, 0.4, 0.06)), mask, Vector3(0, 1.85, 0.38))
+	_part(root, _box(Vector3(0.5, 0.5, 0.04)), gold, Vector3(0, 1.85, 0.34))
+	return root
+
+
+## RECON drone — Specter: a slim hovering scout. Thin grey-violet chassis "Body", a 4-rotor
+## ring under "RotorHub" (Rotor0..Rotor3 spin), one big cyan lens "Core", a tall antenna.
+## Smaller than the wasp (~0.9 m span). Hovers; the flyer animator bobs Body + spins rotors.
+static func build_robot_specter() -> Node3D:
+	var root := Node3D.new()
+	var glow_col := Color(0.4, 0.85, 1.0)  # cyan
+	var body := ProcMaterials.weathered(
+		Color(0.34, 0.3, 0.42), 0.6, 0.4, 0.6, 101, Vector3(0.7, 0.7, 0.7), false
+	)
+	var dark := _mat(Color(0.14, 0.13, 0.18), 0.5, 0.5)
+	var rotor := _mat(Color(0.24, 0.22, 0.3), 0.4, 0.3)
+	var lens := _mat(glow_col, 0.0, 0.3, glow_col, 6.0)
+
+	# A body pivot wrapping the slim chassis + lens + antenna so the script bobs just the
+	# body (named "Body") without moving the rotors' spin hub.
+	var bodyp := Node3D.new()
+	bodyp.name = "Body"
+	root.add_child(bodyp)
+	# Slim flattened chassis with a forward sensor lens.
+	_part(bodyp, _box(Vector3(0.34, 0.12, 0.5)), body, Vector3(0, 0, 0))
+	_part(bodyp, _sphere(0.13, true, 8, 12), dark, Vector3(0, 0.05, 0), Vector3.ZERO)
+	var core := _part(bodyp, _sphere(0.1, false, 10, 14), lens, Vector3(0, 0.0, -0.26))
+	core.name = "Core"
+	# Tall sensor antenna with a glowing tip.
+	_strut(bodyp, Vector3(0, 0.04, 0.14), Vector3(0, 0.34, 0.18), 0.012, dark)
+	_part(bodyp, _sphere(0.03, false, 6, 8), lens, Vector3(0, 0.36, 0.18))
+	# Four small rotor arms to the diagonals, each disc under its own pivot in "RotorHub".
+	var hub := Node3D.new()
+	hub.name = "RotorHub"
+	root.add_child(hub)
+	var arms := [
+		Vector3(0.26, 0.06, 0.26),
+		Vector3(-0.26, 0.06, 0.26),
+		Vector3(0.26, 0.06, -0.26),
+		Vector3(-0.26, 0.06, -0.26)
+	]
+	var ri := 0
+	for tip in arms:
+		var tv: Vector3 = tip
+		_strut(root, Vector3(tv.x * 0.4, 0.02, tv.z * 0.4), tv, 0.02, dark)
+		var pivot := Node3D.new()
+		pivot.name = "Rotor%d" % ri
+		pivot.position = tv + Vector3(0, 0.015, 0)
+		hub.add_child(pivot)
+		_part(pivot, _cyl(0.11, 0.02, 12), rotor)
+		_part(pivot, _box(Vector3(0.22, 0.028, 0.03)), dark, Vector3(0, 0.015, 0))
+		_part(pivot, _box(Vector3(0.03, 0.028, 0.22)), dark, Vector3(0, 0.015, 0))
+		_part(root, _sphere(0.04, false, 6, 8), dark, tv)
+		ri += 1
 	return root
 
 

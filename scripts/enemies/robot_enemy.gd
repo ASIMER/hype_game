@@ -176,11 +176,27 @@ var _stunned_until_ms: int = 0
 # for cascading alerts.
 var _was_chasing: bool = false
 
+# --- Elite modifiers (rare wave-rolled prefixes, parsed from the node name) ---
+# Full modifier names (e.g. ["armored", "volatile"]); empty for a normal enemy. Parsed on
+# EVERY peer from str(name) at the top of _ready (the name replicates via the auto-spawn).
+# Stats (armored/swift) are applied server-side onto _stat_*; volatile fires a death blast;
+# regenerating heals over time; the PRIMARY mod tints the model + adds a feet glow ring.
+# Exposed for the harness (AgentBridge reads e.get("modifiers")).
+var modifiers: Array[String] = []
+# Cached HP/s for the regenerating mod (0 = not regenerating); read each physics tick.
+var _regen_rate: float = 0.0
+
 
 func _ready() -> void:
+	# Parse elite modifiers FIRST (every peer) — wave_manager name-encoded them before
+	# add_child, so the name is already correct here and replicates to clients.
+	_parse_modifiers_from_name()
 	add_to_group(Groups.ENEMIES)
 	_home = global_position
 	_load_stats()
+	# Apply modifier stat multipliers onto the resolved _stat_* BEFORE the health refill
+	# + collision/avoidance setup, so armored reaches max_health and swift reaches max_speed.
+	_apply_modifier_stats()
 
 	# Populate the visual model from the registry (CC0 art or primitive).
 	var model := AssetRegistry.get_model(enemy_id)
@@ -196,6 +212,10 @@ func _ready() -> void:
 	if _model_root:
 		_model_rest_pos = _model_root.position
 		_model_rest_scale = _model_root.scale
+
+	# Elite modifier visuals (tint + feet glow ring). Runs on every peer; tints the
+	# already-duplicated _flash_mats so it never bleeds onto other instances. Headless-guarded.
+	_apply_modifier_visuals()
 
 	# Health is configured via the scene export; ensure max matches stats even if
 	# the scene drifts, then refill. Only the authority should own its state.
@@ -224,6 +244,8 @@ func _ready() -> void:
 
 	# Visual weak-point indicator (render-only; runs on all peers, skipped headless).
 	_setup_weakpoint_marker()
+	# Armored elites get a bigger/brighter weak-point marker (must run AFTER the marker exists).
+	_boost_weakpoint_for_armored()
 
 	Events.enemy_spawned.emit(self)
 
@@ -311,6 +333,16 @@ func _physics_process(delta: float) -> void:
 	if Time.get_ticks_msec() < _stunned_until_ms:
 		_apply_movement(Vector3.ZERO, delta)
 		return
+
+	# Regenerating elites slowly heal back (server-side; heal() is drop-only so it never
+	# triggers the hit-flash — see _on_health_changed's took_damage guard).
+	if (
+		_regen_rate > 0.0
+		and _health != null
+		and not _health.is_dead
+		and _health.current < _health.max_health
+	):
+		_health.heal(_regen_rate * delta)
 
 	if _attack_cooldown > 0.0:
 		_attack_cooldown -= delta
@@ -1247,6 +1279,10 @@ func _on_died(_killer: Node) -> void:
 	if _dying:
 		return
 	_dying = true
+	# Volatile elites detonate an AoE on death (server-authoritative — apply_hit routes to
+	# the server anyway, but gate it so only the authority rolls the blast once).
+	if "volatile" in modifiers and GameState.is_local_authority_server():
+		_detonate_volatile()
 	# Stop moving + colliding so the corpse doesn't shove the player or block nav.
 	velocity = Vector3.ZERO
 	set_physics_process(false)
@@ -1378,6 +1414,67 @@ func _loot_container() -> Node:
 			if loot:
 				return loot
 	return enemies_parent if enemies_parent else self
+
+
+# --- Elite modifiers --------------------------------------------------------
+
+
+## Parse the elite modifier list from our node name (every peer). See EnemyModifiers.
+func _parse_modifiers_from_name() -> void:
+	modifiers = EnemyModifiers.parse_from_name(str(name))
+
+
+## Apply modifier stat multipliers onto the resolved _stat_* (authority-meaningful, but
+## harmless to compute everywhere). Called right after _load_stats(), before the refill +
+## avoidance setup. Also caches the regen rate for _physics_process.
+func _apply_modifier_stats() -> void:
+	if modifiers.is_empty():
+		return
+	if "armored" in modifiers:
+		_stat_health *= float(EnemyModifiers.stats_for("armored").get("health_mult", 1.0))
+	if "swift" in modifiers:
+		_stat_speed *= float(EnemyModifiers.stats_for("swift").get("speed_mult", 1.0))
+	if "regenerating" in modifiers:
+		_regen_rate = float(EnemyModifiers.stats_for("regenerating").get("regen", 0.0))
+
+
+## Detonate the volatile death blast: a flat-falloff radial hit on nearby players (downed
+## included so it can finish them). Stats from Settings.ELITE_MOD_STATS["volatile"].
+func _detonate_volatile() -> void:
+	var v: Dictionary = EnemyModifiers.stats_for("volatile")
+	var radius := float(v.get("aoe_radius", 4.0))
+	var dmg := float(v.get("aoe_damage", 25.0))
+	CombatAoe.damage_players(global_position, radius, dmg, self, 1.0, 0.3, true)
+
+
+## Tint the model + add a feet glow ring in the PRIMARY modifier's color (every peer,
+## render-only, skipped headless). Tints the already-duplicated _flash_mats so the color
+## is per-instance and never fights the hit-flash/idle pulse (those own emission only).
+func _apply_modifier_visuals() -> void:
+	if modifiers.is_empty() or DisplayServer.get_name() == "headless":
+		return
+	var color := EnemyModifiers.primary_color(modifiers)
+	EnemyModifiers.tint_materials(_flash_mats, color, 0.45)
+	EnemyModifiers.build_glow_ring(_model_root, color)
+
+
+## Armored elites get a larger (×1.3) and brighter (×3 emission) weak-point marker so the
+## "shoot the glowing spot" read stays obvious through the steel-blue tint. Render-only;
+## no-op headless or if there's no marker. Must run AFTER _setup_weakpoint_marker().
+func _boost_weakpoint_for_armored() -> void:
+	if "armored" not in modifiers or DisplayServer.get_name() == "headless":
+		return
+	var wp := get_node_or_null(Groups.NODE_WEAKPOINT)
+	if wp == null:
+		return
+	for c in wp.get_children():
+		if not (c is MeshInstance3D):
+			continue
+		var mi := c as MeshInstance3D
+		mi.scale *= 1.3
+		var mat := mi.material_override
+		if mat is StandardMaterial3D:
+			(mat as StandardMaterial3D).emission_energy_multiplier *= 3.0
 
 
 # --- Target helper (exposed for waves / debugging) --------------------------

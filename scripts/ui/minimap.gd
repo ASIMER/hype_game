@@ -279,6 +279,7 @@ const _EVENT_BLIP_COLORS := [
 	Color(0.95, 0.30, 0.95, 0.95),  # 1 miniboss — magenta
 	Color(0.30, 0.80, 0.95, 0.95),  # 2 contested_poi — cyan
 	Color(1.00, 0.45, 0.10, 0.95),  # 3 surge — orange
+	Color(0.95, 0.20, 0.20, 0.95),  # 4 siege — red
 ]
 
 

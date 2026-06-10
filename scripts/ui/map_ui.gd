@@ -487,6 +487,7 @@ class MapDraw:
 		Color(0.95, 0.30, 0.95, 0.95),  # 1 miniboss      — magenta
 		Color(0.30, 0.80, 0.95, 0.95),  # 2 contested_poi — cyan
 		Color(1.00, 0.45, 0.10, 0.95),  # 3 surge         — orange
+		Color(0.95, 0.20, 0.20, 0.95),  # 4 siege         — red
 	]
 
 	func _draw_world_events(font: Font, panel: Rect2) -> void:
@@ -565,6 +566,10 @@ class MapDraw:
 			3:  # surge: four-point star (lightning-bolt surrogate)
 				draw_circle(p, 5.0, col)
 				draw_circle(p, 2.5, Color(0.06, 0.06, 0.1, 1.0))
+			4:  # siege: crossed-swords surrogate — an X over a dot
+				draw_circle(p, 2.2, col)
+				draw_line(p + Vector2(-4.5, -4.5), p + Vector2(4.5, 4.5), col, 2.0)
+				draw_line(p + Vector2(-4.5, 4.5), p + Vector2(4.5, -4.5), col, 2.0)
 
 		# Label text to the right of the marker.
 		if label != "":

@@ -7,16 +7,17 @@ extends Node
 ## DO NOT add class_name WorldEventDirector — the autoload name collides with a class_name
 ## and Godot will refuse to parse it. The lead registers this as autoload "WorldEventDirector".
 ##
-## Four event kinds (mirror Events.gd comment):
+## Five event kinds (mirror Events.gd comment):
 ##   0  supply_cache   — a guarded loot cache; players hold it to crack it open.
 ##   1  miniboss       — an Elite roamer; kill it for a currency reward.
 ##   2  contested_poi  — a POI goes hot with extra guards for CONTESTED_POI_DURATION s.
 ##   3  surge          — enemy-surge burst (extra spawns) for SURGE_DURATION s.
+##   4  siege          — defend a high-tier POI under escalating waves for SIEGE_HOLD_TIME s.
 ##
 ## "world_events" group convention (for Lane C — map / HUD):
-##   All event markers AND SupplyCache instances are added to the group "world_events".
+##   All event markers AND SupplyCache/SiegeZone instances are added to "world_events".
 ##   Every node in the group exposes:
-##     get_meta("event_kind")  -> int   (0/1/2/3, matches the kind enum above)
+##     get_meta("event_kind")  -> int   (0/1/2/3/4, matches the kind enum above)
 ##     get_meta("event_label") -> String
 ##     func event_ratio()      -> float (0..1 progress or countdown; meaning is kind-specific)
 ##   Optional:
@@ -29,7 +30,7 @@ extends Node
 # ─── internal state ──────────────────────────────────────────────────────────
 
 var _active: bool = false  # true once match_started fires
-var _active_kind: int = -1  # -1 = idle, 0-3 = busy
+var _active_kind: int = -1  # -1 = idle, 0-4 = busy
 var _timer: float = 0.0  # counts up toward _next_fire
 var _next_fire: float = 0.0  # seconds until next event attempt
 
@@ -41,6 +42,7 @@ var _arena: Node = null
 var _active_cache: Node = null  # kind 0: the SupplyCache Area3D
 var _active_miniboss: Node = null  # kind 1: the tracked Elite node
 var _active_marker: Node3D = null  # kind 2/3: the simple Node3D map marker
+var _active_siege: Node = null  # kind 4: the SiegeZone Area3D
 var _event_elapsed: float = 0.0  # time since current event started (for timeouts)
 
 # Max lifetime for events that don't self-complete (keeps the scheduler unblocked).
@@ -50,6 +52,8 @@ const CONTESTED_LIFETIME_PAD: float = 5.0  # extra slop over CONTESTED_POI_DURAT
 
 # The SupplyCache scene path (written by THIS workstream).
 const SUPPLY_CACHE_SCENE := "res://scenes/world/SupplyCache.tscn"
+# The SiegeZone scene path (kind 4).
+const SIEGE_ZONE_SCENE := "res://scenes/world/SiegeZone.tscn"
 
 # ─── lifecycle ───────────────────────────────────────────────────────────────
 
@@ -80,6 +84,7 @@ func _on_match_started() -> void:
 	_active_cache = null
 	_active_miniboss = null
 	_active_marker = null
+	_active_siege = null
 
 
 func _on_match_over() -> void:
@@ -95,6 +100,9 @@ func _clear_active_event_nodes() -> void:
 	if is_instance_valid(_active_marker):
 		_active_marker.queue_free()
 	_active_marker = null
+	if is_instance_valid(_active_siege):
+		_active_siege.queue_free()
+	_active_siege = null
 	_active_miniboss = null
 
 
@@ -133,11 +141,15 @@ func _arm_next(delay: float) -> void:
 
 func _fire_random_event() -> void:
 	# Weighted pick (supply_cache and miniboss more interesting than surge).
-	var kind: int = randi() % 4
-	# Guard-needing events (cache/mini-boss/contested) must have spawn capacity, else they'd
-	# appear UNDEFENDED (spawn_reinforcements would silently no-op at the alive-cap). If there's
-	# no room, fall back to the surge (it needs no guards) so an event still fires.
+	var kind: int = randi() % 5
+	# Guard-needing events (cache/mini-boss/contested/siege) must have spawn capacity, else
+	# they'd appear UNDEFENDED (spawn_reinforcements would silently no-op at the alive-cap). If
+	# there's no room, fall back to the surge (it needs no guards) so an event still fires.
 	if kind != 3 and _guards_capacity() <= 0:
+		kind = 3
+	# A siege opens with a full reinforcement wave AND escalates — it needs more headroom than
+	# a single guard squad, so demand room for the first wave + 1 or it'd start as a pushover.
+	if kind == 4 and _guards_capacity() < Settings.SIEGE_WAVE_BASE + 1:
 		kind = 3
 	match kind:
 		0:
@@ -148,6 +160,8 @@ func _fire_random_event() -> void:
 			_start_contested_poi()
 		3:
 			_start_surge()
+		4:
+			_start_siege()
 
 
 ## Remaining enemy-spawn headroom (via the WaveManager); 99 if the manager isn't found yet.
@@ -175,6 +189,9 @@ func _tick_active_event(_delta: float) -> void:
 		3:  # surge — timed duration.
 			if _event_elapsed >= Settings.SURGE_DURATION + 1.0:
 				_end_surge(true)
+		4:  # siege — the zone drives success; guard the failsafe timeout (a fail).
+			if _event_elapsed >= Settings.SIEGE_MAX_LIFETIME:
+				_end_siege_timeout()
 
 
 # ─── helpers: scene tree lookups ────────────────────────────────────────────
@@ -562,4 +579,93 @@ func _end_surge(success: bool) -> void:
 	if is_instance_valid(_active_marker):
 		_active_marker.queue_free()
 	_active_marker = null
+	_active_kind = -1
+
+
+# ─── EVENT 4: Siege ──────────────────────────────────────────────────────────
+
+
+func _start_siege() -> void:
+	var arena: Node = _get_arena()
+
+	# Defend a worthwhile spot: the tier≥2 POI nearest the squad (drama + reachability).
+	var siege_pos: Vector3 = _siege_poi_pos(arena)
+
+	# Instance the siege zone scene.
+	var siege_scene: Resource = load(SIEGE_ZONE_SCENE)
+	if siege_scene == null:
+		push_warning("WorldEventDirector: SiegeZone.tscn not found at " + SIEGE_ZONE_SCENE)
+		return
+
+	var siege: Node = siege_scene.instantiate()
+	if siege == null:
+		push_warning("WorldEventDirector: failed to instantiate SiegeZone")
+		return
+
+	# Parent under the arena root (or scene root as fallback) so it's in the world.
+	var parent: Node = arena if arena != null else get_tree().current_scene
+	parent.add_child(siege)
+	if siege is Node3D:
+		(siege as Node3D).global_position = siege_pos
+
+	# Connect completion signal so the director takes the success path when held.
+	if siege.has_signal("siege_completed"):
+		siege.siege_completed.connect(_on_siege_completed)
+	# Hand the zone the replicated loot container so its win-burst spawns for clients.
+	var net_loot: Node = _net_loot_container(arena)
+	if siege.has_method("set_loot_parent") and net_loot != null:
+		siege.set_loot_parent(net_loot)
+
+	_active_siege = siege
+	_active_kind = 4
+	_event_elapsed = 0.0
+
+	Events.world_event_started.emit(4, siege_pos, tr("Siege"))
+	Events.notify.emit(tr("Siege! Hold the position against the waves."), 2)
+
+
+## World position of the tier≥2 POI nearest the squad (falls back to the squad pos / a
+## high-tier POI when no qualifying POI exists). Mirrors the contested-POI selection
+## discipline but biases toward reachability rather than a random top-half pick.
+func _siege_poi_pos(arena: Node) -> Vector3:
+	if arena == null:
+		return _squad_pos()
+	var by_tier: Array = _poi_by_tier(arena)
+	if by_tier.is_empty():
+		return _squad_pos()
+	var origin: Vector3 = _squad_pos()
+	var best_pos: Vector3 = by_tier[0][2] as Vector3  # highest-tier as the default
+	var best_d: float = INF
+	var found: bool = false
+	for entry in by_tier:
+		if int(entry[1]) < 2:
+			continue
+		var p: Vector3 = entry[2] as Vector3
+		var d: float = origin.distance_to(p)
+		if d < best_d:
+			best_d = d
+			best_pos = p
+			found = true
+	if not found:
+		# No tier≥2 POI — fall back to the highest-tier point available.
+		best_pos = by_tier[0][2] as Vector3
+	return best_pos
+
+
+func _on_siege_completed() -> void:
+	# Called back from the SiegeZone on a successful hold.
+	if _active_kind != 4:
+		return
+	_active_kind = -1
+	_active_siege = null
+	Events.world_event_ended.emit(4, true)
+	Events.notify.emit(tr("Siege repelled! The position holds."), 1)
+
+
+func _end_siege_timeout() -> void:
+	if is_instance_valid(_active_siege):
+		_active_siege.queue_free()
+	_active_siege = null
+	Events.world_event_ended.emit(4, false)
+	Events.notify.emit(tr("The position was overrun"), 2)
 	_active_kind = -1

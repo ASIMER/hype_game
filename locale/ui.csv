@@ -719,3 +719,7 @@ CR %d","%s
 "Deployable energy bubble. Halves damage to allies standing inside it. Buys your squad a few seconds of cover.","Разворачиваемый энергокупол. Вдвое снижает урон по союзникам внутри. Даёт отряду несколько секунд укрытия."
 "Deployable scanner. Periodically tags nearby enemies with a marker you can see through walls. Know what's coming.","Разворачиваемый сканер. Периодически помечает врагов рядом маркером, видимым сквозь стены. Знай, что приближается."
 "Ride zipline [E]","Прокатиться по тросу [E]"
+"Siege","Осада"
+"Siege! Hold the position against the waves.","Осада! Удержи позицию против волн."
+"Position held — the siege breaks!","Позиция удержана — осада сломлена!"
+"The position was overrun","Позиция захвачена"
