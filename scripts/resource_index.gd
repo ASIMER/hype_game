@@ -6,6 +6,12 @@ class_name ResourceIndex
 
 const ITEMS: PackedStringArray = [
 	"res://resources/items/ammo_box.tres",
+	"res://resources/items/armor_helmet_t1.tres",
+	"res://resources/items/armor_helmet_t2.tres",
+	"res://resources/items/armor_pack_large.tres",
+	"res://resources/items/armor_pack_med.tres",
+	"res://resources/items/armor_vest_t1.tres",
+	"res://resources/items/armor_vest_t2.tres",
 	"res://resources/items/artifact.tres",
 	"res://resources/items/chemicals.tres",
 	"res://resources/items/circuit_pack.tres",
@@ -24,7 +30,10 @@ const ITEMS: PackedStringArray = [
 	"res://resources/items/key_temple.tres",
 	"res://resources/items/key_tower.tres",
 	"res://resources/items/knockdown_shield.tres",
+	"res://resources/items/loot_bandage.tres",
 	"res://resources/items/loot_flare.tres",
+	"res://resources/items/loot_painkiller.tres",
+	"res://resources/items/loot_splint.tres",
 	"res://resources/items/medkit.tres",
 	"res://resources/items/plastic.tres",
 	"res://resources/items/rifle.tres",
