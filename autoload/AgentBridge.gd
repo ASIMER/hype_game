@@ -282,6 +282,10 @@ func _handle_line(line: String) -> void:
 			# QA: deterministic-world snapshot (terrain heights, water, extraction zones,
 			# placement checksums) for refactor verification — tools/lint/check_golden.py.
 			_send(GoldenSnapshot.capture(get_tree()))
+		"navdbg":
+			# QA: NavigationServer visibility (maps/regions/per-enemy agent path state)
+			# for diagnosing ground-enemy pathing failures. Read-only.
+			_send(NavDebug.capture(get_tree()))
 		"clock":
 			# Debug: drive the match timer for QA. {action:set, left:<sec>} sets the
 			# remaining time; {action:skip} jumps to ~2s left to trigger the final wave.
@@ -944,11 +948,18 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array 
 	var path: String = scene_map.get(eid, "")
 	if path == "" or not ResourceLoader.exists(path):
 		return false
+	# Resolve the replicated enemy container from the ARENA first — deriving it from
+	# "any live enemy's parent" fails on a fully swept field (QA kill-sweeps), which
+	# made the FIRST debug spawn after a sweep silently no-op.
 	var container: Node = null
-	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
-		if is_instance_valid(e):
-			container = e.get_parent()
-			break
+	var arena_node: Node = get_tree().get_first_node_in_group(Groups.ARENA)
+	if arena_node != null:
+		container = arena_node.get_node_or_null("Net/Enemies")
+	if container == null:
+		for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+			if is_instance_valid(e):
+				container = e.get_parent()
+				break
 	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if container == null or p == null or not (p is Node3D):
 		return false
@@ -997,12 +1008,13 @@ func _debug_world_event(kind: int, want_end: bool = false) -> bool:
 				1: "_end_miniboss",
 				2: "_end_contested_poi",
 				3: "_end_surge",
+				4: "_end_siege_timeout",
 			}
 			. get(ak, "")
 		)
 		if ender == "" or not d.has_method(ender):
 			return false
-		if ak == 0:
+		if ak == 0 or ak == 4:
 			d.call(ender)
 		else:
 			d.call(ender, true)
@@ -1013,6 +1025,7 @@ func _debug_world_event(kind: int, want_end: bool = false) -> bool:
 			1: "_start_miniboss",
 			2: "_start_contested_poi",
 			3: "_start_surge",
+			4: "_start_siege",
 		}
 		. get(kind, "")
 	)

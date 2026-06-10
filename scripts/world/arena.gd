@@ -354,7 +354,70 @@ func _bake_navmesh() -> void:
 		if map.is_valid():
 			NavigationServer3D.map_set_cell_height(map, nav_region.navigation_mesh.cell_height)
 			NavigationServer3D.map_set_cell_size(map, nav_region.navigation_mesh.cell_size)
+		if not nav_region.bake_finished.is_connected(_verify_navmesh_commit):
+			nav_region.bake_finished.connect(_verify_navmesh_commit)
 		nav_region.bake_navigation_mesh()
+
+
+## The threaded bake sometimes finishes WITHOUT its result ever syncing into the
+## runtime navigation map (a per-boot race on the 320x320 mesh): the NavigationMesh
+## resource holds all polygons, yet map queries answer "empty" — closest_point
+## returns the origin and every agent path comes back unreachable, so ground
+## enemies freeze at spawn. Verify the map actually answers after the bake and
+## heal it by forcing a map sync / re-registering the region.
+func _verify_navmesh_commit() -> void:
+	if nav_region == null or nav_region.navigation_mesh == null:
+		return
+	var map := nav_region.get_navigation_map()
+	if not map.is_valid():
+		return
+	# Probe with a vertex of the baked mesh itself (region is at the world origin,
+	# so mesh-local == global). Any vertex must be on the map; prefer one away from
+	# the origin so an "empty map returns ZERO" reply can never false-pass.
+	var verts: PackedVector3Array = nav_region.navigation_mesh.get_vertices()
+	if verts.is_empty():
+		push_warning("[arena] navmesh bake produced NO vertices — enemy pathing dead")
+		return
+	var probe: Vector3 = verts[0]
+	for v in verts:
+		if v.length_squared() > 16.0:
+			probe = v
+			break
+	var tree := get_tree()
+	var waited := 0.0
+	var toggles := 0
+	while waited < 20.0:
+		NavigationServer3D.map_force_update(map)
+		var got: Vector3 = NavigationServer3D.map_get_closest_point(map, probe)
+		if got.distance_to(probe) <= 2.0:
+			# Up to ~1s with no re-registration is the NORMAL post-bake sync latency
+			# (bake_finished fires before the map's next sync) — only warn beyond it.
+			if toggles > 0 or waited > 1.0:
+				push_warning(
+					(
+						(
+							"[arena] navmesh map was empty after bake — healed in %.1fs "
+							+ "(%d re-registrations, map iteration %d)"
+						)
+						% [waited, toggles, NavigationServer3D.map_get_iteration_id(map)]
+					)
+				)
+			return
+		# Give the engine's own post-bake sync one ~1s grace window first; after
+		# that, re-register the region so the next sync re-ingests the baked mesh
+		# (the lost-update race leaves the map empty forever otherwise).
+		if waited >= 1.0:
+			nav_region.enabled = false
+			nav_region.enabled = true
+			toggles += 1
+		for i in range(30):
+			await tree.physics_frame
+		# The arena can be torn down mid-verify (restart / match end) — resuming a
+		# coroutine on a freed node would error-spam every awaited frame.
+		if not is_instance_valid(self) or not is_inside_tree() or nav_region == null:
+			return
+		waited += 0.5
+	push_warning("[arena] navmesh map STILL empty after heal retries — enemy pathing degraded")
 
 
 # Stable spawn index per peer so each player keeps the same marker, and a guard so
