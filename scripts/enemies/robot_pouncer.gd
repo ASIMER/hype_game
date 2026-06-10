@@ -26,6 +26,7 @@ var _pounce_air_t: float = 0.0
 var _p_legs: Array[Node3D] = []
 var _p_leg_rest: Array[Vector3] = []
 
+
 func _ready() -> void:
 	super._ready()
 	var stats: Dictionary = Settings.ENEMY_STATS.get(enemy_id, {})
@@ -37,6 +38,7 @@ func _ready() -> void:
 	_pounce_radius = float(stats.get("pounce_radius", _pounce_radius))
 	# First pounce comes quickly so the archetype reads immediately.
 	_pounce_cd = _pounce_cooldown * 0.4
+
 
 ## OVERRIDE: while AIRBORNE the leap owns the body (gravity arc + landing swipe);
 ## otherwise the base AI runs normally with the pounce cooldown ticking down.
@@ -58,6 +60,7 @@ func _physics_process(delta: float) -> void:
 		_pounce_cd -= delta
 	super._physics_process(delta)
 
+
 ## OVERRIDE: chase normally, but LAUNCH when the pounce is ready and the prey is in
 ## the pounce window (not point-blank — a leap from 1 m looks silly).
 func _do_chase(delta: float) -> void:
@@ -68,6 +71,7 @@ func _do_chase(delta: float) -> void:
 			_launch_pounce()
 			return
 	super._do_chase(delta)
+
 
 func _launch_pounce() -> void:
 	var to := _target.global_position - global_position
@@ -82,9 +86,11 @@ func _launch_pounce() -> void:
 	_pounce_cd = _pounce_cooldown
 	current_state = State.CHASE
 
+
 ## Landing swipe: flat AoE damage around the impact point, downed skipped.
 func _swipe_area() -> void:
 	CombatAoe.damage_players(global_position, _pounce_radius, _pounce_damage, self)
+
 
 ## OVERRIDE: cache the quadruped's 4 leg pivots + the glowing Core.
 func _cache_proc_parts() -> void:
@@ -101,6 +107,7 @@ func _cache_proc_parts() -> void:
 		_pulse_part = core as MeshInstance3D
 		_pulse_base_energy = _read_emission_energy(core as MeshInstance3D)
 	_has_proc_anim = not _p_legs.is_empty() or _pulse_part != null
+
 
 ## OVERRIDE: trot gait (diagonal leg pairs out of phase) + core pulse.
 func _animate_visual(_delta: float) -> void:

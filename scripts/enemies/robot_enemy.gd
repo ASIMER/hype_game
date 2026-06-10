@@ -73,11 +73,11 @@ var _death_fx_started: bool = false
 # every spawned enemy is dead). We watch planar progress while chasing and, after
 # STUCK_LIMIT seconds without moving STUCK_PROGRESS metres, re-seat on the navmesh
 # and (if still unreachable) relocate to open navmesh near the target.
-var _stuck_dist: float = INF        # best (smallest) distance-to-target seen while chasing
+var _stuck_dist: float = INF  # best (smallest) distance-to-target seen while chasing
 var _stuck_time: float = 0.0
 var _recover_count: int = 0
-const STUCK_PROGRESS: float = 1.0   # metres the gap must close to count as progress
-const STUCK_LIMIT: float = 2.5      # seconds chasing without closing the gap -> recover
+const STUCK_PROGRESS: float = 1.0  # metres the gap must close to count as progress
+const STUCK_LIMIT: float = 2.5  # seconds chasing without closing the gap -> recover
 
 # --- Stats (resolved from Settings.ENEMY_STATS in _ready) -------------------
 var _stat_health: float = Settings.ENEMY_MAX_HEALTH
@@ -104,9 +104,9 @@ var _death_anim_played := false
 # --- Hit flash --------------------------------------------------------------
 # Collected StandardMaterial3D from the model so a hit briefly pushes emission.
 var _flash_mats: Array[StandardMaterial3D] = []
-var _flash_base_emission: Array = []        # parallel: original emission colors
+var _flash_base_emission: Array = []  # parallel: original emission colors
 var _flash_t: float = 0.0
-const FLASH_TIME: float = 0.14        # longer so hits read clearly
+const FLASH_TIME: float = 0.14  # longer so hits read clearly
 
 # --- Hit stagger (visual flinch + small knockback) --------------------------
 # On taking damage we kick a brief model-local flinch (recoil scale + dip) that
@@ -120,8 +120,8 @@ var _model_rest_pos: Vector3 = Vector3.ZERO
 var _model_rest_scale: Vector3 = Vector3.ONE
 # Pending knockback velocity applied (and decayed) by the authority's movement.
 var _knockback: Vector3 = Vector3.ZERO
-const KNOCKBACK_SPEED: float = 2.2    # m/s initial nudge (small)
-const KNOCKBACK_DECAY: float = 12.0   # how fast the nudge bleeds off
+const KNOCKBACK_SPEED: float = 2.2  # m/s initial nudge (small)
+const KNOCKBACK_DECAY: float = 12.0  # how fast the nudge bleeds off
 # Last attacker position (for knockback direction); set by Health via apply_hit
 # chain isn't available, so we derive direction from the nearest threat instead.
 var _last_hit_health: float = -1.0
@@ -158,8 +158,8 @@ var hunter: bool = false
 # --- Perception / INVESTIGATE state -----------------------------------------
 # Last-heard world position the enemy is walking toward while investigating.
 var _investigate_point: Vector3 = Vector3.ZERO
-var _investigate_timer: float = 0.0   # counts DOWN from INVESTIGATE_GIVEUP
-var _investigate_arrived: bool = false # true once within INVESTIGATE_ARRIVE
+var _investigate_timer: float = 0.0  # counts DOWN from INVESTIGATE_GIVEUP
+var _investigate_arrived: bool = false  # true once within INVESTIGATE_ARRIVE
 
 # Cascading alert refractory: monotonic counter decremented each physics tick.
 # Guards alert_to() from ping-ponging (each enemy fires once per ALERT_REFRACTORY s).
@@ -168,6 +168,7 @@ var _last_alert_time: float = 0.0
 # Track whether we were chasing last tick so we detect the edge PATROL→CHASE
 # for cascading alerts.
 var _was_chasing: bool = false
+
 
 func _ready() -> void:
 	add_to_group(Groups.ENEMIES)
@@ -219,6 +220,7 @@ func _ready() -> void:
 
 	Events.enemy_spawned.emit(self)
 
+
 ## Add a small glowing marker at this enemy's WeakPoint so players can SEE where the
 ## bonus-damage spot is (the Hurtbox itself is invisible). Render-only: a tiny emissive
 ## sphere parented under the WeakPoint Area (inherits its position); no gameplay/collision
@@ -251,8 +253,9 @@ func _setup_weakpoint_marker() -> void:
 	mi.mesh = mesh
 	mi.material_override = mat
 	if shape is CollisionShape3D:
-		mi.position = (shape as CollisionShape3D).position   # sit exactly on the weak point
+		mi.position = (shape as CollisionShape3D).position  # sit exactly on the weak point
 	wp.add_child(mi)
+
 
 ## Pull archetype stats from Settings.ENEMY_STATS. Falls back to legacy ENEMY_*
 ## (already the defaults above) so a missing/unknown id still behaves like a grunt.
@@ -271,6 +274,7 @@ func _load_stats() -> void:
 	_stat_health *= float(mods.get("enemy_health", 1.0))
 	_stat_damage *= float(mods.get("enemy_damage", 1.0))
 
+
 ## Make enemy bodies block each other AND the player (so move_and_slide resolves
 ## overlaps), and enable NavigationAgent avoidance so paths fan out instead of
 ## stacking. Layer stays 4 (enemy); mask gains 2 (player) + 4 (enemy) on top of
@@ -285,6 +289,7 @@ func _setup_collision_and_avoidance() -> void:
 		# We don't use the velocity_computed signal (we blend a manual separation
 		# steer in _apply_movement instead, which is cheaper and works for the
 		# flyers too); avoidance_enabled still makes the agent fan paths apart.
+
 
 func _physics_process(delta: float) -> void:
 	# SERVER-AUTHORITATIVE: clients never run AI; they just display replicated state.
@@ -328,7 +333,9 @@ func _physics_process(delta: float) -> void:
 	if hunter and _target != null:
 		current_state = _fsm.evaluate(_target, dist, true, 1.0e9, _stat_attack_range)
 	elif current_state != State.INVESTIGATE:
-		current_state = _fsm.evaluate(_target, dist, has_los or near, _stat_detect, _stat_attack_range)
+		current_state = _fsm.evaluate(
+			_target, dist, has_los or near, _stat_detect, _stat_attack_range
+		)
 	else:
 		# While investigating, promote to CHASE/ATTACK the moment LOS is confirmed
 		# within detect — or the player gets close. evaluate() has no INVESTIGATE case (it
@@ -336,7 +343,9 @@ func _physics_process(delta: float) -> void:
 		# evaluate resolve CHASE→ATTACK (or back to PATROL if the gap reopens).
 		if _target != null and (has_los or near) and dist <= _stat_detect:
 			_fsm.state = State.CHASE
-			current_state = _fsm.evaluate(_target, dist, has_los or near, _stat_detect, _stat_attack_range)
+			current_state = _fsm.evaluate(
+				_target, dist, has_los or near, _stat_detect, _stat_attack_range
+			)
 
 	# Cascading alert edge detection: the moment we enter CHASE, wake nearby non-hunters.
 	if current_state == State.CHASE and not _was_chasing:
@@ -355,6 +364,7 @@ func _physics_process(delta: float) -> void:
 
 	_update_stuck(delta)
 
+
 func _process(delta: float) -> void:
 	# Animation is purely visual and runs on BOTH server and clients: clients read
 	# `current_state` (replicated by the MultiplayerSynchronizer) and Health.is_dead.
@@ -368,7 +378,7 @@ func _process(delta: float) -> void:
 			_death_fx_started = true
 			_start_death_fx()
 		_tick_death_pop(delta)
-		_tick_flash(delta)        # let a final hit-flash finish; it only touches emission
+		_tick_flash(delta)  # let a final hit-flash finish; it only touches emission
 		return
 	if _has_proc_anim:
 		_anim_time += delta
@@ -376,7 +386,9 @@ func _process(delta: float) -> void:
 	_tick_flash(delta)
 	_tick_stagger(delta)
 
+
 # --- Animation (visual only) ------------------------------------------------
+
 
 ## Find the GLB's AnimationPlayer under ModelRoot and resolve the clip names we
 ## care about against whatever the asset actually ships (case-insensitive,
@@ -397,6 +409,7 @@ func _setup_animation() -> void:
 			var a := _anim_player.get_animation(loop_name)
 			if a:
 				a.loop_mode = Animation.LOOP_LINEAR
+
 
 ## Drives the AnimationPlayer from current_state / death. Cheap: only switches
 ## clips when the desired animation changes. No-op without an AnimationPlayer.
@@ -422,6 +435,7 @@ func _update_animation() -> void:
 	if desired != "" and desired != _current_anim:
 		_play_anim(desired)
 
+
 func _play_anim(anim_name: String) -> void:
 	if _anim_player == null or anim_name == "":
 		return
@@ -429,6 +443,7 @@ func _play_anim(anim_name: String) -> void:
 		return
 	_current_anim = anim_name
 	_anim_player.play(anim_name)
+
 
 ## Depth-first search for the first AnimationPlayer under `root`.
 func _find_animation_player(root: Node) -> AnimationPlayer:
@@ -441,6 +456,7 @@ func _find_animation_player(root: Node) -> AnimationPlayer:
 		if found:
 			return found
 	return null
+
 
 ## Returns the first candidate present in `names` (case-insensitive), else "".
 func _pick_anim(names: PackedStringArray, candidates: Array) -> String:
@@ -456,7 +472,9 @@ func _pick_anim(names: PackedStringArray, candidates: Array) -> String:
 				return n
 	return ""
 
+
 # --- Procedural idle animation (visual only) --------------------------------
+
 
 ## Locate + cache the named parts ProceduralModels gave this enemy's model so
 ## _animate_visual can drive them cheaply. BASE = tick (eye + 6 legs). OVERRIDE in
@@ -479,6 +497,7 @@ func _cache_proc_parts() -> void:
 			_proc_leg_rest.append((leg as Node3D).rotation)
 	_has_proc_anim = _proc_eye != null or not _proc_legs.is_empty()
 
+
 ## The procedural model assembly node under ModelRoot (the Node3D ProceduralModels
 ## built), or null if this enemy uses a .glb / single primitive without named parts.
 func _proc_root() -> Node3D:
@@ -488,6 +507,7 @@ func _proc_root() -> Node3D:
 		if c is Node3D:
 			return c as Node3D
 	return null
+
 
 ## BASE idle = the tick: a slow whole-body bob (on the assembly child, NOT ModelRoot
 ## which is the stagger's home), out-of-phase leg micro-sway, and an eye emission
@@ -505,6 +525,7 @@ func _animate_visual(_delta: float) -> void:
 		leg.rotation = _proc_leg_rest[i] + Vector3(sway * 0.5, 0.0, sway)
 	_pulse_emission(0.7, 1.3, 3.0)
 
+
 ## Pulse the cached `_pulse_part`'s emission energy between base*lo and base*hi at
 ## `speed`. Skips while the hit-flash owns the emission (flash energy wins; it
 ## restores energy to 1.0 on finish, then this resumes). emission_energy_multiplier
@@ -515,7 +536,10 @@ func _pulse_emission(lo: float, hi: float, speed: float) -> void:
 	var mat := _pulse_part.get_active_material(0)
 	if mat is StandardMaterial3D:
 		var k := 0.5 + 0.5 * sin(_anim_time * speed)
-		(mat as StandardMaterial3D).emission_energy_multiplier = _pulse_base_energy * lerpf(lo, hi, k)
+		(mat as StandardMaterial3D).emission_energy_multiplier = (
+			_pulse_base_energy * lerpf(lo, hi, k)
+		)
+
 
 ## Read a glowing part's authored emission energy (so the pulse oscillates around it).
 func _read_emission_energy(part: MeshInstance3D) -> float:
@@ -525,6 +549,7 @@ func _read_emission_energy(part: MeshInstance3D) -> float:
 	if mat is StandardMaterial3D and (mat as StandardMaterial3D).emission_enabled:
 		return (mat as StandardMaterial3D).emission_energy_multiplier
 	return 6.0
+
 
 ## Yaw a child pivot node toward the nearest player on the Y axis only (turret/torso
 ## tracking). Smoothly lerps `pivot.rotation.y` in the enemy-LOCAL frame so it reads
@@ -545,6 +570,7 @@ func _track_player_yaw(pivot: Node3D, delta: float, speed: float = 4.0) -> void:
 	var local_yaw := wrapf(world_yaw - rotation.y, -PI, PI)
 	pivot.rotation.y = lerp_angle(pivot.rotation.y, local_yaw, clampf(delta * speed, 0.0, 1.0))
 
+
 ## Nearest living player for VISUAL tracking — runs on all peers (no authority gate),
 ## reads the "players" group directly. Cheap; called at most once per frame per enemy.
 func _nearest_player_visual() -> Node3D:
@@ -563,7 +589,9 @@ func _nearest_player_visual() -> Node3D:
 			nearest = pn
 	return nearest
 
+
 # --- Hit flash --------------------------------------------------------------
+
 
 ## Walk the model subtree and remember every StandardMaterial3D (and its base
 ## emission) so a hit can briefly drive emission white. We duplicate shared
@@ -579,9 +607,12 @@ func _collect_flash_materials(root: Node) -> void:
 					var dup := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
 					mi.set_surface_override_material(s, dup)
 					_flash_mats.append(dup)
-					_flash_base_emission.append(dup.emission if dup.emission_enabled else Color(0, 0, 0))
+					_flash_base_emission.append(
+						dup.emission if dup.emission_enabled else Color(0, 0, 0)
+					)
 	for c in root.get_children():
 		_collect_flash_materials(c)
+
 
 func _start_flash() -> void:
 	if _flash_mats.is_empty():
@@ -590,21 +621,23 @@ func _start_flash() -> void:
 	for m in _flash_mats:
 		m.emission_enabled = true
 
+
 ## Decay the flash emission back to the base over FLASH_TIME. Cheap no-op when idle.
 func _tick_flash(delta: float) -> void:
 	if _flash_t <= 0.0:
 		return
 	_flash_t = maxf(0.0, _flash_t - delta)
-	var k := _flash_t / FLASH_TIME            # 1 -> 0
+	var k := _flash_t / FLASH_TIME  # 1 -> 0
 	for i in _flash_mats.size():
 		var base: Color = _flash_base_emission[i]
 		var m := _flash_mats[i]
 		m.emission = base.lerp(Color(1, 1, 1), k)
-		m.emission_energy_multiplier = lerpf(1.0, 4.0, k)   # stronger spike
+		m.emission_energy_multiplier = lerpf(1.0, 4.0, k)  # stronger spike
 		if _flash_t <= 0.0:
 			# Restore the original emission state exactly.
 			m.emission = base
 			m.emission_enabled = base.r > 0.0 or base.g > 0.0 or base.b > 0.0
+
 
 func _on_health_changed(current: float, _max_health: float) -> void:
 	# A drop in health = a hit; flash + stagger. (heal also fires this but is rare
@@ -614,6 +647,7 @@ func _on_health_changed(current: float, _max_health: float) -> void:
 	if not _dying and not _health.is_dead and current > 0.0 and took_damage:
 		_start_flash()
 		_start_stagger()
+
 
 ## Kick the visual flinch (runs everywhere) and, on the authority, a tiny
 ## knockback away from the likely shooter (nearest player) so the body reacts.
@@ -627,6 +661,7 @@ func _start_stagger() -> void:
 			if away.length() > 0.001:
 				_knockback = away.normalized() * KNOCKBACK_SPEED
 
+
 ## Decays the model-local flinch (a quick recoil dip + squash) back to rest, and
 ## bleeds off the knockback nudge. Visual flinch runs on server AND clients; the
 ## knockback velocity is consumed by the authority's _apply_movement.
@@ -637,14 +672,16 @@ func _tick_stagger(delta: float) -> void:
 			_model_root.position = _model_rest_pos
 		return
 	_stagger_t = maxf(0.0, _stagger_t - delta)
-	var k := _stagger_t / STAGGER_TIME      # 1 -> 0
+	var k := _stagger_t / STAGGER_TIME  # 1 -> 0
 	if _model_root:
 		# Quick squash + a small downward dip that eases back to rest.
 		var squash := 1.0 - 0.12 * k
 		_model_root.scale = _model_rest_scale * Vector3(1.0 + 0.08 * k, squash, 1.0 + 0.08 * k)
 		_model_root.position = _model_rest_pos + Vector3(0.0, -0.06 * k, 0.0)
 
+
 # --- HP bar -----------------------------------------------------------------
+
 
 func _setup_health_bar() -> void:
 	if not ResourceLoader.exists(HP_BAR_SCENE):
@@ -660,11 +697,14 @@ func _setup_health_bar() -> void:
 	add_child(_hp_bar)
 	_hp_bar.setup(_health)
 
+
 ## Default bar height; flyers/bosses override to clear taller models. OVERRIDE.
 func _health_bar_height() -> float:
 	return 2.0
 
+
 # --- State behaviours -------------------------------------------------------
+
 
 func _do_patrol(delta: float) -> void:
 	# Idle a moment at each reached waypoint, then wander to a new one.
@@ -681,6 +721,7 @@ func _do_patrol(delta: float) -> void:
 		return
 	_navigate_to_agent(delta)
 
+
 func _do_chase(delta: float) -> void:
 	_fsm.clear_patrol_target()
 	if _target == null:
@@ -688,6 +729,7 @@ func _do_chase(delta: float) -> void:
 		return
 	_agent.set_target_position(_target.global_position)
 	_navigate_to_agent(delta)
+
 
 func _do_attack(delta: float) -> void:
 	# Hold position and strike on cooldown. Face the target for clarity.
@@ -697,6 +739,7 @@ func _do_attack(delta: float) -> void:
 	if _attack_cooldown <= 0.0:
 		_strike(_target)
 		_attack_cooldown = _next_cooldown()
+
 
 ## Investigate the last-heard/seen point. Navigate there at reduced speed; look
 ## around on arrival; give up after INVESTIGATE_GIVEUP seconds with no confirmed LOS.
@@ -725,6 +768,7 @@ func _do_investigate(delta: float) -> void:
 		_navigate_to_agent(delta)
 		_stat_speed = base_speed
 
+
 ## Begin investigating a world position. Resets the give-up timer.
 ## Called internally by perception and externally by alert_to().
 func _start_investigate(world_pos: Vector3) -> void:
@@ -734,6 +778,7 @@ func _start_investigate(world_pos: Vector3) -> void:
 	current_state = State.INVESTIGATE
 	_fsm.state = State.INVESTIGATE
 	_fsm.clear_patrol_target()
+
 
 ## Public cascading-alert entry point. Another enemy (or the caller) tells this
 ## enemy to INVESTIGATE a position. Respects the refractory window and skips
@@ -749,6 +794,7 @@ func alert_to(world_pos: Vector3) -> void:
 		return
 	_last_alert_time = Settings.ALERT_REFRACTORY
 	_start_investigate(world_pos)
+
 
 ## Footstep perception: called every ~0.4s for non-hunter enemies.
 ## Checks all players and reacts to noise_radius() audible footsteps.
@@ -779,7 +825,10 @@ func _check_footstep_perception() -> void:
 	if loudest_player == null:
 		return
 	# Already chasing this target? Skip (don't downgrade a confirmed chase).
-	if (current_state == State.CHASE or current_state == State.ATTACK) and _target == loudest_player:
+	if (
+		(current_state == State.CHASE or current_state == State.ATTACK)
+		and _target == loudest_player
+	):
 		return
 
 	if loudest_dist <= loudest_radius * Settings.NOISE_CHASE_FRACTION:
@@ -791,6 +840,7 @@ func _check_footstep_perception() -> void:
 	else:
 		# Heard but not immediate — investigate the player's position.
 		_start_investigate(loudest_player.global_position)
+
 
 ## Cascade: on entering CHASE, alert nearby non-hunter enemies to investigate
 ## the current target position.
@@ -805,8 +855,12 @@ func _cascade_alert() -> void:
 			continue
 		if not (e is Node3D):
 			continue
-		if global_position.distance_to((e as Node3D).global_position) <= Settings.ALERT_CASCADE_RADIUS:
+		if (
+			global_position.distance_to((e as Node3D).global_position)
+			<= Settings.ALERT_CASCADE_RADIUS
+		):
 			e.call("alert_to", target_pos)
+
 
 ## Noise event handler (gunfire / grenades from Events.noise_emitted).
 ## Only runs on the authority (connected in _ready only when authority).
@@ -833,12 +887,15 @@ func _on_noise_emitted(world_pos: Vector3, loudness: float, _kind: int) -> void:
 	else:
 		_start_investigate(world_pos)
 
+
 ## Gap until the next attack. Default = the archetype's stat cooldown; ranged
 ## archetypes override to insert a longer recovery between bursts. OVERRIDE.
 func _next_cooldown() -> float:
 	return _stat_cooldown
 
+
 # --- Stuck detection / recovery ---------------------------------------------
+
 
 ## Tracks progress TOWARD the target while CHASING. Only melee chasers must close the
 ## gap — ranged archetypes (wasp/bastion/boss) deliberately hold their distance, so
@@ -846,10 +903,13 @@ func _next_cooldown() -> float:
 ## place without reducing its distance to the target (e.g. a heavy jammed in a POI) is
 ## caught here and recovered; patrol idling is excluded so a waypoint pause never trips it.
 func _update_stuck(delta: float) -> void:
-	if (current_state != State.CHASE and current_state != State.INVESTIGATE) \
-			or current_state == State.INVESTIGATE \
-			or _stat_attack_range >= 5.0 \
-			or _target == null or not is_instance_valid(_target):
+	if (
+		(current_state != State.CHASE and current_state != State.INVESTIGATE)
+		or current_state == State.INVESTIGATE
+		or _stat_attack_range >= 5.0
+		or _target == null
+		or not is_instance_valid(_target)
+	):
 		_stuck_time = 0.0
 		_stuck_dist = INF
 		_recover_count = 0
@@ -866,6 +926,7 @@ func _update_stuck(delta: float) -> void:
 		_stuck_time = 0.0
 		_stuck_dist = global_position.distance_to(_target.global_position)
 
+
 ## Escalating recovery: first attempt re-seats the body on the nearest navmesh point
 ## in place and re-issues the path (fixes spawned-in-wall / off-mesh). If that doesn't
 ## free it, relocate onto open navmesh near the target so it becomes reachable AND
@@ -881,6 +942,7 @@ func _recover_unstuck() -> void:
 	_teleport_to(_navmesh_point_near(anchor))
 	_recover_count = 0
 
+
 ## Public hook for the wave watchdog: relocate next to the nearest player on the mesh.
 func force_unstuck() -> void:
 	var p := _find_nearest_player()
@@ -889,6 +951,7 @@ func force_unstuck() -> void:
 	_recover_count = 0
 	_stuck_time = 0.0
 
+
 ## Nearest walkable navmesh point to `pos`, via the agent's navigation map. Returns
 ## `pos` unchanged if the map isn't ready (returns origin) — callers tolerate that.
 func _snap_to_navmesh(pos: Vector3) -> Vector3:
@@ -896,11 +959,12 @@ func _snap_to_navmesh(pos: Vector3) -> Vector3:
 	if not map.is_valid():
 		return pos
 	if NavigationServer3D.map_get_iteration_id(map) == 0:
-		return pos   # map not synced yet — leave position unchanged
+		return pos  # map not synced yet — leave position unchanged
 	var p: Vector3 = NavigationServer3D.map_get_closest_point(map, pos)
 	if p == Vector3.ZERO and pos.length() > 1.0:
 		return pos
 	return p
+
 
 ## A navmesh point on open ground a short way from `center` (a player) — the
 ## relocation target for a trapped enemy.
@@ -910,6 +974,7 @@ func _navmesh_point_near(center: Vector3) -> Vector3:
 	var probe := center + Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
 	return _snap_to_navmesh(probe)
 
+
 func _teleport_to(pos: Vector3) -> void:
 	if pos == Vector3.ZERO:
 		return
@@ -918,7 +983,9 @@ func _teleport_to(pos: Vector3) -> void:
 	if _target and is_instance_valid(_target):
 		_agent.set_target_position(_target.global_position)
 
+
 # --- Movement helpers -------------------------------------------------------
+
 
 func _navigate_to_agent(delta: float) -> void:
 	var next := _agent.get_next_path_position()
@@ -928,6 +995,7 @@ func _navigate_to_agent(delta: float) -> void:
 	_apply_movement(dir, delta)
 	if dir != Vector3.ZERO:
 		_face_towards(next, delta)
+
 
 func _apply_movement(dir: Vector3, delta: float) -> void:
 	# Blend in a separation steer so enemies don't pile into one point. The body
@@ -942,8 +1010,13 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	if sep.length() > SEPARATION_MAX:
 		sep = sep.normalized() * SEPARATION_MAX
 	if _target != null and is_instance_valid(_target):
-		var td := Vector2(global_position.x - _target.global_position.x,
-			global_position.z - _target.global_position.z).length()
+		var td := (
+			Vector2(
+				global_position.x - _target.global_position.x,
+				global_position.z - _target.global_position.z
+			)
+			. length()
+		)
 		# Fade separation from full (at >2× attack range) to zero (at attack range) so the
 		# final approach is pure pursuit and crowded enemies still reach the player.
 		var fade := clampf((td - _stat_attack_range) / maxf(0.1, _stat_attack_range), 0.0, 1.0)
@@ -964,6 +1037,7 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	else:
 		velocity.y = 0.0
 	move_and_slide()
+
 
 ## Sum of away-vectors from nearby enemies (group "enemies") within
 ## SEPARATION_RADIUS, weighted by closeness. Flat on the XZ plane. Returns a small
@@ -986,6 +1060,7 @@ func _separation_steer() -> Vector3:
 		return Vector3.ZERO
 	return push * SEPARATION_STRENGTH
 
+
 func _face_towards(world_point: Vector3, delta: float) -> void:
 	var flat := world_point - global_position
 	flat.y = 0.0
@@ -994,7 +1069,9 @@ func _face_towards(world_point: Vector3, delta: float) -> void:
 	var desired_yaw := atan2(flat.x, flat.z)
 	rotation.y = lerp_angle(rotation.y, desired_yaw, clampf(delta * 8.0, 0.0, 1.0))
 
+
 # --- Combat -----------------------------------------------------------------
+
 
 ## Default melee strike. OVERRIDE in ranged archetypes (wasp/bastion/boss) to
 ## fire a projectile/hitscan instead.
@@ -1011,7 +1088,9 @@ func _strike(target: Node) -> void:
 	if hp and hp.has_method("take_damage"):
 		hp.take_damage(_stat_damage, self)
 
+
 # --- Perception -------------------------------------------------------------
+
 
 func _find_nearest_player() -> Node3D:
 	var nearest: Node3D = null
@@ -1034,6 +1113,7 @@ func _find_nearest_player() -> Node3D:
 			nearest = pn
 	return nearest
 
+
 func _check_line_of_sight(target: Node3D) -> bool:
 	if _los_ray == null:
 		return true
@@ -1054,7 +1134,9 @@ func _check_line_of_sight(target: Node3D) -> bool:
 		n = n.get_parent()
 	return false
 
+
 # --- Death / loot -----------------------------------------------------------
+
 
 ## DEATH POLISH: don't free immediately. Disable AI + collision, play the Death
 ## clip + let the SFX/debris play, drop loot, THEN free after DEATH_LINGER.
@@ -1082,6 +1164,7 @@ func _on_died(_killer: Node) -> void:
 	# Linger so the death anim + explosion SFX read, then free.
 	get_tree().create_timer(DEATH_LINGER).timeout.connect(queue_free)
 
+
 ## Optional ragdoll/debris from fx-dev. Guarded so we never hard-depend on it.
 ## Scaled + tinted to the enemy so a boss erupts in big purple chunks, a tick pops
 ## small orange ones. setup() must be called BEFORE add_child (the scene reads it in _ready).
@@ -1094,21 +1177,24 @@ func _spawn_debris() -> void:
 	var debris: Node = (packed as PackedScene).instantiate()
 	if debris.has_method("setup"):
 		debris.call("setup", _debris_scale(), _body_tint())
-	var container := _loot_container()      # reuse the sibling FX-safe container
+	var container := _loot_container()  # reuse the sibling FX-safe container
 	container.add_child(debris)
 	if debris is Node3D:
 		(debris as Node3D).global_position = global_position + Vector3.UP * 0.8
+
 
 ## Debris size, scaled off the HP-bar height (a decent proxy for body size):
 ## tick≈2 → ~1.0, bastion → ~1.3, boss(4.6) → ~2.0.
 func _debris_scale() -> float:
 	return clampf(_health_bar_height() * 0.45, 0.7, 2.0)
 
+
 ## The enemy's signature colour (orange tick / cyan wasp / red bastion / purple boss),
 ## desaturated toward metal so debris reads as charred-tinted chunks not pure neon.
 func _body_tint() -> Color:
 	var c := AssetRegistry.get_color(enemy_id)
 	return c.lerp(Color(0.5, 0.5, 0.52), 0.55)
+
 
 ## DEATH JUICE (all peers): a bright enemy spark/oil burst at the body core + a
 ## scale-pop kick. The pop itself decays in _tick_death_pop. Boss adds screen shake.
@@ -1120,9 +1206,11 @@ func _start_death_fx() -> void:
 	if _is_boss():
 		Events.screen_shake.emit(0.6)
 
+
 ## Boss subclasses flag this so the death burst shakes the screen + scales bigger.
 func _is_boss() -> bool:
 	return false
+
 
 ## Instance a bright enemy-hit Impact at the body core for the death flash/sparks.
 func _spawn_death_burst() -> void:
@@ -1138,7 +1226,10 @@ func _spawn_death_burst() -> void:
 	var container := _loot_container()
 	container.add_child(burst)
 	if burst is Node3D:
-		(burst as Node3D).global_position = global_position + Vector3.UP * maxf(0.6, _health_bar_height() * 0.4)
+		(burst as Node3D).global_position = (
+			global_position + Vector3.UP * maxf(0.6, _health_bar_height() * 0.4)
+		)
+
 
 ## Animate the ModelRoot scale-pop on death: a quick swell then a collapse to ~0,
 ## so the corpse "bursts" instead of statically lingering. ModelRoot is the stagger's
@@ -1147,7 +1238,7 @@ func _tick_death_pop(delta: float) -> void:
 	if _model_root == null:
 		return
 	_death_pop_t = minf(DEATH_POP_TIME, _death_pop_t + delta)
-	var k := _death_pop_t / DEATH_POP_TIME          # 0 -> 1
+	var k := _death_pop_t / DEATH_POP_TIME  # 0 -> 1
 	# Swell to 1.25 in the first third, then collapse to ~0.05 by the end.
 	var s: float
 	if k < 0.33:
@@ -1156,9 +1247,15 @@ func _tick_death_pop(delta: float) -> void:
 		s = lerpf(1.25, 0.05, (k - 0.33) / 0.67)
 	_model_root.scale = _model_rest_scale * s
 
+
 func _spawn_loot() -> void:
 	if not ResourceLoader.exists(LOOT_SCENE):
-		print("[RobotEnemy] %s died at %s — LootPickup.tscn not present, no drop" % [enemy_id, global_position])
+		print(
+			(
+				"[RobotEnemy] %s died at %s — LootPickup.tscn not present, no drop"
+				% [enemy_id, global_position]
+			)
+		)
 		return
 	var loot_id: String = LOOT_IDS[randi() % LOOT_IDS.size()]
 	var container := _loot_container()
@@ -1168,19 +1265,22 @@ func _spawn_loot() -> void:
 	# saw the wrong model (or nothing) for every enemy drop.
 	LootPickup.spawn_at(container, global_position, loot_id, 1)
 
+
 ## Find the sibling Net/Loot container (../../Loot relative to Net/Enemies);
 ## fall back to our own parent so the drop always lands somewhere valid.
 func _loot_container() -> Node:
-	var enemies_parent := get_parent()                     # Net/Enemies
+	var enemies_parent := get_parent()  # Net/Enemies
 	if enemies_parent:
-		var net := enemies_parent.get_parent()             # Net
+		var net := enemies_parent.get_parent()  # Net
 		if net:
 			var loot := net.get_node_or_null("Loot")
 			if loot:
 				return loot
 	return enemies_parent if enemies_parent else self
 
+
 # --- Target helper (exposed for waves / debugging) --------------------------
+
 
 func get_target() -> Node3D:
 	return _target

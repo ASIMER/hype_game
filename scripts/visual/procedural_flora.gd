@@ -29,9 +29,11 @@ class_name ProceduralFlora
 # per-cell acceptance — never a fill-from-a-corner cap — so the new +X/+Z quadrants
 # are populated, not barren.
 
+
 # ---------------------------------------------------------------- terrain hook
 static func _ground_y(x: float, z: float) -> float:
 	return ProceduralTerrain.height_at(x, z)
+
 
 # ---------------------------------------------------------------- keep-out tests
 # Built in build() from the SAME arena._POI_DEFS the structures use (no hand-copied
@@ -63,12 +65,17 @@ static func _collect_keepouts(poi_defs: Dictionary, extraction_points: Array[Vec
 	for zc in extraction_points:
 		_circles.append([zc.x, zc.y, _EXTRACT_KEEPOUT_R])
 
+
 ## True when (x,z) is inside any structure/zone/spawn keep-out OR off the playable
 ## field. `allow_berm` lets boulders sit a little closer to the perimeter wall (inset 5 vs 8).
 static func _blocked(x: float, z: float, allow_berm: bool = false) -> bool:
 	var inset: float = 5.0 if allow_berm else 8.0
-	if (x < WorldBounds.X_MIN + inset or x > WorldBounds.X_MAX - inset
-			or z < WorldBounds.Z_MIN + inset or z > WorldBounds.Z_MAX - inset):
+	if (
+		x < WorldBounds.X_MIN + inset
+		or x > WorldBounds.X_MAX - inset
+		or z < WorldBounds.Z_MIN + inset
+		or z > WorldBounds.Z_MAX - inset
+	):
 		return true
 	for r in _circles:
 		var dx: float = x - float(r[0])
@@ -81,14 +88,16 @@ static func _blocked(x: float, z: float, allow_berm: bool = false) -> bool:
 			return true
 	return false
 
+
 # ================================================================ entry point
 ## Construct all flora, add a single root under `parent`, and return it. `poi_defs` is
 ## arena._POI_DEFS (the ONE POI source); `extraction_points` are the zone XZ centres
 ## arena passes (today: the 3 original NW zones — the 9 new-biome zones never had flora
 ## keep-outs; adding them would reshape the world, so that stays a deliberate decision,
 ## see docs/AUDIT.md F2).
-static func build(parent: Node3D, poi_defs: Dictionary = {},
-		extraction_points: Array[Vector2] = []) -> Node3D:
+static func build(
+	parent: Node3D, poi_defs: Dictionary = {}, extraction_points: Array[Vector2] = []
+) -> Node3D:
 	_collect_keepouts(poi_defs, extraction_points)
 
 	var root := Node3D.new()
@@ -103,6 +112,7 @@ static func build(parent: Node3D, poi_defs: Dictionary = {},
 	_build_stones(root, seed)
 	_build_boulders(root, seed)
 	return root
+
 
 # ---------------------------------------------------------------- glTF model cache
 ## Quaternius CC0 megakit models (copied into assets/models/flora/). We pull the Mesh out
@@ -137,6 +147,8 @@ const _BUSH_MODELS: Array = [
 ## Load a glTF model's Mesh (with all its surfaces/materials). Returns null in headless
 ## (no rendering server) — callers guard so the arena still builds. Cached per-id.
 static var _mesh_cache: Dictionary = {}
+
+
 static func _model_mesh(id: String) -> Mesh:
 	if _mesh_cache.has(id):
 		return _mesh_cache[id]
@@ -151,6 +163,7 @@ static func _model_mesh(id: String) -> Mesh:
 	_mesh_cache[id] = m
 	return m
 
+
 ## Depth-first search for the first MeshInstance3D in an instanced glTF scene.
 static func _find_mesh_instance(n: Node) -> MeshInstance3D:
 	if n is MeshInstance3D:
@@ -161,9 +174,11 @@ static func _find_mesh_instance(n: Node) -> MeshInstance3D:
 			return r
 	return null
 
+
 ## Emit ONE MultiMeshInstance3D for `mesh` from a transform list (render-only, no colors).
-static func _emit_model_mm(parent: Node3D, nm: String, mesh: Mesh,
-		xforms: Array[Transform3D]) -> void:
+static func _emit_model_mm(
+	parent: Node3D, nm: String, mesh: Mesh, xforms: Array[Transform3D]
+) -> void:
 	if mesh == null or xforms.is_empty():
 		return
 	var mmi := MultiMeshInstance3D.new()
@@ -183,6 +198,7 @@ static func _emit_model_mm(parent: Node3D, nm: String, mesh: Mesh,
 	mmi.visibility_range_end_margin = 12.0
 	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	parent.add_child(mmi)
+
 
 # ================================================================ TREES (Quaternius glTF)
 ## Deterministic jittered-grid scatter: walk a coarse grid over the field, hash-decide
@@ -243,10 +259,12 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 		_emit_model_mm(trees, "Tree_%s" % id, mesh, buckets[i])
 	return placed
 
+
 ## Pick a model by hash, append a yaw+scale-jittered Transform3D to its bucket, and emit a
 ## collidable trunk cylinder (layer 1) sized to the scaled model footprint.
-static func _place_tree(colliders: Node3D, buckets: Array, hseed: int,
-		x: float, y: float, z: float) -> void:
+static func _place_tree(
+	colliders: Node3D, buckets: Array, hseed: int, x: float, y: float, z: float
+) -> void:
 	var mi: int = ProcHash.h(hseed + 5) % _TREE_MODELS.size()
 	var base_scale: float = float(_TREE_MODELS[mi][1])
 	var trunk_r: float = float(_TREE_MODELS[mi][2])
@@ -270,6 +288,7 @@ static func _place_tree(colliders: Node3D, buckets: Array, hseed: int,
 	col.shape = cs
 	col.position = Vector3(0.0, cs.height * 0.5, 0.0)
 	body.add_child(col)
+
 
 # ================================================================ BUSHES (Quaternius glTF)
 ## Render-only shrubs (no collision). Scattered on a finer jittered grid, separate hash
@@ -309,9 +328,11 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 						# Bushes are small/low — keep them under 1× so they don't tower.
 						var sc: float = bscale * ProcHash.hrange(cell + 4, 0.55, 0.95)
 						var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(
-							Vector3(sc, sc, sc))
+							Vector3(sc, sc, sc)
+						)
 						(buckets[mi] as Array[Transform3D]).append(
-							Transform3D(basis, Vector3(px, gy, pz)))
+							Transform3D(basis, Vector3(px, gy, pz))
+						)
 						placed += 1
 			gz += 1
 			z += step
@@ -323,6 +344,7 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 		var mesh: Mesh = _model_mesh(id)
 		_emit_model_mm(bushes, "Bush_%s" % id, mesh, buckets[i])
 	return placed
+
 
 # ================================================================ GRASS (dense, LOD + spatial tiling)
 ## TWO LOD layers (NEAR ~11k fine clumped tufts within GRASS_VIS_RANGE, FAR ~2k larger
@@ -350,12 +372,13 @@ const GRASS_TILE_M: float = 16.0  # spatial-tile edge (m) for the MultiMesh-LOD 
 # per-frame load, since tiling means only the ~45 m visible bubble of tiles ever draws). The
 # total count just scales with the bigger area; per-frame cost does not. (0.5 × the natural
 # clumped grid ≈ the old 26k-over-the-old-field budget.)
-const NEAR_GRASS_DENSITY: float = 0.5 # base near-layer per-cell acceptance at q=1 (tile-density calibrated)
-const NEAR_GRASS_GRID: float = 0.7    # near-layer nominal blade spacing (m)
+const NEAR_GRASS_DENSITY: float = 0.5  # base near-layer per-cell acceptance at q=1 (tile-density calibrated)
+const NEAR_GRASS_GRID: float = 0.7  # near-layer nominal blade spacing (m)
 # Clumping density floor: the old 0.4x minimum carved big bald gaps. Raise the floor so the
 # field is uniformly dense with only gentle density variation (no bare patches).
-const GRASS_CLUMP_FLOOR: float = 0.85 # min per-clump emission weight (was 0.40)
-const GRASS_CLUMP_RANGE: float = 0.95 # added on top of the floor => 0.85x .. 1.80x
+const GRASS_CLUMP_FLOOR: float = 0.85  # min per-clump emission weight (was 0.40)
+const GRASS_CLUMP_RANGE: float = 0.95  # added on top of the floor => 0.85x .. 1.80x
+
 
 static func _build_grass(root: Node3D, seed: int) -> void:
 	# One fine-blade mesh, shared by every tile of both LOD layers.
@@ -367,9 +390,9 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	mat.shader = sh
 	# Cinematic palette: deep root green -> lush mid-green tip, restrained warm SSS glow.
 	mat.set_shader_parameter("base_color", Color(0.10, 0.22, 0.06))  # deep root green
-	mat.set_shader_parameter("tip_color", Color(0.34, 0.52, 0.18))   # lush sun-lit tip
-	mat.set_shader_parameter("sss_color", Color(0.85, 0.78, 0.34))   # warm, less orange
-	mat.set_shader_parameter("sss_strength", 0.40)                   # subtle backlight only
+	mat.set_shader_parameter("tip_color", Color(0.34, 0.52, 0.18))  # lush sun-lit tip
+	mat.set_shader_parameter("sss_color", Color(0.85, 0.78, 0.34))  # warm, less orange
+	mat.set_shader_parameter("sss_strength", 0.40)  # subtle backlight only
 	mat.set_shader_parameter("ao_strength", 0.85)
 	# Multi-frequency wind (gusts + turbulence) tuned for clearly visible sway at gameplay
 	# distance (a subtle single-sine read as nearly static in QA).
@@ -402,36 +425,50 @@ static func _build_grass(root: Node3D, seed: int) -> void:
 	# the larger area. `q × NEAR_GRASS_DENSITY` is the per-cell acceptance (calibrated so q=1
 	# reproduces the old budgeted per-tile density).
 	var near_xforms: Array[Transform3D] = _grass_transforms(
-		seed, q * NEAR_GRASS_DENSITY, NEAR_GRASS_GRID, 4099, 1.0, true)
+		seed, q * NEAR_GRASS_DENSITY, NEAR_GRASS_GRID, 4099, 1.0, true
+	)
 	var near_root := Node3D.new()
 	near_root.name = "Grass_Near"
 	root.add_child(near_root)
-	var near_tiles: int = _emit_grass_tiled(near_root, "near", mesh, mat, near_xforms,
-		0.0, Settings.GRASS_VIS_RANGE * dd, 8.0)
+	var near_tiles: int = _emit_grass_tiled(
+		near_root, "near", mesh, mat, near_xforms, 0.0, Settings.GRASS_VIS_RANGE * dd, 8.0
+	)
 
 	# FAR layer: fewer, larger tufts, picks up where near begins to drop out. Tiled too —
 	# its AABB is otherwise also map-wide, so without tiling it'd never cull either. Sparser
 	# acceptance (×0.45) keeps it the thin big-tuft backdrop layer.
-	var far_xforms: Array[Transform3D] = _grass_transforms(
-		seed, q * 0.45, 2.2, 5557, 1.6, false)
+	var far_xforms: Array[Transform3D] = _grass_transforms(seed, q * 0.45, 2.2, 5557, 1.6, false)
 	var far_root := Node3D.new()
 	far_root.name = "Grass_Far"
 	root.add_child(far_root)
 	# begin=33 so it cross-fades in as the near layer fades out (no hard ring/line).
-	var far_tiles: int = _emit_grass_tiled(far_root, "far", mesh, mat, far_xforms,
-		33.0 * dd, Settings.GRASS_FAR_RANGE * dd, 10.0)
+	var far_tiles: int = _emit_grass_tiled(
+		far_root, "far", mesh, mat, far_xforms, 33.0 * dd, Settings.GRASS_FAR_RANGE * dd, 10.0
+	)
 
 	if Settings.NET_DEBUG:
-		print("[flora] grass near=%d (%d tiles) far=%d (%d tiles) tile=%.0fm" % [
-			near_xforms.size(), near_tiles, far_xforms.size(), far_tiles, GRASS_TILE_M])
+		print(
+			(
+				"[flora] grass near=%d (%d tiles) far=%d (%d tiles) tile=%.0fm"
+				% [near_xforms.size(), near_tiles, far_xforms.size(), far_tiles, GRASS_TILE_M]
+			)
+		)
+
 
 ## Partition `xforms` into GRASS_TILE_M-metre spatial tiles and emit ONE
 ## MultiMeshInstance3D per non-empty tile (key = "<gx>_<gz>"), each with the given
 ## visibility range so per-tile AABBs let visibility_range actually cull distant tiles.
 ## Returns the number of tiles (MMIs) emitted. `vis_begin`=0 means no begin range.
-static func _emit_grass_tiled(parent: Node3D, prefix: String, mesh: ArrayMesh,
-		mat: ShaderMaterial, xforms: Array[Transform3D], vis_begin: float,
-		vis_end: float, end_margin: float) -> int:
+static func _emit_grass_tiled(
+	parent: Node3D,
+	prefix: String,
+	mesh: ArrayMesh,
+	mat: ShaderMaterial,
+	xforms: Array[Transform3D],
+	vis_begin: float,
+	vis_end: float,
+	end_margin: float
+) -> int:
 	# Bucket transforms by tile. Dictionary key = packed grid coord; value = Array[Transform3D].
 	var buckets: Dictionary = {}
 	for xf in xforms:
@@ -472,6 +509,7 @@ static func _emit_grass_tiled(parent: Node3D, prefix: String, mesh: ArrayMesh,
 		tiles += 1
 	return tiles
 
+
 ## Build a deterministic grass transform list on a jittered grid over the WHOLE world
 ## rectangle with CLUMPING: a coarse ~6 m hash field scales emission per cell (some patches
 ## denser, some sparser) so the field reads as natural patches, not a uniform lawn. `grid` =
@@ -482,8 +520,9 @@ static func _emit_grass_tiled(parent: Node3D, prefix: String, mesh: ArrayMesh,
 ## 4× MAP: spans the WorldBounds rect with EVEN per-cell acceptance (no fill-from-a-
 ## corner instance cap) so every quadrant is grassed; tiling in _emit_grass_tiled bounds the
 ## per-frame draw to the visible bubble. A high safety_cap only guards a degenerate run.
-static func _grass_transforms(seed: int, density: float, grid: float, salt: int,
-		scale_mul: float, clump: bool) -> Array[Transform3D]:
+static func _grass_transforms(
+	seed: int, density: float, grid: float, salt: int, scale_mul: float, clump: bool
+) -> Array[Transform3D]:
 	var xforms: Array[Transform3D] = []
 	var nx: int = int(ceil((WorldBounds.X_MAX - WorldBounds.X_MIN) / grid))
 	var nz: int = int(ceil((WorldBounds.Z_MAX - WorldBounds.Z_MIN) / grid))
@@ -523,6 +562,7 @@ static func _grass_transforms(seed: int, density: float, grid: float, salt: int,
 		xforms.append(Transform3D(basis, Vector3(px, gy, pz)))
 		placed += 1
 	return xforms
+
 
 ## A tuft = 5-6 FINE curved blades fanned around the vertical axis. Each blade is THIN
 ## (base half-width 0.045 m, tip ~0.008 m) and split into TWO segments via a mid vertex
@@ -579,16 +619,19 @@ static func _grass_card_mesh() -> ArrayMesh:
 	st.generate_normals()
 	return st.commit()
 
+
 ## Emit one grass triangle with per-vertex UV.y = height fraction (0 root → 1 tip).
 ## UV.x is unused by the shader; left at 0.
-static func _grass_tri(st: SurfaceTool, a: Vector3, ua: float, b: Vector3, ub: float,
-		c: Vector3, uc: float) -> void:
+static func _grass_tri(
+	st: SurfaceTool, a: Vector3, ua: float, b: Vector3, ub: float, c: Vector3, uc: float
+) -> void:
 	st.set_uv(Vector2(0.0, ua))
 	st.add_vertex(a)
 	st.set_uv(Vector2(0.0, ub))
 	st.add_vertex(b)
 	st.set_uv(Vector2(0.0, uc))
 	st.add_vertex(c)
+
 
 # ================================================================ STONES (×400)
 ## TWO MultiMeshInstance3D (a 50/50 hash-split into two grey shades), low-poly squashed
@@ -656,9 +699,11 @@ static func _build_stones(root: Node3D, seed: int) -> void:
 	_emit_stone_layer(root, "Stones_A", mesh, mat_a, xforms_a)
 	_emit_stone_layer(root, "Stones_B", mesh, mat_b, xforms_b)
 
+
 ## Build one stones MultiMeshInstance3D from a prebuilt transform list (no colors).
-static func _emit_stone_layer(root: Node3D, nm: String, mesh: Mesh,
-		mat: StandardMaterial3D, xforms: Array[Transform3D]) -> void:
+static func _emit_stone_layer(
+	root: Node3D, nm: String, mesh: Mesh, mat: StandardMaterial3D, xforms: Array[Transform3D]
+) -> void:
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = nm
 	var mm := MultiMesh.new()
@@ -671,6 +716,7 @@ static func _emit_stone_layer(root: Node3D, nm: String, mesh: Mesh,
 	mmi.multimesh = mm
 	mmi.material_override = mat
 	root.add_child(mmi)
+
 
 # ================================================================ BOULDERS (Quaternius glTF)
 ## BIG collidable cover rocks from the Quaternius Rock_Medium models (~2-3 m raw). One
@@ -738,10 +784,12 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 		var mesh: Mesh = _model_mesh(id)
 		_emit_model_mm(node, "Boulder_%s" % id, mesh, buckets[i])
 
+
 ## Pick a rock model by hash, append a yaw+scale-jittered Transform3D to its bucket, and
 ## emit a sphere collider sized to the scaled rock footprint (~1.4 m raw radius * scale).
-static func _place_boulder(colliders: Node3D, buckets: Array, hseed: int,
-		x: float, y: float, z: float) -> void:
+static func _place_boulder(
+	colliders: Node3D, buckets: Array, hseed: int, x: float, y: float, z: float
+) -> void:
 	var mi: int = ProcHash.h(hseed + 1) % _ROCK_MODELS.size()
 	var base_scale: float = float(_ROCK_MODELS[mi][1])
 	var yaw: float = ProcHash.hrange(hseed + 2, 0.0, TAU)

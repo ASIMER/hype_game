@@ -20,7 +20,7 @@ extends RefCounted
 ## PARSE TRAP (warnings-as-errors): never `var x := <Variant>`; locals are explicitly typed.
 
 const ZONE_ALBEDO := Color(0.8, 0.85, 0.9)
-const ZONE_EDGE_FADE := 0.5      # high = SOFT, smooth-transition edges (walk-in feels gradual)
+const ZONE_EDGE_FADE := 0.5  # high = SOFT, smooth-transition edges (walk-in feels gradual)
 # Zones whose CENTRE is closer than this to the player-spawn cluster are skipped, so the
 # start area is always clear (zone radius ~20 m → visible mist stays ~20 m+ further out).
 const SPAWN_EXCLUDE_RADIUS := 40.0
@@ -33,18 +33,23 @@ const SPAWN_FALLBACK := Vector3(58.0, 0.0, 62.0)
 # The tower gets a TALL, dense plume (low height_falloff = a volumetric smoke column you
 # can see across the map); the south POIs + river get wide ground-hugging mist pools.
 const POI_ZONES := {
-	0: { "size": Vector3(44.0, 24.0, 44.0), "height": 8.0, "density": 1.4, "falloff": 0.08 },  # NorthTower plume
-	3: { "size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 1.1, "falloff": 0.25 },  # SWHouse mist
-	4: { "size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 1.1, "falloff": 0.25 },  # SouthYard mist
+	0: {"size": Vector3(44.0, 24.0, 44.0), "height": 8.0, "density": 1.4, "falloff": 0.08},  # NorthTower plume
+	3: {"size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 1.1, "falloff": 0.25},  # SWHouse mist
+	4: {"size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 1.1, "falloff": 0.25},  # SouthYard mist
 }
 # Extra pools at river-valley centreline points (the deep channel collects mist).
 const RIVER_POINTS := [Vector3(16.0, 0.0, 38.0), Vector3(10.0, 0.0, 62.0)]
-const RIVER_ZONE := { "size": Vector3(36.0, 12.0, 36.0), "height": 3.0, "density": 0.9, "falloff": 0.35 }
+const RIVER_ZONE := {
+	"size": Vector3(36.0, 12.0, 36.0), "height": 3.0, "density": 0.9, "falloff": 0.35
+}
+
 
 ## Adds a "FogZones" Node3D under `parent` holding one ELLIPSOID FogVolume per landmark.
 ## `spawn_center` = the player-spawn centroid (zones inside SPAWN_EXCLUDE_RADIUS are
 ## skipped). No-op on headless or when the toggle is off.
-static func build(parent: Node3D, poi_markers: Node3D, spawn_center: Vector3 = SPAWN_FALLBACK) -> void:
+static func build(
+	parent: Node3D, poi_markers: Node3D, spawn_center: Vector3 = SPAWN_FALLBACK
+) -> void:
 	if parent == null:
 		return
 	# No rendering on a dedicated/headless server — fog volumes would do nothing but cost.
@@ -79,7 +84,10 @@ static func build(parent: Node3D, poi_markers: Node3D, spawn_center: Vector3 = S
 	# Apply the user's density multiplier to the freshly built zones.
 	apply_density(parent)
 
-static func _add_zone(root: Node3D, zone_name: String, world_pos: Vector3, prof: Dictionary, spawn_center: Vector3) -> void:
+
+static func _add_zone(
+	root: Node3D, zone_name: String, world_pos: Vector3, prof: Dictionary, spawn_center: Vector3
+) -> void:
 	# Keep the start area clear: skip any zone whose centre is near the spawn cluster.
 	var flat_zone := Vector3(world_pos.x, 0.0, world_pos.z)
 	var flat_spawn := Vector3(spawn_center.x, 0.0, spawn_center.z)
@@ -101,6 +109,7 @@ static func _add_zone(root: Node3D, zone_name: String, world_pos: Vector3, prof:
 	# Position AFTER add_child so global_position is meaningful.
 	fog.global_position = world_pos
 
+
 ## LIVE: rescale every zone's density by the user's "Local Fog Density" multiplier
 ## (SettingsManager "volumetric_fog_density", 0..2, default 1.0). Called by
 ## world_atmosphere on every graphics-settings change — no rebuild needed.
@@ -113,5 +122,7 @@ static func apply_density(scene_root: Node) -> void:
 	var mult: float = clampf(float(SettingsManager.get_value("volumetric_fog_density")), 0.0, 2.0)
 	for c in zones.get_children():
 		if c is FogVolume and (c as FogVolume).material is FogMaterial:
-			var base: float = float(c.get_meta("base_density")) if c.has_meta("base_density") else 1.0
+			var base: float = (
+				float(c.get_meta("base_density")) if c.has_meta("base_density") else 1.0
+			)
 			((c as FogVolume).material as FogMaterial).density = base * mult

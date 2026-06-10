@@ -20,7 +20,7 @@ extends Node
 ## (No class_name — the autoload singleton name "AIDirector" would collide with it.)
 
 ## Reference set by WaveManager._ready() / cleared on _exit_tree().
-var _wave_mgr = null   # typed as Variant — WaveManager is not an autoload we import
+var _wave_mgr = null  # typed as Variant — WaveManager is not an autoload we import
 
 ## Alarm cooldown: counts DOWN in _process; 0 means "ready to fire again".
 var _alarm_cooldown: float = 0.0
@@ -33,6 +33,7 @@ var _noise_alarm_cooldown: float = 0.0
 # Lifecycle
 # ---------------------------------------------------------------------------
 
+
 func _ready() -> void:
 	if not Events.enemy_alerted.is_connected(_on_enemy_alerted):
 		Events.enemy_alerted.connect(_on_enemy_alerted)
@@ -41,6 +42,7 @@ func _ready() -> void:
 	# Reset director state whenever a new match begins.
 	if not Events.match_started.is_connected(_on_match_started):
 		Events.match_started.connect(_on_match_started)
+
 
 func _process(delta: float) -> void:
 	if not GameState.is_local_authority_server():
@@ -51,21 +53,26 @@ func _process(delta: float) -> void:
 	if _noise_alarm_cooldown > 0.0:
 		_noise_alarm_cooldown = maxf(_noise_alarm_cooldown - delta, 0.0)
 
+
 # ---------------------------------------------------------------------------
 # Public API (called by WaveManager)
 # ---------------------------------------------------------------------------
+
 
 ## Called by WaveManager._ready() on the server; cleared on _exit_tree().
 func set_wave_manager(wm) -> void:
 	_wave_mgr = wm
 
+
 # ---------------------------------------------------------------------------
 # Event handlers
 # ---------------------------------------------------------------------------
 
+
 func _on_match_started() -> void:
 	_alarm_cooldown = 0.0
 	_noise_alarm_cooldown = 0.0
+
 
 ## A Snitch / caller / alarm signal fired at `world_pos`.
 ## `level` scales the response — currently 1.0 = standard reinforcement.
@@ -81,6 +88,7 @@ func _on_enemy_alerted(world_pos: Vector3, level: float) -> void:
 	_wave_mgr.spawn_reinforcements(count, world_pos, true)
 	Events.notify.emit(tr("Reinforcements inbound!"), 2)
 	_alarm_cooldown = Settings.ALARM_COOLDOWN
+
 
 ## Loud events (grenade) can also trigger the alarm path.
 ## Gunfire (kind==1) is deliberately NOT forwarded — too spammy.

@@ -17,12 +17,14 @@ var _windup_t: float = 0.0
 var _fists: Array[Node3D] = []
 var _fist_rest: Array[Vector3] = []
 
+
 func _ready() -> void:
 	super._ready()
 	var stats: Dictionary = Settings.ENEMY_STATS.get(enemy_id, {})
 	_slam_radius = float(stats.get("slam_radius", _slam_radius))
 	_slam_windup = float(stats.get("slam_windup", _slam_windup))
 	_slam_damage = float(stats.get("slam_damage", _slam_damage))
+
 
 ## OVERRIDE: in range = begin the windup; the slam lands when the timer expires.
 func _do_attack(delta: float) -> void:
@@ -33,6 +35,7 @@ func _do_attack(delta: float) -> void:
 		_winding = true
 		_windup_t = _slam_windup
 	_tick_windup(delta)
+
 
 ## OVERRIDE: a started windup keeps ticking even if the FSM flips back to CHASE
 ## (the player stepping out of range IS the dodge — the slam still lands on the spot).
@@ -46,6 +49,7 @@ func _do_chase(delta: float) -> void:
 		return
 	super._do_chase(delta)
 
+
 func _tick_windup(delta: float) -> void:
 	if not _winding:
 		return
@@ -57,13 +61,14 @@ func _tick_windup(delta: float) -> void:
 		_slam()
 		_attack_cooldown = _next_cooldown()
 
+
 ## IMPACT: AoE damage (half-at-rim falloff, floor 0.4) + a burst + a shake on a hit.
 func _slam() -> void:
-	var hit := CombatAoe.damage_players(global_position, _slam_radius, _slam_damage, self,
-		0.5, 0.4)
-	_spawn_death_burst()   # ground-impact flash/sparks at the body
+	var hit := CombatAoe.damage_players(global_position, _slam_radius, _slam_damage, self, 0.5, 0.4)
+	_spawn_death_burst()  # ground-impact flash/sparks at the body
 	if hit > 0:
 		Events.screen_shake.emit(0.35)
+
 
 ## OVERRIDE: cache the fists + chest core.
 func _cache_proc_parts() -> void:
@@ -80,6 +85,7 @@ func _cache_proc_parts() -> void:
 		_pulse_part = core as MeshInstance3D
 		_pulse_base_energy = _read_emission_energy(core as MeshInstance3D)
 	_has_proc_anim = not _fists.is_empty() or _pulse_part != null
+
 
 ## OVERRIDE: fists RAISE during the windup (the visible tell) and the core strobes;
 ## idle = a slow heavy sway.

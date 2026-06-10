@@ -16,10 +16,12 @@ var _strafe_flip_t: float = 0.0
 # Visual parts: the sand-skirt cone spins, the eye pulses.
 var _skirt: Node3D = null
 
+
 func _ready() -> void:
 	super._ready()
 	# Hold the ring just inside the firing range so shots stay in range while circling.
 	_orbit_distance = maxf(6.0, _stat_attack_range * 0.55)
+
 
 ## OVERRIDE: chase = steer onto the orbit ring (not into melee).
 func _do_chase(delta: float) -> void:
@@ -30,6 +32,7 @@ func _do_chase(delta: float) -> void:
 	_apply_movement(_orbit_dir(delta), delta)
 	_face_towards(_target.global_position, delta)
 
+
 ## OVERRIDE: keep strafing WHILE firing — a circling gunner is the whole identity.
 func _do_attack(delta: float) -> void:
 	_apply_movement(_orbit_dir(delta), delta)
@@ -39,11 +42,12 @@ func _do_attack(delta: float) -> void:
 		_strike(_target)
 		_attack_cooldown = _next_cooldown()
 
+
 ## Horizontal steering toward the orbit ring + a tangential strafe (flips every few s)
 ## (shared Steering.orbit_dir — it reads/writes our _strafe_dir/_strafe_flip_t).
 func _orbit_dir(delta: float) -> Vector3:
-	return Steering.orbit_dir(self, _target, delta,
-		_orbit_distance, ORBIT_BAND, STRAFE_SPEED_SCALE)
+	return Steering.orbit_dir(self, _target, delta, _orbit_distance, ORBIT_BAND, STRAFE_SPEED_SCALE)
+
 
 ## OVERRIDE: cache the spinning skirt + the amber eye.
 func _cache_proc_parts() -> void:
@@ -58,6 +62,7 @@ func _cache_proc_parts() -> void:
 		_pulse_part = eye as MeshInstance3D
 		_pulse_base_energy = _read_emission_energy(eye as MeshInstance3D)
 	_has_proc_anim = _skirt != null or _pulse_part != null
+
 
 ## OVERRIDE: spin the sand skirt (faster in a firefight) + pulse the eye.
 func _animate_visual(delta: float) -> void:

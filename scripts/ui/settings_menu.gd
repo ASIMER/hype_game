@@ -106,17 +106,27 @@ var _res_list: Array = []
 @onready var _back: Button = $Panel/Root/Buttons/Back
 
 const KEYBINDS := [
-	["Move", "WASD"], ["Sprint", "Shift"], ["Jump", "Space"], ["Fire", "LMB"],
-	["Aim", "RMB"], ["Reload", "R"], ["Swap shoulder", "Q"], ["Weapons", "1-5 / Wheel"],
-	["Grenade", "G"], ["Heal", "H"], ["Loot", "E"], ["Inventory", "I"], ["Pause", "Esc"],
+	["Move", "WASD"],
+	["Sprint", "Shift"],
+	["Jump", "Space"],
+	["Fire", "LMB"],
+	["Aim", "RMB"],
+	["Reload", "R"],
+	["Swap shoulder", "Q"],
+	["Weapons", "1-5 / Wheel"],
+	["Grenade", "G"],
+	["Heal", "H"],
+	["Loot", "E"],
+	["Inventory", "I"],
+	["Pause", "Esc"],
 ]
 
 # Guards re-entrant signals while we sync control values from SettingsManager.
 var _syncing := false
 
-
 # Frosted-glass backdrop (lazy-created once; reused on every open()).
 var _glass_bg: GlassBackdrop = null
+
 
 func _ready() -> void:
 	_populate_options()
@@ -145,6 +155,7 @@ func open() -> void:
 	# Bring overlay to front when instanced over gameplay.
 	move_to_front()
 	UIStyle.pop_in($Panel)
+
 
 func close() -> void:
 	hide()
@@ -228,7 +239,9 @@ func _build_quality_rows() -> void:
 	_toggle_ssr = _add_toggle_row("Screen-Space Reflections (SSR)", "ssr", "")
 	_toggle_ssil = _add_toggle_row("Screen-Space Indirect Light (SSIL)", "ssil", "")
 	_toggle_reflection_probes = _add_toggle_row("Reflection Probes", "reflection_probes", next_raid)
-	_toggle_voxelgi = _add_toggle_row("VoxelGI (experimental)", "voxelgi", "(experimental — applies next raid)")
+	_toggle_voxelgi = _add_toggle_row(
+		"VoxelGI (experimental)", "voxelgi", "(experimental — applies next raid)"
+	)
 
 	# Grass Density slider (applies next raid).
 	var gd_row := _make_slider_row("Grass Density", 0.3, 2.0, 0.05, next_raid)
@@ -293,10 +306,14 @@ func _build_quality_rows() -> void:
 	# Cinematic toggles.
 	_toggle_volumetric_fog = _add_toggle_row("Volumetric Fog", "volumetric_fog", "")
 	_toggle_local_fog = _add_toggle_row("Local Fog Zones", "local_fog", next_raid)
-	_toggle_climate_zones = _add_toggle_row("Climate Zones (rain/snow/desert)", "climate_zones", next_raid)
+	_toggle_climate_zones = _add_toggle_row(
+		"Climate Zones (rain/snow/desert)", "climate_zones", next_raid
+	)
 	_toggle_god_rays = _add_toggle_row("God Rays", "god_rays", "")
 	_toggle_dof = _add_toggle_row("Depth of Field", "dof", "")
-	_toggle_terrain_parallax = _add_toggle_row("Terrain Parallax (POM)", "terrain_parallax", "(applies next raid; heavy)")
+	_toggle_terrain_parallax = _add_toggle_row(
+		"Terrain Parallax (POM)", "terrain_parallax", "(applies next raid; heavy)"
+	)
 
 
 # Builds the INTERFACE page: the moved statistics-overlay section + HUD-layout sliders,
@@ -354,8 +371,8 @@ func _build_interface_rows() -> void:
 	# --- Visual FX ("military glass" look) ---
 	_interface_v.add_child(_make_header("VISUAL FX", accent))
 	_ui_fx = _add_interface_toggle_row(
-		"UI Glass FX", "ui_fx_enabled",
-		"Scanlines, grain & frosted-glass blur behind menus")
+		"UI Glass FX", "ui_fx_enabled", "Scanlines, grain & frosted-glass blur behind menus"
+	)
 
 	# --- HUD layout (ultrawide-friendly insets + global scale) ---
 	_interface_v.add_child(_make_header("HUD LAYOUT (ULTRAWIDE)", accent))
@@ -408,9 +425,11 @@ func _build_interface_rows() -> void:
 	_interface_v.add_child(view_row)
 	_interface_v.add_child(_make_note("(toggle in-game with V)"))
 
+
 func _on_camera_distance(v: float) -> void:
 	_camera_distance_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("camera_distance", v)
+
 
 func _on_camera_shoulder(v: float) -> void:
 	_camera_shoulder_value.text = "%d%%" % roundi(v * 100.0)
@@ -444,9 +463,11 @@ func _add_toggle_row(text: String, key: String, note: String) -> CheckButton:
 	label.text = text
 	label.custom_minimum_size = Vector2(220, 0)
 	var cb := CheckButton.new()
-	cb.toggled.connect(func(p):
-		_apply_setting(key, p)
-		_refresh_preset_label())
+	cb.toggled.connect(
+		func(p):
+			_apply_setting(key, p)
+			_refresh_preset_label()
+	)
 	row.add_child(label)
 	row.add_child(cb)
 	if not note.is_empty():
@@ -501,12 +522,16 @@ func _wire() -> void:
 	_window_mode.item_selected.connect(func(i): _apply_setting("window_mode", i))
 	_resolution.item_selected.connect(func(i): _apply_setting("resolution", str(_res_list[i])))
 	_vsync.item_selected.connect(func(i): _apply_setting("vsync", i))
-	_msaa.item_selected.connect(func(i):
-		_apply_setting("msaa", i)
-		_refresh_preset_label())
-	_shadows.item_selected.connect(func(i):
-		_apply_setting("shadows", i)
-		_refresh_preset_label())
+	_msaa.item_selected.connect(
+		func(i):
+			_apply_setting("msaa", i)
+			_refresh_preset_label()
+	)
+	_shadows.item_selected.connect(
+		func(i):
+			_apply_setting("shadows", i)
+			_refresh_preset_label()
+	)
 	_fov.value_changed.connect(_on_fov)
 	_preset.item_selected.connect(_on_preset)
 
@@ -646,13 +671,16 @@ func _on_fov(v: float) -> void:
 	_fov_value.text = "%d" % int(v)
 	_apply_setting("fov", v)
 
+
 func _on_master(v: float) -> void:
 	_master_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("master_volume", v)
 
+
 func _on_sfx(v: float) -> void:
 	_sfx_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("sfx_volume", v)
+
 
 func _on_sens(v: float) -> void:
 	_sens_value.text = "%.2f" % v
@@ -663,6 +691,7 @@ func _on_render_scale(v: float) -> void:
 	_render_scale_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("render_scale", v)
 	_refresh_preset_label()
+
 
 func _on_grass_density(v: float) -> void:
 	_grass_density_value.text = "%d%%" % roundi(v * 100.0)
@@ -675,30 +704,36 @@ func _on_draw_distance(v: float) -> void:
 	_apply_setting("draw_distance", v)
 	_refresh_preset_label()
 
+
 func _on_particle_density(v: float) -> void:
 	_particle_density_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("particle_density", v)
 	_refresh_preset_label()
+
 
 func _on_terrain_detail(v: float) -> void:
 	_terrain_detail_value.text = tr("%.1fx") % v
 	_apply_setting("terrain_detail", v)
 	_refresh_preset_label()
 
+
 func _on_volumetric_fog_density(v: float) -> void:
 	_volumetric_fog_density_value.text = "%.1f" % v
 	_apply_setting("volumetric_fog_density", v)
 	_refresh_preset_label()
+
 
 func _on_climate_density(v: float) -> void:
 	_climate_density_value.text = "%.1f" % v
 	_apply_setting("climate_density", v)
 	_refresh_preset_label()
 
+
 func _on_shadow_distance(v: float) -> void:
 	_shadow_distance_value.text = tr("%d m") % roundi(v)
 	_apply_setting("shadow_distance", v)
 	_refresh_preset_label()
+
 
 func _on_dof_amount(v: float) -> void:
 	_dof_amount_value.text = "%d%%" % roundi(v * 100.0)
@@ -711,9 +746,11 @@ func _on_ui_edge_margin(v: float) -> void:
 	_ui_edge_margin_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("ui_edge_margin", v)
 
+
 func _on_ui_top_margin(v: float) -> void:
 	_ui_top_margin_value.text = "%d%%" % roundi(v * 100.0)
 	_apply_setting("ui_top_margin", v)
+
 
 func _on_hud_scale(v: float) -> void:
 	_hud_scale_value.text = "%d%%" % roundi(v * 100.0)

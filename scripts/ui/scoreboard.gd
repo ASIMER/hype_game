@@ -15,10 +15,10 @@ extends CanvasLayer
 ## and it starts hidden so it never shows in menus/hub.
 
 # Project palette via UIStyle.
-const COL_AMBER  := UIStyle.AMBER
-const COL_TEAL   := UIStyle.TEAL
-const COL_TEXT   := UIStyle.TEXT
-const COL_DIM    := UIStyle.DIM
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL := UIStyle.TEAL
+const COL_TEXT := UIStyle.TEXT
+const COL_DIM := UIStyle.DIM
 # PANEL_BG kept as a local alpha-tuned value (UIStyle.GLASS_BG at 0.92).
 const COL_ROW_HL := Color(UIStyle.TEAL, 0.16)  # local player's row tint
 
@@ -34,6 +34,7 @@ var _rows_box: VBoxContainer = null
 var _total_label: Label = null
 var _theme: Theme = null
 
+
 func _ready() -> void:
 	# Always process so hold-to-view polling works even if the world tree is paused.
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -48,6 +49,7 @@ func _ready() -> void:
 	if Events.has_signal("scoreboard_changed"):
 		Events.scoreboard_changed.connect(_on_scoreboard_changed)
 
+
 func _process(_delta: float) -> void:
 	# Poll the hold-to-view state every frame — robust against missed press/release.
 	var want: bool = Input.is_action_pressed("scoreboard")
@@ -56,12 +58,15 @@ func _process(_delta: float) -> void:
 		if want:
 			_rebuild()
 
+
 func _on_scoreboard_changed() -> void:
 	# Only refresh while visible; otherwise the next show() rebuilds fresh.
 	if visible:
 		_rebuild()
 
+
 # ── UI construction ──────────────────────────────────────────────────────────
+
 
 func _build_ui() -> void:
 	var root := Control.new()
@@ -133,10 +138,12 @@ func _build_ui() -> void:
 	_total_label.text = tr("TEAM MOBS KILLED: 0")
 	vbox.add_child(_total_label)
 
+
 func _make_separator() -> HSeparator:
 	var sep := HSeparator.new()
 	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return sep
+
 
 ## A 3-column grid used for header + every data row (kept consistent column widths).
 func _make_row_grid() -> GridContainer:
@@ -146,7 +153,10 @@ func _make_row_grid() -> GridContainer:
 	grid.add_theme_constant_override("h_separation", 18)
 	return grid
 
-func _make_cell(parent: Control, text: String, color: Color, fsize: int, align: int, expand: bool) -> Label:
+
+func _make_cell(
+	parent: Control, text: String, color: Color, fsize: int, align: int, expand: bool
+) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -161,7 +171,9 @@ func _make_cell(parent: Control, text: String, color: Color, fsize: int, align: 
 	parent.add_child(lbl)
 	return lbl
 
+
 # ── Data rebuild ─────────────────────────────────────────────────────────────
+
 
 func _rebuild() -> void:
 	if _rows_box == null:
@@ -181,7 +193,7 @@ func _rebuild() -> void:
 		var k: int = int(GameState.kills.get(pid, 0))
 		var d: int = int(GameState.deaths.get(pid, 0))
 		var rv: int = int(GameState.revives.get(pid, 0))
-		entries.append({ "pid": pid, "name": pname, "kills": k, "deaths": d, "revives": rv })
+		entries.append({"pid": pid, "name": pname, "kills": k, "deaths": d, "revives": rv})
 
 	entries.sort_custom(_sort_entries)
 
@@ -190,6 +202,7 @@ func _rebuild() -> void:
 
 	_total_label.text = tr("TEAM MOBS KILLED: %d") % GameState.mobs_killed
 
+
 ## Sort by kills desc, tie-break by name asc (case-insensitive).
 func _sort_entries(a: Dictionary, b: Dictionary) -> bool:
 	var ak: int = int(a["kills"])
@@ -197,6 +210,7 @@ func _sort_entries(a: Dictionary, b: Dictionary) -> bool:
 	if ak != bk:
 		return ak > bk
 	return String(a["name"]).naturalnocasecmp_to(String(b["name"])) < 0
+
 
 func _add_row(e: Dictionary, is_local: bool) -> void:
 	# Wrap the grid in a PanelContainer so the local player's row can be tinted.
@@ -229,8 +243,12 @@ func _add_row(e: Dictionary, is_local: bool) -> void:
 	if rv >= MEDIC_BADGE_THRESHOLD:
 		display_name = "★ " + display_name + "  ·  " + tr("MVP medic")
 	_make_cell(grid, display_name, name_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_LEFT, true)
-	_make_cell(grid, str(int(e["kills"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
-	_make_cell(grid, str(int(e["deaths"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)
+	_make_cell(
+		grid, str(int(e["kills"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false
+	)
+	_make_cell(
+		grid, str(int(e["deaths"])), num_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false
+	)
 	# Revives column — highlight a medic's count in teal so it stands out.
 	var rv_col: Color = COL_TEAL if rv >= MEDIC_BADGE_THRESHOLD else num_col
 	_make_cell(grid, str(rv), rv_col, ROW_FONT_SIZE, HORIZONTAL_ALIGNMENT_RIGHT, false)

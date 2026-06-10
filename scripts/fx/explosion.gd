@@ -15,6 +15,7 @@ var _light: OmniLight3D
 var _shock: MeshInstance3D
 var _shock_mat: StandardMaterial3D
 
+
 func _ready() -> void:
 	# Big bright flash.
 	_light = OmniLight3D.new()
@@ -41,6 +42,7 @@ func _ready() -> void:
 
 	_spawn_fireball()
 	_spawn_smoke()
+
 
 func _spawn_fireball() -> void:
 	var p := GPUParticles3D.new()
@@ -72,6 +74,7 @@ func _spawn_fireball() -> void:
 	add_child(p)
 	p.emitting = true
 
+
 func _spawn_smoke() -> void:
 	var p := GPUParticles3D.new()
 	p.one_shot = true
@@ -102,6 +105,7 @@ func _spawn_smoke() -> void:
 	p.draw_pass_1 = puff
 	add_child(p)
 	p.emitting = true
+
 
 func _process(delta: float) -> void:
 	_t += delta

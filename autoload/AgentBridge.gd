@@ -13,32 +13,34 @@ extends Node
 var active: bool = false
 
 # Virtual input state read by player.gd while active.
-var move: Vector2 = Vector2.ZERO   # x = strafe right(+)/left(-), y = forward(+)/back(-)
+var move: Vector2 = Vector2.ZERO  # x = strafe right(+)/left(-), y = forward(+)/back(-)
 var sprint: bool = false
 var fire: bool = false
-var ads: bool = false               # aim-down-sights (harness-driven)
-var _pending_look: Vector2 = Vector2.ZERO   # dx = yaw (right+), dy = pitch (down+), radians
+var ads: bool = false  # aim-down-sights (harness-driven)
+var _pending_look: Vector2 = Vector2.ZERO  # dx = yaw (right+), dy = pitch (down+), radians
 # Sustained HELD inputs (vs the tap-only `act`): player.gd reads held("crouch"/"interact"/
 # "carry"/"jump") in place of Input.is_action_pressed when active. Lets the harness test
 # hold-to-crouch / hold-E-revive / hold-F-carry. fire/sprint/ads use their own bools above.
 var _held: Dictionary = {}
 
+
 ## PUBLIC: is the harness holding `action`? (player.gd consults this when active.)
 func held(action: String) -> bool:
 	return bool(_held.get(action, false))
+
 
 var _server: TCPServer
 var _client: StreamPeerTCP
 var _rx: String = ""
 # A move/fire command holds input for `duration`, replying only when it ends, so the
 # client blocks until the action completes (synchronous scripted play).
-var _pending: Dictionary = {}   # { deadline_ms, response, clears }
+var _pending: Dictionary = {}  # { deadline_ms, response, clears }
 
 # Cached match feedback (filled from the Events bus).
 var _extraction_active: bool = false
 var _extraction_ratio: float = 0.0
-var _result: String = ""        # "", "won", "lost"
-var _weapon_id: String = ""     # cached from Events for state()
+var _result: String = ""  # "", "won", "lost"
+var _weapon_id: String = ""  # cached from Events for state()
 var _ammo: int = 0
 var _reserve: int = 0
 var _reloading: bool = false
@@ -47,7 +49,7 @@ var _reloading: bool = false
 func _ready() -> void:
 	# Keep serving the control socket even when the tree is paused (for QA of menus).
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_process(false)   # stays inert until activate()
+	set_process(false)  # stays inert until activate()
 
 
 func activate() -> void:
@@ -61,16 +63,42 @@ func activate() -> void:
 		push_error("[agent] failed to listen on 127.0.0.1:%d (err %s)" % [port, err])
 		active = false
 		return
-	Events.extraction_progress.connect(func(_p, r): _extraction_active = true; _extraction_ratio = r)
-	Events.extraction_completed.connect(func(_p): _extraction_active = false; _extraction_ratio = 1.0)
-	Events.extraction_cancelled.connect(func(_p): _extraction_active = false; _extraction_ratio = 0.0)
+	Events.extraction_progress.connect(
+		func(_p, r):
+			_extraction_active = true
+			_extraction_ratio = r
+	)
+	Events.extraction_completed.connect(
+		func(_p):
+			_extraction_active = false
+			_extraction_ratio = 1.0
+	)
+	Events.extraction_cancelled.connect(
+		func(_p):
+			_extraction_active = false
+			_extraction_ratio = 0.0
+	)
 	Events.match_won.connect(func(): _result = "won")
 	Events.match_lost.connect(func(): _result = "lost")
 	# A new match (incl. restart) clears cached match-result/extraction state.
-	Events.match_started.connect(func(): _result = ""; _extraction_active = false; _extraction_ratio = 0.0)
+	Events.match_started.connect(
+		func():
+			_result = ""
+			_extraction_active = false
+			_extraction_ratio = 0.0
+	)
 	# Cache weapon/ammo for state() assertions (the controller emits these).
-	Events.weapon_switched.connect(func(id, a, r): _weapon_id = id; _ammo = a; _reserve = r)
-	Events.ammo_changed.connect(func(a, r): _ammo = a; _reserve = r)
+	Events.weapon_switched.connect(
+		func(id, a, r):
+			_weapon_id = id
+			_ammo = a
+			_reserve = r
+	)
+	Events.ammo_changed.connect(
+		func(a, r):
+			_ammo = a
+			_reserve = r
+	)
 	Events.reload_started.connect(func(_id): _reloading = true)
 	Events.reload_finished.connect(func(_id): _reloading = false)
 	set_process(true)
@@ -104,8 +132,10 @@ func _process(_dt: float) -> void:
 	if not _pending.is_empty():
 		if Time.get_ticks_msec() >= int(_pending["deadline"]):
 			match str(_pending.get("clears", "")):
-				"move": move = Vector2.ZERO
-				"fire": fire = false
+				"move":
+					move = Vector2.ZERO
+				"fire":
+					fire = false
 			_send(_pending["response"])
 			_pending = {}
 		else:
@@ -125,71 +155,88 @@ func _process(_dt: float) -> void:
 func _handle_line(line: String) -> void:
 	var parsed: Variant = JSON.parse_string(line)
 	if typeof(parsed) != TYPE_DICTIONARY:
-		_send({ "ok": false, "error": "malformed json" })
+		_send({"ok": false, "error": "malformed json"})
 		return
 	var json: Dictionary = parsed
 	var cmd := str(json.get("cmd", ""))
 	match cmd:
 		"ping":
-			_send({ "ok": true, "agent": true })
+			_send({"ok": true, "agent": true})
 		"state":
 			_send(_snapshot())
 		"move":
-			move = Vector2(clampf(float(json.get("x", 0.0)), -1.0, 1.0),
-				clampf(float(json.get("y", 0.0)), -1.0, 1.0))
+			move = Vector2(
+				clampf(float(json.get("x", 0.0)), -1.0, 1.0),
+				clampf(float(json.get("y", 0.0)), -1.0, 1.0)
+			)
 			_hold(float(json.get("duration", 0.5)), "move")
 		"fire":
 			fire = true
 			_hold(float(json.get("duration", 0.3)), "fire")
 		"look":
 			_pending_look += Vector2(float(json.get("dx", 0.0)), float(json.get("dy", 0.0)))
-			_send({ "ok": true })
+			_send({"ok": true})
 		"aim":
 			# Precisely point the player's camera at a target (engine-side math, exact). target:
 			# "nearest"(default) | enemy name | "weakpoint" | "point" (the world x,y,z).
 			var atgt := str(json.get("target", "nearest"))
 			var aimed := false
 			if atgt == "point":
-				aimed = _aim_at_point(Vector3(float(json.get("x", 0.0)), float(json.get("y", 0.0)), float(json.get("z", 0.0))))
+				aimed = _aim_at_point(
+					Vector3(
+						float(json.get("x", 0.0)),
+						float(json.get("y", 0.0)),
+						float(json.get("z", 0.0))
+					)
+				)
 			elif atgt == "weakpoint":
 				aimed = _aim_weakpoint()
 			else:
 				aimed = _aim_at(atgt)
-			_send({ "ok": aimed })
+			_send({"ok": aimed})
 		"sprint":
 			sprint = bool(json.get("on", false))
-			_send({ "ok": true })
+			_send({"ok": true})
 		"ads":
 			ads = bool(json.get("on", false))
-			_send({ "ok": true })
+			_send({"ok": true})
 		"spawn":
 			# Debug: spawn an enemy archetype near the local player for verification.
-			var ok := _debug_spawn(str(json.get("id", "wasp")), float(json.get("dist", 9.0)), bool(json.get("hunter", true)))
-			_send({ "ok": ok })
+			var ok := _debug_spawn(
+				str(json.get("id", "wasp")),
+				float(json.get("dist", 9.0)),
+				bool(json.get("hunter", true))
+			)
+			_send({"ok": ok})
 		"event":
 			var ok_ev := _debug_world_event(int(json.get("kind", 0)), bool(json.get("end", false)))
-			_send({ "ok": ok_ev })
+			_send({"ok": ok_ev})
 		"tp":
 			# Debug: teleport the local player to a world XZ (for reaching far test spots).
 			var pl2: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 			if pl2 is Node3D:
 				(pl2 as Node3D).global_position = Vector3(
-					float(json.get("x", 0.0)), float(json.get("y", 1.5)), float(json.get("z", 0.0)))
-			_send({ "ok": pl2 != null })
+					float(json.get("x", 0.0)), float(json.get("y", 1.5)), float(json.get("z", 0.0))
+				)
+			_send({"ok": pl2 != null})
 		"godmode":
 			# Debug: toggle local-player invulnerability (for safe verification).
 			var pl: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 			var hp: Health = pl.get_node_or_null(Groups.NODE_HEALTH) if pl else null
 			if hp:
 				hp.invulnerable = bool(json.get("on", true))
-			_send({ "ok": hp != null })
+			_send({"ok": hp != null})
 		"refill":
 			# Debug: top the local player's weapons back to full ammo (sustained playtests).
 			var plr: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
-			var wc2: Node = plr.get_node_or_null("CameraPivot/SpringArm3D/Camera3D/WeaponController") if plr else null
+			var wc2: Node = (
+				plr.get_node_or_null("CameraPivot/SpringArm3D/Camera3D/WeaponController")
+				if plr
+				else null
+			)
 			if wc2 and wc2.has_method("refill_ammo"):
 				wc2.refill_ammo()
-			_send({ "ok": wc2 != null })
+			_send({"ok": wc2 != null})
 		"pickup":
 			# Debug/QA: trigger the local player's nearest in-range loot pickup along the
 			# REAL runtime path (loot_pickup._request_pickup -> client RPC -> server
@@ -207,18 +254,28 @@ func _handle_line(line: String) -> void:
 			var rtex: Texture2D
 			if rcat != "":
 				rtex = await IconRenderer.render_cosmetic(
-					rcat, str(json.get("variant", "")), str(json.get("paint", "paint_raider")))
+					rcat, str(json.get("variant", "")), str(json.get("paint", "paint_raider"))
+				)
 			else:
 				rtex = await IconRenderer.render_now(rid)
 			if rtex == null:
-				_send({ "ok": false, "error": "no texture (headless or unknown id)" })
+				_send({"ok": false, "error": "no texture (headless or unknown id)"})
 			else:
-				var rdir := "user://agent" if Settings.instance_tag == "" else "user://agent/%s" % Settings.instance_tag
+				var rdir := (
+					"user://agent"
+					if Settings.instance_tag == ""
+					else "user://agent/%s" % Settings.instance_tag
+				)
 				DirAccess.make_dir_recursive_absolute(rdir)
 				var rpath := "%s/%s.png" % [rdir, rname.validate_filename()]
 				var rerr := rtex.get_image().save_png(rpath)
-				_send({ "ok": rerr == OK, "path": ProjectSettings.globalize_path(rpath),
-					"debug": IconRenderer.last_debug })
+				_send(
+					{
+						"ok": rerr == OK,
+						"path": ProjectSettings.globalize_path(rpath),
+						"debug": IconRenderer.last_debug
+					}
+				)
 		"golden":
 			# QA: deterministic-world snapshot (terrain heights, water, extraction zones,
 			# placement checksums) for refactor verification — tools/lint/check_golden.py.
@@ -231,7 +288,9 @@ func _handle_line(line: String) -> void:
 				GameState.match_time_left = float(json.get("left", 0.0))
 			else:
 				GameState.match_time_left = minf(GameState.match_time_left, 2.0)
-			_send({ "ok": true, "left": GameState.match_time_left, "total": GameState.match_duration })
+			_send(
+				{"ok": true, "left": GameState.match_time_left, "total": GameState.match_duration}
+			)
 		"stash":
 			# Debug: manipulate the persistent stash + bring-list (raid-economy QA).
 			#   {action:add|remove, id, count} · {action:bring, id, count} · {action:clear}
@@ -239,19 +298,29 @@ func _handle_line(line: String) -> void:
 			var sid := str(json.get("id", ""))
 			var cnt := int(json.get("count", 1))
 			match act:
-				"add": Stash.add(sid, cnt)
-				"remove": Stash.remove(sid, cnt)
-				"clear": Stash.clear()
+				"add":
+					Stash.add(sid, cnt)
+				"remove":
+					Stash.remove(sid, cnt)
+				"clear":
+					Stash.clear()
 				"bring":
 					var b: Dictionary = MetaProgression.get_bring()
-					if cnt > 0: b[sid] = cnt
-					else: b.erase(sid)
+					if cnt > 0:
+						b[sid] = cnt
+					else:
+						b.erase(sid)
 					MetaProgression.set_bring(b)
-				"deploy": RaidManager.deploy()   # commit the bring-list (remove from stash)
-				"craft": Crafting.craft(Crafting.recipe_by_id(sid))
-				"recycle": Crafting.recycle(sid)
-				"learn": MetaProgression.learn_blueprint(sid)   # simulate buy/quest blueprint
-				"claim": Quests.claim(sid)
+				"deploy":
+					RaidManager.deploy()  # commit the bring-list (remove from stash)
+				"craft":
+					Crafting.craft(Crafting.recipe_by_id(sid))
+				"recycle":
+					Crafting.recycle(sid)
+				"learn":
+					MetaProgression.learn_blueprint(sid)  # simulate buy/quest blueprint
+				"claim":
+					Quests.claim(sid)
 				"give":
 					# Add an item to the local player's MATCH inventory (simulate found loot).
 					var gpl: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
@@ -259,17 +328,35 @@ func _handle_line(line: String) -> void:
 					var git: ItemData = ItemCatalog.get_item(sid)
 					if ginv and git and ginv.has_method("add_item"):
 						ginv.add_item(git, cnt)
-				"currency": MetaProgression.earn(cnt)           # grant currency for QA
-				"buy": Crafting.buy_blueprint(sid, int(json.get("price", 0)))
-				"questprog":                                    # force quest progress for QA
+				"currency":
+					MetaProgression.earn(cnt)  # grant currency for QA
+				"buy":
+					Crafting.buy_blueprint(sid, int(json.get("price", 0)))
+				"questprog":  # force quest progress for QA
 					MetaProgression.quest_progress[sid] = cnt
 					MetaProgression.save_profile()
-				"equip": MetaProgression.equip_attachment(str(json.get("weapon", "")), str(json.get("slot", "")), sid)
-				"unequip": MetaProgression.unequip_attachment(str(json.get("weapon", "")), str(json.get("slot", "")))
-				"perk": MetaProgression.buy_weapon_perk(str(json.get("weapon", "")), str(json.get("perk", "")))
-				"daily": Quests.get_daily_quests()   # trigger daily rotation for QA
-			_send({ "ok": true, "stash": Stash.items, "bring": MetaProgression.bring,
-				"blueprints": MetaProgression.unlocked_blueprints })
+				"equip":
+					MetaProgression.equip_attachment(
+						str(json.get("weapon", "")), str(json.get("slot", "")), sid
+					)
+				"unequip":
+					MetaProgression.unequip_attachment(
+						str(json.get("weapon", "")), str(json.get("slot", ""))
+					)
+				"perk":
+					MetaProgression.buy_weapon_perk(
+						str(json.get("weapon", "")), str(json.get("perk", ""))
+					)
+				"daily":
+					Quests.get_daily_quests()  # trigger daily rotation for QA
+			_send(
+				{
+					"ok": true,
+					"stash": Stash.items,
+					"bring": MetaProgression.bring,
+					"blueprints": MetaProgression.unlocked_blueprints
+				}
+			)
 		"net":
 			# Debug: start co-op from an --agent --menu instance so the harness can drive
 			# multiplayer + per-player stash tests across instances. action: host | join.
@@ -279,29 +366,34 @@ func _handle_line(line: String) -> void:
 				NetworkManager.host_game()
 				if nsc and nsc.has_method("open_hub"):
 					nsc.open_hub("host")
-				_send({ "ok": true })
+				_send({"ok": true})
 			elif nact == "join":
 				var ip := str(json.get("ip", "127.0.0.1"))
 				# Defaults to this instance's net_port (set via --net-port); an explicit
 				# "port" lets the harness target a host on a different net_port.
 				var jport := int(json.get("port", Settings.net_port))
 				var jerr := NetworkManager.join_game(ip, jport)
-				if jerr == OK and not multiplayer.connected_to_server.is_connected(_agent_open_client_hub):
-					multiplayer.connected_to_server.connect(_agent_open_client_hub, CONNECT_ONE_SHOT)
-				_send({ "ok": jerr == OK })
+				if (
+					jerr == OK
+					and not multiplayer.connected_to_server.is_connected(_agent_open_client_hub)
+				):
+					multiplayer.connected_to_server.connect(
+						_agent_open_client_hub, CONNECT_ONE_SHOT
+					)
+				_send({"ok": jerr == OK})
 			else:
-				_send({ "ok": false, "error": "net action host|join" })
+				_send({"ok": false, "error": "net action host|join"})
 		"deploy":
 			# Debug: trigger the hub DEPLOY/START (solo or co-op leader synchronized start).
 			var dsc := get_tree().current_scene
 			if dsc and dsc.has_method("_on_hub_deploy"):
 				dsc._on_hub_deploy()
-			_send({ "ok": dsc != null })
+			_send({"ok": dsc != null})
 		"ready":
 			# Debug: a co-op CLIENT readies/unreadies in the lobby (set_ready RPC to host).
 			var rdy := bool(json.get("on", true))
 			NetworkManager.set_ready.rpc_id(1, rdy)
-			_send({ "ok": true, "ready": rdy })
+			_send({"ok": true, "ready": rdy})
 		"transfer":
 			# Debug: co-op item give — move {id,count} from {from} peer to {to} peer.
 			# Defaults `from` to this instance's peer id (give MY item to a teammate).
@@ -310,7 +402,7 @@ func _handle_line(line: String) -> void:
 			var tid := str(json.get("id", ""))
 			var tcnt := int(json.get("count", 1))
 			var moved := NetworkManager.transfer_item(tfrom, tto, tid, tcnt)
-			_send({ "ok": true, "moved": moved })
+			_send({"ok": true, "moved": moved})
 		"favorites":
 			# Debug: drive the local server list (browser QA). action: add|remove|list|connect.
 			var fact := str(json.get("action", "list"))
@@ -318,17 +410,25 @@ func _handle_line(line: String) -> void:
 			var fport := int(json.get("port", Settings.net_port))
 			var fname := str(json.get("name", ""))
 			match fact:
-				"add": ServerBrowser.add_favorite(fname, fip, fport)
-				"remove": ServerBrowser.remove_favorite(fip, fport)
-				"connect": ServerBrowser.record_connect(fip, fport, fname)
-			_send({ "ok": true, "favorites": ServerBrowser.get_favorites(),
-				"recents": ServerBrowser.get_recents() })
+				"add":
+					ServerBrowser.add_favorite(fname, fip, fport)
+				"remove":
+					ServerBrowser.remove_favorite(fip, fport)
+				"connect":
+					ServerBrowser.record_connect(fip, fport, fname)
+			_send(
+				{
+					"ok": true,
+					"favorites": ServerBrowser.get_favorites(),
+					"recents": ServerBrowser.get_recents()
+				}
+			)
 		"discover":
 			# Debug: trigger a LAN scan; results land in ServerBrowser.last_found (read via
 			# `state.lan` after ~timeout). Returns immediately.
 			var dto := float(json.get("timeout", 1.5))
 			ServerBrowser.scan_lan(dto)
-			_send({ "ok": true, "scanning": true, "timeout": dto })
+			_send({"ok": true, "scanning": true, "timeout": dto})
 		"meshes":
 			# Debug forensics: list every visible MeshInstance3D under the arena's
 			# NavigationRegion3D (and its top children) with world Y-range + material hint —
@@ -337,7 +437,7 @@ func _handle_line(line: String) -> void:
 			var out: Array = []
 			if sc_root:
 				_collect_meshes(sc_root, out, 0)
-			_send({ "ok": true, "meshes": out })
+			_send({"ok": true, "meshes": out})
 		"hide":
 			# Debug forensics: toggle visibility of a node by absolute path substring match
 			# under the current scene. {path:"TerrainMesh", on:false} hides it.
@@ -345,7 +445,7 @@ func _handle_line(line: String) -> void:
 			var hon := bool(json.get("on", false))
 			var hits: Array = []
 			_hide_matching(get_tree().current_scene, hpat, hon, hits)
-			_send({ "ok": true, "matched": hits })
+			_send({"ok": true, "matched": hits})
 		"probe":
 			# Debug: raycast straight down at world {x,z} → ground height + collider name.
 			# The terrain QA tool: placement checks + cross-instance DETERMINISM proof
@@ -354,28 +454,29 @@ func _handle_line(line: String) -> void:
 			var pz := float(json.get("z", 0.0))
 			var vp := get_viewport()
 			if vp == null or vp.world_3d == null:
-				_send({ "ok": false, "error": "no world" })
+				_send({"ok": false, "error": "no world"})
 			else:
 				var pq := PhysicsRayQueryParameters3D.create(
-					Vector3(px, 100.0, pz), Vector3(px, -50.0, pz))
+					Vector3(px, 100.0, pz), Vector3(px, -50.0, pz)
+				)
 				pq.collision_mask = 1
 				var phit := vp.world_3d.direct_space_state.intersect_ray(pq)
 				if phit:
 					var pcol: Object = phit.get("collider")
 					var pname: String = pcol.name if pcol is Node else "?"
 					var ppos: Vector3 = phit.get("position")
-					_send({ "ok": true, "y": ppos.y, "collider": pname })
+					_send({"ok": true, "y": ppos.y, "collider": pname})
 				else:
-					_send({ "ok": true, "y": null, "collider": "" })
+					_send({"ok": true, "y": null, "collider": ""})
 		"ui":
 			# Debug: open/close menus for screenshot verification.
-			_send({ "ok": _ui_action(str(json.get("action", ""))) })
+			_send({"ok": _ui_action(str(json.get("action", "")))})
 		"setting":
 			# Debug: get/set a SettingsManager value (verify apply + persist).
 			var skey := str(json.get("key", ""))
 			if json.has("value"):
 				SettingsManager.set_value(skey, json.get("value"))
-			_send({ "ok": true, "value": SettingsManager.get_value(skey) })
+			_send({"ok": true, "value": SettingsManager.get_value(skey)})
 		"goto":
 			# Face a world XZ point and walk forward toward it for `duration`.
 			_face_point(Vector2(float(json.get("x", 0.0)), float(json.get("z", 0.0))))
@@ -383,40 +484,49 @@ func _handle_line(line: String) -> void:
 			_hold(float(json.get("duration", 0.5)), "move")
 		"act":
 			_do_action(str(json.get("action", "")))
-			_send({ "ok": true })
+			_send({"ok": true})
 		"hold":
 			# Sustained input hold (crouch/interact/carry/jump -> _held; fire/sprint/ads ->
 			# their own bools). The counterpart to tap-only `act`.
 			var hact := str(json.get("action", ""))
 			var hon := bool(json.get("on", true))
 			match hact:
-				"fire": fire = hon
-				"sprint": sprint = hon
-				"ads": ads = hon
-				_: _held[hact] = hon
-			_send({ "ok": true })
+				"fire":
+					fire = hon
+				"sprint":
+					sprint = hon
+				"ads":
+					ads = hon
+				_:
+					_held[hact] = hon
+			_send({"ok": true})
 		"down":
 			# Debug: force the local player DOWNED (on:true) or revive it (on:false).
 			_send(_debug_down(bool(json.get("on", true))))
 		"hurt":
 			# Debug: damage self / nearest / a named enemy (weak:true -> weak-point multiplier).
-			_send(_debug_hurt(
-				str(json.get("target", "nearest")), float(json.get("amount", 9999.0)),
-				bool(json.get("weak", false))))
+			_send(
+				_debug_hurt(
+					str(json.get("target", "nearest")),
+					float(json.get("amount", 9999.0)),
+					bool(json.get("weak", false))
+				)
+			)
 		"kill":
 			_send(_debug_hurt(str(json.get("target", "nearest")), 1.0e9, false))
 		"heal":
 			var hpl := _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 			var hhp: Health = hpl.get_node_or_null(Groups.NODE_HEALTH) if hpl else null
-			if hhp: hhp.heal(float(json.get("amount", 9999.0)))
-			_send({ "ok": hhp != null, "health": hhp.current if hhp else 0.0 })
+			if hhp:
+				hhp.heal(float(json.get("amount", 9999.0)))
+			_send({"ok": hhp != null, "health": hhp.current if hhp else 0.0})
 		"sethp":
 			var spl := _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 			var shp: Health = spl.get_node_or_null(Groups.NODE_HEALTH) if spl else null
 			if shp:
 				shp.current = clampf(float(json.get("value", shp.current)), 0.0, shp.max_health)
 				shp.health_changed.emit(shp.current, shp.max_health)
-			_send({ "ok": shp != null, "health": shp.current if shp else 0.0 })
+			_send({"ok": shp != null, "health": shp.current if shp else 0.0})
 		"prog":
 			_send(_debug_prog(json))
 		"cosmetic":
@@ -429,10 +539,17 @@ func _handle_line(line: String) -> void:
 					if cid != "" and not (cid in MetaProgression.unlocked_cosmetics):
 						MetaProgression.unlocked_cosmetics.append(cid)
 						MetaProgression.save_profile()
-				"buy": MetaProgression.unlock_cosmetic(cid)
-				"equip": MetaProgression.set_equipped_cosmetic(cid)
-			_send({ "ok": true, "equipped": MetaProgression.get_cosmetics(),
-				"currency": MetaProgression.currency })
+				"buy":
+					MetaProgression.unlock_cosmetic(cid)
+				"equip":
+					MetaProgression.set_equipped_cosmetic(cid)
+			_send(
+				{
+					"ok": true,
+					"equipped": MetaProgression.get_cosmetics(),
+					"currency": MetaProgression.currency
+				}
+			)
 		"crosshair":
 			_send(_debug_crosshair())
 		"power":
@@ -446,17 +563,23 @@ func _handle_line(line: String) -> void:
 			var ukey := str(json.get("key", ""))
 			if MetaProgression.UPGRADES.has(ukey):
 				MetaProgression.upgrades[ukey] = int(json.get("level", 0))
-				_send({ "ok": true, "key": ukey, "level": int(json.get("level", 0)) })
+				_send({"ok": true, "key": ukey, "level": int(json.get("level", 0))})
 			else:
-				_send({ "ok": false, "error": "unknown upgrade", "keys": MetaProgression.UPGRADES.keys() })
+				_send(
+					{
+						"ok": false,
+						"error": "unknown upgrade",
+						"keys": MetaProgression.UPGRADES.keys()
+					}
+				)
 		"screenshot":
-			_screenshot(str(json.get("name", "shot")))   # replies asynchronously
+			_screenshot(str(json.get("name", "shot")))  # replies asynchronously
 		"restart":
 			# Reload the match (used to reset between play-test scenarios).
 			var main := get_tree().current_scene
 			if main and main.has_method("restart_match"):
 				main.restart_match()
-			_send({ "ok": true })
+			_send({"ok": true})
 		"quest":
 			# QA: inspect + drive the quest lifecycle without grinding.
 			# {quest, action:"state"|"offer"|"accept"|"claim"|"stats"|"grantkills"|"evaluate", id?, eid?, n?}
@@ -467,21 +590,23 @@ func _handle_line(line: String) -> void:
 			var sact := str(json.get("action", "continue"))
 			var ok := false
 			if m and sact == "continue" and m.has_method("_on_summary_continue"):
-				m.call("_on_summary_continue"); ok = true
+				m.call("_on_summary_continue")
+				ok = true
 			elif m and sact == "restart" and m.has_method("_on_summary_restart"):
-				m.call("_on_summary_restart"); ok = true
-			_send({ "ok": ok })
+				m.call("_on_summary_restart")
+				ok = true
+			_send({"ok": ok})
 		"quit":
-			_send({ "ok": true })
+			_send({"ok": true})
 			get_tree().quit()
 		_:
-			_send({ "ok": false, "error": "unknown cmd '%s'" % cmd })
+			_send({"ok": false, "error": "unknown cmd '%s'" % cmd})
 
 
 func _hold(duration: float, clears: String) -> void:
 	_pending = {
 		"deadline": Time.get_ticks_msec() + int(maxf(0.0, duration) * 1000.0),
-		"response": { "ok": true },
+		"response": {"ok": true},
 		"clears": clears,
 	}
 
@@ -528,8 +653,9 @@ func _aim_at_point(aimp: Vector3) -> bool:
 		(p as Node3D).rotation.y = atan2(-to.x, -to.z)
 		pivot.rotation.y = 0.0
 		var flat := Vector2(to.x, to.z).length()
-		spring.rotation.x = clampf(atan2(to.y, flat),
-			Settings.CAMERA_PITCH_MIN, Settings.CAMERA_PITCH_MAX)
+		spring.rotation.x = clampf(
+			atan2(to.y, flat), Settings.CAMERA_PITCH_MIN, Settings.CAMERA_PITCH_MAX
+		)
 		(p as Node3D).force_update_transform()
 		pivot.force_update_transform()
 		spring.force_update_transform()
@@ -579,10 +705,10 @@ func _pick_enemy(p: Node, target_name: String) -> Node3D:
 ## Debug: down (on:true) or revive (on:false) the local player deterministically.
 func _debug_down(on: bool) -> Dictionary:
 	if not GameState.is_local_authority_server():
-		return { "ok": false, "error": "server-auth only" }
+		return {"ok": false, "error": "server-auth only"}
 	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if p == null:
-		return { "ok": false, "error": "no player" }
+		return {"ok": false, "error": "no player"}
 	if on:
 		if p.has_method("_enter_downed"):
 			p._enter_downed(null)
@@ -591,29 +717,34 @@ func _debug_down(on: bool) -> Dictionary:
 			p._apply_revive()
 		elif p.has_method("server_revive"):
 			p.server_revive(p)
-	return { "ok": true, "downed": p.is_downed() if p.has_method("is_downed") else false }
+	return {"ok": true, "downed": p.is_downed() if p.has_method("is_downed") else false}
 
 
 ## Debug: deal damage to self / nearest / a named enemy. weak:true routes through the
 ## enemy's WeakPoint Hurtbox so the damage_multiplier applies (weak-point QA).
 func _debug_hurt(target: String, amount: float, weak: bool) -> Dictionary:
 	if not GameState.is_local_authority_server():
-		return { "ok": false, "error": "server-auth only" }
+		return {"ok": false, "error": "server-auth only"}
 	var me: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var node: Node = me if target == "self" else _pick_enemy(me, target)
 	if node == null:
-		return { "ok": false, "error": "no target" }
+		return {"ok": false, "error": "no target"}
 	if weak and target != "self":
 		var wp := node.get_node_or_null(Groups.NODE_WEAKPOINT)
 		if wp and wp.has_method("apply_hit"):
 			wp.apply_hit(amount, me)
 			var whp: Health = node.get_node_or_null(Groups.NODE_HEALTH)
-			return { "ok": true, "target": str(node.name), "weak": true, "health": whp.current if whp else 0.0 }
+			return {
+				"ok": true,
+				"target": str(node.name),
+				"weak": true,
+				"health": whp.current if whp else 0.0
+			}
 	var hp: Health = node.get_node_or_null(Groups.NODE_HEALTH)
 	if hp == null:
-		return { "ok": false, "error": "no Health on target" }
+		return {"ok": false, "error": "no Health on target"}
 	hp.take_damage(amount, me)
-	return { "ok": true, "target": str(node.name), "weak": false, "health": hp.current }
+	return {"ok": true, "target": str(node.name), "weak": false, "health": hp.current}
 
 
 ## Debug: drive MetaProgression / Progression directly (jump XP/level/rep/mastery/skills
@@ -621,7 +752,8 @@ func _debug_hurt(target: String, amount: float, weak: bool) -> Dictionary:
 func _debug_prog(json: Dictionary) -> Dictionary:
 	var a := str(json.get("action", ""))
 	match a:
-		"add_xp": MetaProgression.add_xp(int(json.get("amount", 0)), "debug")
+		"add_xp":
+			MetaProgression.add_xp(int(json.get("amount", 0)), "debug")
 		"set_xp":
 			MetaProgression.xp = 0
 			MetaProgression.raider_level = 1
@@ -630,25 +762,39 @@ func _debug_prog(json: Dictionary) -> Dictionary:
 			MetaProgression.raider_level = maxi(1, int(json.get("value", 1)))
 			MetaProgression._apply_milestones()
 			MetaProgression.save_profile()
-		"add_rep": MetaProgression.grant_rep(int(json.get("amount", 0)))
+		"add_rep":
+			MetaProgression.grant_rep(int(json.get("amount", 0)))
 		"set_rep":
 			MetaProgression.vendor_rep = int(json.get("value", 0))
 			MetaProgression.save_profile()
-		"add_mastery": MetaProgression.add_weapon_mastery(str(json.get("weapon", "")), int(json.get("amount", 0)))
+		"add_mastery":
+			MetaProgression.add_weapon_mastery(
+				str(json.get("weapon", "")), int(json.get("amount", 0))
+			)
 		"set_mastery":
 			var wm: Dictionary = MetaProgression.weapon_mastery
-			wm[str(json.get("weapon", ""))] = { "xp": 0, "level": int(json.get("level", 0)) }
+			wm[str(json.get("weapon", ""))] = {"xp": 0, "level": int(json.get("level", 0))}
 			MetaProgression.weapon_mastery = wm
 			MetaProgression.save_profile()
 		"skill_points":
 			MetaProgression.skill_points = int(json.get("value", 0))
 			MetaProgression.save_profile()
-		"buy_skill": MetaProgression.buy_skill(str(json.get("key", "")))
-		"credit_kill": Progression.credit_kill()
-	return { "ok": true, "meta": {
-		"xp": MetaProgression.xp, "raider_level": MetaProgression.raider_level,
-		"skill_points": MetaProgression.skill_points, "vendor_rep": MetaProgression.vendor_rep,
-		"rep_tier": MetaProgression.rep_tier(), "weapon_mastery": MetaProgression.weapon_mastery } }
+		"buy_skill":
+			MetaProgression.buy_skill(str(json.get("key", "")))
+		"credit_kill":
+			Progression.credit_kill()
+	return {
+		"ok": true,
+		"meta":
+		{
+			"xp": MetaProgression.xp,
+			"raider_level": MetaProgression.raider_level,
+			"skill_points": MetaProgression.skill_points,
+			"vendor_rep": MetaProgression.vendor_rep,
+			"rep_tier": MetaProgression.rep_tier(),
+			"weapon_mastery": MetaProgression.weapon_mastery
+		}
+	}
 
 
 ## Debug: raycast from the camera forward and report what the crosshair is on — entity,
@@ -656,43 +802,47 @@ func _debug_prog(json: Dictionary) -> Dictionary:
 func _debug_power(json: Dictionary) -> Dictionary:
 	var action := str(json.get("action", "list"))
 	if action == "list":
-		return { "ok": true, "available": MetaProgression.available_powers(),
-			"all": Settings.POWERS.keys() }
+		return {
+			"ok": true,
+			"available": MetaProgression.available_powers(),
+			"all": Settings.POWERS.keys()
+		}
 	if action == "unlock":
 		var ok := MetaProgression.unlock_power(str(json.get("id", "")))
-		return { "ok": ok, "available": MetaProgression.available_powers() }
+		return {"ok": ok, "available": MetaProgression.available_powers()}
 	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if p == null:
-		return { "ok": false, "error": "no player" }
+		return {"ok": false, "error": "no player"}
 	match action:
 		"open":
 			if p.has_method("begin_power_open"):
 				p.begin_power_open()
-				return { "ok": true }
-			return { "ok": false, "error": "no begin_power_open" }
+				return {"ok": true}
+			return {"ok": false, "error": "no begin_power_open"}
 		"grant":
 			var id := str(json.get("id", "berserk"))
 			if p.has_method("apply_power"):
 				p.apply_power(id)
-				return { "ok": true, "id": id }
-			return { "ok": false, "error": "no apply_power" }
+				return {"ok": true, "id": id}
+			return {"ok": false, "error": "no apply_power"}
 		"clear":
 			# QA: wipe active buffs so each can be measured in isolation.
 			p.set("_buffs", {})
 			p.set("_overshield", 0.0)
-			return { "ok": true }
-	return { "ok": false, "error": "unknown action" }
+			return {"ok": true}
+	return {"ok": false, "error": "unknown action"}
+
 
 func _debug_crosshair() -> Dictionary:
 	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") if p else null
 	if cam == null:
-		return { "ok": false, "error": "no camera" }
+		return {"ok": false, "error": "no camera"}
 	var from: Vector3 = cam.global_position
 	var dir: Vector3 = -cam.global_transform.basis.z
 	var vp := get_viewport()
 	if vp == null or vp.world_3d == null:
-		return { "ok": false, "error": "no world" }
+		return {"ok": false, "error": "no world"}
 	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 300.0)
 	q.collide_with_areas = true
 	q.collide_with_bodies = true
@@ -703,7 +853,7 @@ func _debug_crosshair() -> Dictionary:
 	q.exclude = excl
 	var hit := vp.world_3d.direct_space_state.intersect_ray(q)
 	if not hit:
-		return { "ok": true, "hit": false }
+		return {"ok": true, "hit": false}
 	var col: Object = hit.get("collider")
 	var entity := ""
 	var eid := ""
@@ -728,8 +878,15 @@ func _debug_crosshair() -> Dictionary:
 			var t: float = maxf(0.0, (c - from).dot(dir))
 			is_weak = (from + dir * t).distance_to(c) <= r + 0.05
 	var point: Vector3 = hit.get("position")
-	return { "ok": true, "hit": true, "entity": entity, "enemy_id": eid,
-		"is_weakpoint": is_weak, "point": _v3(point), "dist": from.distance_to(point) }
+	return {
+		"ok": true,
+		"hit": true,
+		"entity": entity,
+		"enemy_id": eid,
+		"is_weakpoint": is_weak,
+		"point": _v3(point),
+		"dist": from.distance_to(point)
+	}
 
 
 ## Debug: instance an enemy archetype in front of the local player (for verifying
@@ -773,7 +930,9 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 		enemy.hunter = as_hunter
 	container.add_child(enemy, true)
 	var fwd := -(p as Node3D).global_transform.basis.z
-	(enemy as Node3D).global_position = (p as Node3D).global_position + fwd * dist + Vector3.UP * 0.5
+	(enemy as Node3D).global_position = (
+		(p as Node3D).global_position + fwd * dist + Vector3.UP * 0.5
+	)
 	return true
 
 
@@ -790,12 +949,15 @@ func _debug_world_event(kind: int, want_end: bool = false) -> bool:
 	if want_end:
 		# End whatever event is active (by its _active_kind), via the matching _end_* method.
 		var ak: int = int(d.get("_active_kind")) if "_active_kind" in d else -1
-		var ender: String = {
-			0: "_end_supply_cache_timeout",
-			1: "_end_miniboss",
-			2: "_end_contested_poi",
-			3: "_end_surge",
-		}.get(ak, "")
+		var ender: String = (
+			{
+				0: "_end_supply_cache_timeout",
+				1: "_end_miniboss",
+				2: "_end_contested_poi",
+				3: "_end_surge",
+			}
+			. get(ak, "")
+		)
 		if ender == "" or not d.has_method(ender):
 			return false
 		if ak == 0:
@@ -803,12 +965,15 @@ func _debug_world_event(kind: int, want_end: bool = false) -> bool:
 		else:
 			d.call(ender, true)
 		return true
-	var starter: String = {
-		0: "_start_supply_cache",
-		1: "_start_miniboss",
-		2: "_start_contested_poi",
-		3: "_start_surge",
-	}.get(kind, "")
+	var starter: String = (
+		{
+			0: "_start_supply_cache",
+			1: "_start_miniboss",
+			2: "_start_contested_poi",
+			3: "_start_surge",
+		}
+		. get(kind, "")
+	)
 	if starter == "" or not d.has_method(starter):
 		return false
 	d.call(starter)
@@ -828,7 +993,10 @@ func _agent_open_client_hub() -> void:
 func _collect_meshes(node: Node, out: Array, depth: int) -> void:
 	if depth > 8 or out.size() > 80:
 		return
-	if (node is MeshInstance3D or node is MultiMeshInstance3D) and (node as GeometryInstance3D).visible:
+	if (
+		(node is MeshInstance3D or node is MultiMeshInstance3D)
+		and (node as GeometryInstance3D).visible
+	):
 		var mi := node as GeometryInstance3D
 		var aabb := mi.get_aabb()
 		var gx := mi.global_transform * aabb
@@ -838,12 +1006,28 @@ func _collect_meshes(node: Node, out: Array, depth: int) -> void:
 				mat_hint = "override:" + mi.material_override.get_class()
 				if mi.material_override is BaseMaterial3D:
 					var c: Color = (mi.material_override as BaseMaterial3D).albedo_color
-					mat_hint += " albedo=(%.2f,%.2f,%.2f) tex=%s" % [c.r, c.g, c.b,
-						str((mi.material_override as BaseMaterial3D).albedo_texture != null)]
-			out.append({ "path": str(mi.get_path()).right(80), "y0": gx.position.y,
-				"y1": gx.position.y + gx.size.y, "sx": gx.size.x, "sz": gx.size.z, "mat": mat_hint })
+					mat_hint += (
+						" albedo=(%.2f,%.2f,%.2f) tex=%s"
+						% [
+							c.r,
+							c.g,
+							c.b,
+							str((mi.material_override as BaseMaterial3D).albedo_texture != null)
+						]
+					)
+			out.append(
+				{
+					"path": str(mi.get_path()).right(80),
+					"y0": gx.position.y,
+					"y1": gx.position.y + gx.size.y,
+					"sx": gx.size.x,
+					"sz": gx.size.z,
+					"mat": mat_hint
+				}
+			)
 	for c in node.get_children():
 		_collect_meshes(c, out, depth + 1)
+
 
 func _hide_matching(node: Node, pat: String, on: bool, hits: Array) -> void:
 	if hits.size() > 20 or pat == "":
@@ -853,6 +1037,7 @@ func _hide_matching(node: Node, pat: String, on: bool, hits: Array) -> void:
 		hits.append(str(node.get_path()).right(60))
 	for c in node.get_children():
 		_hide_matching(c, pat, on, hits)
+
 
 func _ui_action(action: String) -> bool:
 	var scene := get_tree().current_scene
@@ -906,9 +1091,19 @@ func _ui_action(action: String) -> bool:
 			var hub := scene.find_child("Hub", true, false)
 			if hub == null or not hub.has_method("_switch_tab"):
 				return false
-			var idx: int = { "hub_stash": 0, "hub_loadout": 1, "hub_workshop": 2,
-				"hub_shop": 3, "hub_quests": 4, "hub_gunsmith": 5, "hub_raider": 6,
-				"hub_character": 7 }.get(action, 0)
+			var idx: int = (
+				{
+					"hub_stash": 0,
+					"hub_loadout": 1,
+					"hub_workshop": 2,
+					"hub_shop": 3,
+					"hub_quests": 4,
+					"hub_gunsmith": 5,
+					"hub_raider": 6,
+					"hub_character": 7
+				}
+				. get(action, 0)
+			)
 			hub._switch_tab(idx)
 			return true
 	return false
@@ -922,11 +1117,13 @@ func _do_action(action: String) -> void:
 	press.pressed = true
 	Input.parse_input_event(press)
 	# Release shortly after so the action can be triggered again.
-	get_tree().create_timer(0.06).timeout.connect(func() -> void:
-		var rel := InputEventAction.new()
-		rel.action = action
-		rel.pressed = false
-		Input.parse_input_event(rel))
+	get_tree().create_timer(0.06).timeout.connect(
+		func() -> void:
+			var rel := InputEventAction.new()
+			rel.action = action
+			rel.pressed = false
+			Input.parse_input_event(rel)
+	)
 
 
 func _screenshot(sname: String) -> void:
@@ -936,7 +1133,9 @@ func _screenshot(sname: String) -> void:
 	var img := get_viewport().get_texture().get_image()
 	# Namespace screenshots per instance (user://agent/<tag>/) so concurrent agents
 	# never overwrite each other's captures. Single instance → plain user://agent/.
-	var dir := "user://agent" if Settings.instance_tag == "" else "user://agent/%s" % Settings.instance_tag
+	var dir := (
+		"user://agent" if Settings.instance_tag == "" else "user://agent/%s" % Settings.instance_tag
+	)
 	DirAccess.make_dir_recursive_absolute(dir)
 	var safe := sname.validate_filename()
 	if safe == "":
@@ -944,9 +1143,9 @@ func _screenshot(sname: String) -> void:
 	var path := "%s/%s.png" % [dir, safe]
 	var err := img.save_png(path)
 	if err != OK:
-		_send({ "ok": false, "error": "save_png failed (%s)" % err })
+		_send({"ok": false, "error": "save_png failed (%s)" % err})
 		return
-	_send({ "ok": true, "path": ProjectSettings.globalize_path(path) })
+	_send({"ok": true, "path": ProjectSettings.globalize_path(path)})
 
 
 func _send(obj: Dictionary) -> void:
@@ -964,9 +1163,11 @@ func _extraction_zone_states() -> Array:
 		if not (z is Node3D):
 			continue
 		var zp: Vector3 = (z as Node3D).global_position
-		var entry: Dictionary = { "name": z.name, "pos": [zp.x, zp.y, zp.z] }
+		var entry: Dictionary = {"name": z.name, "pos": [zp.x, zp.y, zp.z]}
 		entry["open"] = bool(z.call("is_open")) if z.has_method("is_open") else true
-		entry["window_left"] = float(z.call("window_remaining")) if z.has_method("window_remaining") else 0.0
+		entry["window_left"] = (
+			float(z.call("window_remaining")) if z.has_method("window_remaining") else 0.0
+		)
 		out.append(entry)
 	return out
 
@@ -981,11 +1182,16 @@ func _snapshot() -> Dictionary:
 		# world with paused=true names the culprit instantly vs chasing AI "bugs".
 		"paused": get_tree().paused,
 		"result": _result,
-		"extraction": { "active": _extraction_active, "ratio": _extraction_ratio },
-		"match_timer": { "left": GameState.match_time_left, "total": GameState.match_duration,
-			"final_wave": GameState.final_wave },
+		"extraction": {"active": _extraction_active, "ratio": _extraction_ratio},
+		"match_timer":
+		{
+			"left": GameState.match_time_left,
+			"total": GameState.match_duration,
+			"final_wave": GameState.final_wave
+		},
 		"extraction_zones": _extraction_zone_states(),
-		"meta": {
+		"meta":
+		{
 			"currency": MetaProgression.currency,
 			"difficulty": GameState.difficulty,
 			"difficulty_name": GameState.difficulty_name(),
@@ -998,18 +1204,18 @@ func _snapshot() -> Dictionary:
 			"weapon_perks": MetaProgression.weapon_perks,
 			"dailies": MetaProgression.daily_quest_ids,
 			"last_reward": GameState.last_run_reward,
-				"xp": MetaProgression.xp,
-				"raider_level": MetaProgression.raider_level,
-				"skill_points": MetaProgression.skill_points,
-				"skills": MetaProgression.skills,
-				"vendor_rep": MetaProgression.vendor_rep,
-				"rep_tier": MetaProgression.rep_tier(),
-				"weapon_mastery": MetaProgression.weapon_mastery,
-				"quest_states": MetaProgression.quest_states,
-				"kills_by_type": MetaProgression.kills_by_type,
-				"extractions_total": MetaProgression.extractions_total,
-				"giver_rep": MetaProgression.giver_rep,
-				"questlines": _questlines_meta(),
+			"xp": MetaProgression.xp,
+			"raider_level": MetaProgression.raider_level,
+			"skill_points": MetaProgression.skill_points,
+			"skills": MetaProgression.skills,
+			"vendor_rep": MetaProgression.vendor_rep,
+			"rep_tier": MetaProgression.rep_tier(),
+			"weapon_mastery": MetaProgression.weapon_mastery,
+			"quest_states": MetaProgression.quest_states,
+			"kills_by_type": MetaProgression.kills_by_type,
+			"extractions_total": MetaProgression.extractions_total,
+			"giver_rep": MetaProgression.giver_rep,
+			"questlines": _questlines_meta(),
 		},
 		"agent_held": _held,
 		"stash": Stash.items,
@@ -1068,24 +1274,26 @@ func _snapshot() -> Dictionary:
 		"grenades": int(p.get("_grenades")),
 		"stance": int(p.get("stance")) if p.get("stance") != null else 0,
 		"water": int(p.get("_water_state")) if p.get("_water_state") != null else 0,
-		"noise_radius": (p.noise_radius() if p.has_method("noise_radius") else 0.0),
+		"noise_radius": p.noise_radius() if p.has_method("noise_radius") else 0.0,
 		"fov": _cam_fov(p),
 		"agent_active": active,
 		"input_enabled": bool(p.get("_input_enabled")),
 		"authority": p.is_multiplayer_authority(),
 		"bleedout": float(p.get("_bleedout")) if p.get("_bleedout") != null else 0.0,
-		"revive_progress": float(p.get("_revive_progress")) if p.get("_revive_progress") != null else 0.0,
+		"revive_progress":
+		float(p.get("_revive_progress")) if p.get("_revive_progress") != null else 0.0,
 		"carried_by": int(p.get("_carried_by_peer")) if p.get("_carried_by_peer") != null else 0,
-		"carrying": (p.is_carrying() if p.has_method("is_carrying") else false),
+		"carrying": p.is_carrying() if p.has_method("is_carrying") else false,
 		"self_revives": int(p.get("_self_revives")) if p.get("_self_revives") != null else 0,
 		"shields": int(p.get("_shields")) if p.get("_shields") != null else 0,
-		"buffs": (p.active_buffs() if p.has_method("active_buffs") else []),
+		"buffs": p.active_buffs() if p.has_method("active_buffs") else [],
 		"stamina": float(p.get("_stamina")) if p.get("_stamina") != null else 0.0,
 		"max_stamina": float(p.get("_max_stamina")) if p.get("_max_stamina") != null else 0.0,
 		"speed": Vector2(p.velocity.x, p.velocity.z).length() if p is Node3D else 0.0,
 		"crosshair": _debug_crosshair(),
-		"wdbg": {
-			"weapons": (wc.get("_weapons").size() if (wc and wc.get("_weapons") != null) else 0),
+		"wdbg":
+		{
+			"weapons": wc.get("_weapons").size() if (wc and wc.get("_weapons") != null) else 0,
 			"cooldown": float(wc.get("_cooldown")) if (wc and wc.get("_cooldown") != null) else 0.0,
 			"latched": bool(wc.get("_semi_latched")) if wc else false,
 			"reloading": bool(wc.get("_reloading")) if wc else false,
@@ -1101,14 +1309,18 @@ func _snapshot() -> Dictionary:
 	if inv:
 		for s in inv.stacks:
 			var item: ItemData = s["item"]
-			stacks.append({ "id": item.id, "count": s["count"], "weight": item.weight })
+			stacks.append({"id": item.id, "count": s["count"], "weight": item.weight})
 		d["inv_weight"] = inv.total_weight()
 		d["inv_value"] = inv.total_value()
 	# Drivable = the local player is fully spawned + its weapon/camera refs resolved +
 	# input enabled. Poll this after deploy/join before scripting move/fire (avoids the
 	# post-spawn race where refs are briefly null — the cause of "co-op client wont fire").
-	d["drivable"] = (p.get("_weapon_controller") != null and p.get("camera") != null
-		and bool(p.get("_input_enabled")) and active)
+	d["drivable"] = (
+		p.get("_weapon_controller") != null
+		and p.get("camera") != null
+		and bool(p.get("_input_enabled"))
+		and active
+	)
 	d["inventory"] = stacks
 
 	var enemies: Array = []
@@ -1124,7 +1336,12 @@ func _snapshot() -> Dictionary:
 			"health": ehp.current if ehp else 0.0,
 			"state": st,
 			"hunter": bool(e.get("hunter")) if "hunter" in e else false,
-			"target": (str(e.get_target().name) if (e.has_method("get_target") and e.get_target() != null) else ""),
+			"target":
+			(
+				str(e.get_target().name)
+				if (e.has_method("get_target") and e.get_target() != null)
+				else ""
+			),
 			"investigating": st == 3,
 			"dist": p.global_position.distance_to(e.global_position),
 		}
@@ -1138,22 +1355,37 @@ func _snapshot() -> Dictionary:
 	# sync: each peer's copy of another player carries that player's chosen look.
 	var players_arr: Array = []
 	for pl in get_tree().get_nodes_in_group(Groups.PLAYERS):
-		players_arr.append({
-			"name": str(pl.name),
-			"authority": pl.is_multiplayer_authority() if pl.has_method("is_multiplayer_authority") else false,
-			"cosmetics": pl.get("cosmetics") if "cosmetics" in pl else {},
-			"downed": pl.is_downed() if pl.has_method("is_downed") else false,
-		})
+		(
+			players_arr
+			. append(
+				{
+					"name": str(pl.name),
+					"authority":
+					(
+						pl.is_multiplayer_authority()
+						if pl.has_method("is_multiplayer_authority")
+						else false
+					),
+					"cosmetics": pl.get("cosmetics") if "cosmetics" in pl else {},
+					"downed": pl.is_downed() if pl.has_method("is_downed") else false,
+				}
+			)
+		)
 	d["players"] = players_arr
 
 	var loot: Array = []
 	for l in get_tree().get_nodes_in_group(Groups.PICKUPS):
-		loot.append({
-			"id": str(l.get("item_id")) if "item_id" in l else "?",
-			"count": int(l.get("count")) if "count" in l else 1,
-			"pos": _v3(l.global_position),
-			"dist": p.global_position.distance_to(l.global_position),
-		})
+		(
+			loot
+			. append(
+				{
+					"id": str(l.get("item_id")) if "item_id" in l else "?",
+					"count": int(l.get("count")) if "count" in l else 1,
+					"pos": _v3(l.global_position),
+					"dist": p.global_position.distance_to(l.global_position),
+				}
+			)
+		)
 	d["loot"] = loot
 
 	# Dynamic world events (markers + the active supply cache) for QA introspection.
@@ -1165,14 +1397,21 @@ func _snapshot() -> Dictionary:
 			wr = float(w.call("event_ratio"))
 		elif director and director.has_method("marker_event_ratio"):
 			wr = float(director.call("marker_event_ratio", w))
-		wevents.append({
-			"kind": int(w.get_meta("event_kind")) if w.has_meta("event_kind") else -1,
-			"label": str(w.get_meta("event_label")) if w.has_meta("event_label") else "",
-			"pos": _v3(w.global_position) if w is Node3D else [0, 0, 0],
-			"ratio": wr,
-		})
+		(
+			wevents
+			. append(
+				{
+					"kind": int(w.get_meta("event_kind")) if w.has_meta("event_kind") else -1,
+					"label": str(w.get_meta("event_label")) if w.has_meta("event_label") else "",
+					"pos": _v3(w.global_position) if w is Node3D else [0, 0, 0],
+					"ratio": wr,
+				}
+			)
+		)
 	d["world_events"] = wevents
-	d["active_event_kind"] = (int(director.get("_active_kind")) if (director and "_active_kind" in director) else -1)
+	d["active_event_kind"] = (
+		int(director.get("_active_kind")) if (director and "_active_kind" in director) else -1
+	)
 	return d
 
 
@@ -1197,11 +1436,16 @@ func _golden_snapshot() -> Dictionary:
 		if not (zn is Node3D):
 			continue
 		var zp: Vector3 = (zn as Node3D).global_position
-		zones.append({
-			"name": str(zn.name),
-			"pos": [snappedf(zp.x, 0.001), snappedf(zp.y, 0.001), snappedf(zp.z, 0.001)],
-			"pad_h": snappedf(ProceduralTerrain.height_at(zp.x, zp.z), 0.0001),
-		})
+		(
+			zones
+			. append(
+				{
+					"name": str(zn.name),
+					"pos": [snappedf(zp.x, 0.001), snappedf(zp.y, 0.001), snappedf(zp.z, 0.001)],
+					"pad_h": snappedf(ProceduralTerrain.height_at(zp.x, zp.z), 0.0001),
+				}
+			)
+		)
 	zones.sort_custom(func(a, b): return str(a["name"]) < str(b["name"]))
 	var containers: Dictionary = {}
 	var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
@@ -1210,7 +1454,7 @@ func _golden_snapshot() -> Dictionary:
 		for child in nav.get_children():
 			var acc: Array = []
 			var cnt := _fold_node(child, acc)
-			containers[str(child.name)] = { "nodes": cnt, "hash": hash(acc) }
+			containers[str(child.name)] = {"nodes": cnt, "hash": hash(acc)}
 	return {
 		"ok": nav != null,
 		"version": Settings.GAME_VERSION,
@@ -1256,7 +1500,7 @@ func _fold_node(n: Node, acc: Array) -> int:
 func _debug_pickup() -> Dictionary:
 	var plr: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if plr == null or not (plr is Node3D):
-		return { "ok": false, "reason": "no local player" }
+		return {"ok": false, "reason": "no local player"}
 	var ppos: Vector3 = (plr as Node3D).global_position
 	var best: Node = null
 	var best_d: float = INF
@@ -1268,11 +1512,13 @@ func _debug_pickup() -> Dictionary:
 			best_d = d
 			best = n
 	if best == null or best_d > 3.0:
-		return { "ok": false, "reason": "no pickup in range", "nearest": best_d if best != null else -1.0 }
+		return {
+			"ok": false, "reason": "no pickup in range", "nearest": best_d if best != null else -1.0
+		}
 	if not best.has_method("_request_pickup"):
-		return { "ok": false, "reason": "pickup has no _request_pickup" }
+		return {"ok": false, "reason": "pickup has no _request_pickup"}
 	best.call("_request_pickup", plr)
-	return { "ok": true, "id": str(best.get("item_id")), "dist": snappedf(best_d, 0.01) }
+	return {"ok": true, "id": str(best.get("item_id")), "dist": snappedf(best_d, 0.01)}
 
 
 ## Compact per-questline progress for state.meta (line id -> {done,total,current}).
@@ -1281,7 +1527,11 @@ func _questlines_meta() -> Dictionary:
 	for l in Quests.questlines():
 		var ql := l as QuestLine
 		var lp: Dictionary = Quests.line_progress(ql)
-		out[ql.id] = { "done": lp.get("done", 0), "total": lp.get("total", 0), "current": lp.get("current_id", "") }
+		out[ql.id] = {
+			"done": lp.get("done", 0),
+			"total": lp.get("total", 0),
+			"current": lp.get("current_id", "")
+		}
 	return out
 
 
@@ -1291,20 +1541,20 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 	var id := str(json.get("id", ""))
 	match action:
 		"offer":
-			return { "ok": Quests.offer(id), "state": Quests.state_of(id) }
+			return {"ok": Quests.offer(id), "state": Quests.state_of(id)}
 		"accept":
-			return { "ok": Quests.accept(id), "state": Quests.state_of(id) }
+			return {"ok": Quests.accept(id), "state": Quests.state_of(id)}
 		"claim":
-			return { "ok": Quests.claim(id), "state": Quests.state_of(id) }
+			return {"ok": Quests.claim(id), "state": Quests.state_of(id)}
 		"evaluate":
 			if has_node("/root/QuestDirector"):
 				get_node("/root/QuestDirector").evaluate_offers()
-			return { "ok": true }
+			return {"ok": true}
 		"roll":
 			# Force one per-raid weighted random offer (test the random board without raiding).
 			if has_node("/root/QuestDirector"):
 				get_node("/root/QuestDirector").roll_random_offer()
-			return { "ok": true, "available": Quests.available_count() }
+			return {"ok": true, "available": Quests.available_count()}
 		"detail":
 			# QA: open the rich detail modal for `id` (the harness can't click the ⓘ button).
 			var sc := get_tree().current_scene
@@ -1317,7 +1567,7 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 			var modal: Node = (load("res://scripts/ui/quest_detail.gd") as GDScript).new()
 			host.add_child(modal)
 			modal.call("open", id)
-			return { "ok": true }
+			return {"ok": true}
 		"lines":
 			var lines: Array = []
 			for l in Quests.questlines():
@@ -1325,11 +1575,21 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 				var lp: Dictionary = Quests.line_progress(ql)
 				var steps: Array = []
 				for s in Quests.line_steps(ql):
-					steps.append({ "id": (s as QuestData).id, "state": Quests.state_of((s as QuestData).id) })
-				lines.append({ "id": ql.id, "title": ql.title, "giver": ql.giver,
-					"done": lp.get("done", 0), "total": lp.get("total", 0),
-					"current": lp.get("current_id", ""), "steps": steps })
-			return { "ok": true, "lines": lines }
+					steps.append(
+						{"id": (s as QuestData).id, "state": Quests.state_of((s as QuestData).id)}
+					)
+				lines.append(
+					{
+						"id": ql.id,
+						"title": ql.title,
+						"giver": ql.giver,
+						"done": lp.get("done", 0),
+						"total": lp.get("total", 0),
+						"current": lp.get("current_id", ""),
+						"steps": steps
+					}
+				)
+			return {"ok": true, "lines": lines}
 		"grantkills":
 			# Simulate n personal kills of an archetype: bumps kills_by_type + fires player_kill
 			# (so kill quests advance + the director re-evaluates), exactly like real kills.
@@ -1339,18 +1599,26 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 				MetaProgression.record_kill_type(eid)
 				Events.player_kill.emit(eid)
 			MetaProgression.save_profile()
-			return { "ok": true, "eid": eid, "kills": MetaProgression.kills_of(eid) }
+			return {"ok": true, "eid": eid, "kills": MetaProgression.kills_of(eid)}
 		"stats":
-			return { "ok": true, "kills_by_type": MetaProgression.kills_by_type,
-				"extractions": MetaProgression.extractions_total, "quest_states": MetaProgression.quest_states }
+			return {
+				"ok": true,
+				"kills_by_type": MetaProgression.kills_by_type,
+				"extractions": MetaProgression.extractions_total,
+				"quest_states": MetaProgression.quest_states
+			}
 		"grantrep":
 			# QA: bump a giver's reputation to test tier unlocks + exclusive-contract offers.
 			var giver := str(json.get("giver", ""))
 			MetaProgression.grant_giver_rep(giver, int(json.get("n", 1)))
 			if has_node("/root/QuestDirector"):
 				get_node("/root/QuestDirector").evaluate_offers()
-			return { "ok": true, "giver": giver, "rep": MetaProgression.giver_rep_of(giver),
-				"tier": MetaProgression.giver_rep_tier(giver) }
+			return {
+				"ok": true,
+				"giver": giver,
+				"rep": MetaProgression.giver_rep_of(giver),
+				"tier": MetaProgression.giver_rep_tier(giver)
+			}
 		"sim":
 			# QA: emit an objective event so non-kill quests advance without a full raid.
 			var kind := str(json.get("kind", ""))
@@ -1360,12 +1628,14 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 				"extract":
 					Events.raid_loot_granted.emit([], 0)
 				"extract_item":
-					Events.raid_loot_granted.emit([{ "id": sid2, "count": n }], 0)
+					Events.raid_loot_granted.emit([{"id": sid2, "count": n}], 0)
 				"wave":
 					Events.wave_cleared.emit(n)
 				"pickup":
-					Events.item_picked_up.emit(_local_player(get_tree().get_nodes_in_group(Groups.PLAYERS)), sid2, n)
-			return { "ok": true, "kind": kind }
+					Events.item_picked_up.emit(
+						_local_player(get_tree().get_nodes_in_group(Groups.PLAYERS)), sid2, n
+					)
+			return {"ok": true, "kind": kind}
 		"reset":
 			# QA: wipe quest lifecycle + decision stats + giver rep for a clean fixture.
 			MetaProgression.quest_states = {}
@@ -1377,7 +1647,7 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 			MetaProgression.save_profile()
 			if has_node("/root/QuestDirector"):
 				get_node("/root/QuestDirector").evaluate_offers()
-			return { "ok": true }
+			return {"ok": true}
 		"givers":
 			var gv: Array = []
 			var seen: Dictionary = {}
@@ -1389,22 +1659,39 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 			for g in seen:
 				if String(g) == "":
 					continue
-				gv.append({ "giver": g, "rep": MetaProgression.giver_rep_of(g),
-					"tier": MetaProgression.giver_rep_tier(g) })
-			return { "ok": true, "givers": gv }
+				gv.append(
+					{
+						"giver": g,
+						"rep": MetaProgression.giver_rep_of(g),
+						"tier": MetaProgression.giver_rep_tier(g)
+					}
+				)
+			return {"ok": true, "givers": gv}
 		_:
 			# "state": full board snapshot.
 			var out: Array = []
 			for q in Quests.all():
 				var qd := q as QuestData
-				out.append({
-					"id": qd.id, "title": qd.title, "state": Quests.state_of(qd.id),
-					"daily": qd.daily, "progress": Quests.progress(qd.id), "target": qd.obj_count,
-					"obj_type": qd.obj_type, "obj_target": qd.obj_target,
-					"questline": qd.questline, "offer_weight": qd.offer_weight,
-					"unlocked": Quests.is_unlocked(qd), "hint": Quests.unlock_hint(qd),
-				})
-			return { "ok": true, "quests": out }
+				(
+					out
+					. append(
+						{
+							"id": qd.id,
+							"title": qd.title,
+							"state": Quests.state_of(qd.id),
+							"daily": qd.daily,
+							"progress": Quests.progress(qd.id),
+							"target": qd.obj_count,
+							"obj_type": qd.obj_type,
+							"obj_target": qd.obj_target,
+							"questline": qd.questline,
+							"offer_weight": qd.offer_weight,
+							"unlocked": Quests.is_unlocked(qd),
+							"hint": Quests.unlock_hint(qd),
+						}
+					)
+				)
+			return {"ok": true, "quests": out}
 
 
 func _local_player(players: Array) -> Node:

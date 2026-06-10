@@ -8,7 +8,7 @@ class_name DamageIndicator
 ##       below ~35%, pulsing subtly. Dark sci-fi theme (danger red #d84540).
 
 const DANGER := Color(0.847, 0.271, 0.251)  # #d84540 — low-HP edge vignette
-const BLOOD := Color(0.74, 0.08, 0.06)      # directional blood arc (deep red)
+const BLOOD := Color(0.74, 0.08, 0.06)  # directional blood arc (deep red)
 const ARC_TTL := 1.8
 const ARC_INNER := 64.0
 const ARC_OUTER := 150.0
@@ -74,7 +74,7 @@ func _on_damage_dealt(target: Node, amount: float, source: Node) -> void:
 	# Bearing from the player to the attacker, on the horizontal plane, made relative
 	# to where the camera is looking so the wedge points correctly on screen.
 	var to_src: Vector3 = (source as Node3D).global_position - _player.global_position
-	var world_bearing := atan2(to_src.x, -to_src.z)   # 0 = -Z (forward), CW
+	var world_bearing := atan2(to_src.x, -to_src.z)  # 0 = -Z (forward), CW
 	var cam_yaw := _player.rotation.y
 	if is_instance_valid(_camera):
 		cam_yaw = _camera.global_rotation.y
@@ -117,10 +117,10 @@ func _draw() -> void:
 			var a := base_a * (1.0 - f)
 			var col := Color(DANGER.r, DANGER.g, DANGER.b, a)
 			var t := band * (1.0 - f)
-			draw_rect(Rect2(0, 0, vp.x, t), col, true)                       # top
-			draw_rect(Rect2(0, vp.y - t, vp.x, t), col, true)               # bottom
-			draw_rect(Rect2(0, 0, t, vp.y), col, true)                       # left
-			draw_rect(Rect2(vp.x - t, 0, t, vp.y), col, true)              # right
+			draw_rect(Rect2(0, 0, vp.x, t), col, true)  # top
+			draw_rect(Rect2(0, vp.y - t, vp.x, t), col, true)  # bottom
+			draw_rect(Rect2(0, 0, t, vp.y), col, true)  # left
+			draw_rect(Rect2(vp.x - t, 0, t, vp.y), col, true)  # right
 	# (a) Directional blood arcs — a filled wedge pointing at the attacker, brightest
 	# at the outer rim and feathering to transparent inward.
 	for a in _arcs:
@@ -139,7 +139,9 @@ func _draw() -> void:
 ## at the outer rim, transparent at the inner rim — so it reads as a gradient smear
 ## pointing toward `screen_ang`. A crisp outer-rim stroke sharpens the direction.
 ## (Per-quad fill is used instead of one concave polygon, which can mis-triangulate.)
-func _draw_blood_wedge(c: Vector2, screen_ang: float, half: float, ri: float, ro: float, alpha: float) -> void:
+func _draw_blood_wedge(
+	c: Vector2, screen_ang: float, half: float, ri: float, ro: float, alpha: float
+) -> void:
 	if alpha <= 0.001:
 		return
 	var steps := 18

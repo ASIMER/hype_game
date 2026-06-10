@@ -7,7 +7,7 @@ class_name MuzzleFlash
 const LIFETIME := 0.055
 
 var _t := 0.0
-var _intensity := 1.0          # per-weapon-class size/brightness (set_intensity)
+var _intensity := 1.0  # per-weapon-class size/brightness (set_intensity)
 var _base_energy := 8.0
 var _base_size := 0.3
 var _light: OmniLight3D
@@ -15,6 +15,7 @@ var _quad: MeshInstance3D
 var _streak: MeshInstance3D
 var _quad_mat: StandardMaterial3D
 var _streak_mat: StandardMaterial3D
+
 
 func _ready() -> void:
 	# Bright warm light pulse.
@@ -42,11 +43,13 @@ func _ready() -> void:
 
 	_apply_intensity()
 
+
 ## Per-weapon-class size + brightness (shotgun big, SMG small/fast, DMR sharp). Called by the
 ## weapon right after spawn.
 func set_intensity(mult: float) -> void:
 	_intensity = clampf(mult, 0.4, 2.5)
 	_apply_intensity()
+
 
 func _apply_intensity() -> void:
 	var jit := randf_range(0.85, 1.2)
@@ -59,6 +62,7 @@ func _apply_intensity() -> void:
 	if _streak != null:
 		_streak.scale = Vector3(s, s, s)
 
+
 func _make_quad(sz: float, mat: StandardMaterial3D) -> MeshInstance3D:
 	var q := QuadMesh.new()
 	q.size = Vector2(sz, sz)
@@ -67,6 +71,7 @@ func _make_quad(sz: float, mat: StandardMaterial3D) -> MeshInstance3D:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.material_override = mat
 	return mi
+
 
 func _add_mat(col: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -77,6 +82,7 @@ func _add_mat(col: Color) -> StandardMaterial3D:
 	m.albedo_color = col
 	m.disable_receive_shadows = true
 	return m
+
 
 func _process(delta: float) -> void:
 	_t += delta

@@ -9,18 +9,20 @@ const RECIPES_DIR := "res://resources/recipes/"
 ## Per-item recycle yield: item id -> Array[{id,count}] of base materials returned.
 ## Items not listed fall back to scrap worth ~1/3 of their value (see recycle()).
 const RECYCLE := {
-	"loot_cell":      [{ "id": "loot_scrap", "count": 2 }],
-	"loot_circuit":   [{ "id": "loot_scrap", "count": 1 }, { "id": "loot_plastic", "count": 2 }],
-	"loot_chemicals": [{ "id": "loot_plastic", "count": 2 }],
-	"loot_artifact":  [{ "id": "loot_circuit", "count": 1 }, { "id": "loot_cell", "count": 2 }],
-	"loot_data_chip": [{ "id": "loot_circuit", "count": 2 }, { "id": "loot_chemicals", "count": 1 }],
-	"rifle":          [{ "id": "loot_scrap", "count": 3 }, { "id": "loot_circuit", "count": 1 }],
+	"loot_cell": [{"id": "loot_scrap", "count": 2}],
+	"loot_circuit": [{"id": "loot_scrap", "count": 1}, {"id": "loot_plastic", "count": 2}],
+	"loot_chemicals": [{"id": "loot_plastic", "count": 2}],
+	"loot_artifact": [{"id": "loot_circuit", "count": 1}, {"id": "loot_cell", "count": 2}],
+	"loot_data_chip": [{"id": "loot_circuit", "count": 2}, {"id": "loot_chemicals", "count": 1}],
+	"rifle": [{"id": "loot_scrap", "count": 3}, {"id": "loot_circuit", "count": 1}],
 }
 
-var _recipes: Array = []   # CraftRecipe
+var _recipes: Array = []  # CraftRecipe
+
 
 func _ready() -> void:
 	_scan()
+
 
 func _scan() -> void:
 	_recipes.clear()
@@ -38,14 +40,21 @@ func _scan() -> void:
 	for p in ResourceIndex.RECIPES:
 		_add_recipe(load(p), seen)
 
+
 func _add_recipe(res: Resource, seen: Dictionary) -> void:
-	if res is CraftRecipe and (res as CraftRecipe).id != "" and not seen.has((res as CraftRecipe).id):
+	if (
+		res is CraftRecipe
+		and (res as CraftRecipe).id != ""
+		and not seen.has((res as CraftRecipe).id)
+	):
 		seen[(res as CraftRecipe).id] = true
 		_recipes.append(res)
+
 
 # ---------------------------------------------------------------- queries
 func all_recipes() -> Array:
 	return _recipes
+
 
 func recipe_by_id(id: String) -> CraftRecipe:
 	for r in _recipes:
@@ -53,9 +62,11 @@ func recipe_by_id(id: String) -> CraftRecipe:
 			return r
 	return null
 
+
 ## True when the recipe's blueprint is known (or it needs none).
 func recipe_unlocked(r: CraftRecipe) -> bool:
 	return r.blueprint == "" or MetaProgression.is_blueprint_known(r.blueprint)
+
 
 ## True when unlocked + inputs present in the stash + currency affordable.
 func can_craft(r: CraftRecipe) -> bool:
@@ -68,6 +79,7 @@ func can_craft(r: CraftRecipe) -> bool:
 			return false
 	return true
 
+
 ## item id -> blueprint id, for every recipe that's learned by extracting an item
 ## (the RaidManager extraction hook reads this).
 func learn_items() -> Dictionary:
@@ -77,6 +89,7 @@ func learn_items() -> Dictionary:
 		if cr.learn_item != "" and cr.blueprint != "":
 			out[cr.learn_item] = cr.blueprint
 	return out
+
 
 # ---------------------------------------------------------------- actions
 ## Crafts the recipe: consumes inputs (+ currency), adds the output to the stash.
@@ -90,6 +103,7 @@ func craft(r: CraftRecipe) -> bool:
 	Stash.add(r.output_id, maxi(1, r.output_count))
 	return true
 
+
 ## Recycle ONE of item_id into its constituent materials. Returns the granted
 ## {id,count} stacks (empty if the stash had none).
 func recycle(item_id: String) -> Array:
@@ -99,10 +113,11 @@ func recycle(item_id: String) -> Array:
 	if yield_arr.is_empty():
 		# Fallback: scrap worth roughly a third of the item's value (scrap value = 5).
 		var n := maxi(1, int(round(ItemCatalog.value_of(item_id) / 15.0)))
-		yield_arr = [{ "id": "loot_scrap", "count": n }]
+		yield_arr = [{"id": "loot_scrap", "count": n}]
 	for m in yield_arr:
 		Stash.add(String(m["id"]), int(m["count"]))
 	return yield_arr
+
 
 ## Buy a blueprint with currency (shop). Returns true if newly learned.
 func buy_blueprint(bp: String, price: int) -> bool:

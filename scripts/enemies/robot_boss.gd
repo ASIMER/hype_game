@@ -7,7 +7,7 @@ class_name RobotBoss
 ## inherited.
 
 const MELEE_RANGE: float = 4.0
-const MELEE_MULT: float = 1.6          # melee slam hits harder than a shot
+const MELEE_MULT: float = 1.6  # melee slam hits harder than a shot
 const BARRAGE_INTERVAL: float = 8.0
 const BARRAGE_SHOTS: int = 6
 
@@ -19,11 +19,13 @@ var _proc_torso: Node3D = null
 var _proc_eyes: MeshInstance3D = null
 var _proc_eyes_base_energy: float = 6.0
 
+
 func _ready() -> void:
 	super._ready()
 	burst_count = 3
 	burst_recovery = 1.6
 	_shots_left_in_burst = burst_count
+
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
@@ -35,6 +37,7 @@ func _physics_process(delta: float) -> void:
 	if _barrage_t <= 0.0 and _target != null:
 		_barrage_t = BARRAGE_INTERVAL
 		_shots_left_in_burst = BARRAGE_SHOTS
+
 
 ## OVERRIDE: cache the boss's Torso pivot + glowing chest core + eyes.
 func _cache_proc_parts() -> void:
@@ -54,6 +57,7 @@ func _cache_proc_parts() -> void:
 		_proc_eyes_base_energy = _read_emission_energy(_proc_eyes)
 	_has_proc_anim = _proc_torso != null or _pulse_part != null or _proc_eyes != null
 
+
 ## OVERRIDE: turn the upper torso to face the nearest player + pulse chest core and
 ## eyes (brighter/faster while attacking) so the boss looms and tracks you.
 func _animate_visual(delta: float) -> void:
@@ -65,7 +69,10 @@ func _animate_visual(delta: float) -> void:
 		var mat := _proc_eyes.get_active_material(0)
 		if mat is StandardMaterial3D:
 			var k := 0.5 + 0.5 * sin(_anim_time * (5.0 if atk else 2.5) + 1.0)
-			(mat as StandardMaterial3D).emission_energy_multiplier = _proc_eyes_base_energy * lerpf(0.6, 1.5, k)
+			(mat as StandardMaterial3D).emission_energy_multiplier = (
+				_proc_eyes_base_energy * lerpf(0.6, 1.5, k)
+			)
+
 
 ## OVERRIDE: slam in melee range, otherwise fall back to the gunner hitscan burst.
 func _strike(target: Node) -> void:
@@ -77,6 +84,7 @@ func _strike(target: Node) -> void:
 	else:
 		super._strike(target)
 
+
 func _melee_slam(target: Node) -> void:
 	var hb := target.get_node_or_null(Groups.NODE_HURTBOX)
 	if hb and hb.has_method("apply_hit"):
@@ -86,9 +94,11 @@ func _melee_slam(target: Node) -> void:
 	if hp and hp.has_method("take_damage"):
 		hp.take_damage(_stat_damage * MELEE_MULT, self)
 
+
 ## OVERRIDE: bar sits well above the huge model.
 func _health_bar_height() -> float:
 	return 4.6
+
 
 ## OVERRIDE: boss death shakes the screen + makes bigger debris (via the base FX).
 func _is_boss() -> bool:

@@ -27,6 +27,7 @@ const PROBE_SIZE := Vector3(34.0, 22.0, 34.0)
 const PROBE_HEIGHT := 8.0
 const PROBE_INTENSITY := 1.0
 
+
 ## Adds a "ReflectionProbes" Node3D under `parent` holding one ReflectionProbe per POI
 ## marker (capped at MAX_PROBES). No-op on headless or when the tier toggle is off.
 static func build(parent: Node3D, poi_markers: Node3D) -> void:
@@ -54,12 +55,13 @@ static func build(parent: Node3D, poi_markers: Node3D) -> void:
 		probe.size = PROBE_SIZE
 		probe.intensity = PROBE_INTENSITY
 		probe.interior = false
-		probe.enable_shadows = false      # cheaper capture; SDFGI/sun already shade the world
-		probe.max_distance = 0.0          # 0 = unlimited capture distance
+		probe.enable_shadows = false  # cheaper capture; SDFGI/sun already shade the world
+		probe.max_distance = 0.0  # 0 = unlimited capture distance
 		root.add_child(probe)
 		# Position AFTER add_child so global_position is meaningful; raise to roof height
 		# so the box spans the whole POI structure rather than sitting on the floor.
 		probe.global_position = marker.global_position + Vector3(0.0, PROBE_HEIGHT, 0.0)
+
 
 ## EXPERIMENTAL: a single runtime-baked VoxelGI over the playable bounds. This is VERY
 ## heavy on a 160 m map (a full-extent voxel grid + a runtime bake stalls the frame), so
@@ -73,7 +75,12 @@ static func build_voxelgi(parent: Node3D, bounds: Vector3) -> void:
 		return
 	if not Settings.voxelgi_enabled:
 		return
-	push_warning("ProceduralReflectionProbes.build_voxelgi: EXPERIMENTAL runtime VoxelGI bake on a large map — this can stall the frame; intended as opt-in eye-candy only.")
+	push_warning(
+		(
+			"ProceduralReflectionProbes.build_voxelgi: EXPERIMENTAL runtime VoxelGI bake on a"
+			+ " large map — this can stall the frame; intended as opt-in eye-candy only."
+		)
+	)
 	var gi := VoxelGI.new()
 	gi.name = "ExperimentalVoxelGI"
 	# Lowest subdivision keeps the runtime bake from being catastrophic on the 160 m map.

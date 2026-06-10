@@ -21,6 +21,7 @@ var _impact_ps: PackedScene
 var _muzzle_smoke_script: GDScript
 var _shell_script: GDScript
 
+
 func _ready() -> void:
 	if ResourceLoader.exists(_MUZZLE_FLASH_SCENE):
 		_muzzle_flash_ps = load(_MUZZLE_FLASH_SCENE)
@@ -35,7 +36,10 @@ func _ready() -> void:
 	if not Events.remote_shot.is_connected(_on_remote_shot):
 		Events.remote_shot.connect(_on_remote_shot)
 
-func _on_remote_shot(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3) -> void:
+
+func _on_remote_shot(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+) -> void:
 	var host := _fx_host()
 	if host == null:
 		return
@@ -75,6 +79,7 @@ func _on_remote_shot(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Arra
 		host.add_child(im)
 		if im is Node3D:
 			(im as Node3D).global_position = hit_point
+
 
 func _fx_host() -> Node:
 	var tree := get_tree()

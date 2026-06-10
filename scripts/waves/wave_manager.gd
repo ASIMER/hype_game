@@ -32,7 +32,7 @@ const SCENE_BOSS := "res://scenes/enemies/RobotBoss.tscn"
 
 # Lane A archetype scenes (guarded with ResourceLoader.exists at spawn time).
 const SCENE_CALLER := "res://scenes/enemies/RobotCaller.tscn"
-const SCENE_ELITE  := "res://scenes/enemies/RobotElite.tscn"
+const SCENE_ELITE := "res://scenes/enemies/RobotElite.tscn"
 
 # Escalating type mix per wave. Each entry is a weighted pool the trickle spawner
 # samples for every non-boss enemy. Wave 5 is the boss wave (handled specially:
@@ -64,21 +64,24 @@ const SCENE_RAIJU := "res://scenes/enemies/RobotRaiju.tscn"
 # the rain temple gets kappas/raijus/onis, and the original NW "urban" quadrant keeps the
 # classic robot roster (WAVE_POOLS above). The wave-5 BOSS stays global (any biome).
 const BIOME_WAVE_POOLS := {
-	"desert": {
+	"desert":
+	{
 		1: [SCENE_SCARAB, SCENE_SCARAB, SCENE_DUSTDEVIL],
 		2: [SCENE_SCARAB, SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_DUSTDEVIL],
 		3: [SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_WORM],
 		4: [SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_DUSTDEVIL, SCENE_WORM],
 		5: [SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_WORM, SCENE_WORM],
 	},
-	"snow": {
+	"snow":
+	{
 		1: [SCENE_FROSTHOUND, SCENE_FROSTHOUND, SCENE_FROSTHOUND],
 		2: [SCENE_FROSTHOUND, SCENE_FROSTHOUND, SCENE_CRYOMORTAR],
 		3: [SCENE_FROSTHOUND, SCENE_CRYOMORTAR, SCENE_AVALANCHE],
 		4: [SCENE_FROSTHOUND, SCENE_FROSTHOUND, SCENE_CRYOMORTAR, SCENE_AVALANCHE],
 		5: [SCENE_FROSTHOUND, SCENE_CRYOMORTAR, SCENE_AVALANCHE, SCENE_AVALANCHE],
 	},
-	"rain": {
+	"rain":
+	{
 		1: [SCENE_KAPPA, SCENE_KAPPA, SCENE_RAIJU],
 		2: [SCENE_KAPPA, SCENE_KAPPA, SCENE_RAIJU, SCENE_RAIJU],
 		3: [SCENE_KAPPA, SCENE_RAIJU, SCENE_ONI],
@@ -90,7 +93,8 @@ const BIOME_WAVE_POOLS := {
 # Storm (final-wave flood) mixes per biome; urban keeps STORM_POOL.
 const BIOME_STORM_POOLS := {
 	"desert": [SCENE_WORM, SCENE_WORM, SCENE_DUSTDEVIL, SCENE_SCARAB, SCENE_SCARAB],
-	"snow": [SCENE_AVALANCHE, SCENE_AVALANCHE, SCENE_CRYOMORTAR, SCENE_FROSTHOUND, SCENE_FROSTHOUND],
+	"snow":
+	[SCENE_AVALANCHE, SCENE_AVALANCHE, SCENE_CRYOMORTAR, SCENE_FROSTHOUND, SCENE_FROSTHOUND],
 	"rain": [SCENE_ONI, SCENE_ONI, SCENE_RAIJU, SCENE_KAPPA, SCENE_KAPPA],
 }
 
@@ -114,9 +118,9 @@ var _alive_enemies: Array[Node] = []
 var _spawn_seq: int = 0
 var _wave_active: bool = false
 var _started: bool = false
-var _wave_total: int = 0      # enemies to spawn this wave
-var _wave_spawned: int = 0    # enemies spawned so far this wave
-var _boss_spawned: bool = false   # boss-wave: ensures exactly one boss is spawned
+var _wave_total: int = 0  # enemies to spawn this wave
+var _wave_spawned: int = 0  # enemies spawned so far this wave
+var _boss_spawned: bool = false  # boss-wave: ensures exactly one boss is spawned
 
 # Wave watchdog: once the whole wave has spawned, if the alive count stops dropping
 # for WATCHDOG_STALL seconds (a straggler jammed somewhere unreachable), relocate
@@ -130,12 +134,12 @@ var _watchdog_time: float = 0.0
 # mode: ignore MAX_WAVE, raise the alive-cap to FINAL_WAVE_CONCURRENT, spawn on
 # FINAL_WAVE_SPAWN_INTERVAL from the toughest pool, and keep refilling an escalating
 # stream so the player is physically pressured toward extraction.
-var _timer_active: bool = false      # ticking the match clock
-var _timer_emit_accum: float = 0.0   # throttle match_timer_changed to ~4x/sec
+var _timer_active: bool = false  # ticking the match clock
+var _timer_emit_accum: float = 0.0  # throttle match_timer_changed to ~4x/sec
 const TIMER_EMIT_INTERVAL: float = 0.25
-var _warned: bool = false            # FINAL_WAVE_WARN notify fired once
-var _storm: bool = false             # storm spawning engaged
-var _storm_started: bool = false     # final_wave_started emitted once
+var _warned: bool = false  # FINAL_WAVE_WARN notify fired once
+var _storm: bool = false  # storm spawning engaged
+var _storm_started: bool = false  # final_wave_started emitted once
 # Storm pool: the heaviest archetypes, weighted toward the nastiest.
 const STORM_POOL := [SCENE_HEAVY, SCENE_BASTION, SCENE_BASTION, SCENE_WASP, SCENE_HEAVY, SCENE_TICK]
 
@@ -149,7 +153,7 @@ var _patrols: Array[Node] = []
 
 ## Camp-punish state. Reset whenever players disperse below the radius threshold.
 var _camp_timer: float = 0.0
-var _camp_cooldown: float = 0.0   # counts DOWN; 0 = ready to punish again
+var _camp_cooldown: float = 0.0  # counts DOWN; 0 = ready to punish again
 
 ## Boss-phase adds: spawned once when the boss HP drops below DIRECTOR_BOSS_ADD_HP.
 var _boss_adds_spawned: bool = false
@@ -157,6 +161,7 @@ var _boss_adds_spawned: bool = false
 ## Throttle the boss-HP check so we don't scan every frame.
 var _boss_check_accum: float = 0.0
 const BOSS_CHECK_INTERVAL: float = 0.5
+
 
 func _ready() -> void:
 	# Resolve the Arena root and the enemy container. The Arena exposes
@@ -187,10 +192,12 @@ func _ready() -> void:
 	if director != null:
 		director.call("set_wave_manager", self)
 
+
 func _exit_tree() -> void:
 	var director: Node = get_node_or_null("/root/AIDirector")
 	if director != null:
 		director.call("set_wave_manager", null)
+
 
 func _resolve_arena() -> Node3D:
 	# Prefer the scene owner (we're attached under the Arena), else walk up.
@@ -202,6 +209,7 @@ func _resolve_arena() -> Node3D:
 			return n as Node3D
 		n = n.get_parent()
 	return null
+
 
 func _on_match_started() -> void:
 	if _started:
@@ -227,12 +235,17 @@ func _on_match_started() -> void:
 	_spawn_patrols()
 	_start_next_wave()
 
+
 ## Human-readable name of the active difficulty (English source string = CSV key).
 func _difficulty_name() -> String:
 	match GameState.difficulty:
-		GameState.Difficulty.EASY: return "EASY"
-		GameState.Difficulty.HARD: return "HARD"
-		_: return "NORMAL"
+		GameState.Difficulty.EASY:
+			return "EASY"
+		GameState.Difficulty.HARD:
+			return "HARD"
+		_:
+			return "NORMAL"
+
 
 func _start_next_wave() -> void:
 	# NOTE: between-wave patrols PERSIST across wave starts (they live in _patrols, which is
@@ -261,12 +274,13 @@ func _start_next_wave() -> void:
 	# Reset camp timers at wave start so leftover pressure doesn't carry over.
 	_camp_timer = 0.0
 	Events.wave_started.emit(next, _wave_total)
-	NetworkManager.sync_wave(next, _wave_total)   # mirror to co-op clients' HUD
+	NetworkManager.sync_wave(next, _wave_total)  # mirror to co-op clients' HUD
 	# Can't spawn (scene missing / no container)? Don't deadlock the match.
 	if not ResourceLoader.exists(ENEMY_SCENE) or _enemies_container == null:
 		_finish_wave()
 		return
 	_spawn_loop()
+
 
 ## Trickle spawner: keeps at most WAVE_MAX_CONCURRENT enemies alive, adding one
 ## every WAVE_SPAWN_INTERVAL until the whole wave has been spawned. Re-arms itself
@@ -276,7 +290,9 @@ func _spawn_loop() -> void:
 	if not _wave_active:
 		return
 	var cap: int = Settings.FINAL_WAVE_CONCURRENT if _storm else Settings.WAVE_MAX_CONCURRENT
-	var interval: float = Settings.FINAL_WAVE_SPAWN_INTERVAL if _storm else Settings.WAVE_SPAWN_INTERVAL
+	var interval: float = (
+		Settings.FINAL_WAVE_SPAWN_INTERVAL if _storm else Settings.WAVE_SPAWN_INTERVAL
+	)
 	if _wave_spawned < _wave_total and _alive_enemies.size() < cap:
 		# Empty scene path → _spawn_enemy resolves the spawn point first and draws the
 		# enemy from THAT point's biome pool (biome-exclusive rosters).
@@ -284,6 +300,7 @@ func _spawn_loop() -> void:
 		_wave_spawned += 1
 	if _wave_spawned < _wave_total:
 		get_tree().create_timer(interval).timeout.connect(_spawn_loop)
+
 
 ## Belt-and-suspenders so a wave can never deadlock on an unreachable straggler.
 ## Only meaningful once the wave is fully spawned; if the alive count holds steady
@@ -313,7 +330,12 @@ func _process(delta: float) -> void:
 				var nd: float = INF
 				for pl in players:
 					if pl is Node3D:
-						nd = minf(nd, (e as Node3D).global_position.distance_to((pl as Node3D).global_position))
+						nd = minf(
+							nd,
+							(e as Node3D).global_position.distance_to(
+								(pl as Node3D).global_position
+							)
+						)
 				if nd > 55.0 and e.has_method("force_unstuck"):
 					e.force_unstuck()
 
@@ -322,6 +344,7 @@ func _process(delta: float) -> void:
 
 	# --- Boss-phase adds ---
 	_tick_boss_adds(delta)
+
 
 ## Server-auth match clock. Counts match_time_left down, throttle-emits
 ## match_timer_changed (~4x/sec), warns once at FINAL_WAVE_WARN, and triggers the
@@ -339,7 +362,9 @@ func _tick_match_timer(delta: float) -> void:
 	if _timer_emit_accum >= TIMER_EMIT_INTERVAL or GameState.match_time_left <= 0.0:
 		_timer_emit_accum = 0.0
 		Events.match_timer_changed.emit(GameState.match_time_left, GameState.match_duration)
-		NetworkManager.sync_match_timer(GameState.match_time_left, GameState.match_duration, GameState.final_wave)
+		NetworkManager.sync_match_timer(
+			GameState.match_time_left, GameState.match_duration, GameState.final_wave
+		)
 
 	# One-shot "storm incoming" warning.
 	if not _warned and GameState.match_time_left <= Settings.FINAL_WAVE_WARN:
@@ -349,6 +374,7 @@ func _tick_match_timer(delta: float) -> void:
 	# Clock expired -> engage the storm (once).
 	if GameState.match_time_left <= 0.0 and not _storm_started:
 		_trigger_storm()
+
 
 ## Flip the match into STORM mode: ignore MAX_WAVE, raise the alive-cap, spawn faster
 ## from the toughest pool, and keep refilling an escalating stream until everyone is
@@ -364,13 +390,14 @@ func _trigger_storm() -> void:
 	# kept (see _begin_storm_wave) and the cap fills around them.
 	_begin_storm_wave()
 
+
 ## Start (or re-arm) one storm "wave". The storm runs as a chain of large refilling
 ## batches so the alive-cap stays saturated; each batch ends -> the next begins, so
 ## the match never wins-by-survival while the storm runs.
 func _begin_storm_wave() -> void:
 	_wave_total = _storm_batch_size()
 	_wave_spawned = 0
-	_boss_spawned = true   # no scripted boss in the storm batches
+	_boss_spawned = true  # no scripted boss in the storm batches
 	_wave_active = true
 	# Keep any already-alive enemies tracked (the storm may interrupt a live wave) so
 	# the concurrency cap fills around them rather than double-counting.
@@ -385,16 +412,19 @@ func _begin_storm_wave() -> void:
 		return
 	_spawn_loop()
 
+
 ## Storm batch size: a late-wave count scaled by FINAL_WAVE_COUNT_MULT.
 func _storm_batch_size() -> int:
 	var late := _enemy_count_for_wave(MAX_WAVE)
 	return maxi(Settings.FINAL_WAVE_CONCURRENT, int(round(late * Settings.FINAL_WAVE_COUNT_MULT)))
+
 
 func _enemy_count_for_wave(wave: int) -> int:
 	var base := Settings.WAVE_BASE_ENEMIES + (wave - 1) * Settings.WAVE_ENEMY_GROWTH
 	# Difficulty scales the wave size (Easy thins it, Hard swells it). Always >= 1.
 	var count_mult: float = float(Settings.difficulty_mods().get("enemy_count", 1.0))
 	return maxi(1, int(round(base * count_mult)))
+
 
 ## Choose which enemy scene to spawn next based on the current wave's pool for the
 ## given BIOME (of the already-resolved spawn point — see _spawn_enemy). On the final
@@ -419,6 +449,7 @@ func _scene_for_spawn(biome: String = "urban") -> String:
 		return SCENE_GRUNT
 	var pick: String = pool[randi() % pool.size()]
 	return pick if ResourceLoader.exists(pick) else SCENE_GRUNT
+
 
 ## World positions of the players enemies will actually chase — alive and NOT downed
 ## (matching robot_enemy._find_nearest_player, which ignores downed players). Falls back to
@@ -450,6 +481,7 @@ func _player_positions() -> Array[Vector3]:
 		return pts
 	return all
 
+
 ## True when `pos` is on the SAME side of the river as at least one player (the straight line
 ## to that player doesn't cross the deep channel). The river splits the map into two banks
 ## joined only by a narrow bridge/ford; an enemy spawned on the WRONG bank can't path to the
@@ -460,6 +492,7 @@ func _spawn_ok_for_players(pos: Vector3, players: Array[Vector3]) -> bool:
 		if not _crosses_river(pos, p):
 			return true
 	return false
+
 
 ## Sample the straight XZ segment a→b; true if any sample lies over the deep river channel.
 func _crosses_river(a: Vector3, b: Vector3) -> bool:
@@ -472,13 +505,15 @@ func _crosses_river(a: Vector3, b: Vector3) -> bool:
 			return true
 	return false
 
+
 ## Pick a spawn transform on the player's side of the river so the enemy can actually walk in.
 ## Collect EVERY same-side marker, PREFER the ones NEAR a player (the 320×320 map has markers
 ## in every quadrant — without the proximity filter a wave fans out across the whole world and
 ## treks in from other biomes, diluting the biome-exclusive roster), then spread enemies evenly
 ## across the surviving markers (index % count — the de-stack fix). Falls back gracefully:
 ## near-markers → any same-side marker → the raw index marker.
-const NEAR_SPAWN_RADIUS: float = 70.0   # markers within this of a player are "local"
+const NEAR_SPAWN_RADIUS: float = 70.0  # markers within this of a player are "local"
+
 
 func _spawn_xform(index: int) -> Transform3D:
 	if _arena == null:
@@ -503,6 +538,7 @@ func _spawn_xform(index: int) -> Transform3D:
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
 	return _jittered_spawn(_arena.get_enemy_spawn_point(pick_from[index % pick_from.size()]))
 
+
 ## Spread each spawn around its marker on a small golden-angle DISC so a burst of enemies that
 ## share one marker forms a flat ring (collision resolves them HORIZONTALLY) instead of a
 ## vertical pile that climbs the Y axis. The offset point is re-snapped to the navmesh so it
@@ -512,13 +548,14 @@ func _spawn_xform(index: int) -> Transform3D:
 func _jittered_spawn(xform: Transform3D) -> Transform3D:
 	var k: int = _spawn_seq
 	_spawn_seq += 1
-	var ang: float = float(k) * 2.39996323            # golden angle (rad) — even angular spread
-	var rad: float = 1.5 + float(k % 5) * 0.7         # 1.5 .. 4.3 m rings, cycling
+	var ang: float = float(k) * 2.39996323  # golden angle (rad) — even angular spread
+	var rad: float = 1.5 + float(k % 5) * 0.7  # 1.5 .. 4.3 m rings, cycling
 	var p: Vector3 = xform.origin + Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
 	if _arena != null and _arena.has_method("snap_to_navmesh"):
 		p = _arena.snap_to_navmesh(p)
 	xform.origin = p
 	return xform
+
 
 ## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
 ## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.
@@ -550,6 +587,7 @@ func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
 
+
 func _on_entity_died(entity: Node, _killer: Node) -> void:
 	# Patrol cleanup runs BEFORE the wave-active gate so patrols that die during the
 	# intermission (or pre-first-wave window) are properly removed.
@@ -564,6 +602,7 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 	# Cleared only once the whole wave has spawned AND every enemy is dead.
 	if _wave_spawned >= _wave_total and _alive_enemies.is_empty():
 		_finish_wave()
+
 
 func _finish_wave() -> void:
 	if not _wave_active:
@@ -584,6 +623,7 @@ func _finish_wave() -> void:
 	_spawn_patrols()
 	get_tree().create_timer(Settings.WAVE_INTERMISSION).timeout.connect(_start_next_wave)
 
+
 func _on_all_waves_survived() -> void:
 	# All scripted waves cleared. Survival itself counts as a win condition; the
 	# extraction zone may have already won earlier. Emit once.
@@ -591,9 +631,11 @@ func _on_all_waves_survived() -> void:
 		return
 	NetworkManager.broadcast_match_won()
 
+
 # ---------------------------------------------------------------------------
 # Public API for AIDirector
 # ---------------------------------------------------------------------------
+
 
 ## How many more enemies can be spawned before hitting the hard alive ceiling. The
 ## WorldEventDirector reads this to avoid firing a guard-needing event (cache/contested/
@@ -601,13 +643,16 @@ func _on_all_waves_survived() -> void:
 func reinforcement_capacity() -> int:
 	return maxi(0, Settings.FINAL_WAVE_CONCURRENT - (_alive_enemies.size() + _patrols.size()))
 
+
 ## Spawn `count` hunter (or non-hunter) enemies at markers nearest `near_pos`.
 ## Called by AIDirector for alarm reinforcements and camp-punish flanks.
 ## Respects FINAL_WAVE_CONCURRENT as a hard alive-count ceiling so it can't
 ## avalanche. Reinforcements during an active wave count in _alive_enemies;
 ## patrols (spawned with as_hunter=false via _spawn_patrols) do NOT (they go
 ## into _patrols instead).
-func spawn_reinforcements(count: int, near_pos: Vector3, as_hunter: bool = true, scene_path: String = "") -> void:
+func spawn_reinforcements(
+	count: int, near_pos: Vector3, as_hunter: bool = true, scene_path: String = ""
+) -> void:
 	if not GameState.is_local_authority_server():
 		return
 	if _enemies_container == null or _arena == null:
@@ -629,9 +674,9 @@ func spawn_reinforcements(count: int, near_pos: Vector3, as_hunter: bool = true,
 	# Find best spawn markers — pick markers by proximity to near_pos.
 	# We cycle through a range of marker indices and pick the closest ones.
 	# Arena.get_enemy_spawn_point(index) returns a Transform3D.
-	const CANDIDATE_COUNT: int = 16   # how many markers to sample
+	const CANDIDATE_COUNT: int = 16  # how many markers to sample
 	var chosen_indices: Array[int] = []
-	var best_pairs: Array = []   # Array of [dist, index]
+	var best_pairs: Array = []  # Array of [dist, index]
 
 	for i in CANDIDATE_COUNT:
 		if not _arena.has_method("get_enemy_spawn_point"):
@@ -652,6 +697,7 @@ func spawn_reinforcements(count: int, near_pos: Vector3, as_hunter: bool = true,
 		# Spawn the enemy; for reinforcements (as_hunter=true) track in _alive_enemies
 		# (handled inside _spawn_enemy_reinforcement below).
 		_spawn_enemy_reinforcement(idx, resolved_path, as_hunter)
+
 
 ## Internal helper: like _spawn_enemy but does NOT push to _alive_enemies when
 ## used for wave-independent patrol spawns (caller handles tracking in _patrols).
@@ -678,9 +724,11 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
 
+
 # ---------------------------------------------------------------------------
 # Camp-punish detection
 # ---------------------------------------------------------------------------
+
 
 func _tick_camp_detection(delta: float) -> void:
 	# Only active during a wave (not storm — storm is already overwhelming).
@@ -730,9 +778,11 @@ func _tick_camp_detection(delta: float) -> void:
 		# Players dispersed — reset the timer.
 		_camp_timer = 0.0
 
+
 # ---------------------------------------------------------------------------
 # Between-wave patrols
 # ---------------------------------------------------------------------------
+
 
 ## Spawn non-hunter patrols so the map feels active during intermission.
 ## Uses the Caller scene (Lane A) when available, falls back to the grunt.
@@ -753,6 +803,7 @@ func _spawn_patrols() -> void:
 
 	for i in count:
 		_spawn_patrol_enemy(i)
+
 
 func _spawn_patrol_enemy(index: int) -> void:
 	if _enemies_container == null:
@@ -786,6 +837,7 @@ func _spawn_patrol_enemy(index: int) -> void:
 	_patrols.append(enemy)
 	Events.enemy_spawned.emit(enemy)
 
+
 ## Free all surviving patrol enemies. Called at wave start so they never interfere
 ## with _finish_wave's wave-clear accounting.
 func _clear_patrols() -> void:
@@ -794,9 +846,11 @@ func _clear_patrols() -> void:
 			p.queue_free()
 	_patrols.clear()
 
+
 # ---------------------------------------------------------------------------
 # Boss-phase adds
 # ---------------------------------------------------------------------------
+
 
 func _tick_boss_adds(delta: float) -> void:
 	if _boss_adds_spawned or not _wave_active:

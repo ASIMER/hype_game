@@ -16,6 +16,7 @@ class_name LootTables
 # Public API
 # ---------------------------------------------------------------------------
 
+
 ## Returns a random item id appropriate for a WORLD loot cache at `tier` (1–3).
 ## Rarity band comes from Settings.RISK_TIER_LOOT[tier]; inverse-rarity weighting
 ## keeps common items frequent even at high tiers, but rare/epic items do appear.
@@ -39,11 +40,11 @@ static func roll_for_enemy(tier: int) -> String:
 	var band: Array
 	match tier:
 		1:
-			band = [0, 1]   # COMMON–UNCOMMON — same as world tier 1
+			band = [0, 1]  # COMMON–UNCOMMON — same as world tier 1
 		2:
-			band = [0, 2]   # COMMON–RARE (broad, but commoner items still dominate)
+			band = [0, 2]  # COMMON–RARE (broad, but commoner items still dominate)
 		3:
-			band = [1, 3]   # UNCOMMON–EPIC — escalated reward in hot zones
+			band = [1, 3]  # UNCOMMON–EPIC — escalated reward in hot zones
 		_:
 			band = [0, 1]
 	var min_r: int = int(band[0])
@@ -56,6 +57,7 @@ static func roll_for_enemy(tier: int) -> String:
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
 
 ## Remove WEAPON and KEY kinds from a candidate list (no guns/schematics as clutter).
 static func _filter_world_loot(ids: Array) -> Array:

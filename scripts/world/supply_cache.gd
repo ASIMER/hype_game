@@ -22,12 +22,14 @@ var tier: int = 2
 ## Optional: the director sets this to Net/Loot so spawned pickups replicate.
 var _loot_parent: Node = null
 
+
 func set_loot_parent(parent: Node) -> void:
 	_loot_parent = parent
 
+
 # ─── hold-timer state ────────────────────────────────────────────────────────
 
-var _hold_elapsed: float = 0.0   # seconds a player has been holding
+var _hold_elapsed: float = 0.0  # seconds a player has been holding
 var _cracked: bool = false
 var _is_server: bool = false
 
@@ -43,11 +45,12 @@ var _beacon_time: float = 0.0
 var _beacon_pulse_base: float = 1.0
 
 # Gold/amber tint while holding; bright gold on crack.
-const _IDLE_TINT := Color(0.9, 0.7, 0.1)    # amber-gold (supply)
-const _HOLD_TINT := Color(0.2, 0.9, 1.0)    # cyan while held
-const _CRACK_TINT := Color(1.0, 0.9, 0.3)   # bright gold on crack
+const _IDLE_TINT := Color(0.9, 0.7, 0.1)  # amber-gold (supply)
+const _HOLD_TINT := Color(0.2, 0.9, 1.0)  # cyan while held
+const _CRACK_TINT := Color(1.0, 0.9, 0.3)  # bright gold on crack
 
 # ─── lifecycle ───────────────────────────────────────────────────────────────
+
 
 func _ready() -> void:
 	add_to_group(Groups.WORLD_EVENTS)
@@ -68,12 +71,15 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 
+
 func _set_pos_meta() -> void:
 	set_meta("event_pos", global_position)
+
 
 # ─── proximity tracking ───────────────────────────────────────────────────────
 
 var _nearby_players: int = 0
+
 
 func _on_body_entered(body: Node) -> void:
 	if _cracked:
@@ -82,13 +88,16 @@ func _on_body_entered(body: Node) -> void:
 		_nearby_players += 1
 		Events.interaction_available.emit(tr("[Hold] Crack supply cache"), self)
 
+
 func _on_body_exited(body: Node) -> void:
 	if body != null and body.is_in_group(Groups.PLAYERS):
 		_nearby_players = maxi(0, _nearby_players - 1)
 	if _nearby_players == 0 and not _cracked:
 		Events.interaction_cleared.emit()
 
+
 # ─── server-authoritative hold tick ──────────────────────────────────────────
+
 
 func _physics_process(delta: float) -> void:
 	if _cracked or not _is_server:
@@ -107,17 +116,21 @@ func _physics_process(delta: float) -> void:
 			var ratio: float = _hold_elapsed / maxf(Settings.SUPPLY_CACHE_HOLD_TIME, 0.001)
 			Events.world_event_progress.emit(0, ratio)
 
+
 ## Lane C interface: current hold ratio (0..1).
 func event_ratio() -> float:
 	if _cracked:
 		return 1.0
 	return clampf(_hold_elapsed / maxf(Settings.SUPPLY_CACHE_HOLD_TIME, 0.001), 0.0, 1.0)
 
+
 ## Lane C interface: label string.
 func event_label() -> String:
 	return tr("Supply Cache")
 
+
 # ─── crack: spawn loot + signals ─────────────────────────────────────────────
+
 
 func _crack() -> void:
 	if _cracked:
@@ -143,6 +156,7 @@ func _crack() -> void:
 	# Free ourselves after a short delay so the beacon flash is visible.
 	await get_tree().create_timer(3.0).timeout
 	queue_free()
+
 
 func _spawn_loot() -> void:
 	# Determine the loot container to parent pickups into.
@@ -176,22 +190,20 @@ func _spawn_loot() -> void:
 
 	var count: int = Settings.SUPPLY_CACHE_LOOT
 	for i in range(count):
-		var item_id: String = "loot_scrap"   # fallback id
+		var item_id: String = "loot_scrap"  # fallback id
 		if lt_script != null and lt_script.has_method("roll_by_tier"):
 			var rolled: String = lt_script.call("roll_by_tier", tier)
 			if rolled != "":
 				item_id = rolled
 
-		var jitter := Vector3(
-			randf_range(-1.5, 1.5),
-			0.1,
-			randf_range(-1.5, 1.5)
-		)
+		var jitter := Vector3(randf_range(-1.5, 1.5), 0.1, randf_range(-1.5, 1.5))
 		lp_script.call("spawn_at", loot_parent, global_position + jitter, item_id, 1)
+
 
 # ─── procedural beacon ───────────────────────────────────────────────────────
 # Mirrors extraction_zone.gd's beacon — a core sphere + pillar + OmniLight + rings.
 # Tinted amber-gold (supply cache aesthetic). Headless skips all visuals.
+
 
 func _build_beacon() -> void:
 	if DisplayServer.get_name() == "headless":
@@ -265,6 +277,7 @@ func _build_beacon() -> void:
 
 	set_process(true)
 
+
 func _emis(tint: Color, energy: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = tint * 0.4
@@ -274,6 +287,7 @@ func _emis(tint: Color, energy: float) -> StandardMaterial3D:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_beacon_mats.append(m)
 	return m
+
 
 func _additive(tint: Color, energy: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -287,6 +301,7 @@ func _additive(tint: Color, energy: float) -> StandardMaterial3D:
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_beacon_mats.append(m)
 	return m
+
 
 func _apply_beacon_tint(tint: Color, energy_mul: float) -> void:
 	if _beacon == null:
@@ -303,9 +318,11 @@ func _apply_beacon_tint(tint: Color, energy_mul: float) -> void:
 		_beacon_light.light_energy = 4.0 * energy_mul
 	_beacon_pulse_base = energy_mul
 
+
 func _apply_beacon_crack() -> void:
 	# Bright gold flash on crack.
 	_apply_beacon_tint(_CRACK_TINT, 2.0)
+
 
 func _process(delta: float) -> void:
 	if _beacon == null:
@@ -331,7 +348,9 @@ func _process(delta: float) -> void:
 	if _beacon_pillar != null:
 		var pm := _beacon_pillar.material_override as StandardMaterial3D
 		if pm != null:
-			pm.emission_energy_multiplier = (1.4 * _beacon_pulse_base) * (1.0 + 0.18 * sin(_beacon_time * 1.3))
+			pm.emission_energy_multiplier = (
+				(1.4 * _beacon_pulse_base) * (1.0 + 0.18 * sin(_beacon_time * 1.3))
+			)
 
 	# Expanding/fading rings.
 	var n: int = _beacon_rings.size()

@@ -10,22 +10,23 @@ class_name AttachmentData
 ## permanent-upgrade mults, on the duplicated WeaponData (so the cached .tres is safe).
 
 ## Equip slot — at most one attachment per slot per weapon.
-@export var slot: String = "optic"             # optic | mag | barrel | grip
+@export var slot: String = "optic"  # optic | mag | barrel | grip
 ## Weapon ids this fits; empty = fits all weapons.
 @export var compatible_weapons: PackedStringArray = PackedStringArray()
 
 # --- Stat modifiers (multiplicative unless _add) ---
 @export var damage_mult: float = 1.0
 @export var fire_rate_mult: float = 1.0
-@export var recoil_mult: float = 1.0           # <1 = less kick
-@export var spread_mult: float = 1.0           # <1 = tighter
-@export var reload_mult: float = 1.0           # <1 = faster
-@export var ads_fov_mult: float = 1.0          # <1 = more zoom
+@export var recoil_mult: float = 1.0  # <1 = less kick
+@export var spread_mult: float = 1.0  # <1 = tighter
+@export var reload_mult: float = 1.0  # <1 = faster
+@export var ads_fov_mult: float = 1.0  # <1 = more zoom
 @export var range_mult: float = 1.0
 @export var mag_add: int = 0
 @export var reserve_add: int = 0
 @export var crit_add: float = 0.0
-@export var noise_mult: float = 1.0        # <1 = quieter (suppressor); composable
+@export var noise_mult: float = 1.0  # <1 = quieter (suppressor); composable
+
 
 ## Applies this attachment's mods to a (duplicated) WeaponData in place.
 func apply_to(w: WeaponData) -> void:
@@ -41,6 +42,7 @@ func apply_to(w: WeaponData) -> void:
 	w.crit_mult = maxf(1.0, w.crit_mult + crit_add)
 	if "noise_mult" in w:
 		w.noise_mult *= noise_mult
+
 
 ## True when this attachment fits the given weapon id.
 func fits(weapon_id: String) -> bool:

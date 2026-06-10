@@ -20,11 +20,12 @@ extends Node
 
 # Zones we're driving this match, in a stable order (phase offset = index * stagger).
 var _zones: Array[Node] = []
-var _active: bool = false        # rotating this match (server-auth only)
-var _elapsed: float = 0.0        # seconds since the match started
-var _emit_accum: float = 0.0     # throttle periodic re-emits to ~1x/sec
+var _active: bool = false  # rotating this match (server-auth only)
+var _elapsed: float = 0.0  # seconds since the match started
+var _emit_accum: float = 0.0  # throttle periodic re-emits to ~1x/sec
 const EMIT_INTERVAL: float = 1.0
-var _forced_open: bool = false   # latched once storm forces all zones open
+var _forced_open: bool = false  # latched once storm forces all zones open
+
 
 func _ready() -> void:
 	# Re-(arm) the rotation whenever a match starts. Offline arenas may emit
@@ -40,11 +41,13 @@ func _ready() -> void:
 	if GameState.phase == GameState.Phase.IN_MATCH:
 		_on_match_started.call_deferred()
 
+
 func _on_match_started() -> void:
 	# Server (incl. offline host) only — clients mirror via Events.
 	if not GameState.is_local_authority_server():
 		return
 	_gather_zones.call_deferred()
+
 
 func _on_match_over() -> void:
 	_active = false
@@ -52,6 +55,7 @@ func _on_match_over() -> void:
 	_elapsed = 0.0
 	_emit_accum = 0.0
 	_forced_open = false
+
 
 ## Collect the arena's extraction zones (deferred so they've finished _ready and joined
 ## the group). Seed each zone's initial window from its phase offset.
@@ -71,6 +75,7 @@ func _gather_zones() -> void:
 	_active = true
 	# Push the starting state immediately so UIs render correct countdowns at t=0.
 	_apply_windows(true)
+
 
 func _process(delta: float) -> void:
 	if not _active or not GameState.is_local_authority_server():
@@ -105,6 +110,7 @@ func _process(delta: float) -> void:
 		_emit_accum = 0.0
 	_apply_windows(periodic)
 
+
 ## Compute each zone's open/closed state + remaining time from the match clock and
 ## drive it via set_window(). set_window only emits on a real state change unless we
 ## pass it the same state (which it treats as a countdown refresh) — so `force` (or a
@@ -131,6 +137,6 @@ func _apply_windows(force: bool) -> void:
 		# Always call when a flip is needed (set_window no-ops same-state unless we
 		# want a refresh). To get periodic countdown refreshes we call on `force` too;
 		# set_window emits a refresh for same-state and a full flip otherwise.
-		var changed: bool = (z.has_method("is_open") and bool(z.is_open()) != is_open)
+		var changed: bool = z.has_method("is_open") and bool(z.is_open()) != is_open
 		if force or changed:
 			z.set_window(is_open, maxf(remaining, 0.0))

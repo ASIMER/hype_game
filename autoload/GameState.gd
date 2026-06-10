@@ -21,16 +21,22 @@ var match_duration: float = 0.0
 var match_time_left: float = 0.0
 var final_wave: bool = false
 
+
 func match_timer_ratio() -> float:
 	if match_duration <= 0.0:
 		return 0.0
 	return clampf(match_time_left / match_duration, 0.0, 1.0)
 
+
 func difficulty_name() -> String:
 	match difficulty:
-		Difficulty.EASY: return "EASY"
-		Difficulty.HARD: return "HARD"
-		_: return "NORMAL"
+		Difficulty.EASY:
+			return "EASY"
+		Difficulty.HARD:
+			return "HARD"
+		_:
+			return "NORMAL"
+
 
 # peer_id -> { name: String, ready: bool, alive: bool, extracted: bool }
 var peers: Dictionary = {}
@@ -47,24 +53,30 @@ var mobs_killed: int = 0
 var downed: Dictionary = {}
 var revives: Dictionary = {}
 
+
 ## Record one mob kill by `peer_id` (server-side). Returns nothing; caller broadcasts.
 func record_kill(peer_id: int) -> void:
 	kills[peer_id] = int(kills.get(peer_id, 0)) + 1
 	mobs_killed += 1
 
+
 func record_death(peer_id: int) -> void:
 	deaths[peer_id] = int(deaths.get(peer_id, 0)) + 1
+
 
 ## Mark/clear a peer's DOWNED (bleedout) state — server-authoritative.
 func set_downed(peer_id: int, value: bool) -> void:
 	downed[peer_id] = value
 
+
 func is_downed(peer_id: int) -> bool:
 	return bool(downed.get(peer_id, false))
+
 
 ## Credit `peer_id` with a successful teammate revive (the reputation stat).
 func record_revive(peer_id: int) -> void:
 	revives[peer_id] = int(revives.get(peer_id, 0)) + 1
+
 
 ## True if at least one peer is still UP (alive, not downed, not extracted) — i.e. the squad
 ## can still revive/fight. The match is lost only when NO ONE is up and no one extracted.
@@ -74,6 +86,7 @@ func any_player_up() -> bool:
 		if p["alive"] and not p["extracted"] and not is_downed(id):
 			return true
 	return false
+
 
 func reset_match() -> void:
 	current_wave = 0
@@ -89,20 +102,25 @@ func reset_match() -> void:
 		peers[id]["extracted"] = false
 		peers[id]["ready"] = false
 
+
 func register_peer(peer_id: int, pname: String) -> void:
-	peers[peer_id] = { "name": pname, "ready": false, "alive": true, "extracted": false }
+	peers[peer_id] = {"name": pname, "ready": false, "alive": true, "extracted": false}
 	Events.peer_registered.emit(peer_id, peers[peer_id])
+
 
 func unregister_peer(peer_id: int) -> void:
 	if peers.has(peer_id):
 		peers.erase(peer_id)
 		Events.peer_unregistered.emit(peer_id)
 
+
 func set_phase(p: int) -> void:
 	phase = p
 
+
 func is_local_authority_server() -> bool:
 	return not multiplayer.has_multiplayer_peer() or multiplayer.is_server()
+
 
 ## This peer's id (1 when offline / host).
 func local_peer_id() -> int:
@@ -110,9 +128,11 @@ func local_peer_id() -> int:
 		return 1
 	return multiplayer.get_unique_id()
 
+
 ## The squad leader is always the host (peer 1). This peer leads if it's the host.
 func is_leader() -> bool:
 	return is_local_authority_server()
+
 
 ## True when every NON-leader squad member is marked ready (the host/leader is
 ## implicitly ready). Used to gate START RAID. Host-alone → true.
@@ -124,10 +144,12 @@ func squad_all_ready() -> bool:
 			return false
 	return true
 
+
 ## Mark a peer ready/unready in the roster (server-side).
 func set_peer_ready(peer_id: int, ready: bool) -> void:
 	if peers.has(peer_id):
 		peers[peer_id]["ready"] = ready
+
 
 ## True when every registered peer is marked alive==false or extracted (match over).
 func all_players_resolved() -> bool:
@@ -139,10 +161,12 @@ func all_players_resolved() -> bool:
 			return false
 	return true
 
+
 ## Flag a peer as dead (called on the server when its player's Health hits 0).
 func mark_dead(peer_id: int) -> void:
 	if peers.has(peer_id):
 		peers[peer_id]["alive"] = false
+
 
 ## True when every registered peer is dead and none extracted — a total wipe (loss).
 ## (If anyone extracted, that's a win path handled by all_players_resolved + match_won.)

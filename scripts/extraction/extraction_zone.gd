@@ -25,13 +25,13 @@ var _beacon_core: MeshInstance3D = null
 var _beacon_pillar: MeshInstance3D = null
 var _beacon_light: OmniLight3D = null
 var _beacon_rings: Array[MeshInstance3D] = []
-var _beacon_spin_ring: MeshInstance3D = null       # slowly-rotating glowing ground ring
-var _beacon_decal: Decal = null                    # soft radial ground glow (recoloured on flip)
-var _beacon_mats: Array[StandardMaterial3D] = []   # all tinted mats (recolour on flip)
+var _beacon_spin_ring: MeshInstance3D = null  # slowly-rotating glowing ground ring
+var _beacon_decal: Decal = null  # soft radial ground glow (recoloured on flip)
+var _beacon_mats: Array[StandardMaterial3D] = []  # all tinted mats (recolour on flip)
 var _beacon_time: float = 0.0
-var _beacon_pulse_base: float = 1.0          # 1.0 open / dimmer when closed
-const _OPEN_TINT := Color(0.25, 1.0, 0.6)    # green/teal
-const _CLOSED_TINT := Color(0.95, 0.6, 0.15) # dim amber
+var _beacon_pulse_base: float = 1.0  # 1.0 open / dimmer when closed
+const _OPEN_TINT := Color(0.25, 1.0, 0.6)  # green/teal
+const _CLOSED_TINT := Color(0.95, 0.6, 0.15)  # dim amber
 
 # --- Timed open/close window (driven server-auth by ExtractionDirector) ---
 # Zones rotate between OPEN (extraction works) and CLOSED (fill is paused/ignored).
@@ -40,14 +40,17 @@ const _CLOSED_TINT := Color(0.95, 0.6, 0.15) # dim amber
 var _open: bool = true
 var _window_remaining: float = 0.0
 
+
 ## True while this zone accepts extraction progress.
 func is_open() -> bool:
 	return _open
+
 
 ## Seconds left in the current open/closed window (informational; the director owns
 ## the authoritative countdown). 0 if unknown.
 func window_remaining() -> float:
 	return _window_remaining
+
 
 ## Server-auth: flip the open/closed state. Closing resets every in-progress fill
 ## (players must re-start when it reopens). Re-emits the window state for UIs.
@@ -59,7 +62,7 @@ func set_window(open: bool, remaining: float) -> void:
 		Events.extraction_window_changed.emit(self, _open, _window_remaining)
 		return
 	_open = open
-	_apply_beacon_tint()   # recolour the landmark beacon on a state flip (visual only)
+	_apply_beacon_tint()  # recolour the landmark beacon on a state flip (visual only)
 	if not _open:
 		# Closing: cancel anyone mid-extraction so they don't silently bank progress.
 		for body in _timers.keys():
@@ -72,8 +75,9 @@ func set_window(open: bool, remaining: float) -> void:
 			_on_body_entered(body)
 	Events.extraction_window_changed.emit(self, _open, _window_remaining)
 
+
 func _ready() -> void:
-	add_to_group(Groups.EXTRACTION)   # so the minimap/compass can mark zones
+	add_to_group(Groups.EXTRACTION)  # so the minimap/compass can mark zones
 	# Visual beacon (clients build it too so the landmark shows on every machine).
 	_build_beacon()
 	_is_server = GameState.is_local_authority_server()
@@ -87,6 +91,7 @@ func _ready() -> void:
 	# Pick up any players already overlapping when we attach.
 	for body in get_overlapping_bodies():
 		_on_body_entered(body)
+
 
 func _on_body_entered(body: Node) -> void:
 	if not _is_player(body):
@@ -103,6 +108,7 @@ func _on_body_entered(body: Node) -> void:
 	Events.extraction_started.emit(body, self)
 	Events.extraction_progress.emit(body, 0.0)
 
+
 func _on_body_exited(body: Node) -> void:
 	if not _timers.has(body):
 		return
@@ -110,6 +116,7 @@ func _on_body_exited(body: Node) -> void:
 	# Don't fire a spurious cancel for a player who already finished.
 	if not _completed.has(body):
 		Events.extraction_cancelled.emit(body)
+
 
 func _physics_process(delta: float) -> void:
 	# Closed window: no progress accrues (timers are cleared on close, but guard so a
@@ -130,18 +137,24 @@ func _physics_process(delta: float) -> void:
 		if ratio >= 1.0:
 			_complete(body)
 
+
 func _complete(body: Node) -> void:
 	_timers.erase(body)
 	_completed[body] = true
 	# A DOWNED player can crawl into an OPEN evac and self-extract — clear their downed
 	# state first so the bleedout timer can't true-kill them as they extract.
-	if body.has_method("is_downed") and body.is_downed() and body.has_method("cancel_downed_for_extract"):
+	if (
+		body.has_method("is_downed")
+		and body.is_downed()
+		and body.has_method("cancel_downed_for_extract")
+	):
 		body.cancel_downed_for_extract()
 	Events.extraction_completed.emit(body)
 	_mark_extracted(body)
 	_grant_extraction(body)
 	if GameState.all_players_resolved():
 		NetworkManager.broadcast_match_won()
+
 
 ## Server-authoritative payout: the extracting player KEEPS its haul. We build the
 ## deposit from the found-loot Inventory (server-side authoritative) + the surviving
@@ -156,17 +169,19 @@ func _grant_extraction(body: Node) -> void:
 		for s in inv.stacks:
 			var it: ItemData = s.get("item", null)
 			if it != null:
-				stacks.append({ "id": it.id, "count": int(s.get("count", 0)) })
+				stacks.append({"id": it.id, "count": int(s.get("count", 0))})
 	if body.has_method("extracted_consumables"):
 		stacks.append_array(body.extracted_consumables())
 	var survival_bonus := 50 + GameState.current_wave * 25
 	RaidManager.grant_extraction(peer_id, stacks, survival_bonus)
+
 
 ## Resolve the player node to a peer id and flag it extracted in GameState.
 func _mark_extracted(body: Node) -> void:
 	var peer_id := _peer_id_for(body)
 	if peer_id != 0 and GameState.peers.has(peer_id):
 		GameState.peers[peer_id]["extracted"] = true
+
 
 func _peer_id_for(body: Node) -> int:
 	# Player nodes are named after their peer id (see arena.gd _spawn_player).
@@ -176,11 +191,14 @@ func _peer_id_for(body: Node) -> int:
 		return body.get_multiplayer_authority()
 	return 0
 
+
 func _is_player(body: Node) -> bool:
 	return body != null and body.is_in_group(Groups.PLAYERS)
 
+
 # ============================================================ PROCEDURAL BEACON
 # Visual landmark only — none of this touches the server-auth window/progress logic.
+
 
 ## Build the beacon assembly under the zone: hide the old translucent box, add a
 ## glowing core, a tall additive light pillar, an OmniLight3D, and animated rings.
@@ -273,7 +291,7 @@ func _build_beacon() -> void:
 	beam_mesh.height = 22.0
 	beam_mesh.radial_segments = 24
 	beam.mesh = beam_mesh
-	beam.material_override = _additive(tint, 0.6)   # softer than the central pillar
+	beam.material_override = _additive(tint, 0.6)  # softer than the central pillar
 	beam.position = Vector3(0, 11.0, 0)
 	_beacon.add_child(beam)
 
@@ -307,11 +325,13 @@ func _build_beacon() -> void:
 	_apply_beacon_tint()
 	set_process(true)
 
+
 ## Emissive solid material (registered for recolour on state flip).
 func _emis(tint: Color, energy: float) -> StandardMaterial3D:
 	var m := ProcMaterials.emissive(tint, energy, tint * 0.4)
 	_beacon_mats.append(m)
 	return m
+
 
 ## Additive, transparent, unshaded material for the pillar/rings (so they read as
 ## light, not solid geometry). Registered for recolour on state flip.
@@ -328,12 +348,13 @@ func _additive(tint: Color, energy: float) -> StandardMaterial3D:
 	_beacon_mats.append(m)
 	return m
 
+
 ## Recolour every beacon material + the light to match the current open/closed state.
 func _apply_beacon_tint() -> void:
 	if _beacon == null:
 		return
 	var tint := _OPEN_TINT if _open else _CLOSED_TINT
-	var energy_mul := 1.0 if _open else 0.55   # dim when closed
+	var energy_mul := 1.0 if _open else 0.55  # dim when closed
 	for m in _beacon_mats:
 		m.emission = tint
 		# Preserve each material's relative alpha while restating the hue.
@@ -349,6 +370,7 @@ func _apply_beacon_tint() -> void:
 	if _beacon_decal != null:
 		_beacon_decal.modulate = tint
 	_beacon_pulse_base = energy_mul
+
 
 ## Animate the beacon: a gentle core pulse + expanding/fading rings + a slow pillar
 ## shimmer. Cheap; disabled entirely on headless (set_process(false) in _build).
@@ -370,7 +392,9 @@ func _process(delta: float) -> void:
 	if _beacon_pillar != null:
 		var pm := _beacon_pillar.material_override as StandardMaterial3D
 		if pm != null:
-			pm.emission_energy_multiplier = (1.6 * _beacon_pulse_base) * (1.0 + 0.2 * sin(_beacon_time * 1.5))
+			pm.emission_energy_multiplier = (
+				(1.6 * _beacon_pulse_base) * (1.0 + 0.2 * sin(_beacon_time * 1.5))
+			)
 	# Expanding/fading rings — each ring grows from ~1 to ~4.5 then resets, fading out.
 	var n := _beacon_rings.size()
 	for i in range(n):

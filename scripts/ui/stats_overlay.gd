@@ -13,8 +13,8 @@ extends CanvasLayer
 ## appear when the active peer is an ENetMultiplayerPeer (single-player uses an
 ## OfflineMultiplayerPeer — must be hard-guarded).
 
-const SAMPLE_INTERVAL := 0.16   # ~6 Hz sampling/redraw throttle
-const FPS_HISTORY_CAP := 120    # rolling samples for 1%-low / min FPS + the graph
+const SAMPLE_INTERVAL := 0.16  # ~6 Hz sampling/redraw throttle
+const FPS_HISTORY_CAP := 120  # rolling samples for 1%-low / min FPS + the graph
 const FRAME_HISTORY_CAP := 120
 const PING_HISTORY_CAP := 120
 const GRAPH_W := 220.0
@@ -28,7 +28,7 @@ const GRAPH_STACK_H_FALLBACK := 200.0
 # --- Config state (mirrors the persisted SettingsManager values).
 var _show_fps: bool = false
 var _show_detailed: bool = false
-var _mode: int = 0   # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
+var _mode: int = 0  # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
 
 # --- Sampling throttle.
 var _accum: float = 0.0
@@ -81,6 +81,7 @@ func _ready() -> void:
 
 
 # --- UI construction -------------------------------------------------------
+
 
 func _build_ui() -> void:
 	_root = Control.new()
@@ -144,6 +145,7 @@ func _build_ui() -> void:
 
 # --- Config ----------------------------------------------------------------
 
+
 func set_config(show_fps: bool, show_detailed: bool, mode: int) -> void:
 	_show_fps = show_fps
 	_show_detailed = show_detailed
@@ -202,12 +204,15 @@ func _apply_hud_inset() -> void:
 
 
 func _is_anything_visible() -> bool:
-	return (_fps_label != null and _fps_label.visible) \
-		or (_numeric_panel != null and _numeric_panel.visible) \
+	return (
+		(_fps_label != null and _fps_label.visible)
+		or (_numeric_panel != null and _numeric_panel.visible)
 		or (_graph_ctrl != null and _graph_ctrl.visible)
+	)
 
 
 # --- Sampling loop ---------------------------------------------------------
+
 
 func _process(delta: float) -> void:
 	if not _is_anything_visible():
@@ -295,7 +300,7 @@ func _sample_network() -> void:
 		var rec: Dictionary = _net_peers.get(pid, {})
 		var hist: PackedFloat32Array = rec.get("hist", PackedFloat32Array())
 		_push_capped(hist, ping, PING_HISTORY_CAP)
-		_net_peers[pid] = { "name": pname, "ping": ping, "loss": loss, "hist": hist }
+		_net_peers[pid] = {"name": pname, "ping": ping, "loss": loss, "hist": hist}
 		seen[pid] = true
 	# Drop peers that left.
 	for pid_v in _net_peers.keys():
@@ -304,6 +309,7 @@ func _sample_network() -> void:
 
 
 # --- View refresh ----------------------------------------------------------
+
 
 func _refresh_views() -> void:
 	if _fps_label != null and _fps_label.visible:
@@ -317,8 +323,10 @@ func _refresh_views() -> void:
 func _update_numeric() -> void:
 	if _numeric_label == null:
 		return
-	var t := "[b]FPS[/b] %d  ([color=#aaff99]1%%low %d  min %d[/color])\n" % [
-		int(round(_fps)), int(round(_fps_1low)), int(round(_fps_min))]
+	var t := (
+		"[b]FPS[/b] %d  ([color=#aaff99]1%%low %d  min %d[/color])\n"
+		% [int(round(_fps)), int(round(_fps_1low)), int(round(_fps_min))]
+	)
 	t += "frame %.2fms   phys %.2fms\n" % [_frame_ms, _phys_ms]
 	t += "draws %d   prims %s\n" % [_draw_calls, _fmt_count(_primitives)]
 	t += "vram %.1f MB   mem %.1f MB\n" % [_video_mem_mb, _static_mem_mb]
@@ -327,10 +335,14 @@ func _update_numeric() -> void:
 		t += "\n[b]NET[/b] %s   peers %d" % [_net_role, GameState.peers.size()]
 		for pid_v in _net_peers.keys():
 			var rec: Dictionary = _net_peers[pid_v]
-			t += "\n  %s  %dms  %.1f%%" % [
-				String(rec.get("name", "?")),
-				int(round(float(rec.get("ping", 0.0)))),
-				float(rec.get("loss", 0.0))]
+			t += (
+				"\n  %s  %dms  %.1f%%"
+				% [
+					String(rec.get("name", "?")),
+					int(round(float(rec.get("ping", 0.0)))),
+					float(rec.get("loss", 0.0))
+				]
+			)
 	_numeric_label.text = t
 
 
@@ -343,19 +355,36 @@ func _fmt_count(n: int) -> String:
 
 
 # Accessors used by the inner GraphDraw class.
-func get_fps_hist() -> PackedFloat32Array: return _fps_hist
-func get_frame_hist() -> PackedFloat32Array: return _frame_hist
-func get_fps() -> float: return _fps
-func get_frame_ms() -> float: return _frame_ms
-func get_net_active() -> bool: return _net_active
-func get_net_peers() -> Dictionary: return _net_peers
+func get_fps_hist() -> PackedFloat32Array:
+	return _fps_hist
+
+
+func get_frame_hist() -> PackedFloat32Array:
+	return _frame_hist
+
+
+func get_fps() -> float:
+	return _fps
+
+
+func get_frame_ms() -> float:
+	return _frame_ms
+
+
+func get_net_active() -> bool:
+	return _net_active
+
+
+func get_net_peers() -> Dictionary:
+	return _net_peers
 
 
 # ===========================================================================
 ## Inner custom-drawn Control: 2-3 stacked rolling graphs (FPS, frame-time, and a
 ## per-peer ping graph when networked). Mirrors the project's _draw()+queue_redraw()
 ## rolling-buffer idiom (see minimap.gd / map_ui.gd's MapDraw).
-class GraphDraw extends Control:
+class GraphDraw:
+	extends Control
 	var owner_overlay = null
 
 	func _draw() -> void:
@@ -369,16 +398,26 @@ class GraphDraw extends Control:
 
 		# FPS graph (green polyline; auto-scaled, but at least 0..120).
 		var fps_hist: PackedFloat32Array = owner_overlay.get_fps_hist()
-		_graph(font, Rect2(0, y, w, h), fps_hist,
+		_graph(
+			font,
+			Rect2(0, y, w, h),
+			fps_hist,
 			"FPS  %d" % int(round(owner_overlay.get_fps())),
-			Color(0.4, 1.0, 0.55, 0.95), 120.0)
+			Color(0.4, 1.0, 0.55, 0.95),
+			120.0
+		)
 		y += h + gap
 
 		# Frame-time graph (amber; ms, at least 0..33ms / ~30fps budget).
 		var frame_hist: PackedFloat32Array = owner_overlay.get_frame_hist()
-		_graph(font, Rect2(0, y, w, h), frame_hist,
+		_graph(
+			font,
+			Rect2(0, y, w, h),
+			frame_hist,
 			"frame  %.1fms" % owner_overlay.get_frame_ms(),
-			Color(1.0, 0.75, 0.35, 0.95), 33.0)
+			Color(1.0, 0.75, 0.35, 0.95),
+			33.0
+		)
 		y += h + gap
 
 		# Per-peer ping graph (networked only).
@@ -390,8 +429,11 @@ class GraphDraw extends Control:
 				var maxv: float = 50.0
 				var i: int = 0
 				var palette := [
-					Color(0.5, 0.8, 1.0, 0.95), Color(1.0, 0.6, 0.9, 0.95),
-					Color(0.9, 0.9, 0.5, 0.95), Color(0.6, 1.0, 0.8, 0.95)]
+					Color(0.5, 0.8, 1.0, 0.95),
+					Color(1.0, 0.6, 0.9, 0.95),
+					Color(0.9, 0.9, 0.5, 0.95),
+					Color(0.6, 1.0, 0.8, 0.95)
+				]
 				# First pass: find the shared vertical scale.
 				for pid_v in peers.keys():
 					var rec0: Dictionary = peers[pid_v]
@@ -406,32 +448,58 @@ class GraphDraw extends Control:
 					var col: Color = palette[i % palette.size()]
 					var hist: PackedFloat32Array = rec.get("hist", PackedFloat32Array())
 					_polyline(rect, hist, col, maxv)
-					var lbl: String = "%s %dms" % [
-						String(rec.get("name", "?")),
-						int(round(float(rec.get("ping", 0.0))))]
-					draw_string(font, Vector2(rect.position.x + 4.0, ly), lbl,
-						HORIZONTAL_ALIGNMENT_LEFT, w - 8.0, 11, col)
+					var lbl: String = (
+						"%s %dms"
+						% [String(rec.get("name", "?")), int(round(float(rec.get("ping", 0.0))))]
+					)
+					draw_string(
+						font,
+						Vector2(rect.position.x + 4.0, ly),
+						lbl,
+						HORIZONTAL_ALIGNMENT_LEFT,
+						w - 8.0,
+						11,
+						col
+					)
 					ly += 13.0
 					i += 1
-				draw_string(font, Vector2(rect.position.x + 4.0,
-					rect.position.y + rect.size.y - 4.0),
+				draw_string(
+					font,
+					Vector2(rect.position.x + 4.0, rect.position.y + rect.size.y - 4.0),
 					"ping  max %dms" % int(round(maxv)),
-					HORIZONTAL_ALIGNMENT_LEFT, w - 8.0, 11, Color(0.8, 0.85, 0.9, 0.7))
+					HORIZONTAL_ALIGNMENT_LEFT,
+					w - 8.0,
+					11,
+					Color(0.8, 0.85, 0.9, 0.7)
+				)
 				custom_minimum_size = Vector2(w + 16.0, y + h + 4.0)
 				return
 		custom_minimum_size = Vector2(w + 16.0, y + 4.0)
 
 	# One labelled rolling graph (translucent bg + green/amber polyline + value text).
-	func _graph(font: Font, rect: Rect2, hist: PackedFloat32Array, label: String,
-			col: Color, floor_max: float) -> void:
+	func _graph(
+		font: Font,
+		rect: Rect2,
+		hist: PackedFloat32Array,
+		label: String,
+		col: Color,
+		floor_max: float
+	) -> void:
 		_graph_bg(rect)
 		var maxv: float = floor_max
 		for v in hist:
 			if v > maxv:
 				maxv = v
 		_polyline(rect, hist, col, maxv)
-		draw_string(font, Vector2(rect.position.x + 4.0, rect.position.y + 13.0),
-			label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8.0, 12, col)
+		draw_string(
+			font,
+			Vector2(rect.position.x + 4.0, rect.position.y + 13.0),
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			rect.size.x - 8.0,
+			12,
+			col
+		)
 
 	func _graph_bg(rect: Rect2) -> void:
 		draw_rect(rect, Color(0.02, 0.03, 0.05, 0.45), true)

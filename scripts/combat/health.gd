@@ -24,8 +24,10 @@ var _last_attacker: Node = null
 ## The player sets this for armor / overshield buffs; enemies leave it unset (no-op).
 var damage_filter: Callable = Callable()
 
+
 func _ready() -> void:
 	current = max_health
+
 
 ## Only call on the authority of the owning entity. Returns nothing; listen to
 ## signals or Events.damage_dealt / Events.entity_died for reactions.
@@ -43,17 +45,20 @@ func take_damage(amount: float, source: Node = null) -> void:
 	if current <= 0.0:
 		_die(source)
 
+
 func heal(amount: float) -> void:
 	if is_dead or amount <= 0.0:
 		return
 	current = minf(max_health, current + amount)
 	health_changed.emit(current, max_health)
 
+
 func set_max_health(value: float, refill: bool = true) -> void:
 	max_health = value
 	if refill:
 		current = value
 	health_changed.emit(current, max_health)
+
 
 func _die(killer: Node) -> void:
 	is_dead = true

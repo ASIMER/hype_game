@@ -22,27 +22,28 @@ class_name StashTab
 
 # ------------------------------------------------------------------ scene nodes
 @onready var _header_value_label: Label = %HeaderValueLabel
-@onready var _grid: GridContainer         = %ItemGrid
-@onready var _empty_label: Label          = %EmptyLabel
+@onready var _grid: GridContainer = %ItemGrid
+@onready var _empty_label: Label = %EmptyLabel
 # Action popup (created programmatically, reused across slots)
 var _popup: PopupMenu = null
 # Track which slot's item the popup refers to.
 var _popup_item_id: String = ""
-var _popup_item_count: int  = 0
+var _popup_item_count: int = 0
 # Capacity bar — built once in _ready, refreshed in _refresh().
 var _cap_bar: ProgressBar = null
-var _cap_label: Label     = null
+var _cap_label: Label = null
 
-const SLOT_SIZE   := Vector2(64, 64)
-const GRID_COLS   := 6
+const SLOT_SIZE := Vector2(64, 64)
+const GRID_COLS := 6
 
 # PopupMenu item ids
-const _ACT_SELL_ONE  := 0
-const _ACT_SELL_ALL  := 1
-const _ACT_RECYCLE   := 2
+const _ACT_SELL_ONE := 0
+const _ACT_SELL_ALL := 1
+const _ACT_RECYCLE := 2
 
 # Sort state — when true the grid is sorted by value desc instead of stash order.
 var _sorted: bool = false
+
 
 func _ready() -> void:
 	_grid.columns = GRID_COLS
@@ -56,14 +57,16 @@ func _ready() -> void:
 		UIStyle.make_header(_header_value_label, UIStyle.AMBER, 18, 2)
 	_refresh()
 
+
 # ------------------------------------------------------------------ popup setup
 func _build_popup() -> void:
 	_popup = PopupMenu.new()
 	add_child(_popup)
-	_popup.add_item(tr("Sell 1"),    _ACT_SELL_ONE)
-	_popup.add_item(tr("Sell All"),  _ACT_SELL_ALL)
+	_popup.add_item(tr("Sell 1"), _ACT_SELL_ONE)
+	_popup.add_item(tr("Sell All"), _ACT_SELL_ALL)
 	_popup.add_item(tr("Recycle 1"), _ACT_RECYCLE)
 	_popup.id_pressed.connect(_on_popup_action)
+
 
 # ------------------------------------------------------------------ capacity bar
 ## Inserts a weight/capacity bar + label between the separator and the scroll view.
@@ -81,19 +84,19 @@ func _build_capacity_bar() -> void:
 	_cap_bar = ProgressBar.new()
 	_cap_bar.name = "CapacityBar"
 	_cap_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_cap_bar.custom_minimum_size   = Vector2(0, 10)
-	_cap_bar.min_value             = 0.0
-	_cap_bar.max_value             = 200.0   # 200 = 100% of cap (doubled for overflow display)
-	_cap_bar.value                 = 0.0
-	_cap_bar.show_percentage       = false
-	_cap_bar.theme_type_variation  = "FillAmber"
+	_cap_bar.custom_minimum_size = Vector2(0, 10)
+	_cap_bar.min_value = 0.0
+	_cap_bar.max_value = 200.0  # 200 = 100% of cap (doubled for overflow display)
+	_cap_bar.value = 0.0
+	_cap_bar.show_percentage = false
+	_cap_bar.theme_type_variation = "FillAmber"
 	cap_row.add_child(_cap_bar)
 
 	_cap_label = Label.new()
 	_cap_label.name = "CapacityLabel"
 	_cap_label.custom_minimum_size = Vector2(120, 0)
 	_cap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_cap_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	_cap_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_cap_label.add_theme_font_size_override("font_size", 12)
 	cap_row.add_child(_cap_label)
 
@@ -103,12 +106,13 @@ func _build_capacity_bar() -> void:
 	layout.add_child(cap_row)
 	layout.move_child(cap_row, insert_at)
 
+
 ## Refreshes the capacity bar colours and text to reflect the live stash weight.
 ## Called from _refresh() so it stays in sync with every stash_changed signal.
 func _refresh_capacity() -> void:
 	if _cap_bar == null or _cap_label == null:
 		return
-	var w   := Stash.total_weight()
+	var w := Stash.total_weight()
 	var cap := Stash.capacity()
 	var ratio := clampf(w / cap, 0.0, 2.0) if cap > 0.0 else 1.0
 	_cap_bar.value = ratio * 100.0
@@ -116,8 +120,10 @@ func _refresh_capacity() -> void:
 	var fill_col: Color = UIStyle.RED if over else UIStyle.GREEN
 	_cap_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(fill_col))
 	_cap_label.text = tr("%.1f / %.1f kg") % [w, cap]
-	_cap_label.add_theme_color_override("font_color",
-		Color(0.90, 0.20, 0.20) if over else Color(0.55, 0.75, 0.55))
+	_cap_label.add_theme_color_override(
+		"font_color", Color(0.90, 0.20, 0.20) if over else Color(0.55, 0.75, 0.55)
+	)
+
 
 # ------------------------------------------------------------------ footer QoL buttons
 ## Appends a footer HBox with SORT, SELL ALL JUNK, and RECYCLE ALL buttons to
@@ -169,10 +175,12 @@ func _build_footer() -> void:
 	UIStyle.hover_lift(recycle_all_btn)
 	footer.add_child(recycle_all_btn)
 
+
 # ------------------------------------------------------------------ signal handlers
 func _on_currency_changed(_amount: int) -> void:
 	## Refresh the header value when currency changes (sell ripple).
 	_refresh_header()
+
 
 func _refresh() -> void:
 	if not is_inside_tree():
@@ -183,33 +191,37 @@ func _refresh() -> void:
 
 	if Stash.is_empty():
 		_empty_label.visible = true
-		_grid.visible        = false
+		_grid.visible = false
 		return
 
 	_empty_label.visible = false
-	_grid.visible        = true
+	_grid.visible = true
 
 	# Build a working copy of items so sorting does not mutate Stash.items order.
 	var display_items: Array = Stash.items.duplicate()
 	if _sorted:
-		display_items.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-			return ItemCatalog.value_of(String(a["id"])) > ItemCatalog.value_of(String(b["id"]))
+		display_items.sort_custom(
+			func(a: Dictionary, b: Dictionary) -> bool:
+				return ItemCatalog.value_of(String(a["id"])) > ItemCatalog.value_of(String(b["id"]))
 		)
 
 	for entry in display_items:
-		var id: String     = String(entry["id"])
-		var cnt: int       = int(entry["count"])
-		var item: ItemData = ItemCatalog.get_item(id)   # may be null for unknown ids
+		var id: String = String(entry["id"])
+		var cnt: int = int(entry["count"])
+		var item: ItemData = ItemCatalog.get_item(id)  # may be null for unknown ids
 		_grid.add_child(_make_slot(id, cnt, item))
+
 
 # ------------------------------------------------------------------ header
 func _refresh_header() -> void:
 	_header_value_label.text = tr("Total value: %d") % Stash.total_value()
 
+
 # ------------------------------------------------------------------ grid helpers
 func _clear_grid() -> void:
 	for c in _grid.get_children():
 		c.queue_free()
+
 
 ## Builds one 64×64 slot Panel. Mirrors the style from inventory_ui.gd _make_slot().
 ## `item` may be null for unrecognised ids — the slot degrades gracefully.
@@ -229,40 +241,41 @@ func _make_slot(id: String, cnt: int, item: ItemData) -> Control:
 	var icon: Texture2D = AssetRegistry.get_icon(id)
 	if icon != null:
 		var tex := TextureRect.new()
-		tex.texture       = icon
-		tex.expand_mode   = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode  = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.texture = icon
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
-		tex.offset_left   = 6
-		tex.offset_top    = 6
-		tex.offset_right  = -6
+		tex.offset_left = 6
+		tex.offset_top = 6
+		tex.offset_right = -6
 		tex.offset_bottom = -6
-		tex.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(tex)
 	else:
 		var box := ColorRect.new()
 		box.color = AssetRegistry.get_color(id)
 		box.set_anchors_preset(Control.PRESET_FULL_RECT)
-		box.offset_left   = 8
-		box.offset_top    = 8
-		box.offset_right  = -8
+		box.offset_left = 8
+		box.offset_top = 8
+		box.offset_right = -8
 		box.offset_bottom = -8
-		box.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(box)
 
 	# Count badge bottom-right (always shown so the player sees stack size).
 	var badge := Label.new()
-	badge.text                    = "x%d" % cnt
-	badge.horizontal_alignment    = HORIZONTAL_ALIGNMENT_RIGHT
-	badge.vertical_alignment      = VERTICAL_ALIGNMENT_BOTTOM
+	badge.text = "x%d" % cnt
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	badge.set_anchors_preset(Control.PRESET_FULL_RECT)
-	badge.add_theme_color_override("font_color",         Color.WHITE)
+	badge.add_theme_color_override("font_color", Color.WHITE)
 	badge.add_theme_color_override("font_outline_color", Color.BLACK)
-	badge.add_theme_constant_override("outline_size",    4)
-	badge.mouse_filter            = Control.MOUSE_FILTER_IGNORE
+	badge.add_theme_constant_override("outline_size", 4)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(badge)
 
 	return slot
+
 
 ## Dark slot fill with a rarity-colored border (matches inventory_ui.gd style).
 func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
@@ -273,23 +286,28 @@ func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 	sb.set_corner_radius_all(4)
 	return sb
 
+
 ## Rich tooltip: name + rarity + value + description. Degrades when ItemData is null.
 func _tooltip_for(id: String, item: ItemData) -> String:
 	if item == null:
 		return tr("%s\n[Unknown item]") % id
-	return tr("%s\n[%s]\nValue: %d\n\n%s") % [
-		tr(item.display_name),
-		tr(item.rarity_name()),
-		item.value,
-		tr(item.description),
-	]
+	return (
+		tr("%s\n[%s]\nValue: %d\n\n%s")
+		% [
+			tr(item.display_name),
+			tr(item.rarity_name()),
+			item.value,
+			tr(item.description),
+		]
+	)
+
 
 # ------------------------------------------------------------------ slot input
 func _on_slot_input(event: InputEvent, id: String, cnt: int) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_RIGHT:
-			_popup_item_id    = id
+			_popup_item_id = id
 			_popup_item_count = cnt
 			# Grey out SELL actions when ItemData is missing (no value known).
 			var item: ItemData = ItemCatalog.get_item(id)
@@ -300,10 +318,11 @@ func _on_slot_input(event: InputEvent, id: String, cnt: int) -> void:
 			_popup.popup()
 			accept_event()
 
+
 # ------------------------------------------------------------------ actions
 func _on_popup_action(action_id: int) -> void:
-	var id: String    = _popup_item_id
-	var cnt: int      = _popup_item_count
+	var id: String = _popup_item_id
+	var cnt: int = _popup_item_count
 	if id.is_empty():
 		return
 	var item: ItemData = ItemCatalog.get_item(id)
@@ -316,8 +335,9 @@ func _on_popup_action(action_id: int) -> void:
 		_ACT_RECYCLE:
 			_recycle_one(id)
 
-	_popup_item_id    = ""
+	_popup_item_id = ""
 	_popup_item_count = 0
+
 
 ## Remove `n` of `id`, deposit value into MetaProgression currency.
 func _sell(id: String, n: int, item: ItemData) -> void:
@@ -328,6 +348,7 @@ func _sell(id: String, n: int, item: ItemData) -> void:
 		MetaProgression.earn(item.value * removed)
 	# stash_changed + currency_changed signals fire automatically via Stash/MetaProgression.
 
+
 ## Remove 1 of `id` and grant its Crafting.recycle() material yield.
 ## The Crafting autoload handles the material grants and Stash mutations;
 ## stash_changed fires automatically so the UI refreshes.
@@ -335,12 +356,15 @@ func _recycle_one(id: String) -> void:
 	Crafting.recycle(id)
 	# stash_changed fires from inside Crafting.recycle(); UI refreshes.
 
+
 # ------------------------------------------------------------------ QoL actions
+
 
 ## Toggle the sort-by-value-desc display order and re-render the grid.
 func _on_sort_pressed() -> void:
 	_sorted = not _sorted
 	_refresh()
+
 
 ## Sell every COMMON-rarity MATERIAL stack in the stash.
 ## Other rarities (Uncommon+ materials, consumables, weapons) are left alone.
@@ -348,7 +372,7 @@ func _on_sell_all_junk_pressed() -> void:
 	# Snapshot the ids to sell before mutating the stash.
 	var to_sell: Array[String] = []
 	for entry in Stash.items:
-		var id: String     = String(entry["id"])
+		var id: String = String(entry["id"])
 		var item: ItemData = ItemCatalog.get_item(id)
 		if item == null:
 			continue
@@ -363,6 +387,7 @@ func _on_sell_all_junk_pressed() -> void:
 		var item: ItemData = ItemCatalog.get_item(id)
 		_sell(id, cnt, item)
 
+
 ## Recycle every MATERIAL stack that either has an explicit Crafting.RECYCLE
 ## entry or carries a non-zero sale value (so it produces scrap via the
 ## fallback formula). Consumables, Weapons, and Key items are left untouched.
@@ -370,7 +395,7 @@ func _on_recycle_all_pressed() -> void:
 	# Snapshot ids before the stash changes.
 	var to_recycle: Array[String] = []
 	for entry in Stash.items:
-		var id: String     = String(entry["id"])
+		var id: String = String(entry["id"])
 		var item: ItemData = ItemCatalog.get_item(id)
 		# Rule: only MATERIAL kind; skip consumables/weapons/keys.
 		if item == null or item.kind != ItemData.Kind.MATERIAL:

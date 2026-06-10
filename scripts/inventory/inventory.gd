@@ -11,7 +11,7 @@ class_name Inventory
 ##   func total_weight() -> float ; func total_value() -> int
 ##   var stacks: Array[Dictionary]  # [{ item: ItemData, count: int }]
 
-signal changed()
+signal changed
 
 @export var cols: int = Settings.INVENTORY_COLS
 @export var rows: int = Settings.INVENTORY_ROWS
@@ -20,8 +20,10 @@ signal changed()
 # Each entry: { "item": ItemData, "count": int }
 var stacks: Array[Dictionary] = []
 
+
 func capacity_cells() -> int:
 	return cols * rows
+
 
 func used_cells() -> int:
 	var n := 0
@@ -30,17 +32,20 @@ func used_cells() -> int:
 		n += it.grid_w * it.grid_h
 	return n
 
+
 func total_weight() -> float:
 	var w := 0.0
 	for s in stacks:
 		w += (s["item"] as ItemData).weight * s["count"]
 	return w
 
+
 func total_value() -> int:
 	var v := 0
 	for s in stacks:
 		v += (s["item"] as ItemData).value * s["count"]
 	return v
+
 
 func can_add(item: ItemData, count: int) -> bool:
 	if item == null or count <= 0:
@@ -54,6 +59,7 @@ func can_add(item: ItemData, count: int) -> bool:
 				return true
 	# Needs a new cell footprint.
 	return used_cells() + item.grid_w * item.grid_h <= capacity_cells()
+
 
 ## Adds up to `count`; returns the leftover that did not fit.
 func add_item(item: ItemData, count: int) -> int:
@@ -79,11 +85,12 @@ func add_item(item: ItemData, count: int) -> int:
 		# Respect weight while filling the new stack.
 		while put > 1 and total_weight() + item.weight * put > max_weight:
 			put -= 1
-		stacks.append({ "item": item, "count": put })
+		stacks.append({"item": item, "count": put})
 		remaining -= put
 	if remaining != count:
 		_notify()
 	return remaining
+
 
 ## Splits `amount` off the first stack of `item_id` (count > amount) into a NEW
 ## stack of the same item, so the inventory shows two separate stacks. Server-side
@@ -100,10 +107,11 @@ func split_stack(item_id: String, amount: int) -> bool:
 			if used_cells() + it.grid_w * it.grid_h > capacity_cells():
 				return false
 			s["count"] = int(s["count"]) - amount
-			stacks.insert(i + 1, { "item": it, "count": amount })
+			stacks.insert(i + 1, {"item": it, "count": amount})
 			_notify()
 			return true
 	return false
+
 
 ## Removes up to `count` of an item id; returns amount actually removed.
 func remove_item(id: String, count: int) -> int:
@@ -122,6 +130,7 @@ func remove_item(id: String, count: int) -> int:
 		_notify()
 	return removed
 
+
 ## Sorts the stacks array in place by the given mode and notifies listeners.
 ## mode = "name" | "weight" | "value" | "rarity". Unknown modes no-op.
 ## "weight"/"value"/"rarity" sort descending (heaviest / most valuable / rarest
@@ -129,8 +138,15 @@ func remove_item(id: String, count: int) -> int:
 func sort_stacks(mode: String) -> void:
 	match mode:
 		"name":
-			stacks.sort_custom(func(a, b):
-				return (a["item"] as ItemData).display_name.naturalnocasecmp_to((b["item"] as ItemData).display_name) < 0)
+			stacks.sort_custom(
+				func(a, b):
+					return (
+						(a["item"] as ItemData).display_name.naturalnocasecmp_to(
+							(b["item"] as ItemData).display_name
+						)
+						< 0
+					)
+			)
 		"weight":
 			stacks.sort_custom(_cmp_desc.bind(func(it: ItemData) -> float: return it.weight))
 		"value":
@@ -140,6 +156,7 @@ func sort_stacks(mode: String) -> void:
 		_:
 			return
 	_notify()
+
 
 ## Descending comparator on a numeric key extracted from each stack's item, with
 ## display name as a stable tie-breaker.
@@ -151,6 +168,7 @@ func _cmp_desc(a: Dictionary, b: Dictionary, key: Callable) -> bool:
 	if ka == kb:
 		return ia.display_name.naturalnocasecmp_to(ib.display_name) < 0
 	return ka > kb
+
 
 ## Returns the subset of stacks whose item kind matches `kind` (an
 ## ItemData.Kind). Pass kind < 0 to get a copy of all stacks. Read-only helper
@@ -164,14 +182,17 @@ func filter_by_kind(kind: int) -> Array[Dictionary]:
 			out.append(s)
 	return out
 
+
 func clear() -> void:
 	stacks.clear()
 	_notify()
+
 
 func _notify() -> void:
 	changed.emit()
 	Events.inventory_changed.emit(self)
 	_push_to_owner()
+
 
 # --------------------------------------------------- co-op replication to owner
 # The inventory is server-authoritative but NOT auto-replicated (stacks hold ItemData
@@ -185,11 +206,13 @@ func _owner_peer() -> int:
 	var oid := str(pn.name).to_int()
 	return oid if oid > 0 else 1
 
+
 func _serialize() -> Array:
 	var out: Array = []
 	for s in stacks:
-		out.append({ "id": (s["item"] as ItemData).id, "count": int(s["count"]) })
+		out.append({"id": (s["item"] as ItemData).id, "count": int(s["count"])})
 	return out
+
 
 func _push_to_owner() -> void:
 	if not multiplayer.has_multiplayer_peer() or NetworkManager.is_offline:
@@ -198,17 +221,18 @@ func _push_to_owner() -> void:
 		return
 	var owner := _owner_peer()
 	if owner == 1:
-		return   # the host's own inventory is already local
+		return  # the host's own inventory is already local
 	_apply_remote.rpc_id(owner, _serialize())
+
 
 @rpc("any_peer", "call_remote", "reliable")
 func _apply_remote(data: Array) -> void:
 	if multiplayer.get_remote_sender_id() != 1:
-		return   # only the server mirrors inventories
+		return  # only the server mirrors inventories
 	stacks.clear()
 	for e in data:
 		var it: ItemData = ItemCatalog.get_item(String(e["id"]))
 		if it != null:
-			stacks.append({ "item": it, "count": int(e["count"]) })
+			stacks.append({"item": it, "count": int(e["count"])})
 	changed.emit()
 	Events.inventory_changed.emit(self)

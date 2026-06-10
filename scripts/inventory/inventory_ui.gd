@@ -43,6 +43,7 @@ var _context_menu: PopupMenu = null
 var _context_item: ItemData = null
 var _context_count: int = 0
 
+
 func _ready() -> void:
 	visible = false
 	_grid.columns = Settings.INVENTORY_COLS
@@ -75,23 +76,31 @@ func _ready() -> void:
 		_bind_to_existing_player()
 	_refresh()
 
+
 func _setup_sort_option() -> void:
 	_sort_option.clear()
 	for label in SORT_LABELS:
 		_sort_option.add_item(label)
 	_sort_option.item_selected.connect(_on_sort_selected)
 
+
 func _setup_filters() -> void:
 	# Manual radio behavior so exactly one filter is active at a time.
 	_filter_all.pressed.connect(_on_filter_pressed.bind(-1, _filter_all))
 	_filter_weapons.pressed.connect(_on_filter_pressed.bind(ItemData.Kind.WEAPON, _filter_weapons))
-	_filter_materials.pressed.connect(_on_filter_pressed.bind(ItemData.Kind.MATERIAL, _filter_materials))
-	_filter_consumables.pressed.connect(_on_filter_pressed.bind(ItemData.Kind.CONSUMABLE, _filter_consumables))
+	_filter_materials.pressed.connect(
+		_on_filter_pressed.bind(ItemData.Kind.MATERIAL, _filter_materials)
+	)
+	_filter_consumables.pressed.connect(
+		_on_filter_pressed.bind(ItemData.Kind.CONSUMABLE, _filter_consumables)
+	)
+
 
 func _setup_context_menu() -> void:
 	_context_menu = PopupMenu.new()
 	add_child(_context_menu)
 	_context_menu.id_pressed.connect(_on_context_id_pressed)
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_inventory"):
@@ -100,6 +109,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif visible and event.is_action_pressed("ui_cancel"):
 		_set_open(false)
 		get_viewport().set_input_as_handled()
+
 
 ## Opens/closes the panel and toggles the mouse mode so slots are clickable while
 ## open. Frees the cursor on open; recaptures on close unless the game is paused
@@ -115,11 +125,13 @@ func _set_open(open: bool) -> void:
 		if not get_tree().paused:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
+
 func _on_sort_selected(index: int) -> void:
 	if _inventory == null or index < 0 or index >= SORT_MODES.size():
 		return
 	# sort_stacks emits inventory_changed, which triggers _refresh().
 	_inventory.sort_stacks(SORT_MODES[index])
+
 
 func _on_filter_pressed(kind: int, btn: Button) -> void:
 	_filter_kind = kind
@@ -128,14 +140,17 @@ func _on_filter_pressed(kind: int, btn: Button) -> void:
 		b.button_pressed = (b == btn)
 	_refresh()
 
+
 func _on_local_player_spawned(player: Node) -> void:
 	_bind(player)
+
 
 func _bind_to_existing_player() -> void:
 	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if _is_local(p):
 			_bind(p)
 			return
+
 
 func _bind(player: Node) -> void:
 	if not is_instance_valid(player):
@@ -144,12 +159,14 @@ func _bind(player: Node) -> void:
 	_inventory = _find_inventory(player)
 	_refresh()
 
+
 func _on_inventory_changed(inv: Node) -> void:
 	# Only react to our own player's inventory; bind lazily if we have none yet.
 	if _inventory == null and _player != null:
 		_inventory = _find_inventory(_player)
 	if inv == _inventory:
 		_refresh()
+
 
 func _refresh() -> void:
 	if not is_inside_tree():
@@ -164,6 +181,7 @@ func _refresh() -> void:
 		_grid.add_child(_make_slot(item, cnt))
 	_update_footer()
 
+
 ## The stacks to render given the active kind filter. Footer totals always use
 ## the full inventory, not the filtered view.
 func _visible_stacks() -> Array:
@@ -173,6 +191,7 @@ func _visible_stacks() -> Array:
 		return _inventory.stacks
 	return _inventory.filter_by_kind(_filter_kind)
 
+
 func _update_footer() -> void:
 	var weight := _inventory.total_weight() if _inventory != null else 0.0
 	var value := _inventory.total_value() if _inventory != null else 0
@@ -180,9 +199,11 @@ func _update_footer() -> void:
 	_weight_label.text = tr("%.1f / %.0f kg") % [weight, Settings.INVENTORY_MAX_WEIGHT]
 	_value_label.text = tr("Value: %d") % value
 
+
 func _clear_grid() -> void:
 	for c in _grid.get_children():
 		c.queue_free()
+
 
 ## Builds one slot: icon texture if present, else a color box; a rarity-colored
 ## border; a count badge for stacks > 1; a rich tooltip; and a right-click
@@ -232,6 +253,7 @@ func _make_slot(item: ItemData, cnt: int) -> Control:
 		slot.add_child(badge)
 	return slot
 
+
 ## A dark slot fill with a rarity-colored border.
 func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -241,22 +263,32 @@ func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 	sb.set_corner_radius_all(4)
 	return sb
 
+
 ## Rich tooltip text: name + rarity tier + weight + value + description. The name
 ## line is BBCode-free (Control tooltips are plain), but we still surface rarity.
 func _tooltip_for(item: ItemData) -> String:
-	return tr("%s\n[%s]\nWeight: %.1f kg\nValue: %d\n\n%s") % [
-		item.display_name,
-		item.rarity_name(),
-		item.weight,
-		item.value,
-		item.description,
-	]
+	return (
+		tr("%s\n[%s]\nWeight: %.1f kg\nValue: %d\n\n%s")
+		% [
+			item.display_name,
+			item.rarity_name(),
+			item.weight,
+			item.value,
+			item.description,
+		]
+	)
+
 
 ## Per-slot input: right-click opens the context menu for that stack.
 func _on_slot_gui_input(event: InputEvent, item: ItemData, cnt: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+	if (
+		event is InputEventMouseButton
+		and event.pressed
+		and event.button_index == MOUSE_BUTTON_RIGHT
+	):
 		_open_context_menu(item, cnt)
 		accept_event()
+
 
 func _open_context_menu(item: ItemData, cnt: int) -> void:
 	_context_item = item
@@ -279,6 +311,7 @@ func _open_context_menu(item: ItemData, cnt: int) -> void:
 	_context_menu.position = Vector2i(get_viewport().get_mouse_position())
 	_context_menu.popup()
 
+
 func _on_context_id_pressed(id: int) -> void:
 	if _context_item == null:
 		return
@@ -294,6 +327,7 @@ func _on_context_id_pressed(id: int) -> void:
 	_context_item = null
 	_context_count = 0
 
+
 ## Use one of a consumable: fire the item_use_requested intent so the player's
 ## systems apply the effect, then remove one from the inventory. Guarded to the
 ## authority (single-player is authority).
@@ -303,6 +337,7 @@ func _use_item(item: ItemData) -> void:
 	Events.item_use_requested.emit(item.id)
 	if _inventory != null:
 		_inventory.remove_item(item.id, 1)
+
 
 ## Drop the whole stack as a world LootPickup near the player, then remove it from
 ## the inventory. Authority-guarded; needs a bound player for the spawn position.
@@ -321,6 +356,7 @@ func _drop_item(item: ItemData, count: int) -> void:
 	if _inventory != null:
 		_inventory.remove_item(item.id, count)
 
+
 ## Split half the stack off into a new separate stack via the server-authoritative
 ## NetworkManager.request_split (works in single-player too). Do not mutate
 ## inv.stacks directly — the owner-mirror fires inventory_changed and we rebuild.
@@ -332,6 +368,7 @@ func _split_item(item: ItemData, count: int) -> void:
 		return
 	NetworkManager.request_split(GameState.local_peer_id(), item.id, half)
 
+
 ## Give the whole stack to the nearest teammate via the server-authoritative
 ## NetworkManager.transfer_item. The server moves the items and re-mirrors both
 ## inventories — do not mutate local stacks here.
@@ -341,6 +378,7 @@ func _give_item(item: ItemData, count: int) -> void:
 		return
 	NetworkManager.transfer_item(GameState.local_peer_id(), to, item.id, count)
 
+
 ## Where dropped pickups live. Prefer the same parent existing pickups use
 ## (their group is "pickups"); fall back to the current scene root.
 func _drop_parent() -> Node:
@@ -349,10 +387,12 @@ func _drop_parent() -> Node:
 			return p.get_parent()
 	return get_tree().current_scene
 
+
 func _is_local(player: Node) -> bool:
 	if not multiplayer.has_multiplayer_peer():
 		return true
 	return player.get_multiplayer_authority() == multiplayer.get_unique_id()
+
 
 func _find_inventory(player: Node) -> Inventory:
 	var named := player.get_node_or_null("Inventory")
@@ -362,6 +402,7 @@ func _find_inventory(player: Node) -> Inventory:
 		if c is Inventory:
 			return c
 	return null
+
 
 # ----------------------------------------------------------------- install helper
 ## Instantiates InventoryUI and adds it under `host` (e.g. the local player's HUD

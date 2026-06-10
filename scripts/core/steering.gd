@@ -10,8 +10,14 @@ class_name Steering
 ## [orbit_distance ± orbit_band], plus a tangential strafe whose direction flips at
 ## random 2–4 s intervals. Returns the normalized desired XZ move (Vector3.ZERO when
 ## there is no valid target). `enemy` must declare _strafe_dir / _strafe_flip_t.
-static func orbit_dir(enemy: Node3D, target: Node3D, delta: float,
-		orbit_distance: float, orbit_band: float, strafe_speed_scale: float) -> Vector3:
+static func orbit_dir(
+	enemy: Node3D,
+	target: Node3D,
+	delta: float,
+	orbit_distance: float,
+	orbit_band: float,
+	strafe_speed_scale: float
+) -> Vector3:
 	if target == null or not is_instance_valid(target):
 		return Vector3.ZERO
 	enemy._strafe_flip_t -= delta

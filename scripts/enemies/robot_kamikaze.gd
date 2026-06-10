@@ -19,12 +19,14 @@ var _blast_damage: float = 24.0
 var _kami_legs: Array[Node3D] = []
 var _kami_leg_rest: Array[Vector3] = []
 
+
 func _ready() -> void:
 	super._ready()
 	var stats: Dictionary = Settings.ENEMY_STATS.get(enemy_id, {})
 	_fuse = float(stats.get("fuse", _fuse))
 	_blast_radius = float(stats.get("blast_radius", _blast_radius))
 	_blast_damage = float(stats.get("blast_damage", _blast_damage))
+
 
 ## OVERRIDE: in range = arm + hold the pressure (keep nudging toward the target while
 ## the fuse burns — a stationary bomb is trivial to walk away from).
@@ -41,10 +43,12 @@ func _do_attack(delta: float) -> void:
 		_apply_movement(Vector3.ZERO, delta)
 	_tick_fuse(delta)
 
+
 ## OVERRIDE: an armed scarab stays armed even if the FSM flips back to CHASE.
 func _do_chase(delta: float) -> void:
 	super._do_chase(delta)
 	_tick_fuse(delta)
+
 
 func _tick_fuse(delta: float) -> void:
 	if not _armed:
@@ -55,15 +59,16 @@ func _tick_fuse(delta: float) -> void:
 	if _fuse_t <= 0.0:
 		_detonate()
 
+
 ## The boom: AoE damage with linear falloff to every player in the blast, then die
 ## through Health so the standard death FX/loot/wave accounting all fire.
 func _detonate() -> void:
 	if _dying or (_health != null and _health.is_dead):
 		return
 	# Full linear falloff (floor 0.25); the blast hits DOWNED players too.
-	CombatAoe.damage_players(global_position, _blast_radius, _blast_damage, self,
-		1.0, 0.25, true)
+	CombatAoe.damage_players(global_position, _blast_radius, _blast_damage, self, 1.0, 0.25, true)
 	_health.take_damage(1.0e6, self)
+
 
 ## OVERRIDE: cache the 4 skitter-leg pivots + the red arming Core.
 func _cache_proc_parts() -> void:
@@ -80,6 +85,7 @@ func _cache_proc_parts() -> void:
 		_pulse_part = core as MeshInstance3D
 		_pulse_base_energy = _read_emission_energy(core as MeshInstance3D)
 	_has_proc_anim = not _kami_legs.is_empty() or _pulse_part != null
+
 
 ## OVERRIDE: frantic leg skitter + the core blink — slow idle pulse normally, a hard
 ## fast strobe while ARMED (current_state == ATTACK replicates to clients).

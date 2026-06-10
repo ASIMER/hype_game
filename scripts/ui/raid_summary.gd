@@ -15,44 +15,44 @@ extends CanvasLayer
 ##   summary.restart_requested.connect(_on_restart_requested)
 ## The scene starts HIDDEN; show() is called internally on match_won/match_lost.
 
-signal continue_requested()
-signal restart_requested()
+signal continue_requested
+signal restart_requested
 
 # Project theme colours via UIStyle palette.
-const COL_WIN  := Color(0.40, 1.00, 0.60, 1.0)   # green "EXTRACTED"
-const COL_LOSS := Color(1.00, 0.35, 0.35, 1.0)   # red   "KIA"
+const COL_WIN := Color(0.40, 1.00, 0.60, 1.0)  # green "EXTRACTED"
+const COL_LOSS := Color(1.00, 0.35, 0.35, 1.0)  # red   "KIA"
 const COL_AMBER := UIStyle.AMBER
-const COL_TEAL  := UIStyle.TEAL
-const COL_DIM   := UIStyle.DIM
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
 
 # ── node refs (all populated in _ready via @onready) ─────────────────────────
-@onready var _panel: PanelContainer       = $Root/Panel
-@onready var _title: Label                = $Root/Panel/VBox/Title
-@onready var _subtitle: Label             = $Root/Panel/VBox/Subtitle
-@onready var _sep_top: HSeparator         = $Root/Panel/VBox/SepTop
+@onready var _panel: PanelContainer = $Root/Panel
+@onready var _title: Label = $Root/Panel/VBox/Title
+@onready var _subtitle: Label = $Root/Panel/VBox/Subtitle
+@onready var _sep_top: HSeparator = $Root/Panel/VBox/SepTop
 # The item sections now live inside a bounded ScrollContainer (Scroll/Content) so a big
 # haul scrolls instead of pushing the footer buttons off-screen.
-@onready var _scroll: ScrollContainer      = $Root/Panel/VBox/Scroll
-@onready var _content: VBoxContainer       = $Root/Panel/VBox/Scroll/Content
+@onready var _scroll: ScrollContainer = $Root/Panel/VBox/Scroll
+@onready var _content: VBoxContainer = $Root/Panel/VBox/Scroll/Content
 @onready var _loot_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/LootSection
-@onready var _loot_header: Label          = $Root/Panel/VBox/Scroll/Content/LootSection/LootHeader
-@onready var _loot_list: VBoxContainer    = $Root/Panel/VBox/Scroll/Content/LootSection/LootList
-@onready var _currency_label: Label       = $Root/Panel/VBox/Scroll/Content/LootSection/CurrencyLabel
-@onready var _bp_section: VBoxContainer   = $Root/Panel/VBox/Scroll/Content/BpSection
-@onready var _bp_header: Label            = $Root/Panel/VBox/Scroll/Content/BpSection/BpHeader
-@onready var _bp_list: VBoxContainer      = $Root/Panel/VBox/Scroll/Content/BpSection/BpList
+@onready var _loot_header: Label = $Root/Panel/VBox/Scroll/Content/LootSection/LootHeader
+@onready var _loot_list: VBoxContainer = $Root/Panel/VBox/Scroll/Content/LootSection/LootList
+@onready var _currency_label: Label = $Root/Panel/VBox/Scroll/Content/LootSection/CurrencyLabel
+@onready var _bp_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/BpSection
+@onready var _bp_header: Label = $Root/Panel/VBox/Scroll/Content/BpSection/BpHeader
+@onready var _bp_list: VBoxContainer = $Root/Panel/VBox/Scroll/Content/BpSection/BpList
 @onready var _quest_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/QuestSection
-@onready var _quest_header: Label          = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestHeader
-@onready var _quest_list: VBoxContainer    = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestList
-@onready var _sep_bot: HSeparator          = $Root/Panel/VBox/SepBot
-@onready var _btn_continue: Button         = $Root/Panel/VBox/Buttons/ContinueBtn
-@onready var _btn_restart: Button          = $Root/Panel/VBox/Buttons/RestartBtn
+@onready var _quest_header: Label = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestHeader
+@onready var _quest_list: VBoxContainer = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestList
+@onready var _sep_bot: HSeparator = $Root/Panel/VBox/SepBot
+@onready var _btn_continue: Button = $Root/Panel/VBox/Buttons/ContinueBtn
+@onready var _btn_restart: Button = $Root/Panel/VBox/Buttons/RestartBtn
 # Set true when WE paused the tree (solo) so we only unpause our own pause.
 var _did_pause: bool = false
 
 # ── Progression section (injected dynamically before _sep_bot in _ready) ─────
 var _prog_section: VBoxContainer = null
-var _prog_list: VBoxContainer    = null
+var _prog_list: VBoxContainer = null
 
 # ── per-run accumulators (reset on match_started) ─────────────────────────────
 ## Raw loot deposited this run: id -> count.
@@ -151,6 +151,7 @@ func _ready() -> void:
 
 # ── Event handlers — accumulate ───────────────────────────────────────────────
 
+
 ## Reset all accumulators when a NEW match begins so each run is clean.
 func _on_match_started() -> void:
 	# SAFETY: a new match can start through paths that bypass our buttons (the harness
@@ -190,15 +191,19 @@ func _on_quest_completed(quest_id: String) -> void:
 
 # ── Progression accumulation ──────────────────────────────────────────────────
 
+
 func _on_xp_gained(amount: int, source: String) -> void:
 	var src: String = source if source != "" else "misc"
 	_xp_by_source[src] = int(_xp_by_source.get(src, 0)) + amount
 
+
 func _on_raider_level_up(new_level: int, _skill_points: int) -> void:
 	_new_raider_level = new_level
 
+
 func _on_reputation_changed(_rep: int, _tier: int) -> void:
 	pass  # Delta computed in _show_summary via the _rep_before snapshot.
+
 
 func _on_weapon_mastery_changed(weapon_id: String, _level: int) -> void:
 	if weapon_id not in _mastery_leveled:
@@ -206,6 +211,7 @@ func _on_weapon_mastery_changed(weapon_id: String, _level: int) -> void:
 
 
 # ── Match-end display ─────────────────────────────────────────────────────────
+
 
 func _on_match_won() -> void:
 	if not _match_end_plausible():
@@ -334,10 +340,10 @@ func _show_progression_section() -> void:
 	if total_xp > 0:
 		# Build a compact breakdown: "+XP 1440  (kills 900 · extract 500 · loot 40)"
 		var parts: Array[String] = []
-		var kill_xp: int   = int(_xp_by_source.get("kill", 0))
-		var ext_xp: int    = int(_xp_by_source.get("extract", 0))
-		var event_xp: int  = int(_xp_by_source.get("event", 0))
-		var loot_xp: int   = int(_xp_by_source.get("loot", 0))
+		var kill_xp: int = int(_xp_by_source.get("kill", 0))
+		var ext_xp: int = int(_xp_by_source.get("extract", 0))
+		var event_xp: int = int(_xp_by_source.get("event", 0))
+		var loot_xp: int = int(_xp_by_source.get("loot", 0))
 		if kill_xp > 0:
 			parts.append(tr("kills %d") % kill_xp)
 		if ext_xp > 0:
@@ -369,12 +375,14 @@ func _show_progression_section() -> void:
 	# ── Rep gained ───────────────────────────────────────────────────────────
 	var rep_gained: int = MetaProgression.vendor_rep - _rep_before
 	if rep_gained > 0:
-		var tier_now: int  = MetaProgression.rep_tier()
+		var tier_now: int = MetaProgression.rep_tier()
 		var rep_lbl := Label.new()
 		rep_lbl.add_theme_font_size_override("font_size", 13)
 		rep_lbl.add_theme_color_override("font_color", COL_DIM)
 		if tier_now > _rep_tier_start:
-			rep_lbl.text = tr("+REP %d  (Tier %d → Tier %d)") % [rep_gained, _rep_tier_start, tier_now]
+			rep_lbl.text = (
+				tr("+REP %d  (Tier %d → Tier %d)") % [rep_gained, _rep_tier_start, tier_now]
+			)
 			rep_lbl.add_theme_color_override("font_color", COL_TEAL)
 		else:
 			rep_lbl.text = tr("+REP %d  (Tier %d)") % [rep_gained, tier_now]
@@ -395,6 +403,7 @@ func _show_progression_section() -> void:
 
 
 # ── Row builders ──────────────────────────────────────────────────────────────
+
 
 ## Builds a single loot row: [icon?] display_name ×count
 func _make_item_row(id: String, count: int) -> HBoxContainer:
@@ -457,6 +466,7 @@ func _clear_children(container: Control) -> void:
 
 
 # ── Button handlers ───────────────────────────────────────────────────────────
+
 
 func _on_continue() -> void:
 	_unpause_if_ours()

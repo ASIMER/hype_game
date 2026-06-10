@@ -11,12 +11,13 @@ const ICON_SIZE := 256
 ## "face" + silhouette + legs (a steep top-down angle hides ground creatures' legs).
 const VIEW_DIR := Vector3(0.8, 0.42, -1.1)
 
-var _cache: Dictionary = {}          # id -> ImageTexture
-var _busy: bool = false               # serialize captures (the SubViewport is shared)
+var _cache: Dictionary = {}  # id -> ImageTexture
+var _busy: bool = false  # serialize captures (the SubViewport is shared)
 var _vp: SubViewport = null
 var _cam: Camera3D = null
 var _holder: Node3D = null
-var last_debug: Dictionary = {}      # framing diagnostics for QA
+var last_debug: Dictionary = {}  # framing diagnostics for QA
+
 
 func _ready() -> void:
 	# No rendering on a headless dedicated server — icons are never shown there.
@@ -30,7 +31,7 @@ func _ready() -> void:
 	add_child(_vp)
 
 	var env := Environment.new()
-	env.background_mode = Environment.BG_CLEAR_COLOR   # transparent icon background
+	env.background_mode = Environment.BG_CLEAR_COLOR  # transparent icon background
 	# Bright flat ambient so low-metallic parts read in full colour (a sky-based
 	# ambient needs a radiance bake that a single force_draw doesn't complete).
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -63,6 +64,7 @@ func _ready() -> void:
 	# real frames to pass.
 	_prewarm.call_deferred()
 
+
 func _prewarm() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -71,10 +73,12 @@ func _prewarm() -> void:
 		if String(entry.get("icon", "")) == "":
 			await render_now(id)
 
+
 ## SYNC: cached rendered icon for `id`, or null (UI fallback to colored box). The
 ## cache is filled by _prewarm / render_now.
 func render_icon(id: String) -> Texture2D:
 	return _cache.get(id, null)
+
 
 ## ASYNC: renders `id`'s model to a texture (awaits a real frame — the SubViewport's
 ## first capture is empty otherwise), caches and returns it. null on headless/failure.
@@ -88,6 +92,7 @@ func render_now(id: String) -> Texture2D:
 		return null
 	return await _capture(id, model)
 
+
 ## Serialized off-screen capture of `node` into a texture cached by `key`. The SubViewport
 ## + holder are SHARED, so concurrent callers must NOT have two models in the holder when
 ## it captures (that composites them into one icon). We gate on _busy and clear the holder
@@ -96,7 +101,7 @@ func _capture(key: String, node: Node3D) -> Texture2D:
 	# Wait for any in-flight capture to finish before touching the shared viewport.
 	while _busy:
 		await get_tree().process_frame
-	if _cache.has(key):   # a concurrent caller may have filled it while we waited
+	if _cache.has(key):  # a concurrent caller may have filled it while we waited
 		node.queue_free()
 		return _cache[key]
 	_busy = true
@@ -118,6 +123,7 @@ func _capture(key: String, node: Node3D) -> Texture2D:
 	_cache[key] = tex
 	return tex
 
+
 ## Render an arbitrary prebuilt Node3D to a texture, cached by `key` (for previews whose
 ## model isn't a CATALOG id, e.g. cosmetic parts). Frees the node. null on headless/failure.
 func render_node(key: String, node: Node3D) -> Texture2D:
@@ -129,6 +135,7 @@ func render_node(key: String, node: Node3D) -> Texture2D:
 		return null
 	return await _capture(key, node)
 
+
 ## Render a character cosmetic variant preview (cached by category+variant+paint). For
 ## "paint" this renders the whole body in that scheme; otherwise just that part.
 func render_cosmetic(category: String, variant_id: String, paint_id: String) -> Texture2D:
@@ -137,11 +144,14 @@ func render_cosmetic(category: String, variant_id: String, paint_id: String) -> 
 		return _cache[key]
 	return await render_node(key, ProceduralPlayer.build_part(category, variant_id, paint_id))
 
+
 func has_cached(id: String) -> bool:
 	return _cache.has(id)
 
+
 func clear_cache() -> void:
 	_cache.clear()
+
 
 # ----------------------------------------------------------------- framing
 ## Fits the orthographic camera to the model's combined AABB from VIEW_DIR.
@@ -158,7 +168,8 @@ func _frame(model: Node3D) -> void:
 	_cam.size = maxf(diag * 1.35, 0.5)
 	_cam.near = 0.05
 	_cam.far = diag * 6.0 + 20.0
-	last_debug = { "aabb_pos": aabb.position, "aabb_size": aabb.size, "ortho": _cam.size }
+	last_debug = {"aabb_pos": aabb.position, "aabb_size": aabb.size, "ortho": _cam.size}
+
 
 ## Combined AABB (in `model`-local space) over all MeshInstance3D descendants.
 func _aabb_of(model: Node3D) -> AABB:

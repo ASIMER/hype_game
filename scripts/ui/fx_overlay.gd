@@ -10,6 +10,7 @@ var _rect: ColorRect = null
 var _in_match: bool = false
 var _paused: bool = false
 
+
 func _ready() -> void:
 	layer = 90  # above the menus/HUD; the loading screen sits higher still
 	_rect = ColorRect.new()
@@ -22,12 +23,29 @@ func _ready() -> void:
 		_rect.material = mat
 	add_child(_rect)
 	# Shell vs in-raid tracking: the veil shows on shell UI and while paused.
-	Events.match_started.connect(func() -> void: _in_match = true; _refresh())
-	Events.match_won.connect(func() -> void: _in_match = false; _refresh())
-	Events.match_lost.connect(func() -> void: _in_match = false; _refresh())
-	Events.game_paused.connect(func(p: bool) -> void: _paused = p; _refresh())
+	Events.match_started.connect(
+		func() -> void:
+			_in_match = true
+			_refresh()
+	)
+	Events.match_won.connect(
+		func() -> void:
+			_in_match = false
+			_refresh()
+	)
+	Events.match_lost.connect(
+		func() -> void:
+			_in_match = false
+			_refresh()
+	)
+	Events.game_paused.connect(
+		func(p: bool) -> void:
+			_paused = p
+			_refresh()
+	)
 	Events.ui_fx_changed.connect(func(_e: bool) -> void: _refresh())
 	_refresh()
+
 
 func _refresh() -> void:
 	var shell: bool = (not _in_match) or _paused

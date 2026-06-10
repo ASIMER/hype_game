@@ -4,7 +4,7 @@ class_name Minimap
 ## extraction zones (green, group "extraction"), the player (centre). Pure HUD.
 
 const RADIUS := 78.0
-const RANGE := 65.0   # world metres mapped to the radar edge
+const RANGE := 65.0  # world metres mapped to the radar edge
 
 var _player: Node3D = null
 # Per-zone extraction-window state cached from Events.extraction_window_changed:
@@ -75,7 +75,7 @@ func _apply_hud_inset() -> void:
 func _on_window_changed(zone: Node, open: bool, remaining: float) -> void:
 	if zone == null:
 		return
-	_zone_windows[zone] = { "open": open, "remaining": remaining }
+	_zone_windows[zone] = {"open": open, "remaining": remaining}
 
 
 ## Extraction-window state for a zone — cached Events value first, then a defensive
@@ -90,24 +90,28 @@ func _window_for(zone: Node) -> Dictionary:
 	var remaining_val: float = 0.0
 	if zone != null and zone.has_method("window_remaining"):
 		remaining_val = float(zone.call("window_remaining"))
-	return { "open": is_open_val, "remaining": remaining_val }
+	return {"open": is_open_val, "remaining": remaining_val}
 
 
 func _on_world_event_started(kind: int, world_pos: Vector3, label: String) -> void:
-	_event_cache[kind] = { "label": label, "pos": world_pos, "active": true, "ratio": -1.0 }
+	_event_cache[kind] = {"label": label, "pos": world_pos, "active": true, "ratio": -1.0}
+
 
 func _on_world_event_ended(kind: int, _success: bool) -> void:
 	if _event_cache.has(kind):
 		(_event_cache[kind] as Dictionary)["active"] = false
 
+
 func _on_world_event_progress(kind: int, ratio: float) -> void:
 	if _event_cache.has(kind):
 		(_event_cache[kind] as Dictionary)["ratio"] = ratio
+
 
 func _on_surge_changed(active: bool, kind: int) -> void:
 	# kind 1 = sensor-blackout; kind 0 = enemy-surge (no minimap effect).
 	if kind == 1:
 		_sensor_blackout = active
+
 
 ## Returns 0..1 fill ratio for a world-event node, or -1 if not available.
 func _event_ratio(node: Node) -> float:
@@ -115,9 +119,14 @@ func _event_ratio(node: Node) -> float:
 		return float(node.call("event_ratio"))
 	if node.has_meta("_director_ref"):
 		var d: Variant = node.get_meta("_director_ref")
-		if d != null and is_instance_valid(d as Object) and (d as Object).has_method("marker_event_ratio"):
+		if (
+			d != null
+			and is_instance_valid(d as Object)
+			and (d as Object).has_method("marker_event_ratio")
+		):
 			return float((d as Object).call("marker_event_ratio", node))
 	return -1.0
+
 
 func _process(delta: float) -> void:
 	_pulse += delta
@@ -128,7 +137,9 @@ func _draw() -> void:
 	var c := size * 0.5
 	# Glass-toned disc background + amber-accent border ring.
 	draw_circle(c, RADIUS, Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.82))
-	draw_arc(c, RADIUS, 0.0, TAU, 48, Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.55), 2.5)
+	draw_arc(
+		c, RADIUS, 0.0, TAU, 48, Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.55), 2.5
+	)
 	# Thin inner light-border for the glass frame.
 	draw_arc(c, RADIUS - 2.5, 0.0, TAU, 48, UIStyle.BORDER_LT, 1.0)
 
@@ -146,8 +157,15 @@ func _draw() -> void:
 	draw_line(c - Vector2(RADIUS, 0), c + Vector2(RADIUS, 0), Color(1, 1, 1, 0.08), 1.0)
 	# North marker
 	var north := _to_radar(Vector3(0, 0, -1) * RANGE, _player.global_position, yaw)
-	draw_string(ThemeDB.fallback_font, c + north.normalized() * (RADIUS - 12.0) - Vector2(5, -6),
-		"N", HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color(0.7, 0.8, 0.9, 0.8))
+	draw_string(
+		ThemeDB.fallback_font,
+		c + north.normalized() * (RADIUS - 12.0) - Vector2(5, -6),
+		"N",
+		HORIZONTAL_ALIGNMENT_CENTER,
+		-1,
+		12,
+		Color(0.7, 0.8, 0.9, 0.8)
+	)
 	# Extraction zones — OPEN ones pulse green, CLOSED ones are dim grey, each with a
 	# thin countdown ring when a window timer is known.
 	for z in get_tree().get_nodes_in_group(Groups.EXTRACTION):
@@ -173,8 +191,12 @@ func _draw() -> void:
 	# Enemies.
 	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if e is Node3D:
-			_blip(c, _to_radar((e as Node3D).global_position, _player.global_position, yaw),
-				Color(1.0, 0.3, 0.3), 3.0)
+			_blip(
+				c,
+				_to_radar((e as Node3D).global_position, _player.global_position, yaw),
+				Color(1.0, 0.3, 0.3),
+				3.0
+			)
 	# World-event blips (supply cache / miniboss / contested / surge).
 	_draw_event_blips(c, yaw)
 	# Teammates (co-op): green dots; clamped to the rim as an outward chevron when out of range,
@@ -190,7 +212,9 @@ func _draw_teammates(c: Vector2, yaw: float) -> void:
 		var tnode: Node3D = t["node"]
 		if not is_instance_valid(tnode):
 			continue
-		var base_col: Color = TeammateUtil.TEAM_DOWN if bool(t["downed"]) else TeammateUtil.TEAM_GREEN
+		var base_col: Color = (
+			TeammateUtil.TEAM_DOWN if bool(t["downed"]) else TeammateUtil.TEAM_GREEN
+		)
 		var dx := tnode.global_position.x - ppos.x
 		var dz := tnode.global_position.z - ppos.z
 		var planar := sqrt(dx * dx + dz * dz)
@@ -202,14 +226,18 @@ func _draw_teammates(c: Vector2, yaw: float) -> void:
 				dir = Vector2(0, -1)
 			var perp := Vector2(-dir.y, dir.x)
 			var tip := c + pos + dir * 2.0
-			draw_colored_polygon(PackedVector2Array([
-				tip, c + pos - dir * 4.0 + perp * 4.0, c + pos - dir * 4.0 - perp * 4.0]), base_col)
+			draw_colored_polygon(
+				PackedVector2Array(
+					[tip, c + pos - dir * 4.0 + perp * 4.0, c + pos - dir * 4.0 - perp * 4.0]
+				),
+				base_col
+			)
 		else:
 			var r := 3.5
 			if bool(t["downed"]):
-				r = 3.0 + 1.5 * (0.5 + 0.5 * sin(_pulse * 4.0))   # pulse to flag "needs revive"
+				r = 3.0 + 1.5 * (0.5 + 0.5 * sin(_pulse * 4.0))  # pulse to flag "needs revive"
 			_blip(c, pos, base_col, r)
-			draw_arc(c + pos, r + 1.6, 0.0, TAU, 12, Color(0, 0, 0, 0.5), 1.0)   # thin dark ring for legibility
+			draw_arc(c + pos, r + 1.6, 0.0, TAU, 12, Color(0, 0, 0, 0.5), 1.0)  # thin dark ring for legibility
 
 
 ## Draws the sensor-blackout "SIGNAL LOST" overlay over the minimap disc.
@@ -225,10 +253,25 @@ func _draw_blackout(c: Vector2) -> void:
 		draw_circle(pt, 1.5, Color(0.1, brightness, 0.1, 0.7))
 	# "SIGNAL LOST" text centred in the disc.
 	var font: Font = ThemeDB.fallback_font
-	draw_string(font, c + Vector2(-38.0, -6.0), tr("SIGNAL"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
-		Color(0.35, 1.0, 0.35, 0.9))
-	draw_string(font, c + Vector2(-28.0, 10.0), tr("LOST"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
-		Color(0.35, 1.0, 0.35, 0.9))
+	draw_string(
+		font,
+		c + Vector2(-38.0, -6.0),
+		tr("SIGNAL"),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		13,
+		Color(0.35, 1.0, 0.35, 0.9)
+	)
+	draw_string(
+		font,
+		c + Vector2(-28.0, 10.0),
+		tr("LOST"),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		13,
+		Color(0.35, 1.0, 0.35, 0.9)
+	)
+
 
 # Event kind → radar blip color.
 const _EVENT_BLIP_COLORS := [
@@ -237,6 +280,7 @@ const _EVENT_BLIP_COLORS := [
 	Color(0.30, 0.80, 0.95, 0.95),  # 2 contested_poi — cyan
 	Color(1.00, 0.45, 0.10, 0.95),  # 3 surge — orange
 ]
+
 
 ## Draws world-event blips on the minimap, clamped to the rim when out of range.
 func _draw_event_blips(c: Vector2, yaw: float) -> void:
@@ -276,8 +320,10 @@ func _draw_event_blips(c: Vector2, yaw: float) -> void:
 		var ratio: float = float(cached.get("ratio", -1.0))
 		_draw_single_event_blip(c, kind, wpos, ppos, yaw, ratio)
 
-func _draw_single_event_blip(c: Vector2, kind: int, wpos: Vector3, ppos: Vector3,
-		yaw: float, ratio: float) -> void:
+
+func _draw_single_event_blip(
+	c: Vector2, kind: int, wpos: Vector3, ppos: Vector3, yaw: float, ratio: float
+) -> void:
 	var col: Color = _EVENT_BLIP_COLORS[clampi(kind, 0, _EVENT_BLIP_COLORS.size() - 1)]
 	var offset: Vector2 = _to_radar(wpos, ppos, yaw)
 	var blip_r: float = 4.5 + 1.0 * (0.5 + 0.5 * sin(_pulse * 3.2))
@@ -286,15 +332,17 @@ func _draw_single_event_blip(c: Vector2, kind: int, wpos: Vector3, ppos: Vector3
 	if ratio >= 0.0 and kind in [0, 2]:
 		var start_a: float = -PI * 0.5
 		var end_a: float = start_a + TAU * clampf(ratio, 0.0, 1.0)
-		draw_arc(c + offset, blip_r + 2.5, start_a, end_a, 14,
-			Color(col.r, col.g, col.b, 0.55), 2.0)
+		draw_arc(
+			c + offset, blip_r + 2.5, start_a, end_a, 14, Color(col.r, col.g, col.b, 0.55), 2.0
+		)
+
 
 ## World position -> radar offset (player-relative, heading up, clamped to the rim).
 func _to_radar(wpos: Vector3, ppos: Vector3, yaw: float) -> Vector2:
 	var dx := wpos.x - ppos.x
 	var dz := wpos.z - ppos.z
 	var lx := dx * cos(yaw) - dz * sin(yaw)
-	var lf := -dx * sin(yaw) - dz * cos(yaw)   # forward component
+	var lf := -dx * sin(yaw) - dz * cos(yaw)  # forward component
 	var screen := Vector2(lx, -lf) / RANGE * RADIUS
 	if screen.length() > RADIUS - 3.0:
 		screen = screen.normalized() * (RADIUS - 3.0)

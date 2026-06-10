@@ -9,20 +9,20 @@ var _recoil: float = 0.0
 var _ads: bool = false
 var _player: Node3D = null
 var _camera: Camera3D = null
-var _controller: Node = null      # WeaponController under the bound player (for the real cone)
+var _controller: Node = null  # WeaponController under the bound player (for the real cone)
 var _on_enemy: bool = false
 
 const BASE_SPREAD := 6.0
 const MOVE_SPREAD := 12.0
 const TICK_LEN := 7.0
 const TICK_W := 2.5
-const OUTLINE := Color(0.5, 0.5, 0.5, 0.3)   # soft grey semi-transparent shadow (not harsh black)
+const OUTLINE := Color(0.5, 0.5, 0.5, 0.3)  # soft grey semi-transparent shadow (not harsh black)
 
 # Degrees → pixels mapping for the REAL fire cone (current_spread_deg). The gap is
 # the minimum tick offset plus a per-degree widening, so a tight 0.6° rifle reads
 # as a near-centered reticle and a moving/sprinting/shotgun cone opens up clearly.
-const MIN_GAP := 4.0          # px gap at ~0° spread (ADS pinpoint)
-const PX_PER_DEG := 7.0       # px added per degree of effective spread
+const MIN_GAP := 4.0  # px gap at ~0° spread (ADS pinpoint)
+const PX_PER_DEG := 7.0  # px added per degree of effective spread
 
 
 func _ready() -> void:
@@ -64,7 +64,9 @@ func _process(delta: float) -> void:
 		var moving := 0.0
 		if is_instance_valid(_player):
 			var v: Vector3 = _player.velocity
-			moving = clampf(Vector2(v.x, v.z).length() / maxf(Settings.PLAYER_MOVE_SPEED, 0.1), 0.0, 1.0)
+			moving = clampf(
+				Vector2(v.x, v.z).length() / maxf(Settings.PLAYER_MOVE_SPEED, 0.1), 0.0, 1.0
+			)
 		target = BASE_SPREAD + moving * MOVE_SPREAD + _recoil
 		if _ads:
 			target = 2.0
@@ -80,7 +82,7 @@ func _update_on_enemy() -> void:
 	var from := _camera.global_position
 	var to := from - _camera.global_transform.basis.z * 120.0
 	var q := PhysicsRayQueryParameters3D.create(from, to)
-	q.collision_mask = 0b1000100   # enemy(3) + hurtbox(7)
+	q.collision_mask = 0b1000100  # enemy(3) + hurtbox(7)
 	q.collide_with_areas = true
 	var hit := _camera.get_world_3d().direct_space_state.intersect_ray(q)
 	if hit:
@@ -100,7 +102,7 @@ func _draw() -> void:
 	var vp := get_viewport_rect().size
 	var c := vp * 0.5
 	if c == Vector2.ZERO:
-		c = size * 0.5   # last-ditch fallback (headless / no viewport)
+		c = size * 0.5  # last-ditch fallback (headless / no viewport)
 	var col := Color(1.0, 0.30, 0.28, 1.0) if _on_enemy else Color(1, 1, 1, 0.95)
 	# Clamp so an unexpectedly large spread can never fling the ticks off-screen.
 	var s := clampf(_spread, 0.0, maxf(8.0, minf(vp.x, vp.y) * 0.25))

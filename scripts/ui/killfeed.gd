@@ -6,18 +6,18 @@ class_name Killfeed
 
 const MAX_LINES := 5
 const TTL := 4.0
-const FADE := 0.8          # last seconds spent fading out
+const FADE := 0.8  # last seconds spent fading out
 const LINE_H := 20.0
 const FONT_SIZE := 14
 const TOP := 16.0
 const LEFT := 16.0
 const WIDTH := 280.0
 
-const COL_INFO := UIStyle.TEXT   # white-ish
-const COL_GOOD := UIStyle.TEAL   # teal
-const COL_BAD  := UIStyle.RED    # red
+const COL_INFO := UIStyle.TEXT  # white-ish
+const COL_GOOD := UIStyle.TEAL  # teal
+const COL_BAD := UIStyle.RED  # red
 const COL_WAVE := UIStyle.AMBER  # amber
-const COL_DIM  := UIStyle.DIM    # dim grey
+const COL_DIM := UIStyle.DIM  # dim grey
 
 # Each line: { "text": String, "color": Color, "t": float }
 var _lines: Array = []
@@ -130,10 +130,14 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 func _on_notify(text: String, kind: int) -> void:
 	var col := COL_INFO
 	match kind:
-		1: col = COL_GOOD
-		2: col = COL_BAD
-		3: col = COL_WAVE
-		_: col = COL_INFO
+		1:
+			col = COL_GOOD
+		2:
+			col = COL_BAD
+		3:
+			col = COL_WAVE
+		_:
+			col = COL_INFO
 	_push(text, col)
 
 
@@ -155,11 +159,18 @@ func _draw() -> void:
 		var base: Color = l["color"]
 		var col := Color(base.r, base.g, base.b, base.a * alpha)
 		# Subtle glass chip background behind each line.
-		var bg_col := Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.55 * alpha)
-		draw_rect(Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(WIDTH + 8.0, LINE_H - 2.0)), bg_col, true)
+		var bg_col := Color(
+			UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.55 * alpha
+		)
+		draw_rect(
+			Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(WIDTH + 8.0, LINE_H - 2.0)), bg_col, true
+		)
 		# Thin accent border matching the line's accent color.
 		var border_col := Color(base.r, base.g, base.b, 0.28 * alpha)
-		draw_rect(Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(2.0, LINE_H - 2.0)), border_col, true)
-		draw_string(font, Vector2(0.0, y), l["text"],
-			HORIZONTAL_ALIGNMENT_LEFT, WIDTH, FONT_SIZE, col)
+		draw_rect(
+			Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(2.0, LINE_H - 2.0)), border_col, true
+		)
+		draw_string(
+			font, Vector2(0.0, y), l["text"], HORIZONTAL_ALIGNMENT_LEFT, WIDTH, FONT_SIZE, col
+		)
 		y += LINE_H

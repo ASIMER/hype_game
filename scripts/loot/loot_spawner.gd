@@ -10,39 +10,41 @@ class_name LootSpawner
 # Weighted drop table for generic enemy kills: id -> relative weight.
 # Common materials sit at 40-60; consumables 10-20; valuables 3-6; legendary 1.
 const ENEMY_DROP_TABLE := {
-	"loot_scrap":              55,
-	"loot_plastic":            40,
-	"loot_cell":               25,
-	"loot_ammo":               18,
-	"loot_medkit":             12,
-	"loot_chemicals":          10,
-	"loot_circuit":             8,
-	"loot_grenade":             6,
-	"rifle":                    5,
-	"loot_artifact":            3,
-	"loot_data_chip":           1,
+	"loot_scrap": 55,
+	"loot_plastic": 40,
+	"loot_cell": 25,
+	"loot_ammo": 18,
+	"loot_medkit": 12,
+	"loot_chemicals": 10,
+	"loot_circuit": 8,
+	"loot_grenade": 6,
+	"rifle": 5,
+	"loot_artifact": 3,
+	"loot_data_chip": 1,
 	# Attachments: uncommon drops; rarities match their item rarity.
-	"att_red_dot":              3,
-	"att_holo_sight":           2,
-	"att_light_mag":            3,
-	"att_drum_mag":             1,
-	"att_suppressor":           1,
-	"att_long_barrel":          2,
-	"att_quickdraw_grip":       2,
-	"att_heavy_grip":           3,
+	"att_red_dot": 3,
+	"att_holo_sight": 2,
+	"att_light_mag": 3,
+	"att_drum_mag": 1,
+	"att_suppressor": 1,
+	"att_long_barrel": 2,
+	"att_quickdraw_grip": 2,
+	"att_heavy_grip": 3,
 	# Schematics: rare blueprint drops from any enemy.
-	"schematic_circuit_pack":   2,
-	"schematic_stim":           1,
-	"schematic_grenade_mk2":    1,
-	"schematic_drum_mag":       1,
-	"schematic_suppressor":     1,
+	"schematic_circuit_pack": 2,
+	"schematic_stim": 1,
+	"schematic_grenade_mk2": 1,
+	"schematic_drum_mag": 1,
+	"schematic_suppressor": 1,
 }
+
 
 ## Spawns one explicit pickup. Returns the pickup (or null). Server only.
 static func drop(loot_root: Node, pos: Vector3, id: String, count: int = 1) -> LootPickup:
 	if not GameState.is_local_authority_server():
 		return null
 	return LootPickup.spawn_at(loot_root, pos, id, count)
+
 
 ## Rolls the enemy drop table and spawns the result near `pos`. Returns the
 ## pickup, or null if nothing dropped / not authority. Server only.
@@ -84,6 +86,7 @@ static func drop_for_enemy(loot_root: Node, pos: Vector3, tier: int = 0) -> Loot
 	# Scatter slightly so stacked corpses don't overlap pickups exactly.
 	var jitter := Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(-0.6, 0.6))
 	return LootPickup.spawn_at(loot_root, pos + jitter, id, count)
+
 
 ## Returns the risk tier (1–3) for a world position by finding the nearest POI
 ## centre in the arena. Falls back to 1 when the arena isn't in the scene tree

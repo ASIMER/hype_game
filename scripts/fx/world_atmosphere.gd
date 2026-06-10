@@ -83,6 +83,7 @@ const STORM_VOLUMETRIC_DENSITY := 0.035
 var _storm_tween: Tween
 var _stormed := false
 
+
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
@@ -111,6 +112,7 @@ func _ready() -> void:
 	if Events and not Events.graphics_quality_changed.is_connected(_apply_graphics_quality):
 		Events.graphics_quality_changed.connect(_apply_graphics_quality)
 	_apply_graphics_quality(int(SettingsManager.get_value("graphics_quality")))
+
 
 # ---------------------------------------------------------------------------
 # Graphics-quality render levers (the one node that captures the live Environment +
@@ -165,8 +167,12 @@ func _apply_graphics_quality(level: int) -> void:
 	# God rays: let the sun cast volumetric shafts THROUGH the global fog (no-op when
 	# volumetric fog is off). Shadow distance also lives on the sun. Guard non-null.
 	if _sun != null:
-		_sun.light_volumetric_fog_energy = 1.0 if bool(SettingsManager.get_value("god_rays")) else 0.0
-		_sun.directional_shadow_max_distance = clampf(float(SettingsManager.get_value("shadow_distance")), 60.0, 250.0)
+		_sun.light_volumetric_fog_energy = (
+			1.0 if bool(SettingsManager.get_value("god_rays")) else 0.0
+		)
+		_sun.directional_shadow_max_distance = clampf(
+			float(SettingsManager.get_value("shadow_distance")), 60.0, 250.0
+		)
 	# Cinematic depth-of-field — FAR-ONLY (the player/gun must stay sharp; never enable
 	# near-blur). Lives on the WorldEnvironment node's CameraAttributes; create a
 	# CameraAttributesPractical if the node has none yet.
@@ -192,6 +198,7 @@ func _apply_graphics_quality(level: int) -> void:
 		# Cheaper cloud march at lower tiers (clouds are off at Low anyway).
 		_skydome.set("cumulus_noise_freq", 1.5 if level <= 1 else 2.7)
 
+
 # ---------------------------------------------------------------------------
 # Particles
 # ---------------------------------------------------------------------------
@@ -204,8 +211,11 @@ func _build_dust() -> void:
 	p.randomness = 1.0
 	p.fixed_fps = 20
 	p.visibility_aabb = AABB(
-		Vector3(WorldBounds.CX - WorldBounds.SPAN * 0.5, -2.0, WorldBounds.CZ - WorldBounds.SPAN * 0.5),
-		Vector3(WorldBounds.SPAN, 34.0, WorldBounds.SPAN))
+		Vector3(
+			WorldBounds.CX - WorldBounds.SPAN * 0.5, -2.0, WorldBounds.CZ - WorldBounds.SPAN * 0.5
+		),
+		Vector3(WorldBounds.SPAN, 34.0, WorldBounds.SPAN)
+	)
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.position = Vector3(WorldBounds.CX, 14.0, WorldBounds.CZ)
 
@@ -233,6 +243,7 @@ func _build_dust() -> void:
 	p.emitting = true
 	_dust = p
 
+
 func _build_embers() -> void:
 	var p := GPUParticles3D.new()
 	p.name = "Embers"
@@ -242,8 +253,11 @@ func _build_embers() -> void:
 	p.randomness = 1.0
 	p.fixed_fps = 24
 	p.visibility_aabb = AABB(
-		Vector3(WorldBounds.CX - WorldBounds.SPAN * 0.5, -2.0, WorldBounds.CZ - WorldBounds.SPAN * 0.5),
-		Vector3(WorldBounds.SPAN, 30.0, WorldBounds.SPAN))
+		Vector3(
+			WorldBounds.CX - WorldBounds.SPAN * 0.5, -2.0, WorldBounds.CZ - WorldBounds.SPAN * 0.5
+		),
+		Vector3(WorldBounds.SPAN, 30.0, WorldBounds.SPAN)
+	)
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.position = Vector3(WorldBounds.CX, 1.0, WorldBounds.CZ)
 
@@ -273,6 +287,7 @@ func _build_embers() -> void:
 	p.emitting = true
 	_embers = p
 
+
 func _dot_mesh(radius: float, col: Color) -> QuadMesh:
 	var q := QuadMesh.new()
 	q.size = Vector2(radius, radius) * 2.0
@@ -288,6 +303,7 @@ func _dot_mesh(radius: float, col: Color) -> QuadMesh:
 	q.material = m
 	return q
 
+
 func _flicker_ramp() -> CurveTexture:
 	var c := Curve.new()
 	c.add_point(Vector2(0.0, 0.0))
@@ -298,6 +314,7 @@ func _flicker_ramp() -> CurveTexture:
 	var ct := CurveTexture.new()
 	ct.curve = c
 	return ct
+
 
 # ---------------------------------------------------------------------------
 # Env / light / Sky3D discovery (runtime; never touches Arena.tscn)
@@ -322,7 +339,10 @@ func _find_env_and_light() -> void:
 	# own SunLight/MoonLight are disabled). Prefer that one.
 	_sun = _find_main_sun(root, we)
 	if Settings and Settings.NET_DEBUG:
-		print("[atmosphere] env=", _env != null, " skydome=", _skydome != null, " sun=", _sun != null)
+		print(
+			"[atmosphere] env=", _env != null, " skydome=", _skydome != null, " sun=", _sun != null
+		)
+
 
 func _find_world_environment(n: Node) -> WorldEnvironment:
 	if n is WorldEnvironment:
@@ -332,6 +352,7 @@ func _find_world_environment(n: Node) -> WorldEnvironment:
 		if r != null:
 			return r
 	return null
+
 
 ## Finds the SkyDome node by checking for the cumulus_coverage property. Returns
 ## null if Sky3D is not present (graceful fallback to env/light-only storm).
@@ -344,6 +365,7 @@ func _find_skydome(we: Node) -> Node:
 			return c
 	return null
 
+
 ## Finds the Arena's main DirectionalLight3D, skipping any lights that live under
 ## the Sky3D node (its auto-created SunLight/MoonLight).
 func _find_main_sun(root: Node, sky_we: Node) -> DirectionalLight3D:
@@ -353,6 +375,7 @@ func _find_main_sun(root: Node, sky_we: Node) -> DirectionalLight3D:
 		return best
 	# Fallback: any directional light at all.
 	return _find_directional_light(root)
+
 
 func _find_directional_light_excluding(n: Node, exclude: Node) -> DirectionalLight3D:
 	if n == exclude:
@@ -365,6 +388,7 @@ func _find_directional_light_excluding(n: Node, exclude: Node) -> DirectionalLig
 			return r
 	return null
 
+
 func _find_directional_light(n: Node) -> DirectionalLight3D:
 	if n is DirectionalLight3D:
 		return n as DirectionalLight3D
@@ -373,6 +397,7 @@ func _find_directional_light(n: Node) -> DirectionalLight3D:
 		if r != null:
 			return r
 	return null
+
 
 func _capture_baseline() -> void:
 	if _env != null:
@@ -401,6 +426,7 @@ func _capture_baseline() -> void:
 			_base_skydome_exposure = ex
 	_captured = true
 
+
 # ---------------------------------------------------------------------------
 # Storm transition
 # ---------------------------------------------------------------------------
@@ -415,6 +441,7 @@ func _on_match_started() -> void:
 	# lands (unlikely, but safe), re-storm.
 	if GameState and GameState.final_wave:
 		_apply_storm_instant()
+
 
 ## Reset every storm-mutated property on the (shared) Environment + SkyDome + sun back
 ## to its explicit bright-day value. Also re-sets the ambient particle tint. Uses the
@@ -442,11 +469,13 @@ func _restore_day() -> void:
 	if _dust_mat != null:
 		_dust_mat.color = Color(0.85, 0.84, 0.8, 0.18)
 
+
 func _on_final_wave() -> void:
 	if _stormed:
 		return
 	_stormed = true
 	_start_storm_tween()
+
 
 func _start_storm_tween() -> void:
 	var t: float = max(0.1, Settings.STORM_TWEEN_TIME)
@@ -487,6 +516,7 @@ func _start_storm_tween() -> void:
 		_storm_tween.tween_property(_dust_mat, "color", Color(0.55, 0.52, 0.5, 0.3), t)
 	if _embers != null:
 		_storm_tween.tween_property(_embers, "amount_ratio", 1.0, t * 0.5)
+
 
 func _apply_storm_instant() -> void:
 	_stormed = true

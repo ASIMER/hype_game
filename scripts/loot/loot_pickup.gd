@@ -10,21 +10,21 @@ class_name LootPickup
 ## no multiplayer peer.
 
 const ITEM_PATHS := {
-	"loot_scrap":      "res://resources/items/scrap.tres",
-	"loot_cell":       "res://resources/items/energy_cell.tres",
-	"rifle":           "res://resources/items/rifle.tres",
-	"loot_medkit":     "res://resources/items/medkit.tres",
-	"loot_grenade":    "res://resources/items/grenade.tres",
-	"loot_ammo":       "res://resources/items/ammo_box.tres",
-	"loot_plastic":    "res://resources/items/plastic.tres",
-	"loot_chemicals":  "res://resources/items/chemicals.tres",
-	"loot_circuit":    "res://resources/items/circuit.tres",
-	"loot_artifact":   "res://resources/items/artifact.tres",
-	"loot_data_chip":  "res://resources/items/data_chip.tres",
+	"loot_scrap": "res://resources/items/scrap.tres",
+	"loot_cell": "res://resources/items/energy_cell.tres",
+	"rifle": "res://resources/items/rifle.tres",
+	"loot_medkit": "res://resources/items/medkit.tres",
+	"loot_grenade": "res://resources/items/grenade.tres",
+	"loot_ammo": "res://resources/items/ammo_box.tres",
+	"loot_plastic": "res://resources/items/plastic.tres",
+	"loot_chemicals": "res://resources/items/chemicals.tres",
+	"loot_circuit": "res://resources/items/circuit.tres",
+	"loot_artifact": "res://resources/items/artifact.tres",
+	"loot_data_chip": "res://resources/items/data_chip.tres",
 }
 
-const LAYER_LOOT := 1 << 3   # 3d_physics layer_4 "loot"
-const LAYER_PLAYER := 1 << 1 # 3d_physics layer_2 "player"
+const LAYER_LOOT := 1 << 3  # 3d_physics layer_4 "loot"
+const LAYER_PLAYER := 1 << 1  # 3d_physics layer_2 "player"
 
 # Server-side distance gate for a CLIENT's pickup request (the detection Area3D is a
 # 1.2 m sphere; a touch more is lenient for the model's hover offset + sync jitter).
@@ -50,6 +50,7 @@ const HOVER := 0.22
 var _model_root: Node3D = null
 var _bob_t: float = 0.0
 
+
 func _ready() -> void:
 	collision_layer = LAYER_LOOT
 	collision_mask = LAYER_PLAYER
@@ -71,6 +72,7 @@ func _ready() -> void:
 	Events.pickup_requested.connect(_on_pickup_requested)
 	Events.loot_spawned.emit(self)
 
+
 ## Idle spin + bob (visual only, runs on every peer — no authority gate).
 func _process(delta: float) -> void:
 	if _model_root == null:
@@ -78,6 +80,7 @@ func _process(delta: float) -> void:
 	_bob_t += delta
 	_model_root.rotation.y += SPIN_SPEED * delta
 	_model_root.position.y = HOVER + sin(_bob_t * BOB_SPEED) * BOB_AMP
+
 
 ## A rarity-coloured glow: an OmniLight for UNCOMMON+, plus a soft light pillar for
 ## RARE+ so valuable drops read across the arena.
@@ -94,7 +97,7 @@ func _apply_loot_glow() -> void:
 			return
 		rarity = item.rarity
 		if rarity < 1:
-			return   # common loot stays unlit to avoid light spam
+			return  # common loot stays unlit to avoid light spam
 		col = item.rarity_color()
 	var light := OmniLight3D.new()
 	light.light_color = col
@@ -120,6 +123,7 @@ func _apply_loot_glow() -> void:
 		beam.material_override = bm
 		add_child(beam)
 
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("interact"):
 		return
@@ -132,6 +136,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_request_pickup(p)
 			return
 
+
 ## Routes a pickup intent to wherever the authoritative logic runs.
 ##   - Single-player / host: emit on the local bus; the server-side handler below
 ##     (running on this same machine) claims the item.
@@ -142,6 +147,7 @@ func _request_pickup(player: Node) -> void:
 		Events.pickup_requested.emit(player, self)
 	else:
 		_pickup_requested_rpc.rpc_id(1, player.get_multiplayer_authority())
+
 
 ## Server-side entry for a client's pickup intent. Resolves the requesting peer's
 ## Player node and feeds the existing server-authoritative handler so all the
@@ -164,6 +170,7 @@ func _pickup_requested_rpc(requester_peer_id: int) -> void:
 			return
 	Events.pickup_requested.emit(player, self)
 
+
 ## Finds the spawned Player node owned by `peer_id` (its multiplayer authority).
 func _find_player_for_peer(peer_id: int) -> Node:
 	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
@@ -171,12 +178,15 @@ func _find_player_for_peer(peer_id: int) -> Node:
 			return p
 	return null
 
+
 func _on_body_entered(body: Node) -> void:
 	if body.is_in_group(Groups.PLAYERS) and not _players_in_range.has(body):
 		_players_in_range.append(body)
 
+
 func _on_body_exited(body: Node) -> void:
 	_players_in_range.erase(body)
+
 
 ## Server-authoritative handler: validate against the player's Inventory, add the
 ## item, broadcast item_picked_up, and despawn. Listens to every pickup_requested
@@ -214,12 +224,15 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 	else:
 		count = leftover
 
+
 func _load_item() -> ItemData:
 	# Prefer the ItemCatalog AUTOLOAD (scans every resources/items/*.tres). NOTE: it is a
 	# scene-tree autoload, NOT an Engine singleton — `Engine.has_singleton("ItemCatalog")`
 	# is ALWAYS false, which silently sent every lookup to the tiny ITEM_PATHS fallback so
 	# only its 11 hardcoded ids could ever be picked up. Reach it via /root instead.
-	var catalog: Node = get_tree().root.get_node_or_null("ItemCatalog") if get_tree() != null else null
+	var catalog: Node = (
+		get_tree().root.get_node_or_null("ItemCatalog") if get_tree() != null else null
+	)
 	if catalog != null and catalog.has_method("get_item"):
 		var cat_item := catalog.get_item(item_id) as ItemData
 		if cat_item != null:
@@ -232,11 +245,13 @@ func _load_item() -> ItemData:
 	var res := load(path)
 	return res as ItemData
 
+
 func _is_local_player(player: Node) -> bool:
 	# Local in single-player (no peer) or when this peer owns the player.
 	if not multiplayer.has_multiplayer_peer():
 		return true
 	return player.get_multiplayer_authority() == multiplayer.get_unique_id()
+
 
 ## Resolves the Inventory node hanging off a player. Prefers a child literally
 ## named "Inventory"; otherwise scans children for an Inventory-typed node.
@@ -248,6 +263,7 @@ func _get_player_inventory(player: Node) -> Inventory:
 		if c is Inventory:
 			return c
 	return null
+
 
 # ----------------------------------------------------------------- spawn helper
 ## Spawns a LootPickup of `id`/`count` at `pos` under `parent`. Used by enemy
@@ -261,7 +277,7 @@ static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> 
 	# `parent` is the Net/Loot node; the spawner is its sibling Net/LootSpawner.
 	var spawner := _find_loot_spawner(parent)
 	if spawner != null and spawner.spawn_function.is_valid():
-		var data := { "id": id, "count": count, "pos": pos }
+		var data := {"id": id, "count": count, "pos": pos}
 		return spawner.spawn(data) as LootPickup
 	# Fallback (no spawner / function unset, e.g. unit tests): direct add_child.
 	var pickup := _instantiate_self()
@@ -274,6 +290,7 @@ static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> 
 	parent.add_child(pickup, true)
 	pickup.global_position = pos
 	return pickup
+
 
 ## Lazily-cached self scene. Deliberately load(), NOT preload: this script is attached
 ## to LootPickup.tscn itself, and a class-level preload of your own scene is a
@@ -301,6 +318,7 @@ static func _spawn_loot(data: Dictionary) -> Node:
 	pickup._spawn_pos = data.get("pos", Vector3.ZERO)
 	pickup._has_spawn_pos = true
 	return pickup
+
 
 ## Net/Loot (the spawn_path target) has the LootSpawner as a sibling under Net/.
 static func _find_loot_spawner(loot_root: Node) -> MultiplayerSpawner:

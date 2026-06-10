@@ -22,18 +22,18 @@ extends Control
 ##   res://scenes/ui/tabs/WorkshopTab.tscn
 ## Each is instantiated once in _ready; missing scenes fall back to a placeholder label.
 
-signal deploy_requested()
-signal back_requested()
+signal deploy_requested
+signal back_requested
 
 # Tab index constants for clarity.
-const TAB_STASH       := 0
-const TAB_LOADOUT     := 1
-const TAB_WORKSHOP    := 2
-const TAB_SHOP        := 3
-const TAB_QUESTS      := 4
-const TAB_GUNSMITH    := 5
+const TAB_STASH := 0
+const TAB_LOADOUT := 1
+const TAB_WORKSHOP := 2
+const TAB_SHOP := 3
+const TAB_QUESTS := 4
+const TAB_GUNSMITH := 5
 const TAB_PROGRESSION := 6
-const TAB_CHARACTER   := 7
+const TAB_CHARACTER := 7
 
 # Paths to tab scenes (built by other agents — guarded with ResourceLoader.exists).
 const TAB_PATHS := [
@@ -57,22 +57,22 @@ const DIFFICULTY_DESCS := [
 
 # Project theme colours (match Workshop.gd / MainMenu.tscn).
 const COL_AMBER := UIStyle.AMBER
-const COL_TEAL  := UIStyle.TEAL
-const COL_DIM   := UIStyle.DIM
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
 
 # Squad status-dot colours: amber = leader/host, green = ready, yellow = not ready.
 const DOT_LEADER := Color(0.91, 0.64, 0.24, 1.0)
-const DOT_READY  := Color(0.36, 0.78, 0.42, 1.0)
-const DOT_WAIT   := Color(0.93, 0.82, 0.27, 1.0)
+const DOT_READY := Color(0.36, 0.78, 0.42, 1.0)
+const DOT_WAIT := Color(0.93, 0.82, 0.27, 1.0)
 
 # ── node refs ────────────────────────────────────────────────────────────────
-@onready var _currency_label: Label       = $Layout/Header/HeaderVBox/HRow/CurrencyLabel
-@onready var _tab_buttons: Array          = []  # populated in _ready from TabBar
-@onready var _content_area: Control       = $Layout/Body/ContentArea
-@onready var _diff_option: OptionButton   = $Layout/Footer/FooterRow/DiffVBox/DiffOption
-@onready var _diff_desc: Label            = $Layout/Footer/FooterRow/DiffVBox/DiffDesc
-@onready var _back_btn: Button            = $Layout/Footer/FooterRow/BackBtn
-@onready var _deploy_btn: Button          = $Layout/Footer/FooterRow/DeployBtn
+@onready var _currency_label: Label = $Layout/Header/HeaderVBox/HRow/CurrencyLabel
+@onready var _tab_buttons: Array = []  # populated in _ready from TabBar
+@onready var _content_area: Control = $Layout/Body/ContentArea
+@onready var _diff_option: OptionButton = $Layout/Footer/FooterRow/DiffVBox/DiffOption
+@onready var _diff_desc: Label = $Layout/Footer/FooterRow/DiffVBox/DiffDesc
+@onready var _back_btn: Button = $Layout/Footer/FooterRow/BackBtn
+@onready var _deploy_btn: Button = $Layout/Footer/FooterRow/DeployBtn
 
 ## Instantiated tab controls (indexed by TAB_* constants). May be Label placeholders.
 var _tabs: Array[Control] = []
@@ -81,11 +81,13 @@ var _active_tab: int = TAB_STASH
 
 # ── Co-op squad lobby ──────────────────────────────────────────────────────────
 var _squad_panel: PanelContainer = null
-var _squad_list: HBoxContainer = null   # horizontal roster strip (bottom of the hub)
-var _self_ready: bool = false   # this client's lobby ready state (clients only)
+var _squad_list: HBoxContainer = null  # horizontal roster strip (bottom of the hub)
+var _self_ready: bool = false  # this client's lobby ready state (clients only)
+
 
 func _is_coop() -> bool:
 	return multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline
+
 
 func _is_host() -> bool:
 	return GameState.is_leader()
@@ -112,9 +114,9 @@ func _ready() -> void:
 	# ── Wire difficulty selector ──────────────────────────────────────────────
 	if _diff_option:
 		_diff_option.clear()
-		_diff_option.add_item("EASY",   GameState.Difficulty.EASY)
+		_diff_option.add_item("EASY", GameState.Difficulty.EASY)
 		_diff_option.add_item("NORMAL", GameState.Difficulty.NORMAL)
-		_diff_option.add_item("HARD",   GameState.Difficulty.HARD)
+		_diff_option.add_item("HARD", GameState.Difficulty.HARD)
 		_diff_option.selected = GameState.difficulty
 		_diff_option.item_selected.connect(_on_difficulty_selected)
 
@@ -134,7 +136,7 @@ func _ready() -> void:
 				lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 				lbl.add_theme_color_override("font_color", COL_DIM)
 				lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				lbl.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+				lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 				tab = lbl
 			tab.visible = (i == TAB_STASH)
 			_content_area.add_child(tab)
@@ -195,6 +197,7 @@ func _exit_tree() -> void:
 
 # ── Co-op squad lobby ──────────────────────────────────────────────────────────
 
+
 ## The footer button is context-aware:
 ##   solo / host → START RAID (host gated on all members ready; solo always); presses
 ##     deploy_requested so main.gd runs the (synchronized) deploy.
@@ -206,6 +209,7 @@ func _on_deploy_pressed() -> void:
 		_refresh_deploy_button()
 		return
 	deploy_requested.emit()
+
 
 func _refresh_deploy_button() -> void:
 	if _deploy_btn == null:
@@ -222,6 +226,7 @@ func _refresh_deploy_button() -> void:
 	else:
 		_deploy_btn.text = tr("UNREADY") if _self_ready else tr("READY")
 		_deploy_btn.disabled = false
+
 
 ## Builds the SQUAD roster strip (bottom, left-of-centre) shown only in co-op.
 ## Lays members out horizontally as `● nick` chips with a colour-coded status dot;
@@ -263,6 +268,7 @@ func _build_squad_panel() -> void:
 	add_child(panel)
 	_squad_panel = panel
 
+
 func _refresh_squad() -> void:
 	if _squad_list == null:
 		return
@@ -275,7 +281,7 @@ func _refresh_squad() -> void:
 		var info: Dictionary = GameState.peers[id]
 		var nm: String = String(info.get("name", "Raider"))
 		var rdy: bool = bool(info.get("ready", false))
-		var is_leader: bool = (int(id) == 1)
+		var is_leader: bool = int(id) == 1
 		# One chip = a coloured dot + the nick, laid out side by side.
 		var chip := HBoxContainer.new()
 		chip.add_theme_constant_override("separation", 5)
@@ -292,13 +298,16 @@ func _refresh_squad() -> void:
 		chip.add_child(who)
 		_squad_list.add_child(chip)
 
+
 func _on_squad_changed() -> void:
 	_refresh_squad()
 	_refresh_deploy_button()
 
+
 func _on_squad_peer(_id: int, _info: Dictionary) -> void:
 	_refresh_squad()
 	_refresh_deploy_button()
+
 
 func _on_squad_peer_left(_id: int) -> void:
 	_refresh_squad()
@@ -307,12 +316,13 @@ func _on_squad_peer_left(_id: int) -> void:
 
 # ── Tab switching ─────────────────────────────────────────────────────────────
 
+
 ## Show the tab at index `idx`; hide the rest; update button visual states.
 func _switch_tab(idx: int) -> void:
 	_active_tab = clamp(idx, 0, _tabs.size() - 1)
 	for i in _tabs.size():
 		if _tabs[i] != null:
-			var should_show: bool = (i == _active_tab)
+			var should_show: bool = i == _active_tab
 			_tabs[i].visible = should_show
 			if should_show:
 				UIStyle.pop_in(_tabs[i], UIStyle.Dir.DOWN, 10.0, 0.14)
@@ -333,6 +343,7 @@ func _update_tab_button_states() -> void:
 
 # ── Currency ──────────────────────────────────────────────────────────────────
 
+
 func _refresh_currency() -> void:
 	if not _currency_label:
 		return
@@ -344,6 +355,7 @@ func _on_currency_changed(_amount: int) -> void:
 
 
 # ── Difficulty ────────────────────────────────────────────────────────────────
+
 
 func _refresh_difficulty() -> void:
 	if not _diff_option:

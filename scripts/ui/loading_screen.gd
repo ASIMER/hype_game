@@ -18,6 +18,7 @@ var _title: Label
 var _bar: ProgressBar
 var _status: Label
 
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 200
@@ -25,6 +26,7 @@ func _ready() -> void:
 	visible = false
 	if not Events.arena_build_progress.is_connected(_on_arena_build_progress):
 		Events.arena_build_progress.connect(_on_arena_build_progress)
+
 
 func _build_ui() -> void:
 	# Full-rect opaque dark backdrop.
@@ -72,6 +74,7 @@ func _build_ui() -> void:
 	_status.add_theme_color_override("font_color", UIStyle.DIM)
 	col.add_child(_status)
 
+
 # ------------------------------------------------------------------- public API
 ## Shows the overlay with `title`, resets the bar to 0, and moves to front.
 func show_screen(title: String = "Loading…") -> void:
@@ -85,6 +88,7 @@ func show_screen(title: String = "Loading…") -> void:
 	# Keep above any sibling CanvasLayers added after us.
 	layer = 200
 
+
 ## Sets the bar (clamped 0..1) + status text. Callers should
 ## `await get_tree().process_frame` after this so the repaint is visible.
 func set_progress(frac: float, label: String = "") -> void:
@@ -93,9 +97,11 @@ func set_progress(frac: float, label: String = "") -> void:
 	if label != "" and _status:
 		_status.text = label
 
+
 ## Hides the overlay.
 func hide_screen() -> void:
 	visible = false
+
 
 # --------------------------------------------------------------- event-driven
 func _on_arena_build_progress(frac: float, label: String) -> void:
@@ -106,9 +112,11 @@ func _on_arena_build_progress(frac: float, label: String) -> void:
 		# Defer one frame so the full bar is visible briefly before it vanishes.
 		_hide_next_frame()
 
+
 func _hide_next_frame() -> void:
 	await get_tree().process_frame
 	hide_screen()
+
 
 # ------------------------------------------------------------------- prewarm
 ## Game-boot graphics warm-up. Best-effort + headless-safe: paces the progress bar
@@ -141,6 +149,7 @@ func prewarm(steps_label: String = "") -> void:
 	await get_tree().process_frame
 	hide_screen()
 
+
 ## Instantiates the shared procedural materials into a 1-mesh off-screen SubViewport
 ## and renders one frame, forcing their shaders to compile up front. Wrapped so any
 ## failure (missing autoload, headless edge) just returns without crashing boot.
@@ -159,8 +168,8 @@ func _compile_materials() -> void:
 	# Pull in the shared weathered material (ProcMaterials autoload) so its triplanar
 	# shader variant compiles now rather than on the first in-world frame.
 	var mat: Material = ProcMaterials.weathered(
-		Color(0.16, 0.165, 0.175), 0.0, 0.95, 0.5, 7,
-		Vector3(0.05, 0.05, 0.05), true)
+		Color(0.16, 0.165, 0.175), 0.0, 0.95, 0.5, 7, Vector3(0.05, 0.05, 0.05), true
+	)
 	if mat != null:
 		mesh.material_override = mat
 	vp.add_child(mesh)

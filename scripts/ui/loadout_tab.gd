@@ -11,22 +11,21 @@ extends Control
 
 # Weapon display names + canonical order.
 const WEAPON_DISPLAY := {
-	"rifle":   "RIFLE",
-	"pistol":  "PISTOL",
-	"smg":     "SMG",
+	"rifle": "RIFLE",
+	"pistol": "PISTOL",
+	"smg": "SMG",
 	"shotgun": "SHOTGUN",
-	"dmr":     "DMR",
+	"dmr": "DMR",
 }
 const WEAPON_ORDER: Array[String] = ["rifle", "pistol", "smg", "shotgun", "dmr"]
 
 # Project theme colours (matching workshop.gd / main menu).
-const COL_AMBER := UIStyle.AMBER   # amber accent
-const COL_TEAL  := UIStyle.TEAL  # teal accent / selected
-const COL_DIM   := UIStyle.DIM   # muted label
-const COL_WHITE := UIStyle.WHITE   # body text
-const COL_RED   := UIStyle.RED   # locked / warning
-const COL_WARN  := Color(0.95, 0.70, 0.20, 1.0)   # at-risk callout
-
+const COL_AMBER := UIStyle.AMBER  # amber accent
+const COL_TEAL := UIStyle.TEAL  # teal accent / selected
+const COL_DIM := UIStyle.DIM  # muted label
+const COL_WHITE := UIStyle.WHITE  # body text
+const COL_RED := UIStyle.RED  # locked / warning
+const COL_WARN := Color(0.95, 0.70, 0.20, 1.0)  # at-risk callout
 
 # ---------------------------------------------------------------- node refs
 # Populated in _build_layout (called once from _ready).
@@ -289,8 +288,8 @@ func _build_weapon_rows() -> void:
 
 		_weapon_rows.add_child(row)
 		_weapon_ui[id] = {
-			"row":        row,
-			"check":      check,
+			"row": row,
+			"check": check,
 			"locked_lbl": locked_lbl,
 		}
 
@@ -384,8 +383,8 @@ func _rebuild_consumable_rows() -> void:
 		_consume_ui[id] = {
 			"minus_btn": minus_btn,
 			"count_lbl": count_lbl,
-			"plus_btn":  plus_btn,
-			"max_lbl":   max_lbl,
+			"plus_btn": plus_btn,
+			"max_lbl": max_lbl,
 		}
 
 

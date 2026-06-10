@@ -18,7 +18,7 @@ class_name QuestData
 ## (so they're repeatable). Standing (non-daily) contracts are one-and-done.
 @export var daily: bool = false
 @export var obj_type: String = "kill"
-@export var obj_target: String = ""             # enemy/item id ("" = any, where applicable)
+@export var obj_target: String = ""  # enemy/item id ("" = any, where applicable)
 @export var obj_count: int = 1
 @export var reward_currency: int = 0
 @export var reward_item_ids: PackedStringArray = PackedStringArray()
@@ -49,16 +49,17 @@ class_name QuestData
 ## --- Iteration 3: rich rewards (all optional, granted in Quests.claim on top of currency/
 ## items/blueprints) ---
 @export var reward_xp: int = 0
-@export var reward_rep: int = 0               # generic VENDOR reputation
+@export var reward_rep: int = 0  # generic VENDOR reputation
 @export var reward_skill_points: int = 0
-@export var reward_giver_rep: int = 0         # reputation toward THIS quest's giver
+@export var reward_giver_rep: int = 0  # reputation toward THIS quest's giver
 ## Cosmetic ids to permanently UNLOCK (incl. quest-exclusive paints, cost = -1).
 @export var reward_cosmetics: PackedStringArray = PackedStringArray()
+
 
 ## Reward items as an array of { "id": String, "count": int } dicts.
 func reward_items() -> Array:
 	var out: Array = []
 	for i in reward_item_ids.size():
 		var c: int = reward_item_counts[i] if i < reward_item_counts.size() else 1
-		out.append({ "id": String(reward_item_ids[i]), "count": maxi(1, c) })
+		out.append({"id": String(reward_item_ids[i]), "count": maxi(1, c)})
 	return out

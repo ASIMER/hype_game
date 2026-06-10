@@ -10,30 +10,28 @@ extends Control
 ## and QuestData fields (id, title, desc, daily, obj_count, reward_currency,
 ## reward_items(), reward_blueprints). Item names are resolved via ItemCatalog.
 
-
 # Project theme colours (matching loadout_tab.gd / workshop.gd).
-const COL_AMBER := UIStyle.AMBER   # amber accent / header
-const COL_TEAL  := UIStyle.TEAL  # teal accent / section
-const COL_DIM   := UIStyle.DIM   # muted label
-const COL_WHITE := UIStyle.WHITE   # body text
-const COL_GREEN := Color(0.30, 0.75, 0.40, 1.0)   # complete / claimable
-const COL_RED   := UIStyle.RED   # incomplete / locked
-
+const COL_AMBER := UIStyle.AMBER  # amber accent / header
+const COL_TEAL := UIStyle.TEAL  # teal accent / section
+const COL_DIM := UIStyle.DIM  # muted label
+const COL_WHITE := UIStyle.WHITE  # body text
+const COL_GREEN := Color(0.30, 0.75, 0.40, 1.0)  # complete / claimable
+const COL_RED := UIStyle.RED  # incomplete / locked
 
 # ---------------------------------------------------------------- node refs
 # Populated in _build_layout() (called once from _ready).
 var _cards_container: VBoxContainer
 var _empty_label: Label
-var _daily_timer_lbl: Label = null   # live "resets in HH:MM:SS" footer label
+var _daily_timer_lbl: Label = null  # live "resets in HH:MM:SS" footer label
 var _tick_accum: float = 0.0
 
 # Responsive columns: each section's quest cards go into a GridContainer whose column count is
 # computed from the tab width (UILayout.columns_for) so a single card never stretches full-width
 # on a wide/ultrawide monitor — more columns appear as the window widens. Recomputed on `resized`.
-const _CARD_W := 480.0       # target quest-card width (px)
+const _CARD_W := 480.0  # target quest-card width (px)
 const _MAX_COLS := 5
-var _grids: Array[GridContainer] = []   # all section card-grids (for resize recompute)
-var _current_grid: GridContainer = null # the grid the next _add_card() fills
+var _grids: Array[GridContainer] = []  # all section card-grids (for resize recompute)
+var _current_grid: GridContainer = null  # the grid the next _add_card() fills
 
 
 func _ready() -> void:
@@ -146,8 +144,13 @@ func _refresh() -> void:
 	var active: Array = _standalone(Quests.accepted())
 	var locked: Array = _standalone(Quests.locked_teasers())
 	var lines: Array = _visible_lines()
-	var all_empty: bool = not has_dailies and available.is_empty() and active.is_empty() \
-		and locked.is_empty() and lines.is_empty()
+	var all_empty: bool = (
+		not has_dailies
+		and available.is_empty()
+		and active.is_empty()
+		and locked.is_empty()
+		and lines.is_empty()
+	)
 
 	_empty_label.visible = all_empty
 	_cards_container.visible = not all_empty
@@ -163,34 +166,44 @@ func _refresh() -> void:
 
 	# ── AVAILABLE (offered, awaiting ACCEPT) ─────────────────────────────────
 	if not available.is_empty():
-		_cards_container.add_child(_build_section_header(
-			tr("AVAILABLE CONTRACTS"), tr("Accept to add to your active log"), COL_GREEN))
+		_cards_container.add_child(
+			_build_section_header(
+				tr("AVAILABLE CONTRACTS"), tr("Accept to add to your active log"), COL_GREEN
+			)
+		)
 		_begin_card_grid()
 		for q_var in available:
 			_add_card(q_var, "available")
 
 	# ── ACTIVE (accepted standing contracts) ─────────────────────────────────
 	if not active.is_empty():
-		_cards_container.add_child(_build_section_header(
-			tr("ACTIVE CONTRACTS"), tr("%d / %d active") % [Quests.active_count(), Settings.ACTIVE_QUEST_CAP], COL_AMBER))
+		_cards_container.add_child(
+			_build_section_header(
+				tr("ACTIVE CONTRACTS"),
+				tr("%d / %d active") % [Quests.active_count(), Settings.ACTIVE_QUEST_CAP],
+				COL_AMBER
+			)
+		)
 		_begin_card_grid()
 		for q_var in active:
 			_add_card(q_var, "active")
 
 	# ── DAILY (un-claimed cards + a "resets in HH:MM:SS" footer; claimed ones drop off) ──
 	if has_dailies:
-		_cards_container.add_child(_build_section_header(
-			tr("DAILY CONTRACTS"), tr("Refreshes each day"), COL_TEAL))
+		_cards_container.add_child(
+			_build_section_header(tr("DAILY CONTRACTS"), tr("Refreshes each day"), COL_TEAL)
+		)
 		_begin_card_grid()
 		for q_var in dailies_unclaimed:
 			_add_card(q_var, "active")
-		_current_grid = null   # the footer is a full-width strip, not a card
+		_current_grid = null  # the footer is a full-width strip, not a card
 		_cards_container.add_child(_build_daily_footer())
 
 	# ── LOCKED (teasers with an unlock hint — the next goals to chase) ────────
 	if not locked.is_empty():
-		_cards_container.add_child(_build_section_header(
-			tr("LOCKED"), tr("Meet the conditions to unlock"), COL_DIM))
+		_cards_container.add_child(
+			_build_section_header(tr("LOCKED"), tr("Meet the conditions to unlock"), COL_DIM)
+		)
 		_begin_card_grid()
 		for q_var in locked:
 			_add_card(q_var, "locked")
@@ -209,10 +222,12 @@ func _standalone(arr: Array) -> Array:
 			out.append(q)
 	return out
 
+
 ## Questlines that have anything worth showing (a current step that isn't a far-off lock with
 ## no progress yet shows as a teaser; fully-claimed lines collapse to a single done header).
 func _visible_lines() -> Array:
 	return Quests.questlines()
+
 
 ## Renders a questline as a tinted header strip ("⛓ TITLE — Step X/Y · giver") + its CURRENT
 ## step card (available→ACCEPT / active→progress+CLAIM / locked→teaser). Full step list = modal.
@@ -247,9 +262,12 @@ func _build_questline_group(line: QuestLine) -> void:
 
 func _accent_col(accent: int) -> Color:
 	match accent:
-		1: return COL_TEAL
-		2: return COL_GREEN
-		_: return COL_AMBER
+		1:
+			return COL_TEAL
+		2:
+			return COL_GREEN
+		_:
+			return COL_AMBER
 
 
 ## "Daily contracts reset in HH:MM:SS · X / Y done today" — ticks live via _process.
@@ -276,8 +294,11 @@ func _update_daily_timer() -> void:
 		return
 	var done: int = Quests.daily_claimed_count()
 	var total: int = Quests.get_daily_quests().size()
-	_daily_timer_lbl.text = tr("Daily contracts reset in %s") % _fmt_hms(Quests.seconds_until_daily_reset()) \
-		+ "   ·   " + tr("%d / %d done today") % [done, total]
+	_daily_timer_lbl.text = (
+		tr("Daily contracts reset in %s") % _fmt_hms(Quests.seconds_until_daily_reset())
+		+ "   ·   "
+		+ tr("%d / %d done today") % [done, total]
+	)
 
 
 func _fmt_hms(secs: int) -> String:
@@ -309,8 +330,9 @@ func _build_giver_standing() -> void:
 			givers.append(g2)
 	if givers.is_empty():
 		return
-	_cards_container.add_child(_build_section_header(
-		tr("STANDING"), tr("Reputation with your contacts"), COL_TEAL))
+	_cards_container.add_child(
+		_build_section_header(tr("STANDING"), tr("Reputation with your contacts"), COL_TEAL)
+	)
 	for g in givers:
 		_cards_container.add_child(_giver_row(g))
 
@@ -344,9 +366,13 @@ func _giver_row(giver: String) -> PanelContainer:
 	bar.show_percentage = false
 	bar.theme_type_variation = "FillAmber"
 	if need <= 0:
-		bar.min_value = 0; bar.max_value = 1; bar.value = 1   # max tier
+		bar.min_value = 0
+		bar.max_value = 1
+		bar.value = 1  # max tier
 	else:
-		bar.min_value = 0; bar.max_value = need; bar.value = clampi(into, 0, need)
+		bar.min_value = 0
+		bar.max_value = need
+		bar.value = clampi(into, 0, need)
 	hb.add_child(bar)
 	var amt := Label.new()
 	amt.text = (tr("MAX") if need <= 0 else "%d / %d" % [into, need])

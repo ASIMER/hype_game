@@ -13,19 +13,20 @@ class_name RobotFlyer
 # How far the wasp likes to sit from the target horizontally — it strafes at this
 # ring rather than charging into melee.
 const ORBIT_DISTANCE: float = 9.0
-const ORBIT_BAND: float = 2.5          # acceptable +/- around ORBIT_DISTANCE
+const ORBIT_BAND: float = 2.5  # acceptable +/- around ORBIT_DISTANCE
 const STRAFE_SPEED_SCALE: float = 0.85
 
 var _hover_height: float = 4.5
-var _strafe_dir: float = 1.0           # +1 / -1, flips occasionally
+var _strafe_dir: float = 1.0  # +1 / -1, flips occasionally
 var _strafe_flip_t: float = 0.0
-var _ground_y: float = 0.0             # sampled ground level under us
+var _ground_y: float = 0.0  # sampled ground level under us
 
 # Procedural idle parts (visual only): the rotor pivots spin, the body bobs, the
 # core pulses. Cached once in _cache_proc_parts (OVERRIDE of the base).
 var _proc_rotors: Array[Node3D] = []
 var _proc_body: Node3D = null
 var _proc_body_rest_y: float = 0.0
+
 
 func _ready() -> void:
 	super._ready()
@@ -37,6 +38,7 @@ func _ready() -> void:
 	# the world so it can't be shoved by players/other enemies. Separation is steered.
 	collision_mask = 1
 
+
 ## OVERRIDE: only collide with world; avoidance stays on for path fan-out.
 func _setup_collision_and_avoidance() -> void:
 	collision_mask = 1
@@ -45,9 +47,11 @@ func _setup_collision_and_avoidance() -> void:
 		_agent.radius = 0.6
 		_agent.max_speed = _stat_speed
 
+
 ## OVERRIDE: sit the bar higher (wasp floats well above origin).
 func _health_bar_height() -> float:
 	return 1.2
+
 
 ## OVERRIDE: chase = approach the orbit ring, not the target's feet. We steer in
 ## the XZ plane toward/away to hold ORBIT_DISTANCE and add a tangential strafe,
@@ -60,6 +64,7 @@ func _do_chase(delta: float) -> void:
 	_apply_movement(_orbit_dir(delta), delta)
 	_face_towards(_target.global_position, delta)
 
+
 ## OVERRIDE: when in range, keep orbiting WHILE firing rather than standing still —
 ## a strafing flyer is much harder to hit and reads as "alive".
 func _do_attack(delta: float) -> void:
@@ -70,11 +75,12 @@ func _do_attack(delta: float) -> void:
 		_strike(_target)
 		_attack_cooldown = _next_cooldown()
 
+
 ## Horizontal steering toward the orbit ring + a tangential strafe component
 ## (shared Steering.orbit_dir — it reads/writes our _strafe_dir/_strafe_flip_t).
 func _orbit_dir(delta: float) -> Vector3:
-	return Steering.orbit_dir(self, _target, delta,
-		ORBIT_DISTANCE, ORBIT_BAND, STRAFE_SPEED_SCALE)
+	return Steering.orbit_dir(self, _target, delta, ORBIT_DISTANCE, ORBIT_BAND, STRAFE_SPEED_SCALE)
+
 
 ## OVERRIDE: fly — no gravity. Hold the hover height above the sampled ground and
 ## blend in 3D separation. dir is the desired XZ move from _orbit_dir.
@@ -93,6 +99,7 @@ func _apply_movement(dir: Vector3, _delta: float) -> void:
 	var dy := target_y - global_position.y
 	velocity.y = clampf(dy * 4.0, -speed, speed)
 	move_and_slide()
+
 
 ## OVERRIDE: cache the wasp's rotor pivots + body + glowing core for idle motion.
 func _cache_proc_parts() -> void:
@@ -115,6 +122,7 @@ func _cache_proc_parts() -> void:
 		_pulse_base_energy = _read_emission_energy(core as MeshInstance3D)
 	_has_proc_anim = not _proc_rotors.is_empty() or _proc_body != null or _pulse_part != null
 
+
 ## OVERRIDE: fast rotor spin (each pivot about its own Y), gentle body bob, core pulse.
 func _animate_visual(delta: float) -> void:
 	for r in _proc_rotors:
@@ -125,6 +133,7 @@ func _animate_visual(delta: float) -> void:
 	# Core glows brighter/faster while attacking.
 	var atk := current_state == State.ATTACK
 	_pulse_emission(0.6, 1.5, 5.0 if atk else 3.0)
+
 
 ## OVERRIDE: full-3D separation so wasps spread in the air, not just on XZ.
 func _separation_steer() -> Vector3:

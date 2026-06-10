@@ -27,16 +27,17 @@ extends RefCounted
 #   0..5 = original NW POIs · 6 SnowLodge · 7 SnowDepot · 8 DesertRuins · 9 RuinColumns ·
 #   10 Temple · 11 ShrineHouse.  The 3 landmarks (6/8/10) get the climate zones.
 const ZONES := {
-	10: { "kind": "rain",   "radius": 33.0, "top": 26.0 },  # Temple (SE)
-	6:  { "kind": "snow",   "radius": 35.0, "top": 24.0 },  # Alpine Lodge (NE)
-	8:  { "kind": "desert", "radius": 38.0, "top": 16.0 },  # Desert Ruins (SW)
+	10: {"kind": "rain", "radius": 33.0, "top": 26.0},  # Temple (SE)
+	6: {"kind": "snow", "radius": 35.0, "top": 24.0},  # Alpine Lodge (NE)
+	8: {"kind": "desert", "radius": 38.0, "top": 16.0},  # Desert Ruins (SW)
 }
 
 # Per-kind base particle counts (scaled by particle_density at build + climate_density live).
-const BASE_AMOUNT := { "rain": 950, "snow": 460, "desert": 320 }
+const BASE_AMOUNT := {"rain": 950, "snow": 460, "desert": 320}
 
 # Cached soft-radial decal texture (white RGB, radial alpha) — one shared instance.
 static var _radial: ImageTexture = null
+
 
 ## Adds a "ClimateZones" Node3D under `parent` with one climate zone per far landmark.
 ## No-op on headless or when the toggle is off.
@@ -64,6 +65,7 @@ static func build(parent: Node3D, poi_markers: Node3D) -> void:
 	# Apply the live density multiplier to the freshly built zones.
 	apply_density(parent)
 
+
 static func _add_zone(root: Node3D, center: Vector3, prof: Dictionary) -> void:
 	var kind: String = String(prof["kind"])
 	var radius: float = float(prof["radius"])
@@ -83,6 +85,7 @@ static func _add_zone(root: Node3D, center: Vector3, prof: Dictionary) -> void:
 	# Local atmosphere FogVolume (renders only when volumetric fog is enabled).
 	var fog := _build_fog(kind, radius, top)
 	zone.add_child(fog)
+
 
 # ---------------------------------------------------------------- particles
 static func _build_particles(kind: String, radius: float, top: float, pd: float) -> GPUParticles3D:
@@ -155,9 +158,12 @@ static func _build_particles(kind: String, radius: float, top: float, pd: float)
 			p.draw_pass_1 = _precip_mesh(0.55, 0.55, Color(0.82, 0.68, 0.42, 0.14), true)
 	p.process_material = pm
 	# Bound the draw to the zone column so it culls when off-screen / far away.
-	p.visibility_aabb = AABB(Vector3(-radius, -2.0, -radius), Vector3(radius * 2.0, top + 6.0, radius * 2.0))
+	p.visibility_aabb = AABB(
+		Vector3(-radius, -2.0, -radius), Vector3(radius * 2.0, top + 6.0, radius * 2.0)
+	)
 	p.emitting = true
 	return p
+
 
 ## A camera-facing particle quad (streak for rain, dot for snow, soft puff for sand). `additive`
 ## uses ADD blend (faint haze) else ALPHA blend (visible precipitation).
@@ -176,6 +182,7 @@ static func _precip_mesh(w: float, h: float, col: Color, additive: bool) -> Quad
 	q.material = m
 	return q
 
+
 # ---------------------------------------------------------------- ground decal
 static func _build_decal(kind: String, radius: float) -> Decal:
 	var dec := Decal.new()
@@ -188,15 +195,16 @@ static func _build_decal(kind: String, radius: float) -> Decal:
 	dec.lower_fade = 0.3
 	match kind:
 		"rain":
-			dec.modulate = Color(0.16, 0.18, 0.22)   # dark wet sheen
+			dec.modulate = Color(0.16, 0.18, 0.22)  # dark wet sheen
 			dec.albedo_mix = 0.55
 		"snow":
-			dec.modulate = Color(0.93, 0.96, 1.0)    # white snow blanket
+			dec.modulate = Color(0.93, 0.96, 1.0)  # white snow blanket
 			dec.albedo_mix = 0.88
 		_:  # desert
-			dec.modulate = Color(0.80, 0.66, 0.38)   # warm sand
+			dec.modulate = Color(0.80, 0.66, 0.38)  # warm sand
 			dec.albedo_mix = 0.6
 	return dec
+
 
 ## A soft white radial-alpha texture (1 at centre → 0 at the rim) — the decal's circular mask.
 ## Cached + shared across zones.
@@ -214,6 +222,7 @@ static func _radial_texture() -> ImageTexture:
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	_radial = ImageTexture.create_from_image(img)
 	return _radial
+
 
 # ---------------------------------------------------------------- local fog
 static func _build_fog(kind: String, radius: float, top: float) -> FogVolume:
@@ -243,6 +252,7 @@ static func _build_fog(kind: String, radius: float, top: float) -> FogVolume:
 	fog.set_meta("climate_base_density", base)
 	return fog
 
+
 # ---------------------------------------------------------------- live density
 ## LIVE: rescale every climate zone by the user's "Climate Density" multiplier
 ## (Settings.climate_density, 0..2). Particle amount rides amount_ratio (0..1); fog density
@@ -260,5 +270,9 @@ static func apply_density(scene_root: Node) -> void:
 				(c as GPUParticles3D).amount_ratio = clampf(mult, 0.0, 1.0)
 			elif c is FogVolume and (c as FogVolume).material is FogMaterial:
 				var fm := (c as FogVolume).material as FogMaterial
-				var b: float = float(c.get_meta("climate_base_density")) if c.has_meta("climate_base_density") else 0.5
+				var b: float = (
+					float(c.get_meta("climate_base_density"))
+					if c.has_meta("climate_base_density")
+					else 0.5
+				)
 				fm.density = b * mult

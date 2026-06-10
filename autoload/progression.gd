@@ -34,11 +34,13 @@ func _ready() -> void:
 
 # ── Per-run reset ─────────────────────────────────────────────────────────────
 
+
 func _on_match_started() -> void:
 	_rare_haul_rep_granted = false
 
 
 # ── Kill XP + weapon mastery ──────────────────────────────────────────────────
+
 
 ## Called on the KILLER's own machine by NetworkManager (server-auth attribution → the
 ## killer peer). Awards account XP for the kill + mastery to THIS machine's active weapon
@@ -92,6 +94,7 @@ func _find_weapon_controller(player: Node) -> WeaponController:
 
 # ── Extraction loot XP + rep ──────────────────────────────────────────────────
 
+
 func _on_raid_loot_granted(payload: Array, _bonus: int) -> void:
 	# Base extract XP + rep — always on extraction.
 	MetaProgression.add_xp(Settings.XP_PER_EXTRACT, "extract")
@@ -108,7 +111,7 @@ func _on_raid_loot_granted(payload: Array, _bonus: int) -> void:
 		var item_data: ItemData = ItemCatalog.get_item(id)
 		if item_data == null:
 			continue
-		if item_data.rarity >= 2:   # ItemData.Rarity.RARE = 2
+		if item_data.rarity >= 2:  # ItemData.Rarity.RARE = 2
 			MetaProgression.add_xp(Settings.XP_PER_RARE_LOOT * cnt, "loot")
 			has_rare = true
 
@@ -119,12 +122,14 @@ func _on_raid_loot_granted(payload: Array, _bonus: int) -> void:
 
 # ── World event XP ────────────────────────────────────────────────────────────
 
+
 func _on_world_event_ended(_kind: int, success: bool) -> void:
 	if success:
 		MetaProgression.add_xp(Settings.XP_PER_EVENT, "event")
 
 
 # ── Quest completion rep ──────────────────────────────────────────────────────
+
 
 func _on_quest_completed(_quest_id: String) -> void:
 	MetaProgression.grant_rep(Settings.REP_PER_CONTRACT)

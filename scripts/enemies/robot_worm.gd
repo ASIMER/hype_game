@@ -23,11 +23,11 @@ enum Phase { BURROWED, EMERGE, SURFACE, SUBMERGE }
 ## Replicated worm phase (see RobotSandworm.tscn SceneReplicationConfig).
 var phase: int = Phase.BURROWED
 
-const BURROW_DEPTH: float = 1.6        # how far below ground the body travels
-const MIN_BURROW_TIME: float = 1.2     # so the cycle never strobes
-const BURROW_TIMEOUT: float = 8.0      # force an emerge even if the prey kept distance
+const BURROW_DEPTH: float = 1.6  # how far below ground the body travels
+const MIN_BURROW_TIME: float = 1.2  # so the cycle never strobes
+const BURROW_TIMEOUT: float = 8.0  # force an emerge even if the prey kept distance
 const SUBMERGE_TIME: float = 0.6
-const LAND_GRACE: float = 0.25         # min airtime before a landing can register
+const LAND_GRACE: float = 0.25  # min airtime before a landing can register
 
 # Stats-driven behaviour params (Settings.ENEMY_STATS["robot_sandworm"]).
 var _burrow_speed: float = 7.5
@@ -36,15 +36,16 @@ var _emerge_range: float = 5.0
 var _leap_damage: float = 14.0
 var _leap_radius: float = 2.4
 
-var _phase_t: float = 0.0              # seconds in the current phase (authority)
-var _air_t: float = 0.0                # EMERGE airtime
+var _phase_t: float = 0.0  # seconds in the current phase (authority)
+var _air_t: float = 0.0  # EMERGE airtime
 var _landed: bool = false
 
 # --- Visual-only (all peers) -------------------------------------------------
 var _dust: GPUParticles3D = null
 var _seg_pivots: Array[Node3D] = []
 var _seg_rest: Array[Vector3] = []
-var _seen_phase: int = -1              # last phase applied to the visuals
+var _seen_phase: int = -1  # last phase applied to the visuals
+
 
 func _ready() -> void:
 	super._ready()
@@ -60,9 +61,11 @@ func _ready() -> void:
 	if is_multiplayer_authority():
 		_enter_burrowed()
 
+
 ## OVERRIDE: sit the bar above the crawling body.
 func _health_bar_height() -> float:
 	return 1.6
+
 
 # ------------------------------------------------------------------ phase machine
 func _physics_process(delta: float) -> void:
@@ -87,6 +90,7 @@ func _physics_process(delta: float) -> void:
 			_tick_surface(delta)
 		Phase.SUBMERGE:
 			_tick_submerge(delta)
+
 
 ## Underground travel: straight-line XZ toward the prey at burrow_speed, body pinned
 ## BURROW_DEPTH below the terrain. Position is set directly (no move_and_slide — there
@@ -119,17 +123,26 @@ func _tick_burrowed(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(to.x, to.z), clampf(delta * 6.0, 0.0, 1.0))
 	_pin_underground()
 
+
 ## Clamp inside the world rectangle + pin the body below the terrain surface.
 func _pin_underground() -> void:
 	global_position.x = clampf(global_position.x, WorldBounds.X_MIN + 4.0, WorldBounds.X_MAX - 4.0)
 	global_position.z = clampf(global_position.z, WorldBounds.Z_MIN + 4.0, WorldBounds.Z_MAX - 4.0)
-	global_position.y = ProceduralTerrain.height_at(global_position.x, global_position.z) - BURROW_DEPTH
+	global_position.y = (
+		ProceduralTerrain.height_at(global_position.x, global_position.z) - BURROW_DEPTH
+	)
+
 
 ## Burst out of the ground in a leap toward the prey.
 func _begin_emerge() -> void:
 	# Surface on walkable ground (navmesh) so the crawl phase can path.
-	var surf := _snap_to_navmesh(Vector3(global_position.x,
-		ProceduralTerrain.height_at(global_position.x, global_position.z), global_position.z))
+	var surf := _snap_to_navmesh(
+		Vector3(
+			global_position.x,
+			ProceduralTerrain.height_at(global_position.x, global_position.z),
+			global_position.z
+		)
+	)
 	global_position = surf + Vector3.UP * 0.1
 	_set_targetable(true)
 	var fwd := Vector3.FORWARD
@@ -145,6 +158,7 @@ func _begin_emerge() -> void:
 	_set_phase(Phase.EMERGE)
 	current_state = State.CHASE
 
+
 ## Airborne leap arc: gravity pulls it down; landing bites everyone nearby.
 func _tick_emerge(delta: float) -> void:
 	_air_t += delta
@@ -156,6 +170,7 @@ func _tick_emerge(delta: float) -> void:
 			_bite_area(_leap_damage, _leap_radius)
 		velocity = Vector3.ZERO
 		_set_phase(Phase.SURFACE)
+
 
 ## Surface crawl: normal nav-chase + melee bites — the kill window.
 func _tick_surface(delta: float) -> void:
@@ -179,21 +194,25 @@ func _tick_surface(delta: float) -> void:
 		_agent.set_target_position(_target.global_position)
 		_navigate_to_agent(delta)
 
+
 func _begin_submerge() -> void:
 	velocity = Vector3.ZERO
 	_set_targetable(false)
 	_set_phase(Phase.SUBMERGE)
 	current_state = State.CHASE
 
+
 func _tick_submerge(_delta: float) -> void:
 	if _phase_t >= SUBMERGE_TIME:
 		_enter_burrowed()
+
 
 func _enter_burrowed() -> void:
 	_set_targetable(false)
 	_set_phase(Phase.BURROWED)
 	_pin_underground()
 	current_state = State.PATROL
+
 
 ## Flip the worm's hit-ability + world collision (authority). Underground it can't be
 ## shot (body layer 0 → weapon raycasts miss) and doesn't collide with anything.
@@ -205,14 +224,17 @@ func _set_targetable(on: bool) -> void:
 		if hb and hb is CollisionObject3D:
 			(hb as CollisionObject3D).set_deferred("monitorable", on)
 
+
 ## Authority phase switch (resets the phase clock; replicates via the synchronizer).
 func _set_phase(p: int) -> void:
 	phase = p
 	_phase_t = 0.0
 
+
 ## AoE bite around the body (the emerge-leap landing). Flat damage, downed skipped.
 func _bite_area(damage: float, radius: float) -> void:
 	CombatAoe.damage_players(global_position, radius, damage, self)
+
 
 ## OVERRIDE the wave-watchdog hook: a "stuck" worm just re-burrows next to a player
 ## (teleporting it onto open navmesh like the base would break the underground fiction).
@@ -225,11 +247,13 @@ func force_unstuck() -> void:
 	velocity = Vector3.ZERO
 	_enter_burrowed()
 
+
 # ------------------------------------------------------------------ visuals (all peers)
 ## Per-frame visual layer on every peer: base juice + the phase-driven look.
 func _process(delta: float) -> void:
 	super._process(delta)
 	_apply_phase_visuals(delta)
+
 
 ## Dust-mound trail that marks the burrowed worm on the surface. Render-only.
 func _build_dust_trail() -> void:
@@ -240,7 +264,7 @@ func _build_dust_trail() -> void:
 	_dust.amount = 28
 	_dust.lifetime = 0.7
 	_dust.emitting = false
-	_dust.top_level = true   # world-space: we park it at GROUND level above the body
+	_dust.top_level = true  # world-space: we park it at GROUND level above the body
 	_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
@@ -266,6 +290,7 @@ func _build_dust_trail() -> void:
 	_dust.draw_pass_1 = quad
 	add_child(_dust)
 
+
 ## Drive visibility/dust/sink from the REPLICATED `phase` so clients match the host.
 func _apply_phase_visuals(_delta: float) -> void:
 	var asm := _proc_root()
@@ -281,18 +306,23 @@ func _apply_phase_visuals(_delta: float) -> void:
 			_dust.emitting = under or phase == Phase.SUBMERGE
 		# Eruption burst on EMERGE (all peers — driven by the replicated phase).
 		if phase == Phase.EMERGE:
-			_spawn_death_burst()   # reuse the spark/dirt burst FX at the body
+			_spawn_death_burst()  # reuse the spark/dirt burst FX at the body
 	# Park the dust at ground level above wherever the (replicated) body is.
 	if _dust and _dust.emitting:
-		_dust.global_position = Vector3(global_position.x,
+		_dust.global_position = Vector3(
+			global_position.x,
 			ProceduralTerrain.height_at(global_position.x, global_position.z) + 0.15,
-			global_position.z)
+			global_position.z
+		)
 	# SUBMERGE sink: the model slides down into the ground over the phase window.
 	if asm:
 		if phase == Phase.SUBMERGE:
-			asm.position.y = move_toward(asm.position.y, -BURROW_DEPTH, _delta * (BURROW_DEPTH / SUBMERGE_TIME))
+			asm.position.y = move_toward(
+				asm.position.y, -BURROW_DEPTH, _delta * (BURROW_DEPTH / SUBMERGE_TIME)
+			)
 		elif asm.position.y != 0.0:
 			asm.position.y = 0.0
+
 
 ## OVERRIDE: cache the worm's segment pivots + glowing maw for the idle/crawl anim.
 func _cache_proc_parts() -> void:
@@ -309,6 +339,7 @@ func _cache_proc_parts() -> void:
 		_pulse_part = maw as MeshInstance3D
 		_pulse_base_energy = _read_emission_energy(maw as MeshInstance3D)
 	_has_proc_anim = not _seg_pivots.is_empty() or _pulse_part != null
+
 
 ## OVERRIDE: sinusoidal segment undulation while surfaced (a travelling wave down the
 ## body) + a maw pulse that burns hotter while biting.

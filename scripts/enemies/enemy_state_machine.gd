@@ -10,7 +10,7 @@ class_name EnemyStateMachine
 
 enum State { PATROL, CHASE, ATTACK, INVESTIGATE }
 
-var enemy: Node              # the RobotEnemy (CharacterBody3D) that owns us
+var enemy: Node  # the RobotEnemy (CharacterBody3D) that owns us
 var state: int = State.PATROL
 
 # --- Patrol wander ---
@@ -18,16 +18,22 @@ var _patrol_target: Vector3 = Vector3.ZERO
 var _patrol_wait: float = 0.0
 var _has_patrol_target: bool = false
 
+
 func setup(owner_enemy: Node) -> void:
 	enemy = owner_enemy
+
 
 ## Decide which state we should be in based on the current target + distances.
 ## Returns the (possibly unchanged) state so the enemy can detect transitions.
 ## `detect`/`attack` are passed in per-archetype (Settings.ENEMY_STATS); they
 ## default to the legacy grunt constants when omitted so existing callers work.
-func evaluate(target: Node3D, dist: float, has_los: bool,
-		detect: float = Settings.ENEMY_DETECT_RADIUS,
-		attack: float = Settings.ENEMY_ATTACK_RANGE) -> int:
+func evaluate(
+	target: Node3D,
+	dist: float,
+	has_los: bool,
+	detect: float = Settings.ENEMY_DETECT_RADIUS,
+	attack: float = Settings.ENEMY_ATTACK_RANGE
+) -> int:
 	if target == null:
 		state = State.PATROL
 		return state
@@ -46,6 +52,7 @@ func evaluate(target: Node3D, dist: float, has_los: bool,
 				state = State.CHASE
 	return state
 
+
 ## Pick a fresh wander point near home. Called by the enemy when it needs one.
 func choose_patrol_point(origin: Vector3, radius: float) -> Vector3:
 	var ang := randf() * TAU
@@ -54,14 +61,18 @@ func choose_patrol_point(origin: Vector3, radius: float) -> Vector3:
 	_has_patrol_target = true
 	return _patrol_target
 
+
 func has_patrol_target() -> bool:
 	return _has_patrol_target
+
 
 func clear_patrol_target() -> void:
 	_has_patrol_target = false
 
+
 func get_patrol_target() -> Vector3:
 	return _patrol_target
+
 
 func tick_patrol_wait(delta: float) -> bool:
 	# Returns true while still waiting (idle) at a reached point.
@@ -69,6 +80,7 @@ func tick_patrol_wait(delta: float) -> bool:
 		_patrol_wait -= delta
 		return _patrol_wait > 0.0
 	return false
+
 
 func start_patrol_wait(seconds: float) -> void:
 	_patrol_wait = seconds

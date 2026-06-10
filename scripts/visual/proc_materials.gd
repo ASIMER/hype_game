@@ -21,6 +21,7 @@ class_name ProcMaterials
 
 static var _tex_cache: Dictionary = {}
 
+
 # ---------------------------------------------------------------- noise masks
 ## A grayscale weathering mask: mostly clean (white) with darker grime in the lows.
 ## `grime` is the dark floor (lower = heavier grime). Cached by (sid, grime).
@@ -47,6 +48,7 @@ static func grime_texture(sid: int, grime: float) -> NoiseTexture2D:
 	_tex_cache[key] = nt
 	return nt
 
+
 ## FINE grime: ~8-10× the base frequency of `grime` → 1-3 m features (the base mask is
 ## 30-80 m blobs). Used as a low-blend detail-albedo speckle so surfaces read sharp up
 ## close. Cached by sid. Higher contrast ramp than the broad mask so the speckle pops.
@@ -72,6 +74,7 @@ static func grime_fine_texture(sid: int, grime: float) -> NoiseTexture2D:
 	_tex_cache[key] = nt
 	return nt
 
+
 ## A tangent-space NORMAL map from FastNoiseLite (NoiseTexture2D's built-in normal-map
 ## mode). `freq` should be ~10× the albedo grime so the relief is FINE; `strength` is the
 ## bump depth. Cached by (sid, strength, freq). 512² for crisp relief.
@@ -95,6 +98,7 @@ static func noise_normal_texture(sid: int, strength: float, freq: float) -> Nois
 	_tex_cache[key] = nt
 	return nt
 
+
 # ---------------------------------------------------------------- materials
 ## Weathered surface: base albedo modulated by a triplanar grime mask, with optional
 ## metallic/roughness. `world` triplanar keeps detail consistent across adjacent
@@ -111,9 +115,17 @@ static func noise_normal_texture(sid: int, strength: float, freq: float) -> Nois
 ## comes from the NORMAL map instead — which on a strong `normal_scale` gives convincing
 ## grazing-angle relief without the heightmap. The `relief` arg just biases normal_scale up
 ## for the surfaces that want more apparent depth.
-static func weathered(base: Color, metallic := 0.0, roughness := 0.85, grime := 0.55,
-		sid := 0, scale := Vector3(0.18, 0.18, 0.18), world := true,
-		normal_scale := 0.6, relief := false) -> StandardMaterial3D:
+static func weathered(
+	base: Color,
+	metallic := 0.0,
+	roughness := 0.85,
+	grime := 0.55,
+	sid := 0,
+	scale := Vector3(0.18, 0.18, 0.18),
+	world := true,
+	normal_scale := 0.6,
+	relief := false
+) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = base
 	m.metallic = metallic
@@ -134,13 +146,23 @@ static func weathered(base: Color, metallic := 0.0, roughness := 0.85, grime := 
 	m.detail_uv_layer = BaseMaterial3D.DETAIL_UV_1
 	return m
 
+
 ## Rain-streaked vertical weathering (stains running down walls under windows etc.):
 ## a tall, narrow triplanar scale so the noise stretches into vertical streaks. `relief`
 ## passes through to bias the normal depth up.
-static func streaked(base: Color, metallic := 0.0, roughness := 0.88, grime := 0.45,
-		sid := 0, normal_scale := 0.6, relief := false) -> StandardMaterial3D:
-	return weathered(base, metallic, roughness, grime, sid,
-		Vector3(0.3, 0.05, 0.3), true, normal_scale, relief)
+static func streaked(
+	base: Color,
+	metallic := 0.0,
+	roughness := 0.88,
+	grime := 0.45,
+	sid := 0,
+	normal_scale := 0.6,
+	relief := false
+) -> StandardMaterial3D:
+	return weathered(
+		base, metallic, roughness, grime, sid, Vector3(0.3, 0.05, 0.3), true, normal_scale, relief
+	)
+
 
 ## CORRUGATED shipping-container metal: a baked tangent-space NORMAL map of vertical ribs
 ## (sin stripes, ~24 ribs across the 512 tile, faint panel seams every ~96 px) + a baked
@@ -176,7 +198,7 @@ static func corrugated(base: Color, sid: int) -> StandardMaterial3D:
 		var u: float = float(x) / float(size)
 		# Vertical ribs: phase across X. sin gives the rib cross-section.
 		var phase: float = u * ribs * TAU
-		var rib: float = sin(phase)                       # -1 (valley) .. 1 (crest)
+		var rib: float = sin(phase)  # -1 (valley) .. 1 (crest)
 		# Slope of the rib (cos) drives the tangent-space normal X tilt.
 		var slope: float = cos(phase)
 		var rib_idx: int = int(floor(u * ribs))
@@ -186,7 +208,7 @@ static func corrugated(base: Color, sid: int) -> StandardMaterial3D:
 		for y in range(size):
 			var v: float = float(y) / float(size)
 			# --- albedo ---
-			var shade: float = 0.72 + 0.28 * (rib * 0.5 + 0.5)   # valleys darker
+			var shade: float = 0.72 + 0.28 * (rib * 0.5 + 0.5)  # valleys darker
 			var col: Color = base * shade
 			# Rust streak running DOWN from this rib's top with vertical falloff.
 			if rust_amt > 0.0:
@@ -223,6 +245,7 @@ static func corrugated(base: Color, sid: int) -> StandardMaterial3D:
 	m.normal_scale = 1.0
 	return m
 
+
 ## Plain emissive material (for glowing cores/beacons). Energy is animated by the
 ## caller at runtime (enemy core pulse / beacon).
 static func emissive(color: Color, energy := 3.0, albedo := Color.BLACK) -> StandardMaterial3D:
@@ -233,6 +256,7 @@ static func emissive(color: Color, energy := 3.0, albedo := Color.BLACK) -> Stan
 	m.emission_energy_multiplier = energy
 	m.roughness = 0.4
 	return m
+
 
 static func clear_cache() -> void:
 	_tex_cache.clear()

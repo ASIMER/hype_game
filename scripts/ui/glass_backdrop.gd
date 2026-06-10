@@ -12,6 +12,7 @@ const DIM := Color(0.03, 0.04, 0.055, 0.72)
 
 var _rect: ColorRect = null
 
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -21,6 +22,7 @@ func _ready() -> void:
 	add_child(_rect)
 	Events.ui_fx_changed.connect(_apply)
 	_apply(Settings.ui_fx_enabled)
+
 
 func _apply(enabled: bool) -> void:
 	if _rect == null:

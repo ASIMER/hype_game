@@ -7,10 +7,10 @@ class_name RewardPopup
 ## project's glass UI conventions (GlassBackdrop + glass panel + pop_in). Close on click/Esc.
 
 const COL_AMBER := UIStyle.AMBER
-const COL_TEAL  := UIStyle.TEAL
+const COL_TEAL := UIStyle.TEAL
 const COL_GREEN := UIStyle.GREEN
 const COL_WHITE := UIStyle.WHITE
-const COL_DIM   := UIStyle.DIM
+const COL_DIM := UIStyle.DIM
 
 var _root: Control = null
 var _holder: CenterContainer = null
@@ -121,13 +121,15 @@ func _show(rewards: Dictionary) -> void:
 	var currency: int = int(rewards.get("currency", 0))
 	if currency > 0:
 		col.add_child(_row(null, tr("+%d CR") % currency, COL_AMBER))
-	for it_var in (rewards.get("items", []) as Array):
+	for it_var in rewards.get("items", []) as Array:
 		var it: Dictionary = it_var
 		var iid: String = String(it.get("id", ""))
 		var idata: ItemData = ItemCatalog.get_item(iid)
 		var nm: String = tr(idata.display_name) if idata != null else iid
-		col.add_child(_row(AssetRegistry.get_icon(iid), "%s  x%d" % [nm, int(it.get("count", 1))], COL_WHITE))
-	for bp_var in (rewards.get("blueprints", []) as Array):
+		col.add_child(
+			_row(AssetRegistry.get_icon(iid), "%s  x%d" % [nm, int(it.get("count", 1))], COL_WHITE)
+		)
+	for bp_var in rewards.get("blueprints", []) as Array:
 		col.add_child(_row(null, tr("Blueprint: %s") % String(bp_var), COL_TEAL))
 	var xp: int = int(rewards.get("xp", 0))
 	if xp > 0:
@@ -142,7 +144,7 @@ func _show(rewards: Dictionary) -> void:
 	var grep: int = int(rewards.get("giver_rep", 0))
 	if giver != "" and grep > 0:
 		col.add_child(_row(null, tr("+%d standing · %s") % [grep, giver], COL_TEAL))
-	for cos_var in (rewards.get("cosmetics", []) as Array):
+	for cos_var in rewards.get("cosmetics", []) as Array:
 		var cid: String = String(cos_var)
 		col.add_child(_cosmetic_row(cid))
 
@@ -185,6 +187,7 @@ func _row(icon: Texture2D, text: String, col: Color) -> HBoxContainer:
 	row.add_child(lbl)
 	return row
 
+
 ## Exclusive-cosmetic row: a colour swatch (paint primary) + "★ Cosmetic unlocked: <name>".
 func _cosmetic_row(cid: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -203,12 +206,14 @@ func _cosmetic_row(cid: String) -> HBoxContainer:
 	row.add_child(lbl)
 	return row
 
+
 func _line(text: String, col: Color, size: int) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_color_override("font_color", col)
 	lbl.add_theme_font_size_override("font_size", size)
 	return lbl
+
 
 func _sep() -> HSeparator:
 	return HSeparator.new()

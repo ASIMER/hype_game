@@ -37,6 +37,7 @@ func show_pause() -> void:
 	show()
 	UIStyle.pop_in(_panel)
 
+
 func hide_pause() -> void:
 	_settings_menu.hide()
 	hide()
@@ -46,12 +47,15 @@ func hide_pause() -> void:
 func _on_resume() -> void:
 	resume_pressed.emit()
 
+
 func _on_settings() -> void:
 	_panel.hide()
 	_settings_menu.open()
 
+
 func _on_settings_closed() -> void:
 	_panel.show()
+
 
 func _on_quit_to_menu() -> void:
 	quit_to_menu_pressed.emit()

@@ -21,6 +21,7 @@ var _armed := false
 var _t := 0.0
 var _exploded := false
 
+
 func _ready() -> void:
 	# Bounce a little, settle reasonably. Collide with the world only so the
 	# grenade doesn't get hung up on players/enemies.
@@ -35,6 +36,7 @@ func _ready() -> void:
 	contact_monitor = false
 	can_sleep = true
 
+
 ## Position at `from`, launch along `dir` with `force`, and start the fuse.
 ## All-in-one entry point for the thrower.
 func throw(from: Vector3, dir: Vector3, force: float) -> void:
@@ -45,6 +47,7 @@ func throw(from: Vector3, dir: Vector3, force: float) -> void:
 	angular_velocity = Vector3(randf_range(-6, 6), randf_range(-6, 6), randf_range(-6, 6))
 	arm(null, Settings.GRENADE_FUSE)
 
+
 ## Start the fuse. After `fuse` seconds the grenade explodes. Safe to call once.
 func arm(thrower: Node, fuse: float) -> void:
 	_thrower = thrower
@@ -52,12 +55,14 @@ func arm(thrower: Node, fuse: float) -> void:
 	_armed = true
 	_t = 0.0
 
+
 func _process(delta: float) -> void:
 	if not _armed or _exploded:
 		return
 	_t += delta
 	if _t >= _fuse:
 		_explode()
+
 
 func _explode() -> void:
 	if _exploded:
@@ -86,6 +91,7 @@ func _explode() -> void:
 
 	queue_free()
 
+
 ## Damage every "enemies" node within `radius`, scaled by distance falloff
 ## (full at the centre, ~25% at the edge). Best-effort + null-safe.
 func _apply_radial_damage(center: Vector3, damage: float, radius: float) -> void:
@@ -104,6 +110,7 @@ func _apply_radial_damage(center: Vector3, damage: float, radius: float) -> void
 		# Linear falloff from 1.0 at centre to 0.25 at the rim.
 		var falloff := lerpf(1.0, 0.25, clampf(dist / radius, 0.0, 1.0))
 		health.take_damage(damage * falloff, _thrower)
+
 
 ## Where to parent the explosion FX so it lives in the world, not under us
 ## (we're about to free). Falls back to the current scene.

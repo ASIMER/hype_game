@@ -19,67 +19,67 @@ extends Node
 # (see docs/ASSETS.md → Audio). Per-class gunshots are distinct recorded firearms.
 const SOUNDS := {
 	# Per-weapon-class gunshots — real CC0 firearm recordings (OpenGameArt "Gunshot Sounds").
-	"shot_pistol":    "res://assets/audio/shot_pistol.wav",   # CZ-52 pistol
-	"shot_rifle":     "res://assets/audio/shot_rifle.wav",    # SKS (semi-auto rifle)
-	"shot_smg":       "res://assets/audio/shot_smg.wav",      # CZ-52 (reused, pitched up)
-	"shot_shotgun":   "res://assets/audio/shot_shotgun.wav",  # shotgun
-	"shot_dmr":       "res://assets/audio/shot_dmr.wav",      # Mosin Nagant (bolt-action boom)
-	"shot":           "res://assets/audio/shot_rifle.wav",    # generic fallback
-	"hit":            "res://assets/audio/hit.ogg",
-	"explosion":      "res://assets/audio/explosion.ogg",
-	"player_death":   "res://assets/audio/player_death.ogg",
-	"extract_beep":   "res://assets/audio/extract_beep.ogg",
-	"extract_done":   "res://assets/audio/extract_done.ogg",
+	"shot_pistol": "res://assets/audio/shot_pistol.wav",  # CZ-52 pistol
+	"shot_rifle": "res://assets/audio/shot_rifle.wav",  # SKS (semi-auto rifle)
+	"shot_smg": "res://assets/audio/shot_smg.wav",  # CZ-52 (reused, pitched up)
+	"shot_shotgun": "res://assets/audio/shot_shotgun.wav",  # shotgun
+	"shot_dmr": "res://assets/audio/shot_dmr.wav",  # Mosin Nagant (bolt-action boom)
+	"shot": "res://assets/audio/shot_rifle.wav",  # generic fallback
+	"hit": "res://assets/audio/hit.ogg",
+	"explosion": "res://assets/audio/explosion.ogg",
+	"player_death": "res://assets/audio/player_death.ogg",
+	"extract_beep": "res://assets/audio/extract_beep.ogg",
+	"extract_done": "res://assets/audio/extract_done.ogg",
 	"extract_cancel": "res://assets/audio/extract_cancel.ogg",
-	"wave_alert":     "res://assets/audio/wave_alert.ogg",
-	"win":            "res://assets/audio/win.ogg",
-	"lose":           "res://assets/audio/lose.ogg",
+	"wave_alert": "res://assets/audio/wave_alert.ogg",
+	"win": "res://assets/audio/win.ogg",
+	"lose": "res://assets/audio/lose.ogg",
 	# New
-	"footstep1":      "res://assets/audio/footstep1.ogg",
-	"footstep2":      "res://assets/audio/footstep2.ogg",
-	"footstep3":      "res://assets/audio/footstep3.ogg",
-	"reload":         "res://assets/audio/reload.ogg",
-	"weapon_switch":  "res://assets/audio/weapon_switch.ogg",
-	"ui_click":       "res://assets/audio/ui_click.ogg",
-	"heartbeat":      "res://assets/audio/heartbeat.ogg",
-	"ambient":        "res://assets/audio/ambient.ogg",
-	"music":          "res://assets/audio/music.ogg",
+	"footstep1": "res://assets/audio/footstep1.ogg",
+	"footstep2": "res://assets/audio/footstep2.ogg",
+	"footstep3": "res://assets/audio/footstep3.ogg",
+	"reload": "res://assets/audio/reload.ogg",
+	"weapon_switch": "res://assets/audio/weapon_switch.ogg",
+	"ui_click": "res://assets/audio/ui_click.ogg",
+	"heartbeat": "res://assets/audio/heartbeat.ogg",
+	"ambient": "res://assets/audio/ambient.ogg",
+	"music": "res://assets/audio/music.ogg",
 	# Water immersion (Lane B): entry splash + looping submerged ambience.
-	"water_splash":   "res://assets/audio/water_splash.ogg",
-	"underwater":     "res://assets/audio/underwater.ogg",
+	"water_splash": "res://assets/audio/water_splash.ogg",
+	"underwater": "res://assets/audio/underwater.ogg",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
 const SOUND_DB := {
 	# Real firearm recordings are hot/peaky — trim them well down so they punch
 	# without clipping. Per-class trims layer on top of these (SHOT_CLASS.vol).
-	"shot_pistol":  -10.0,
-	"shot_rifle":   -11.0,
-	"shot_smg":     -12.0,
-	"shot_shotgun":  -6.0,
-	"shot_dmr":      -8.0,
-	"shot":         -11.0,
-	"hit":           -4.0,
-	"explosion":     -3.0,
-	"player_death":   0.0,
-	"win":           -2.0,
-	"lose":          -2.0,
-	"footstep1":    -12.0,
-	"footstep2":    -12.0,
-	"footstep3":    -12.0,
-	"reload":        -6.0,
+	"shot_pistol": -10.0,
+	"shot_rifle": -11.0,
+	"shot_smg": -12.0,
+	"shot_shotgun": -6.0,
+	"shot_dmr": -8.0,
+	"shot": -11.0,
+	"hit": -4.0,
+	"explosion": -3.0,
+	"player_death": 0.0,
+	"win": -2.0,
+	"lose": -2.0,
+	"footstep1": -12.0,
+	"footstep2": -12.0,
+	"footstep3": -12.0,
+	"reload": -6.0,
 	"weapon_switch": -8.0,
-	"ui_click":     -10.0,
-	"heartbeat":    -14.0,
-	"ambient":      -18.0,
-	"music":        -20.0,
-	"water_splash":  -5.0,
-	"underwater":   -12.0,
+	"ui_click": -10.0,
+	"heartbeat": -14.0,
+	"ambient": -18.0,
+	"music": -20.0,
+	"water_splash": -5.0,
+	"underwater": -12.0,
 }
 
 ## Master toggle + trim.  Public so a settings menu can drive them later.
-var enabled    := true
-var master_db  := -3.0
+var enabled := true
+var master_db := -3.0
 
 # ---------------------------------------------------------------------------
 # Shot throttle (weapon_fired fires ~8/s in full auto)
@@ -103,30 +103,31 @@ var _pool_next := 0
 # Footstep state
 # ---------------------------------------------------------------------------
 var _local_player: Node = null
-var _footstep_timer  := 0.0   # countdown to next footstep
-const FOOTSTEP_WALK_INTERVAL   := 0.50
+var _footstep_timer := 0.0  # countdown to next footstep
+const FOOTSTEP_WALK_INTERVAL := 0.50
 const FOOTSTEP_SPRINT_INTERVAL := 0.32
-const FOOTSTEP_SPEED_THRESHOLD := 1.0   # horizontal m/s below which no footstep
+const FOOTSTEP_SPEED_THRESHOLD := 1.0  # horizontal m/s below which no footstep
 
 # ---------------------------------------------------------------------------
 # Low-HP heartbeat
 # ---------------------------------------------------------------------------
 var _heartbeat_player: AudioStreamPlayer = null
-const HEARTBEAT_HP_THRESHOLD := 0.30   # ratio of max_health
+const HEARTBEAT_HP_THRESHOLD := 0.30  # ratio of max_health
 
 # ---------------------------------------------------------------------------
 # Looping ambient + music beds
 # ---------------------------------------------------------------------------
 var _ambient_player: AudioStreamPlayer = null
-var _music_player:   AudioStreamPlayer = null
+var _music_player: AudioStreamPlayer = null
 # Underwater ambience bed + Master-bus lowpass for the muffled submerged effect.
 var _underwater_player: AudioStreamPlayer = null
-var _underwater_lowpass_idx := -1   # index of the lowpass effect we add to Master (-1 = none)
+var _underwater_lowpass_idx := -1  # index of the lowpass effect we add to Master (-1 = none)
 var _underwater_active := false
 const UNDERWATER_BASE_DB := -12.0
-const AMBIENT_BASE_DB := -19.0   # real wind-loop bed — quiet, atmospheric
-const MUSIC_BASE_DB   := -23.0   # tense dark-ambient music — deliberately quiet
-const MUSIC_WAVE_DB   := -18.0   # slight raise during active waves
+const AMBIENT_BASE_DB := -19.0  # real wind-loop bed — quiet, atmospheric
+const MUSIC_BASE_DB := -23.0  # tense dark-ambient music — deliberately quiet
+const MUSIC_WAVE_DB := -18.0  # slight raise during active waves
+
 
 # ---------------------------------------------------------------------------
 # _ready
@@ -151,7 +152,7 @@ func _ready() -> void:
 
 	# Dedicated looping players (bed tracks + heartbeat).
 	_heartbeat_player = _make_looping_player("heartbeat", SOUND_DB.get("heartbeat", 0.0))
-	_heartbeat_player.volume_db = -80.0   # start silent
+	_heartbeat_player.volume_db = -80.0  # start silent
 	_heartbeat_player.playing = false
 
 	var is_headless := DisplayServer.get_name() == "headless"
@@ -189,6 +190,7 @@ func _ready() -> void:
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
+
 # ---------------------------------------------------------------------------
 # _process — footstep ticker (independent of player input, reads velocity)
 # ---------------------------------------------------------------------------
@@ -222,24 +224,28 @@ func _process(delta: float) -> void:
 	var variant := "footstep%d" % (randi() % 3 + 1)
 	_play_at(variant, _local_player)
 
+
 # ---------------------------------------------------------------------------
 # Event handlers — existing
 # ---------------------------------------------------------------------------
 
+
 func _on_grenade_exploded(_world_pos: Vector3, _damage: float, _radius: float) -> void:
 	_play("explosion")
+
 
 ## Per-weapon-class gunfire trim. Each class now has its OWN recorded firearm
 ## (shot_<class>), so this is just a light pitch nudge (SMG reuses the pistol crack,
 ## pitched up to read snappier) + a small volume trim on top of SOUND_DB. A tiny
 ## random pitch jitter is applied per shot so repeated fire never sounds identical.
 const SHOT_CLASS := {
-	"pistol":  { "pitch": 1.0,  "vol": 0.0 },
-	"rifle":   { "pitch": 1.0,  "vol": 0.0 },
-	"smg":     { "pitch": 1.12, "vol": -1.0 },
-	"shotgun": { "pitch": 0.97, "vol": 0.0 },
-	"dmr":     { "pitch": 0.98, "vol": 0.0 },
+	"pistol": {"pitch": 1.0, "vol": 0.0},
+	"rifle": {"pitch": 1.0, "vol": 0.0},
+	"smg": {"pitch": 1.12, "vol": -1.0},
+	"shotgun": {"pitch": 0.97, "vol": 0.0},
+	"dmr": {"pitch": 0.98, "vol": 0.0},
 }
+
 
 func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
@@ -253,6 +259,7 @@ func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
 	if _streams.get(shot_id, null) == null:
 		shot_id = "shot"
 	_play_pitched(shot_id, float(cfg["pitch"]) * randf_range(0.96, 1.04), float(cfg["vol"]))
+
 
 ## Like _play but with a pitch_scale + extra volume trim (for layered gunfire).
 func _play_pitched(id: String, pitch: float, vol_extra: float) -> void:
@@ -268,8 +275,10 @@ func _play_pitched(id: String, pitch: float, vol_extra: float) -> void:
 	p.volume_db = master_db + SOUND_DB.get(id, 0.0) + vol_extra
 	p.play()
 
+
 func _on_damage_dealt(target: Node, _amount: float, _source: Node) -> void:
 	_play_at("hit", target)
+
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
 	if entity != null and entity.is_in_group(Groups.PLAYERS):
@@ -277,14 +286,18 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 	else:
 		_play_at("explosion", entity)
 
+
 func _on_extraction_started(_player: Node, _zone: Node) -> void:
 	_play("extract_beep")
+
 
 func _on_extraction_completed(_player: Node) -> void:
 	_play("extract_done")
 
+
 func _on_extraction_cancelled(_player: Node) -> void:
 	_play("extract_cancel")
+
 
 func _on_wave_started(_wave_number: int, _enemy_count: int) -> void:
 	_play("wave_alert")
@@ -292,28 +305,35 @@ func _on_wave_started(_wave_number: int, _enemy_count: int) -> void:
 	if _music_player != null:
 		_tween_volume(_music_player, MUSIC_WAVE_DB, 1.5)
 
+
 func _on_match_won() -> void:
 	_play("win")
 	_fade_beds_out()
+
 
 func _on_match_lost() -> void:
 	_play("lose")
 	_fade_beds_out()
 
+
 # ---------------------------------------------------------------------------
 # Event handlers — new
 # ---------------------------------------------------------------------------
 
+
 func _on_reload_started(_weapon_id: String) -> void:
 	_play("reload")
+
 
 func _on_weapon_switched(_weapon_id: String, _ammo: int, _reserve: int) -> void:
 	_play("weapon_switch")
 
+
 func _on_local_player_spawned(player: Node) -> void:
-	_local_player   = player
+	_local_player = player
 	_footstep_timer = 0.0
 	_on_match_started()
+
 
 func _on_match_started() -> void:
 	if DisplayServer.get_name() == "headless":
@@ -322,17 +342,18 @@ func _on_match_started() -> void:
 	if _ambient_player != null and _streams.get("ambient") != null:
 		var amb: AudioStream = _streams["ambient"]
 		_set_stream_loop(amb)
-		_ambient_player.stream    = amb
+		_ambient_player.stream = amb
 		_ambient_player.volume_db = -80.0
 		_ambient_player.play()
 		_tween_volume(_ambient_player, AMBIENT_BASE_DB + master_db, 3.0)
 	if _music_player != null and _streams.get("music") != null:
 		var mus: AudioStream = _streams["music"]
 		_set_stream_loop(mus)
-		_music_player.stream    = mus
+		_music_player.stream = mus
 		_music_player.volume_db = -80.0
 		_music_player.play()
 		_tween_volume(_music_player, MUSIC_BASE_DB + master_db, 4.0)
+
 
 func _on_player_health_changed(player: Node, current: float, max_hp: float) -> void:
 	# Only react to the local player.
@@ -351,9 +372,9 @@ func _on_player_health_changed(player: Node, current: float, max_hp: float) -> v
 				_heartbeat_player.stream = hb
 				_heartbeat_player.play()
 		# Volume and pitch rise as HP falls.
-		var urgency     := 1.0 - ratio / HEARTBEAT_HP_THRESHOLD   # 0..1
+		var urgency := 1.0 - ratio / HEARTBEAT_HP_THRESHOLD  # 0..1
 		var target_db: float = float(SOUND_DB.get("heartbeat", -14.0)) + master_db + urgency * 8.0
-		_heartbeat_player.volume_db   = lerpf(_heartbeat_player.volume_db, target_db, 0.1)
+		_heartbeat_player.volume_db = lerpf(_heartbeat_player.volume_db, target_db, 0.1)
 		_heartbeat_player.pitch_scale = 1.0 + urgency * 0.4
 	else:
 		# Above threshold or dead — stop heartbeat.
@@ -366,9 +387,11 @@ func _on_player_health_changed(player: Node, current: float, max_hp: float) -> v
 						_heartbeat_player.stop()
 			)
 
+
 # ---------------------------------------------------------------------------
 # Water immersion (Lane B) — muffled audio + ambience while submerged
 # ---------------------------------------------------------------------------
+
 
 ## LOCAL water state changed (0 DRY, 1 WADING, 2 SUBMERGED). On SUBMERGED we muffle the
 ## Master bus (lowpass) + fade in a looping underwater ambience; restored on surface.
@@ -395,6 +418,7 @@ func _on_water_state_changed(state: int, _world_pos: Vector3) -> void:
 	else:
 		_tween_volume(_underwater_player, -80.0, 0.5)
 
+
 ## Add (or remove) a lowpass filter on the Master bus so everything sounds muffled while
 ## underwater. Idempotent — tracks the effect index it inserted and never duplicates it.
 func _set_master_muffle(on: bool) -> void:
@@ -416,9 +440,11 @@ func _set_master_muffle(on: bool) -> void:
 			AudioServer.remove_bus_effect(bus, _underwater_lowpass_idx)
 		_underwater_lowpass_idx = -1
 
+
 # ---------------------------------------------------------------------------
 # UI button auto-wiring
 # ---------------------------------------------------------------------------
+
 
 func _on_node_added(node: Node) -> void:
 	if not (node is BaseButton):
@@ -428,12 +454,15 @@ func _on_node_added(node: Node) -> void:
 		return
 	btn.pressed.connect(_on_button_pressed)
 
+
 func _on_button_pressed() -> void:
 	_play("ui_click")
+
 
 # ---------------------------------------------------------------------------
 # Playback helpers
 # ---------------------------------------------------------------------------
+
 
 ## Non-positional one-shot from the round-robin pool.
 func _play(id: String) -> void:
@@ -444,10 +473,11 @@ func _play(id: String) -> void:
 		return
 	var p := _pool[_pool_next]
 	_pool_next = (_pool_next + 1) % POOL_SIZE
-	p.stream    = stream
-	p.pitch_scale = 1.0   # reset (a prior _play_pitched on this slot may have changed it)
+	p.stream = stream
+	p.pitch_scale = 1.0  # reset (a prior _play_pitched on this slot may have changed it)
 	p.volume_db = master_db + SOUND_DB.get(id, 0.0)
 	p.play()
+
 
 ## Positional one-shot at a Node3D; falls back to the pool for non-3D nodes.
 ## The AudioStreamPlayer3D is self-freeing so the pool is never starved.
@@ -459,9 +489,9 @@ func _play_at(id: String, where: Node) -> void:
 		return
 	if where is Node3D and (where as Node3D).is_inside_tree():
 		var p := AudioStreamPlayer3D.new()
-		p.stream       = stream
-		p.bus          = "Master"
-		p.volume_db    = master_db + SOUND_DB.get(id, 0.0)
+		p.stream = stream
+		p.bus = "Master"
+		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
 		p.max_distance = 60.0
 		p.finished.connect(p.queue_free)
 		(where as Node3D).add_child(p)
@@ -470,16 +500,18 @@ func _play_at(id: String, where: Node) -> void:
 	else:
 		_play(id)
 
+
 ## Creates a dedicated child AudioStreamPlayer with loop mode set.
 func _make_looping_player(id: String, vol_db: float) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
-	p.bus       = "Master"
+	p.bus = "Master"
 	p.volume_db = vol_db
 	add_child(p)
 	# Loop mode is set after the stream is assigned (see _on_match_started).
 	# We stash the id so we can re-apply it when the stream is loaded.
 	p.set_meta("sound_id", id)
 	return p
+
 
 ## Force a stream to loop, regardless of WAV vs Ogg Vorbis backing.
 func _set_stream_loop(stream: AudioStream) -> void:
@@ -488,10 +520,12 @@ func _set_stream_loop(stream: AudioStream) -> void:
 	elif stream is AudioStreamOggVorbis:
 		(stream as AudioStreamOggVorbis).loop = true
 
+
 ## Tween a player's volume_db to target over duration_s.
 func _tween_volume(player: AudioStreamPlayer, target_db: float, duration_s: float) -> void:
 	var tw := create_tween()
 	tw.tween_property(player, "volume_db", target_db, duration_s)
+
 
 ## Fade both ambient and music beds out on match end.
 func _fade_beds_out() -> void:

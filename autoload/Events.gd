@@ -56,7 +56,7 @@ signal water_state_changed(state: int, world_pos: Vector3)
 signal loot_spawned(loot: Node)
 signal item_picked_up(player: Node, item_id: String, count: int)
 signal inventory_changed(inventory: Node)
-signal pickup_requested(player: Node, pickup: Node)   # client -> server intent
+signal pickup_requested(player: Node, pickup: Node)  # client -> server intent
 
 # --- Extraction ---
 signal extraction_started(player: Node, zone: Node)
@@ -68,12 +68,12 @@ signal extraction_cancelled(player: Node)
 signal wave_started(wave_number: int, enemy_count: int)
 signal wave_cleared(wave_number: int)
 signal enemy_spawned(enemy: Node)
-signal match_won()
-signal match_lost()
+signal match_won
+signal match_lost
 ## Match countdown (server-auth, replicated). `left`/`total` in seconds.
 signal match_timer_changed(left: float, total: float)
 ## The match timer expired → the final overwhelming "storm" wave begins.
-signal final_wave_started()
+signal final_wave_started
 
 # --- AI perception / stealth (Batch 2 "Living threat") ---
 ## A noise was made in the world that nearby enemies can HEAR (server-authoritative —
@@ -123,9 +123,11 @@ signal map_toggled(open: bool)
 
 # --- Co-op combat / scoreboard ---
 ## A teammate's shot, broadcast so everyone sees the tracer/muzzle/impact.
-signal remote_shot(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3)
+signal remote_shot(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+)
 ## Per-player kill counts changed (synced) — the TAB leaderboard refreshes.
-signal scoreboard_changed()
+signal scoreboard_changed
 
 # --- Co-op item interactions ---
 ## A teammate gave you an item (HUD toast). count of item_id.
@@ -133,9 +135,9 @@ signal item_received(from_peer: int, item_id: String, count: int)
 
 # --- Server browser / favorites ---
 ## The local favorites/recents list changed — the server-browser UI refreshes.
-signal favorites_changed()
+signal favorites_changed
 ## A LAN scan began (the UI shows a "scanning…" state).
-signal lan_scan_started()
+signal lan_scan_started
 ## A LAN scan finished. `servers` = Array of { name, ip, port, players, max }.
 signal lan_servers_found(servers: Array)
 
@@ -152,10 +154,10 @@ signal stats_overlay_changed(show_fps: bool, show_detailed: bool, mode: int)
 signal arena_build_progress(frac: float, label: String)
 ## The HUD layout settings changed (ui_edge_margin / ui_top_margin) — edge-anchored UI
 ## re-insets toward center. Used for ultrawide comfort. Read Settings.ui_edge_margin/ui_top_margin.
-signal ui_layout_changed()
+signal ui_layout_changed
 ## Camera settings changed (distance/shoulder/default-view) — the player rig re-reads
 ## Settings.camera_distance_scale / camera_shoulder_scale.
-signal camera_settings_changed()
+signal camera_settings_changed
 ## The "military glass" UI FX toggle changed (settings → FXOverlay + GlassBackdrops):
 ## scanline/grain/vignette overlay + frosted-glass blur behind modals. enabled=false →
 ## plain dim (cheap fallback). Read Settings.ui_fx_enabled.
@@ -164,7 +166,7 @@ signal ui_fx_changed(enabled: bool)
 # --- UI / UX ---
 ## A nearby interactable (loot / extraction) — HUD shows "[E] <prompt>".
 signal interaction_available(prompt: String, target: Node)
-signal interaction_cleared()
+signal interaction_cleared
 ## Transient HUD notification / killfeed line. kind: 0 info, 1 good, 2 bad, 3 wave.
 signal notify(text: String, kind: int)
 ## Sprint stamina for the stamina bar.
@@ -188,7 +190,7 @@ signal footstep(player: Node, sprinting: bool)
 
 # --- Stash / raid economy ---
 ## Persistent stash contents changed (deposit/remove/sell) — the Lobby stash tab reads this.
-signal stash_changed()
+signal stash_changed
 ## This peer extracted: loot deposited to its stash + currency bonus earned.
 signal raid_loot_granted(payload: Array, bonus: int)
 
@@ -199,7 +201,7 @@ signal blueprint_learned(blueprint: String)
 signal quest_progress(quest_id: String, current: int, target: int)
 signal quest_completed(quest_id: String)
 ## Daily contracts rotated to a new day's picks.
-signal dailies_rotated()
+signal dailies_rotated
 ## A LOCKED quest's unlock conditions were met → it's now OFFERED (AVAILABLE to accept).
 signal quest_unlocked(quest_id: String)
 ## The player manually ACCEPTED an available quest into their active log.
@@ -221,7 +223,7 @@ signal attachment_changed(weapon_id: String)
 ## A permanent weapon perk was bought.
 signal weapon_perk_changed(weapon_id: String)
 ## A character cosmetic was unlocked or equipped (the CHARACTER tab refreshes off this).
-signal cosmetics_changed()
+signal cosmetics_changed
 ## An extraction haul would exceed the stash capacity — show the Manage-Your-Haul beat.
 ## `incoming` is the haul stacks; `over_by` is the excess weight.
 signal haul_overflow(incoming: Array, over_by: float)
@@ -229,10 +231,10 @@ signal haul_overflow(incoming: Array, over_by: float)
 # --- Networking / lobby ---
 signal peer_registered(peer_id: int, info: Dictionary)
 signal peer_unregistered(peer_id: int)
-signal all_players_ready()
-signal match_started()
+signal all_players_ready
+signal match_started
 ## The squad roster or a member's ready state changed — the Hub lobby UI refreshes.
-signal squad_changed()
+signal squad_changed
 ## The leader started the raid — EVERY peer runs its local deploy (commit bring-list +
 ## load the arena) on this signal, so the whole squad deploys on the same tick.
-signal begin_deploy()
+signal begin_deploy

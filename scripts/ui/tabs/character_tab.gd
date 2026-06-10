@@ -21,18 +21,18 @@ class_name CharacterTab
 
 # ── Palette ──────────────────────────────────────────────────────────────────
 const COL_AMBER := UIStyle.AMBER
-const COL_TEAL  := UIStyle.TEAL
-const COL_DIM   := UIStyle.DIM
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
 const COL_WHITE := UIStyle.WHITE
-const COL_RED   := UIStyle.RED
+const COL_RED := UIStyle.RED
 const COL_GREEN := UIStyle.GREEN
 
 # Display label for each category (tr()-wrapped at use-time).
 const CAT_LABELS: Dictionary = {
-	"head":  "HEAD",
+	"head": "HEAD",
 	"torso": "TORSO",
-	"arms":  "ARMS",
-	"legs":  "LEGS",
+	"arms": "ARMS",
+	"legs": "LEGS",
 	"paint": "PAINT",
 }
 
@@ -46,16 +46,17 @@ const PREVIEW_SIZE := Vector2i(320, 480)
 const ROTATE_SPEED := 0.55
 
 # ── Node refs (built in _ready; no @onready) ─────────────────────────────────
-var _currency_label: Label          = null
-var _cat_buttons: Dictionary        = {}   # category -> Button
-var _variant_grid: GridContainer    = null
-var _preview_vp: SubViewport        = null
-var _preview_body: Node3D           = null
-var _preview_pivot: Node3D          = null  # rotated each frame
+var _currency_label: Label = null
+var _cat_buttons: Dictionary = {}  # category -> Button
+var _variant_grid: GridContainer = null
+var _preview_vp: SubViewport = null
+var _preview_body: Node3D = null
+var _preview_pivot: Node3D = null  # rotated each frame
 
 var _selected_cat: String = "head"
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
+
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
@@ -81,14 +82,15 @@ func _process(delta: float) -> void:
 
 # ── Layout construction ───────────────────────────────────────────────────────
 
+
 func _build_layout() -> void:
 	# ── Outer margin ──────────────────────────────────────────────────────────
 	var margin := MarginContainer.new()
 	margin.name = "Margin"
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left",   24)
-	margin.add_theme_constant_override("margin_top",    20)
-	margin.add_theme_constant_override("margin_right",  24)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
 	add_child(margin)
 
@@ -96,7 +98,7 @@ func _build_layout() -> void:
 	var root_vbox := VBoxContainer.new()
 	root_vbox.name = "RootVBox"
 	root_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root_vbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	root_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root_vbox.add_theme_constant_override("separation", 16)
 	margin.add_child(root_vbox)
 
@@ -124,7 +126,7 @@ func _build_layout() -> void:
 	var body_hbox := HBoxContainer.new()
 	body_hbox.name = "BodyHBox"
 	body_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body_hbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	body_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body_hbox.add_theme_constant_override("separation", 20)
 	root_vbox.add_child(body_hbox)
 
@@ -132,7 +134,7 @@ func _build_layout() -> void:
 	var left_vbox := VBoxContainer.new()
 	left_vbox.name = "LeftVBox"
 	left_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_vbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	left_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_vbox.add_theme_constant_override("separation", 12)
 	body_hbox.add_child(left_vbox)
 
@@ -163,7 +165,7 @@ func _build_layout() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.name = "VariantScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_vbox.add_child(scroll)
 
@@ -209,7 +211,7 @@ func _build_preview_viewport(parent: Control) -> void:
 		lbl.text = tr("(preview N/A)")
 		lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.add_theme_color_override("font_color", COL_DIM)
 		parent.add_child(lbl)
 		return
@@ -220,7 +222,7 @@ func _build_preview_viewport(parent: Control) -> void:
 	svc.set_anchors_preset(Control.PRESET_FULL_RECT)
 	svc.stretch = true
 	svc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	svc.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	svc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(svc)
 
 	_preview_vp = SubViewport.new()
@@ -236,7 +238,7 @@ func _build_preview_viewport(parent: Control) -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color  = Color(0.5, 0.54, 0.62)
+	env.ambient_light_color = Color(0.5, 0.54, 0.62)
 	env.ambient_light_energy = 0.6
 	world.environment = env
 	_preview_vp.world_3d = world
@@ -260,7 +262,7 @@ func _build_preview_viewport(parent: Control) -> void:
 	cam.look_at(Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	cam.fov = 42.0
 	cam.near = 0.1
-	cam.far  = 30.0
+	cam.far = 30.0
 	_preview_vp.add_child(cam)
 	cam.current = true
 	cam.make_current()
@@ -272,6 +274,7 @@ func _build_preview_viewport(parent: Control) -> void:
 
 
 # ── Category selection ────────────────────────────────────────────────────────
+
 
 func _select_category(cat: String) -> void:
 	_selected_cat = cat
@@ -290,6 +293,7 @@ func _update_cat_button_highlights() -> void:
 
 # ── Variant grid ──────────────────────────────────────────────────────────────
 
+
 ## Clears and repopulates the variant grid for the currently-selected category.
 ## Thumbnails are loaded asynchronously after the cells are built.
 func _rebuild_variant_grid() -> void:
@@ -297,18 +301,18 @@ func _rebuild_variant_grid() -> void:
 		c.queue_free()
 
 	var equipped_paint: String = MetaProgression.get_equipped_cosmetic("paint")
-	var equipped_here:  String = MetaProgression.get_equipped_cosmetic(_selected_cat)
+	var equipped_here: String = MetaProgression.get_equipped_cosmetic(_selected_cat)
 	var variants: Array = ProceduralPlayer.variants_of(_selected_cat)
 
 	for raw_v in variants:
 		var v: Dictionary = raw_v as Dictionary
-		var vid: String   = String(v["id"])
+		var vid: String = String(v["id"])
 		var vname: String = String(v["name"])
-		var vcost: int    = int(v["cost"])
+		var vcost: int = int(v["cost"])
 
-		var is_equipped: bool = (vid == equipped_here)
+		var is_equipped: bool = vid == equipped_here
 		var is_unlocked: bool = MetaProgression.is_cosmetic_unlocked(vid)
-		var can_afford:  bool = MetaProgression.currency >= vcost
+		var can_afford: bool = MetaProgression.currency >= vcost
 
 		var cell := _make_variant_cell(vid, vname, vcost, is_equipped, is_unlocked, can_afford)
 		_variant_grid.add_child(cell)
@@ -318,8 +322,9 @@ func _rebuild_variant_grid() -> void:
 
 
 ## Builds one variant cell: thumbnail placeholder + name + equip/buy button.
-func _make_variant_cell(vid: String, vname: String, vcost: int,
-		is_equipped: bool, is_unlocked: bool, can_afford: bool) -> PanelContainer:
+func _make_variant_cell(
+	vid: String, vname: String, vcost: int, is_equipped: bool, is_unlocked: bool, can_afford: bool
+) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.name = "VCell_" + vid
 	pc.size_flags_horizontal = Control.SIZE_FILL
@@ -330,9 +335,9 @@ func _make_variant_cell(vid: String, vname: String, vcost: int,
 	sb.set_border_width_all(2)
 	sb.border_color = COL_AMBER if is_equipped else Color(0.20, 0.24, 0.28, 1.0)
 	sb.set_corner_radius_all(5)
-	sb.content_margin_left   = 6
-	sb.content_margin_right  = 6
-	sb.content_margin_top    = 6
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	sb.content_margin_top = 6
 	sb.content_margin_bottom = 6
 	pc.add_theme_stylebox_override("panel", sb)
 
@@ -356,11 +361,11 @@ func _make_variant_cell(vid: String, vname: String, vcost: int,
 	fallback.name = "Fallback"
 	fallback.color = _variant_fallback_color(vid)
 	fallback.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fallback.offset_left   = 8
-	fallback.offset_top    = 8
-	fallback.offset_right  = -8
+	fallback.offset_left = 8
+	fallback.offset_top = 8
+	fallback.offset_right = -8
 	fallback.offset_bottom = -8
-	fallback.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	thumb_panel.add_child(fallback)
 	vbox.add_child(thumb_panel)
 
@@ -412,14 +417,12 @@ func _make_variant_cell(vid: String, vname: String, vcost: int,
 
 ## Async: render the thumbnail for this variant cell, then fill in a TextureRect.
 ## If IconRenderer returns null (headless / failure), the ColorRect fallback stays.
-func _load_thumbnail_async(cell: PanelContainer, cat: String,
-		vid: String, paint: String) -> void:
+func _load_thumbnail_async(cell: PanelContainer, cat: String, vid: String, paint: String) -> void:
 	# We need to await, so this runs as a coroutine but we discard the return.
 	_fill_thumbnail(cell, cat, vid, paint)
 
 
-func _fill_thumbnail(cell: PanelContainer, cat: String,
-		vid: String, paint: String) -> void:
+func _fill_thumbnail(cell: PanelContainer, cat: String, vid: String, paint: String) -> void:
 	var tex: Texture2D = await IconRenderer.render_cosmetic(cat, vid, paint)
 	# The cell may have been freed if the category changed while the render was in flight.
 	if not is_instance_valid(cell):
@@ -441,15 +444,16 @@ func _fill_thumbnail(cell: PanelContainer, cat: String,
 	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tex_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	tex_rect.offset_left   = 4
-	tex_rect.offset_top    = 4
-	tex_rect.offset_right  = -4
+	tex_rect.offset_left = 4
+	tex_rect.offset_top = 4
+	tex_rect.offset_right = -4
 	tex_rect.offset_bottom = -4
-	tex_rect.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tp.add_child(tex_rect)
 
 
 # ── Live 3D preview ───────────────────────────────────────────────────────────
+
 
 func _rebuild_preview() -> void:
 	if _preview_pivot == null or not _preview_pivot.is_inside_tree():
@@ -462,6 +466,7 @@ func _rebuild_preview() -> void:
 
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
+
 
 func _on_cosmetics_changed() -> void:
 	_refresh_currency()
@@ -477,6 +482,7 @@ func _on_currency_changed(_amount: int) -> void:
 
 # ── Actions ───────────────────────────────────────────────────────────────────
 
+
 func _on_equip(vid: String) -> void:
 	MetaProgression.set_equipped_cosmetic(vid)
 	# cosmetics_changed fires → _on_cosmetics_changed → grid + preview refresh.
@@ -490,6 +496,7 @@ func _on_buy(vid: String) -> void:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 func _refresh_currency() -> void:
 	if _currency_label != null:
@@ -509,11 +516,16 @@ func _make_section_header(title: String) -> PanelContainer:
 func _variant_fallback_color(vid: String) -> Color:
 	var cat: String = ProceduralPlayer.category_of(vid)
 	match cat:
-		"head":  return Color(0.22, 0.28, 0.38, 1.0)
-		"torso": return Color(0.20, 0.26, 0.32, 1.0)
-		"arms":  return Color(0.18, 0.24, 0.30, 1.0)
-		"legs":  return Color(0.16, 0.22, 0.28, 1.0)
-		"paint": return Color(0.25, 0.20, 0.15, 1.0)
+		"head":
+			return Color(0.22, 0.28, 0.38, 1.0)
+		"torso":
+			return Color(0.20, 0.26, 0.32, 1.0)
+		"arms":
+			return Color(0.18, 0.24, 0.30, 1.0)
+		"legs":
+			return Color(0.16, 0.22, 0.28, 1.0)
+		"paint":
+			return Color(0.25, 0.20, 0.15, 1.0)
 	return Color(0.18, 0.20, 0.24, 1.0)
 
 

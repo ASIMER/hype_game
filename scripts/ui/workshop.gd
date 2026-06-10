@@ -14,16 +14,16 @@ extends Control
 ## All purchases refresh the relevant panel rows immediately; currency_changed also
 ## keeps the header readout in sync live.
 
-signal deploy_requested()
-signal back_requested()
+signal deploy_requested
+signal back_requested
 
 # Weapon display names and canonical id order.
 const WEAPON_DISPLAY := {
-	"rifle":   "RIFLE",
-	"pistol":  "PISTOL",
-	"smg":     "SMG",
+	"rifle": "RIFLE",
+	"pistol": "PISTOL",
+	"smg": "SMG",
 	"shotgun": "SHOTGUN",
-	"dmr":     "DMR",
+	"dmr": "DMR",
 }
 const WEAPON_ORDER: Array[String] = ["rifle", "pistol", "smg", "shotgun", "dmr"]
 
@@ -36,20 +36,24 @@ const DIFFICULTY_DESCS := [
 # NOTE: DIFFICULTY_DESCS are tr()-wrapped at point of use (_refresh_difficulty)
 
 # Colours matching the project theme.
-const COL_AMBER  := UIStyle.AMBER   # amber accent
-const COL_TEAL   := UIStyle.TEAL  # teal accent
-const COL_DIM    := UIStyle.DIM   # muted label
-const COL_WHITE  := UIStyle.WHITE   # body text
-const COL_RED    := UIStyle.RED   # locked / unaffordable hint
+const COL_AMBER := UIStyle.AMBER  # amber accent
+const COL_TEAL := UIStyle.TEAL  # teal accent
+const COL_DIM := UIStyle.DIM  # muted label
+const COL_WHITE := UIStyle.WHITE  # body text
+const COL_RED := UIStyle.RED  # locked / unaffordable hint
 
 # ---------------------------------------------------------------- node refs
-@onready var _currency_label: Label      = $Layout/Header/HRow/CurrencyLabel
-@onready var _weapon_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Left/LoadoutPanel/Scroll/WeaponRows
-@onready var _upgrade_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Right/UpgradesPanel/Scroll/UpgradeRows
-@onready var _diff_option: OptionButton  = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffOption
-@onready var _diff_desc: Label           = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffDesc
-@onready var _deploy_btn: Button         = $Layout/Footer/FooterRow/DeployBtn
-@onready var _back_btn: Button           = $Layout/Footer/FooterRow/BackBtn
+@onready var _currency_label: Label = $Layout/Header/HRow/CurrencyLabel
+@onready
+var _weapon_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Left/LoadoutPanel/Scroll/WeaponRows
+@onready
+var _upgrade_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Right/UpgradesPanel/Scroll/UpgradeRows
+@onready
+var _diff_option: OptionButton = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffOption
+@onready
+var _diff_desc: Label = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffDesc
+@onready var _deploy_btn: Button = $Layout/Footer/FooterRow/DeployBtn
+@onready var _back_btn: Button = $Layout/Footer/FooterRow/BackBtn
 
 # Runtime state -------------------------------------------------------
 ## Weapon rows: id -> { check: CheckButton, unlock_btn: Button, cost_label: Label }
@@ -72,9 +76,9 @@ func _ready() -> void:
 	# Wire difficulty selector.
 	if _diff_option:
 		_diff_option.clear()
-		_diff_option.add_item("EASY",   GameState.Difficulty.EASY)
+		_diff_option.add_item("EASY", GameState.Difficulty.EASY)
 		_diff_option.add_item("NORMAL", GameState.Difficulty.NORMAL)
-		_diff_option.add_item("HARD",   GameState.Difficulty.HARD)
+		_diff_option.add_item("HARD", GameState.Difficulty.HARD)
 		_diff_option.selected = GameState.difficulty
 		_diff_option.item_selected.connect(_on_difficulty_selected)
 
@@ -131,10 +135,10 @@ func _build_weapon_rows() -> void:
 
 		_weapon_rows.add_child(row)
 		_weapon_ui[id] = {
-			"row":        row,
-			"name_lbl":   name_lbl,
-			"cost_lbl":   cost_lbl,
-			"check":      check,
+			"row": row,
+			"name_lbl": name_lbl,
+			"cost_lbl": cost_lbl,
+			"check": check,
 			"unlock_btn": unlock_btn,
 		}
 
@@ -195,8 +199,8 @@ func _build_upgrade_rows() -> void:
 		_upgrade_rows.add_child(row)
 		_upgrade_ui[key] = {
 			"level_lbl": level_lbl,
-			"cost_lbl":  cost_lbl,
-			"btn":       btn,
+			"cost_lbl": cost_lbl,
+			"btn": btn,
 		}
 
 
@@ -227,7 +231,7 @@ func _refresh_weapon_rows() -> void:
 		var cost: int = MetaProgression.weapon_cost(id)
 		var in_load: bool = id in _selected
 
-		var cost_lbl: Label  = ui["cost_lbl"]
+		var cost_lbl: Label = ui["cost_lbl"]
 		var check: CheckButton = ui["check"]
 		var unlock_btn: Button = ui["unlock_btn"]
 
@@ -258,13 +262,13 @@ func _refresh_upgrade_rows() -> void:
 		var ui: Dictionary = _upgrade_ui[key]
 		if ui.is_empty():
 			continue
-		var lvl: int  = MetaProgression.upgrade_level(key)
+		var lvl: int = MetaProgression.upgrade_level(key)
 		var maxl: int = MetaProgression.upgrade_max(key)
 		var cost: int = MetaProgression.upgrade_cost(key)
 
-		var level_lbl: Label  = ui["level_lbl"]
-		var cost_lbl: Label   = ui["cost_lbl"]
-		var btn: Button       = ui["btn"]
+		var level_lbl: Label = ui["level_lbl"]
+		var cost_lbl: Label = ui["cost_lbl"]
+		var btn: Button = ui["btn"]
 
 		level_lbl.text = tr("Lv %d / %d") % [lvl, maxl]
 

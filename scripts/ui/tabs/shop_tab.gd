@@ -17,33 +17,33 @@ class_name ShopTab
 
 # ── Stock: item id -> buy price (≈ ItemData.value * 2 markup) ────────────────
 const STOCK: Dictionary = {
-	"loot_medkit":  60,
+	"loot_medkit": 60,
 	"loot_grenade": 50,
-	"loot_ammo":    20,
-	"loot_scrap":   10,
-	"loot_cell":    40,
+	"loot_ammo": 20,
+	"loot_scrap": 10,
+	"loot_cell": 40,
 	"loot_plastic": 15,
 }
 
 # ── Blueprint prices: blueprint id -> buy price ───────────────────────────────
 const BLUEPRINT_PRICE: Dictionary = {
-	# Default for any blueprint not explicitly listed is BLUEPRINT_PRICE_DEFAULT.
+# Default for any blueprint not explicitly listed is BLUEPRINT_PRICE_DEFAULT.
 }
 const BLUEPRINT_PRICE_DEFAULT := 400
 
 # Project theme colours (matching workshop_tab.gd / loadout_tab.gd).
 const COL_AMBER := UIStyle.AMBER
-const COL_TEAL  := UIStyle.TEAL
-const COL_DIM   := UIStyle.DIM
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
 const COL_WHITE := UIStyle.WHITE
-const COL_RED   := UIStyle.RED
+const COL_RED := UIStyle.RED
 const COL_GREEN := UIStyle.GREEN
 
 # ── Node refs (assigned by _build_layout; no @onready — tree is built in code) ─
-var _currency_label: Label       = null
-var _item_rows: GridContainer    = null
+var _currency_label: Label = null
+var _item_rows: GridContainer = null
 var _blueprint_rows: VBoxContainer = null
-var _no_blueprints_label: Label  = null
+var _no_blueprints_label: Label = null
 
 ## Per-stock-cell UI references: item id -> { buy_btn: Button, price_lbl: Label }
 var _item_ui: Dictionary = {}
@@ -71,6 +71,7 @@ func _exit_tree() -> void:
 
 # ── Layout construction ───────────────────────────────────────────────────────
 
+
 ## Builds the full node tree in code once. No .tscn sub-resources required.
 ## Structure:
 ##   ScrollContainer (fills tab)
@@ -92,9 +93,9 @@ func _build_layout() -> void:
 	var margin := MarginContainer.new()
 	margin.name = "Margin"
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left",   24)
-	margin.add_theme_constant_override("margin_top",    20)
-	margin.add_theme_constant_override("margin_right",  24)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
 	scroll.add_child(margin)
 
@@ -155,7 +156,9 @@ func _build_layout() -> void:
 
 	_no_blueprints_label = Label.new()
 	_no_blueprints_label.name = "NoBpLabel"
-	_no_blueprints_label.text = tr("No blueprints available — check back after crafting more recipes.")
+	_no_blueprints_label.text = tr(
+		"No blueprints available — check back after crafting more recipes."
+	)
 	_no_blueprints_label.add_theme_color_override("font_color", COL_DIM)
 	_no_blueprints_label.add_theme_font_size_override("font_size", 14)
 	_no_blueprints_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -176,9 +179,9 @@ func _build_layout() -> void:
 func _build_item_rows() -> void:
 	_item_ui.clear()
 	for id in STOCK:
-		var price: int         = int(STOCK[id])
-		var item: ItemData     = ItemCatalog.get_item(id)
-		var display: String    = item.display_name if item != null else id
+		var price: int = int(STOCK[id])
+		var item: ItemData = ItemCatalog.get_item(id)
+		var display: String = item.display_name if item != null else id
 
 		# Vertical cell: [icon] [name] [price] [BUY]
 		var cell := VBoxContainer.new()
@@ -190,9 +193,15 @@ func _build_item_rows() -> void:
 		# Icon cell (clickable shortcut to buy).
 		var icon := _icon_cell(id, 0, 56)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		icon.gui_input.connect(func(ev: InputEvent) -> void:
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				_on_buy_item(id, price))
+		icon.gui_input.connect(
+			func(ev: InputEvent) -> void:
+				if (
+					ev is InputEventMouseButton
+					and ev.pressed
+					and ev.button_index == MOUSE_BUTTON_LEFT
+				):
+					_on_buy_item(id, price)
+		)
 		cell.add_child(icon)
 
 		# Display name (small, centered, wrapping).
@@ -226,7 +235,7 @@ func _build_item_rows() -> void:
 		cell.add_child(buy_btn)
 
 		_item_rows.add_child(cell)
-		_item_ui[id] = { "buy_btn": buy_btn, "price_lbl": price_lbl }
+		_item_ui[id] = {"buy_btn": buy_btn, "price_lbl": price_lbl}
 
 
 ## Builds blueprint rows from Crafting.all_recipes(), de-duplicated by blueprint id.
@@ -237,8 +246,8 @@ func _build_blueprint_rows() -> void:
 		c.queue_free()
 
 	# Collect unique blueprint ids (each bp may be referenced by multiple recipes).
-	var seen_bps: Dictionary = {}       # bp id -> display_name
-	var bp_output: Dictionary = {}      # bp id -> output item id (for the icon)
+	var seen_bps: Dictionary = {}  # bp id -> display_name
+	var bp_output: Dictionary = {}  # bp id -> output item id (for the icon)
 	for recipe in Crafting.all_recipes():
 		var cr := recipe as CraftRecipe
 		if cr == null:
@@ -260,7 +269,7 @@ func _build_blueprint_rows() -> void:
 
 	for bp_id in seen_bps:
 		var disp: String = String(seen_bps[bp_id])
-		var price: int   = int(BLUEPRINT_PRICE.get(bp_id, BLUEPRINT_PRICE_DEFAULT))
+		var price: int = int(BLUEPRINT_PRICE.get(bp_id, BLUEPRINT_PRICE_DEFAULT))
 
 		var row := HBoxContainer.new()
 		row.name = "BpRow_" + bp_id
@@ -302,10 +311,11 @@ func _build_blueprint_rows() -> void:
 		row.add_child(buy_btn)
 
 		_blueprint_rows.add_child(row)
-		_blueprint_ui[bp_id] = { "buy_btn": buy_btn, "status_lbl": status_lbl }
+		_blueprint_ui[bp_id] = {"buy_btn": buy_btn, "status_lbl": status_lbl}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 ## Returns a glass PanelContainer (military-glass look).
 func _make_panel() -> PanelContainer:
@@ -384,6 +394,7 @@ func _icon_cell(id: String, count: int, cell_size: int) -> Panel:
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
+
 ## Full affordability refresh — called on _ready and after any purchase signal.
 func _refresh() -> void:
 	if not is_inside_tree():
@@ -403,10 +414,10 @@ func _refresh_currency_label() -> void:
 ## Displayed price reflects the current rep-tier discount.
 func _refresh_item_buttons() -> void:
 	for id in _item_ui:
-		var base_price: int  = int(STOCK.get(id, 0))
-		var price: int       = _discounted_price(base_price)
-		var ui: Dictionary   = _item_ui[id]
-		var buy_btn: Button  = ui["buy_btn"]
+		var base_price: int = int(STOCK.get(id, 0))
+		var price: int = _discounted_price(base_price)
+		var ui: Dictionary = _item_ui[id]
+		var buy_btn: Button = ui["buy_btn"]
 		var price_lbl: Label = ui["price_lbl"]
 		var affordable: bool = MetaProgression.currency >= price
 		buy_btn.disabled = not affordable
@@ -419,24 +430,25 @@ func _refresh_item_buttons() -> void:
 func _refresh_blueprint_buttons() -> void:
 	for bp_id in _blueprint_ui:
 		var base_price: int = int(BLUEPRINT_PRICE.get(bp_id, BLUEPRINT_PRICE_DEFAULT))
-		var price: int      = _discounted_price(base_price)
-		var ui: Dictionary  = _blueprint_ui[bp_id]
-		var buy_btn:    Button = ui["buy_btn"]
-		var status_lbl: Label  = ui["status_lbl"]
+		var price: int = _discounted_price(base_price)
+		var ui: Dictionary = _blueprint_ui[bp_id]
+		var buy_btn: Button = ui["buy_btn"]
+		var status_lbl: Label = ui["status_lbl"]
 
 		if MetaProgression.is_blueprint_known(bp_id):
 			status_lbl.text = tr("LEARNED")
 			status_lbl.add_theme_color_override("font_color", COL_GREEN)
-			buy_btn.text     = tr("LEARNED")
+			buy_btn.text = tr("LEARNED")
 			buy_btn.disabled = true
 		else:
 			status_lbl.text = tr("CR %d") % price
 			status_lbl.add_theme_color_override("font_color", COL_AMBER)
-			buy_btn.text     = tr("BUY")
+			buy_btn.text = tr("BUY")
 			buy_btn.disabled = MetaProgression.currency < price
 
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
+
 
 func _on_currency_changed(_amount: int) -> void:
 	## Currency changed — refresh header and button states.
@@ -455,6 +467,7 @@ func _on_reputation_changed(_rep: int, _tier: int) -> void:
 
 # ── Rep discount helper ───────────────────────────────────────────────────────
 
+
 ## Returns the effective (discounted) price for a base price using the current
 ## vendor reputation tier discount (0% … 20%). Always >= 1.
 func _discounted_price(base_price: int) -> int:
@@ -463,6 +476,7 @@ func _discounted_price(base_price: int) -> int:
 
 
 # ── Purchase actions ──────────────────────────────────────────────────────────
+
 
 ## Attempt to buy 1 unit of a stock item. Deducts the discounted price, adds to stash.
 func _on_buy_item(id: String, base_price: int) -> void:

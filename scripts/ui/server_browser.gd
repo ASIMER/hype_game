@@ -21,19 +21,19 @@ signal connect_requested(ip: String, port: int)
 
 # Palette — forward local COL_* to UIStyle so we don't churn every usage site.
 const COL_AMBER := UIStyle.AMBER
-const COL_TEAL  := UIStyle.TEAL
-const COL_DIM   := UIStyle.DIM
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
 const COL_WHITE := UIStyle.WHITE
-const COL_RED   := UIStyle.RED
+const COL_RED := UIStyle.RED
 
 # ── Node refs (built in code; no .tscn sub-tree) ──────────────────────────────
-var _direct_field: LineEdit  = null
-var _scan_btn: Button        = null
-var _scanning_label: Label   = null
-var _lan_rows: VBoxContainer  = null
-var _fav_rows: VBoxContainer   = null
+var _direct_field: LineEdit = null
+var _scan_btn: Button = null
+var _scanning_label: Label = null
+var _lan_rows: VBoxContainer = null
+var _fav_rows: VBoxContainer = null
 var _recent_rows: VBoxContainer = null
-var _card: PanelContainer    = null  # kept for pop_in
+var _card: PanelContainer = null  # kept for pop_in
 
 var _scanning: bool = false
 # Frosted-glass backdrop (lazy-created once).
@@ -302,11 +302,14 @@ func _rebuild_recents() -> void:
 
 # ── Row builders ──────────────────────────────────────────────────────────────
 
+
 ## Builds a server row: label "name · ip:port[ · players/max]" + CONNECT +
 ## an action button. `action` ∈ {"fav", "remove"}:
 ##   "fav"    → ☆ toggle (add/remove favorite)
 ##   "remove" → ✕ remove favorite (used in the FAVORITES list)
-func _make_server_row(name_s: String, ip: String, port: int, players: int, maxp: int, action: String) -> HBoxContainer:
+func _make_server_row(
+	name_s: String, ip: String, port: int, players: int, maxp: int, action: String
+) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL

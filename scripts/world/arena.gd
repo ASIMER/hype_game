@@ -19,6 +19,7 @@ const PLAYER_SCENE := "res://scenes/player/Player.tscn"
 @onready var poi_markers: Node3D = $POIMarkers
 @onready var loot_cache_markers: Node3D = $LootCacheMarkers
 
+
 func _ready() -> void:
 	# Discoverable by the map UI (which is nested elsewhere and can't reach us via
 	# current_scene) for POI/zone-of-interest labels.
@@ -92,19 +93,30 @@ func _ready() -> void:
 		# Offline: start right away.
 		_on_match_started.call_deferred()
 
+
 func _on_player_replicated(node: Node) -> void:
 	if not Settings.NET_DEBUG:
 		return
 	# Authority is derived from the node name on every peer (see player.gd).
 	var auth := str(node.name).to_int()
-	print("[net] player '%s' present under Net/Players (authority=%d) on peer %d" % [
-		node.name, auth, multiplayer.get_unique_id()])
+	print(
+		(
+			"[net] player '%s' present under Net/Players (authority=%d) on peer %d"
+			% [node.name, auth, multiplayer.get_unique_id()]
+		)
+	)
+
 
 func _on_enemy_replicated(node: Node) -> void:
 	if not Settings.NET_DEBUG:
 		return
-	print("[net] enemy '%s' present under Net/Enemies on peer %d" % [
-		node.name, multiplayer.get_unique_id()])
+	print(
+		(
+			"[net] enemy '%s' present under Net/Enemies on peer %d"
+			% [node.name, multiplayer.get_unique_id()]
+		)
+	)
+
 
 # ------------------------------------------------- procedural terrain + flora hooks
 ## Direct class calls (every builder has a class_name) — the old guarded load-by-path
@@ -120,6 +132,7 @@ func _on_enemy_replicated(node: Node) -> void:
 ## Both receive the SAME _POI_DEFS + the ExtractionZone* positions read off THIS
 ## scene's nodes — Arena.tscn is the one source for zone coordinates (AUDIT F2).
 
+
 ## XZ centres of this arena's ExtractionZone* children, in scene order. `nw_only`
 ## filters to the original NW-quadrant zones — the only ones flora ever kept out of.
 func _extraction_zone_points(nw_only: bool = false) -> Array[Vector2]:
@@ -132,6 +145,7 @@ func _extraction_zone_points(nw_only: bool = false) -> Array[Vector2]:
 			pts.append(Vector2(p.x, p.z))
 	return pts
 
+
 func _build_terrain() -> void:
 	var terrain: Node3D = ProceduralTerrain.build(nav_region, _POI_DEFS, _extraction_zone_points())
 	if terrain == null:
@@ -143,10 +157,12 @@ func _build_terrain() -> void:
 		nav_region.remove_child(ground)
 		ground.queue_free()
 
+
 func _build_flora() -> void:
 	# NW-only extraction keep-outs: the 9 new-biome zones never had flora keep-outs
 	# (pre-existing asymmetry, kept bit-exact — see docs/AUDIT.md F2).
 	ProceduralFlora.build(nav_region, _POI_DEFS, _extraction_zone_points(true))
+
 
 ## Ultra+RT tier: spawn baked ReflectionProbes at the POIs for off-screen reflections.
 ## The builder early-returns on headless and when Settings.reflection_probes_enabled is
@@ -156,6 +172,7 @@ func _build_reflection_probes() -> void:
 	ProceduralReflectionProbes.build(self, poi_markers)
 	# Experimental VoxelGI (off by default; gated inside on Settings.voxelgi_enabled).
 	ProceduralReflectionProbes.build_voxelgi(self, Vector3(80.0, 24.0, 80.0))
+
 
 ## Localized FogVolume mist pools at a few POIs + river-valley spots. The builder
 ## early-returns on headless and when Settings.local_fog_enabled is off. Render-only +
@@ -176,12 +193,14 @@ func _build_fog_zones() -> void:
 			spawn_center = acc / float(n)
 	ProceduralFogZones.build(self, poi_markers, spawn_center)
 
+
 ## Localized climate zones (rain over the Temple, snow over the Lodge, sand-haze over
 ## the Ruins) at the 3 far-quadrant landmarks. The builder early-returns on headless and
 ## when Settings.climate_zones_enabled is off. Render-only + deterministic (placement
 ## from the POI markers), so it never touches the navmesh/collision/netcode.
 func _build_climate_zones() -> void:
 	ProceduralClimateZones.build(self, poi_markers)
+
 
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a
@@ -192,22 +211,30 @@ func _build_climate_zones() -> void:
 ## 6 are the new POIs across the +X/+Z quadrants (paired with the Phase-3 climate zones):
 ## NE→snow (lodge+depot), SW→desert (ruins×2), SE→rain (temple+shrine house).
 const _POI_DEFS := {
-	"POI_NorthTower":    {"theme": "tower",     "x": -40.0, "z": -45.0, "w": 17.0, "d": 15.0, "court": false},
-	"POI_EastWarehouse": {"theme": "warehouse", "x":  45.0, "z": -28.0, "w": 22.0, "d": 18.0, "court": true},
-	"POI_Plaza":         {"theme": "plaza",     "x":   0.0, "z":   0.0, "w":  0.0, "d":  0.0, "court": false},
-	"POI_SWHouse":       {"theme": "house",     "x": -52.0, "z":  30.0, "w": 15.0, "d": 15.0, "court": true},
-	"POI_SouthYard":     {"theme": "yard",      "x": -30.0, "z":  50.0, "w": 18.0, "d": 16.0, "court": true},
-	"POI_EastYard":      {"theme": "yard",      "x":  50.0, "z":  42.0, "w": 18.0, "d": 16.0, "court": false},
+	"POI_NorthTower":
+	{"theme": "tower", "x": -40.0, "z": -45.0, "w": 17.0, "d": 15.0, "court": false},
+	"POI_EastWarehouse":
+	{"theme": "warehouse", "x": 45.0, "z": -28.0, "w": 22.0, "d": 18.0, "court": true},
+	"POI_Plaza": {"theme": "plaza", "x": 0.0, "z": 0.0, "w": 0.0, "d": 0.0, "court": false},
+	"POI_SWHouse": {"theme": "house", "x": -52.0, "z": 30.0, "w": 15.0, "d": 15.0, "court": true},
+	"POI_SouthYard": {"theme": "yard", "x": -30.0, "z": 50.0, "w": 18.0, "d": 16.0, "court": true},
+	"POI_EastYard": {"theme": "yard", "x": 50.0, "z": 42.0, "w": 18.0, "d": 16.0, "court": false},
 	# --- NE quadrant: SNOW (alpine) ---
-	"POI_SnowLodge":     {"theme": "snow_lodge",   "x": 160.0, "z": -10.0, "w": 22.0, "d": 18.0, "court": false},
-	"POI_SnowDepot":     {"theme": "warehouse",    "x": 205.0, "z":  40.0, "w": 20.0, "d": 16.0, "court": false},
+	"POI_SnowLodge":
+	{"theme": "snow_lodge", "x": 160.0, "z": -10.0, "w": 22.0, "d": 18.0, "court": false},
+	"POI_SnowDepot":
+	{"theme": "warehouse", "x": 205.0, "z": 40.0, "w": 20.0, "d": 16.0, "court": false},
 	# --- SW quadrant: DESERT (ruins) ---
-	"POI_DesertRuins":   {"theme": "desert_ruins", "x":   0.0, "z": 158.0, "w": 24.0, "d": 22.0, "court": false},
-	"POI_RuinColumns":   {"theme": "desert_ruins", "x":  45.0, "z": 205.0, "w": 16.0, "d": 14.0, "court": false},
+	"POI_DesertRuins":
+	{"theme": "desert_ruins", "x": 0.0, "z": 158.0, "w": 24.0, "d": 22.0, "court": false},
+	"POI_RuinColumns":
+	{"theme": "desert_ruins", "x": 45.0, "z": 205.0, "w": 16.0, "d": 14.0, "court": false},
 	# --- SE quadrant: RAIN (Japanese temple) ---
-	"POI_Temple":        {"theme": "temple",       "x": 160.0, "z": 158.0, "w": 22.0, "d": 22.0, "court": false},
-	"POI_ShrineHouse":   {"theme": "house",        "x": 205.0, "z": 205.0, "w": 14.0, "d": 14.0, "court": false},
+	"POI_Temple": {"theme": "temple", "x": 160.0, "z": 158.0, "w": 22.0, "d": 22.0, "court": false},
+	"POI_ShrineHouse":
+	{"theme": "house", "x": 205.0, "z": 205.0, "w": 14.0, "d": 14.0, "court": false},
 }
+
 
 ## Tears down the old crude POI cubes and instances a themed ProceduralBuildings
 ## structure at each POI center under NavigationRegion3D/Geometry (so it's parsed by
@@ -226,20 +253,29 @@ func _build_poi_structures() -> void:
 		var court: bool = def["court"]
 		var building: Node3D = null
 		match theme:
-			"tower":        building = ProceduralBuildings.build_tower(fp)
-			"warehouse":    building = ProceduralBuildings.build_warehouse(fp, court)
-			"house":        building = ProceduralBuildings.build_house(fp, court)
-			"yard":         building = ProceduralBuildings.build_container_yard(fp, court)
-			"plaza":        building = ProceduralBuildings.build_plaza_cover()
-			"temple":       building = ProceduralBuildings.build_temple(fp)
-			"snow_lodge":   building = ProceduralBuildings.build_snow_lodge(fp)
-			"desert_ruins": building = ProceduralBuildings.build_desert_ruins(fp)
+			"tower":
+				building = ProceduralBuildings.build_tower(fp)
+			"warehouse":
+				building = ProceduralBuildings.build_warehouse(fp, court)
+			"house":
+				building = ProceduralBuildings.build_house(fp, court)
+			"yard":
+				building = ProceduralBuildings.build_container_yard(fp, court)
+			"plaza":
+				building = ProceduralBuildings.build_plaza_cover()
+			"temple":
+				building = ProceduralBuildings.build_temple(fp)
+			"snow_lodge":
+				building = ProceduralBuildings.build_snow_lodge(fp)
+			"desert_ruins":
+				building = ProceduralBuildings.build_desert_ruins(fp)
 		if building == null:
 			continue
 		building.name = poi_name
 		building.position = Vector3(def["x"], 0.0, def["z"])
 		geometry.add_child(building)
 	_rebuild_scatter(geometry)
+
 
 ## Replaces the old Scatter cubes with deterministic procedural rubble piles spread
 ## across open ground (kept away from POI centers, spawns and extraction zones).
@@ -252,15 +288,28 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 	geometry.add_child(scatter)
 	# Hand-picked open-ground spots (avoid POIs at ~±40/±50, spawns at +60, zones).
 	var spots: Array[Vector3] = [
-		Vector3(-15, 0, -20), Vector3(20, 0, 8), Vector3(-25, 0, 5),
-		Vector3(30, 0, -55), Vector3(-60, 0, -20), Vector3(60, 0, -5),
-		Vector3(15, 0, 55), Vector3(-10, 0, 35), Vector3(5, 0, -35),
-		Vector3(-66, 0, -60), Vector3(66, 0, 60), Vector3(-70, 0, 12),
+		Vector3(-15, 0, -20),
+		Vector3(20, 0, 8),
+		Vector3(-25, 0, 5),
+		Vector3(30, 0, -55),
+		Vector3(-60, 0, -20),
+		Vector3(60, 0, -5),
+		Vector3(15, 0, 55),
+		Vector3(-10, 0, 35),
+		Vector3(5, 0, -35),
+		Vector3(-66, 0, -60),
+		Vector3(66, 0, 60),
+		Vector3(-70, 0, 12),
 		# Extra debris across open ground for landscape interest (still clear of
 		# POIs/spawns/zones — small piles between the existing crossroads).
-		Vector3(38, 0, 22), Vector3(-40, 0, -8), Vector3(8, 0, 20),
-		Vector3(-18, 0, 58), Vector3(48, 0, 10), Vector3(-48, 0, 56),
-		Vector3(22, 0, -10), Vector3(-8, 0, -58),
+		Vector3(38, 0, 22),
+		Vector3(-40, 0, -8),
+		Vector3(8, 0, 20),
+		Vector3(-18, 0, 58),
+		Vector3(48, 0, 10),
+		Vector3(-48, 0, 56),
+		Vector3(22, 0, -10),
+		Vector3(-8, 0, -58),
 	]
 	for i in range(spots.size()):
 		var pile := ProceduralBuildings.rubble_pile(i * 137 + 11)
@@ -270,15 +319,25 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 	# the new biomes don't read as empty. These have no flat pad, so they sit on the rolling
 	# terrain via height_at (rocks following the hills look natural). Clear of POIs/evac zones.
 	var new_spots: Array[Vector2] = [
-		Vector2(110, -45), Vector2(185, 5), Vector2(130, 60), Vector2(215, 10),     # NE snow
-		Vector2(-55, 100), Vector2(30, 165), Vector2(-60, 195), Vector2(10, 210),   # SW desert
-		Vector2(110, 180), Vector2(180, 105), Vector2(210, 160), Vector2(150, 210), # SE rain
+		Vector2(110, -45),
+		Vector2(185, 5),
+		Vector2(130, 60),
+		Vector2(215, 10),  # NE snow
+		Vector2(-55, 100),
+		Vector2(30, 165),
+		Vector2(-60, 195),
+		Vector2(10, 210),  # SW desert
+		Vector2(110, 180),
+		Vector2(180, 105),
+		Vector2(210, 160),
+		Vector2(150, 210),  # SE rain
 	]
 	for j in range(new_spots.size()):
 		var s2: Vector2 = new_spots[j]
 		var pile2 := ProceduralBuildings.rubble_pile((spots.size() + j) * 137 + 11)
 		pile2.position = Vector3(s2.x, ProceduralTerrain.height_at(s2.x, s2.y), s2.y)
 		scatter.add_child(pile2)
+
 
 func _bake_navmesh() -> void:
 	if nav_region and nav_region.navigation_mesh:
@@ -292,11 +351,13 @@ func _bake_navmesh() -> void:
 			NavigationServer3D.map_set_cell_size(map, nav_region.navigation_mesh.cell_size)
 		nav_region.bake_navigation_mesh()
 
+
 # Stable spawn index per peer so each player keeps the same marker, and a guard so
 # a peer is never spawned twice (match_started can fire and peers can join while the
 # match is already running — both routes funnel through _ensure_player_spawned).
-var _spawn_index: Dictionary = {}   # peer_id -> int
+var _spawn_index: Dictionary = {}  # peer_id -> int
 var _match_running: bool = false
+
 
 func _on_match_started() -> void:
 	if not GameState.is_local_authority_server():
@@ -320,6 +381,7 @@ func _on_match_started() -> void:
 	# the server before that peer's own arena existed, so it never replicated back to
 	# them → no camera → grey screen. A peer that connects mid-raid waits in the hub
 	# lobby and deploys with the squad next round.
+
 
 ## Idempotent: spawns the Player for `peer_id` exactly once. Safe to call from the
 ## match-start sweep and from the peer-joined hook.
@@ -348,7 +410,7 @@ func _ensure_player_spawned(peer_id: int) -> void:
 	var marker_count: int = player_spawn_markers.get_child_count() if player_spawn_markers else 0
 	if marker_count > 0 and index >= marker_count:
 		var ring: int = index / marker_count
-		var ang: float = float(index) * 2.39996323   # golden angle, even spread
+		var ang: float = float(index) * 2.39996323  # golden angle, even spread
 		var rad: float = 1.9 * float(ring)
 		mx.origin += Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
 	# Set on the server copy (also the host's own player, which the host owns).
@@ -361,6 +423,7 @@ func _ensure_player_spawned(peer_id: int) -> void:
 	if Settings.NET_DEBUG:
 		print("[arena] spawned player '%s' (authority=%d, marker=%d)" % [node_name, peer_id, index])
 
+
 func get_enemy_spawn_point(index: int) -> Transform3D:
 	var m := _pick_marker(enemy_spawn_markers, index)
 	var xform: Transform3D = m.global_transform if m else global_transform
@@ -370,12 +433,14 @@ func get_enemy_spawn_point(index: int) -> Transform3D:
 	xform.origin = snap_to_navmesh(xform.origin)
 	return xform
 
+
 ## Number of enemy spawn markers. Lets the wave manager round-robin over all markers
 ## (not just index % n) when it needs to pick a spawn the player can actually reach.
 func enemy_marker_count() -> int:
 	if enemy_spawn_markers == null:
 		return 0
 	return enemy_spawn_markers.get_child_count()
+
 
 ## Returns the nearest point on the baked navigation map to `pos`, or `pos`
 ## unchanged if the map isn't ready / the closest point is implausibly far (a sign
@@ -399,11 +464,13 @@ func snap_to_navmesh(pos: Vector3) -> Vector3:
 		return pos
 	return snapped
 
+
 ## World positions of the player spawn markers. The wave manager uses these as the side-of-river
 ## reference for the FIRST spawns of a match, before any player node has registered in the
 ## "players" group, so early enemies still spawn on the bank the players will appear on.
 func get_player_spawn_points() -> Array[Vector3]:
 	return _marker_positions(player_spawn_markers)
+
 
 ## Returns the risk tier (1 low … 3 high) for a POI identified either by its
 ## integer index into the _POI_DEFS insertion order, or by its String name.
@@ -424,10 +491,12 @@ func get_poi_tier(which) -> int:
 func get_poi_points() -> Array[Vector3]:
 	return _marker_positions(poi_markers)
 
+
 ## World positions of loot-cache spots seeded across the POIs (roofs, floors,
 ## container tops, plaza). Used by loot spawning.
 func get_loot_cache_points() -> Array[Vector3]:
 	return _marker_positions(loot_cache_markers)
+
 
 func _marker_positions(container: Node) -> Array[Vector3]:
 	var out: Array[Vector3] = []
@@ -437,6 +506,7 @@ func _marker_positions(container: Node) -> Array[Vector3]:
 		if child is Node3D:
 			out.append((child as Node3D).global_position)
 	return out
+
 
 ## Server-only: scatter world-loot pickups into Net/Loot after the navmesh bake.
 ## For each loot-cache marker find the nearest POI, look up its risk tier, then
@@ -466,6 +536,7 @@ func _populate_world_loot() -> void:
 	_scatter_field_loot(poi_points)
 	_populate_power_caches()
 
+
 ## Index of the nearest POI centre to `pos` (−1 if there are no POIs). Shared by the cache
 ## loop + the field-loot scatter so both derive the loot tier the same way.
 func _nearest_poi_index(pos: Vector3, poi_points: Array[Vector3]) -> int:
@@ -478,6 +549,7 @@ func _nearest_poi_index(pos: Vector3, poi_points: Array[Vector3]) -> int:
 			best_idx = i
 	return best_idx
 
+
 ## Server-only: scatter "field loot" across the OPEN areas of the 3 NEW quadrants (the L-shaped
 ## region where x>82 OR z>82 — the original NW quadrant keeps its current density). Walks a grid,
 ## jitters each point, skips anything inside a POI footprint (the POI caches already cover those),
@@ -486,7 +558,7 @@ func _nearest_poi_index(pos: Vector3, poi_points: Array[Vector3]) -> int:
 func _scatter_field_loot(poi_points: Array[Vector3]) -> void:
 	var step: float = 28.0
 	var lo: float = -60.0
-	var hi: float = 212.0   # inset from the new walls (240/−80) so loot stays off the berm
+	var hi: float = 212.0  # inset from the new walls (240/−80) so loot stays off the berm
 	var x: float = lo
 	while x <= hi:
 		var z: float = lo
@@ -505,7 +577,7 @@ func _scatter_field_loot(poi_points: Array[Vector3]) -> void:
 				continue
 			var tier: int = get_poi_tier(pidx) if pidx >= 0 else 1
 			var pos: Vector3 = snap_to_navmesh(Vector3(px, 0.6, pz))
-			var count: int = 2 if tier >= 3 else 1   # richer biomes drop a bit more
+			var count: int = 2 if tier >= 3 else 1  # richer biomes drop a bit more
 			for _i in range(count):
 				var id: String = LootTables.roll_by_tier(tier)
 				if id == "":
@@ -531,14 +603,19 @@ func _populate_power_caches() -> void:
 		var is_new_poi: bool = i >= 6
 		if i % 2 != 0 and not is_new_poi:
 			continue
-		var pos: Vector3 = poi_points[i] + Vector3(randf_range(-2.5, 2.5), 0.0, randf_range(-2.5, 2.5))
+		var pos: Vector3 = (
+			poi_points[i] + Vector3(randf_range(-2.5, 2.5), 0.0, randf_range(-2.5, 2.5))
+		)
 		pos = snap_to_navmesh(pos)
 		LootPickup.spawn_at(loot, pos, "power_cache", 1)
 	# Plus a couple of scattered boosters in the OPEN areas of each new biome (between POIs).
 	var extra_caches: Array[Vector3] = [
-		Vector3(130.0, 0.6, 12.0), Vector3(195.0, 0.6, 15.0),    # NE snow
-		Vector3(-30.0, 0.6, 185.0), Vector3(60.0, 0.6, 175.0),   # SW desert
-		Vector3(135.0, 0.6, 135.0), Vector3(195.0, 0.6, 185.0),  # SE rain
+		Vector3(130.0, 0.6, 12.0),
+		Vector3(195.0, 0.6, 15.0),  # NE snow
+		Vector3(-30.0, 0.6, 185.0),
+		Vector3(60.0, 0.6, 175.0),  # SW desert
+		Vector3(135.0, 0.6, 135.0),
+		Vector3(195.0, 0.6, 185.0),  # SE rain
 	]
 	for c in extra_caches:
 		LootPickup.spawn_at(loot, snap_to_navmesh(c), "power_cache", 1)

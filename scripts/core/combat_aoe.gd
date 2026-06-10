@@ -12,9 +12,15 @@ class_name CombatAoe
 ##   floor_frac: the falloff clamp floor (ignored when falloff_scale == 0).
 ##   include_downed: true hits DOWNED players too (the kamikaze blast finishes them);
 ##     melee-style swipes skip them (downed players are only threatened by bleedout).
-static func damage_players(center: Vector3, radius: float, damage: float, source: Node3D,
-		falloff_scale: float = 0.0, floor_frac: float = 1.0,
-		include_downed: bool = false) -> int:
+static func damage_players(
+	center: Vector3,
+	radius: float,
+	damage: float,
+	source: Node3D,
+	falloff_scale: float = 0.0,
+	floor_frac: float = 1.0,
+	include_downed: bool = false
+) -> int:
 	var hit := 0
 	for p in source.get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p == null or not is_instance_valid(p) or not (p is Node3D):

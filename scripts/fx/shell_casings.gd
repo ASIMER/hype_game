@@ -7,6 +7,7 @@ class_name ShellCasings
 
 const LIFETIME := 1.5
 
+
 func _ready() -> void:
 	var ps := GPUParticles3D.new()
 	ps.one_shot = true
@@ -16,12 +17,12 @@ func _ready() -> void:
 	ps.local_coords = false
 
 	var pm := ParticleProcessMaterial.new()
-	pm.direction = Vector3(1.0, 0.55, 0.25)        # right + up + slightly back (gun-local)
+	pm.direction = Vector3(1.0, 0.55, 0.25)  # right + up + slightly back (gun-local)
 	pm.spread = 18.0
 	pm.gravity = Vector3(0, -9.8, 0)
 	pm.initial_velocity_min = 1.8
 	pm.initial_velocity_max = 3.2
-	pm.angular_velocity_min = -720.0               # tumble
+	pm.angular_velocity_min = -720.0  # tumble
 	pm.angular_velocity_max = 720.0
 	pm.scale_min = 0.9
 	pm.scale_max = 1.1

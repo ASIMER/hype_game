@@ -9,25 +9,28 @@ class_name RobotDebris
 ## enemies make bigger / differently-coloured debris.
 
 const LIFETIME := 3.0
-const FADE_START := 2.0     # chunks begin fading at this age
+const FADE_START := 2.0  # chunks begin fading at this age
 const CHUNK_COUNT := 11
 
 var _t := 0.0
 var _scale := 1.0
-var _tint := Color(0.55, 0.57, 0.6)     # default robot grey
+var _tint := Color(0.55, 0.57, 0.6)  # default robot grey
 var _chunks: Array[MeshInstance3D] = []
 var _mats: Array[StandardMaterial3D] = []
 var _smoke: GPUParticles3D
+
 
 ## scale multiplies chunk size + spread; tint colours the metal chunks.
 func setup(scale: float, tint: Color = Color(0.55, 0.57, 0.6)) -> void:
 	_scale = maxf(0.2, scale)
 	_tint = tint
 
+
 func _ready() -> void:
 	_spawn_chunks()
 	_spawn_smoke()
 	_spawn_embers()
+
 
 func _spawn_chunks() -> void:
 	for i in CHUNK_COUNT:
@@ -69,20 +72,24 @@ func _spawn_chunks() -> void:
 		body.position = Vector3(
 			randf_range(-0.2, 0.2) * _scale,
 			randf_range(0.4, 1.0) * _scale,
-			randf_range(-0.2, 0.2) * _scale)
+			randf_range(-0.2, 0.2) * _scale
+		)
 		add_child(body)
 
 		# Burst outward + up, with a random tumble. Each chunk differs.
-		var dir := Vector3(randf_range(-1.0, 1.0), randf_range(0.4, 1.2), randf_range(-1.0, 1.0)).normalized()
+		var dir := (
+			Vector3(randf_range(-1.0, 1.0), randf_range(0.4, 1.2), randf_range(-1.0, 1.0))
+			. normalized()
+		)
 		var power := randf_range(2.5, 5.0) * _scale
 		body.apply_impulse(dir * power)
 		body.angular_velocity = Vector3(
-			randf_range(-8.0, 8.0),
-			randf_range(-8.0, 8.0),
-			randf_range(-8.0, 8.0))
+			randf_range(-8.0, 8.0), randf_range(-8.0, 8.0), randf_range(-8.0, 8.0)
+		)
 
 		_chunks.append(mi)
 		_mats.append(mat)
+
 
 func _spawn_smoke() -> void:
 	_smoke = GPUParticles3D.new()
@@ -115,6 +122,7 @@ func _spawn_smoke() -> void:
 	_smoke.position = Vector3(0, 0.6 * _scale, 0)
 	add_child(_smoke)
 	_smoke.emitting = true
+
 
 ## A quick burst of bright, enemy-tinted embers that arc out and fall — adds spark
 ## "juice" on top of the grey chunks + smoke. Short-lived + unshaded so it glows.
@@ -149,6 +157,7 @@ func _spawn_embers() -> void:
 	embers.position = Vector3(0, 0.6 * _scale, 0)
 	add_child(embers)
 	embers.emitting = true
+
 
 func _process(delta: float) -> void:
 	_t += delta

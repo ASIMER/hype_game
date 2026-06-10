@@ -9,6 +9,7 @@ const LIFETIME := 0.7
 var _ps: GPUParticles3D
 var _scale_mult := 1.0
 
+
 func _ready() -> void:
 	_ps = GPUParticles3D.new()
 	_ps.one_shot = true
@@ -29,7 +30,7 @@ func _ready() -> void:
 	pm.damping_max = 0.9
 	pm.scale_min = 0.5 * _scale_mult
 	pm.scale_max = 1.0 * _scale_mult
-	pm.color = Color(0.6, 0.6, 0.62, 0.22)   # faint grey
+	pm.color = Color(0.6, 0.6, 0.62, 0.22)  # faint grey
 	_ps.process_material = pm
 
 	# Small billboard quad (0.12 m base) so even at full scale it's a wisp, not a wall.
@@ -48,6 +49,7 @@ func _ready() -> void:
 	_ps.emitting = true
 
 	get_tree().create_timer(LIFETIME + 0.4).timeout.connect(queue_free)
+
 
 func set_scale_mult(m: float) -> void:
 	_scale_mult = clampf(m, 0.4, 2.0)

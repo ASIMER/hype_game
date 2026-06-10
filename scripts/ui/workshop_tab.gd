@@ -10,26 +10,26 @@ extends Control
 
 # Weapon display names and canonical id order (same as old workshop.gd).
 const WEAPON_DISPLAY := {
-	"rifle":   "RIFLE",
-	"pistol":  "PISTOL",
-	"smg":     "SMG",
+	"rifle": "RIFLE",
+	"pistol": "PISTOL",
+	"smg": "SMG",
 	"shotgun": "SHOTGUN",
-	"dmr":     "DMR",
+	"dmr": "DMR",
 }
 const WEAPON_ORDER: Array[String] = ["rifle", "pistol", "smg", "shotgun", "dmr"]
 
 # Colours matching the project theme.
-const COL_AMBER := UIStyle.AMBER   # amber accent
-const COL_TEAL  := UIStyle.TEAL  # teal accent
-const COL_DIM   := UIStyle.DIM   # muted label
-const COL_WHITE := UIStyle.WHITE   # body text
-const COL_RED   := UIStyle.RED   # locked / unaffordable hint
+const COL_AMBER := UIStyle.AMBER  # amber accent
+const COL_TEAL := UIStyle.TEAL  # teal accent
+const COL_DIM := UIStyle.DIM  # muted label
+const COL_WHITE := UIStyle.WHITE  # body text
+const COL_RED := UIStyle.RED  # locked / unaffordable hint
 
 # ── Node refs (assigned in _build_layout, not @onready — tree is built in code) ─
-var _currency_label: Label       = null
-var _weapon_rows: VBoxContainer  = null
+var _currency_label: Label = null
+var _weapon_rows: VBoxContainer = null
 var _upgrade_rows: VBoxContainer = null
-var _craft_rows: VBoxContainer   = null
+var _craft_rows: VBoxContainer = null
 
 # Runtime state ---------------------------------------------------------------
 ## weapon id -> { cost_lbl: Label, unlock_btn: Button }
@@ -61,6 +61,7 @@ func _exit_tree() -> void:
 
 # ── Layout construction ───────────────────────────────────────────────────────
 
+
 ## Builds the full node tree in code (no .tscn sub-resources needed).
 ## Structure:
 ##   ScrollContainer (fills tab)
@@ -76,7 +77,7 @@ func _build_layout() -> void:
 	scroll.name = "Scroll"
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
 
@@ -114,7 +115,7 @@ func _build_layout() -> void:
 	# LEFT — Weapon Unlocks
 	var left_col := VBoxContainer.new()
 	left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_col.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	left_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_col.add_theme_constant_override("separation", 8)
 	cols.add_child(left_col)
 
@@ -129,9 +130,9 @@ func _build_layout() -> void:
 	left_col.add_child(unlk_panel)
 
 	var unlk_margin := MarginContainer.new()
-	unlk_margin.add_theme_constant_override("margin_left",   12)
-	unlk_margin.add_theme_constant_override("margin_top",    10)
-	unlk_margin.add_theme_constant_override("margin_right",  12)
+	unlk_margin.add_theme_constant_override("margin_left", 12)
+	unlk_margin.add_theme_constant_override("margin_top", 10)
+	unlk_margin.add_theme_constant_override("margin_right", 12)
 	unlk_margin.add_theme_constant_override("margin_bottom", 10)
 	unlk_panel.add_child(unlk_margin)
 
@@ -143,7 +144,7 @@ func _build_layout() -> void:
 	# RIGHT — Permanent Upgrades
 	var right_col := VBoxContainer.new()
 	right_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_col.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	right_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_col.add_theme_constant_override("separation", 8)
 	cols.add_child(right_col)
 
@@ -158,9 +159,9 @@ func _build_layout() -> void:
 	right_col.add_child(upg_panel)
 
 	var upg_margin := MarginContainer.new()
-	upg_margin.add_theme_constant_override("margin_left",   12)
-	upg_margin.add_theme_constant_override("margin_top",    10)
-	upg_margin.add_theme_constant_override("margin_right",  12)
+	upg_margin.add_theme_constant_override("margin_left", 12)
+	upg_margin.add_theme_constant_override("margin_top", 10)
+	upg_margin.add_theme_constant_override("margin_right", 12)
 	upg_margin.add_theme_constant_override("margin_bottom", 10)
 	upg_panel.add_child(upg_margin)
 
@@ -180,9 +181,9 @@ func _build_layout() -> void:
 	root_vbox.add_child(craft_panel)
 
 	var craft_margin := MarginContainer.new()
-	craft_margin.add_theme_constant_override("margin_left",   12)
-	craft_margin.add_theme_constant_override("margin_top",    10)
-	craft_margin.add_theme_constant_override("margin_right",  12)
+	craft_margin.add_theme_constant_override("margin_left", 12)
+	craft_margin.add_theme_constant_override("margin_top", 10)
+	craft_margin.add_theme_constant_override("margin_right", 12)
 	craft_margin.add_theme_constant_override("margin_bottom", 10)
 	craft_panel.add_child(craft_margin)
 
@@ -198,6 +199,7 @@ func _build_layout() -> void:
 
 
 # ── Row construction (called once after the containers exist) ─────────────────
+
 
 ## One row per weapon in WEAPON_ORDER. Owned/free weapons show "OWNED"/"FREE";
 ## locked weapons show their cost and an UNLOCK button (disabled if unaffordable).
@@ -242,7 +244,7 @@ func _build_weapon_rows() -> void:
 
 		_weapon_rows.add_child(row)
 		_weapon_ui[id] = {
-			"cost_lbl":   cost_lbl,
+			"cost_lbl": cost_lbl,
 			"unlock_btn": unlock_btn,
 		}
 
@@ -331,8 +333,8 @@ func _build_upgrade_rows() -> void:
 		_upgrade_rows.add_child(row)
 		_upgrade_ui[key] = {
 			"level_lbl": level_lbl,
-			"cost_lbl":  cost_lbl,
-			"btn":       btn,
+			"cost_lbl": cost_lbl,
+			"btn": btn,
 		}
 
 
@@ -470,10 +472,11 @@ func _build_craft_rows() -> void:
 		row.add_child(craft_btn)
 
 		_craft_rows.add_child(row)
-		_craft_ui[recipe.id] = { "lbl": status_lbl, "btn": craft_btn }
+		_craft_ui[recipe.id] = {"lbl": status_lbl, "btn": craft_btn}
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
+
 
 ## Full state sync from MetaProgression + Stash. Called on _ready and after each
 ## purchase or craft so the UI always reflects current data.
@@ -495,11 +498,11 @@ func _refresh_weapon_rows() -> void:
 		var ui: Dictionary = _weapon_ui.get(id, {})
 		if ui.is_empty():
 			continue
-		var owned: bool    = MetaProgression.is_unlocked(id)
-		var is_free: bool  = id in MetaProgression.FREE_WEAPONS
-		var cost: int      = MetaProgression.weapon_cost(id)
+		var owned: bool = MetaProgression.is_unlocked(id)
+		var is_free: bool = id in MetaProgression.FREE_WEAPONS
+		var cost: int = MetaProgression.weapon_cost(id)
 
-		var cost_lbl: Label    = ui["cost_lbl"]
+		var cost_lbl: Label = ui["cost_lbl"]
 		var unlock_btn: Button = ui["unlock_btn"]
 
 		if owned:
@@ -510,7 +513,7 @@ func _refresh_weapon_rows() -> void:
 			cost_lbl.text = "CR %d" % cost
 			var affordable: bool = MetaProgression.currency >= cost
 			cost_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
-			unlock_btn.visible  = true
+			unlock_btn.visible = true
 			unlock_btn.disabled = not affordable
 
 
@@ -519,13 +522,13 @@ func _refresh_upgrade_rows() -> void:
 		var ui: Dictionary = _upgrade_ui[key]
 		if ui.is_empty():
 			continue
-		var lvl: int  = MetaProgression.upgrade_level(key)
+		var lvl: int = MetaProgression.upgrade_level(key)
 		var maxl: int = MetaProgression.upgrade_max(key)
 		var cost: int = MetaProgression.upgrade_cost(key)
 
 		var level_lbl: Label = ui["level_lbl"]
-		var cost_lbl: Label  = ui["cost_lbl"]
-		var btn: Button      = ui["btn"]
+		var cost_lbl: Label = ui["cost_lbl"]
+		var btn: Button = ui["btn"]
 
 		level_lbl.text = "Lv %d / %d" % [lvl, maxl]
 
@@ -552,29 +555,29 @@ func _refresh_craft_rows() -> void:
 		if recipe == null:
 			continue
 
-		var lbl: Label   = ui["lbl"] as Label
-		var btn: Button  = ui["btn"] as Button
+		var lbl: Label = ui["lbl"] as Label
+		var btn: Button = ui["btn"] as Button
 
 		if not Crafting.recipe_unlocked(recipe):
 			# Locked: annotate the status label, hide the CRAFT button.
 			lbl.add_theme_color_override("font_color", COL_DIM)
-			lbl.text     = "Blueprint required\n(extract / buy / quest)"
+			lbl.text = "Blueprint required\n(extract / buy / quest)"
 			btn.disabled = true
-			btn.visible  = false
+			btn.visible = false
 			continue
 
 		# Blueprint known — restore button visibility then check ingredients.
 		btn.visible = true
 
 		# Per-ingredient availability check.
-		var all_ok: bool  = true
+		var all_ok: bool = true
 		for inp in recipe.inputs():
 			if not Stash.has(String(inp["id"]), int(inp["count"])):
 				all_ok = false
 				break
 
 		var currency_ok: bool = recipe.cost <= 0 or MetaProgression.currency >= recipe.cost
-		var can_make: bool    = all_ok and currency_ok
+		var can_make: bool = all_ok and currency_ok
 
 		if recipe.cost > 0:
 			lbl.text = "CR %d" % recipe.cost
@@ -587,6 +590,7 @@ func _refresh_craft_rows() -> void:
 
 
 # ── Event handlers ────────────────────────────────────────────────────────────
+
 
 func _on_currency_changed(_amount: int) -> void:
 	_refresh_currency()

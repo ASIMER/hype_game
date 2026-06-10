@@ -13,6 +13,7 @@ var _has_endpoints := false
 var _mesh_inst: MeshInstance3D
 var _mat: StandardMaterial3D
 
+
 ## Endpoints in WORLD space. Safe to call before or after _ready().
 func setup(from_world: Vector3, to_world: Vector3) -> void:
 	_from = from_world
@@ -20,6 +21,7 @@ func setup(from_world: Vector3, to_world: Vector3) -> void:
 	_has_endpoints = true
 	if is_inside_tree():
 		_rebuild()
+
 
 func _ready() -> void:
 	var cyl := CylinderMesh.new()
@@ -45,6 +47,7 @@ func _ready() -> void:
 	if _has_endpoints:
 		_rebuild()
 
+
 ## Orient and stretch the unit cylinder (default axis +Y) between the two points.
 func _rebuild() -> void:
 	if _mesh_inst == null:
@@ -64,6 +67,7 @@ func _rebuild() -> void:
 	var basis := Basis(x, up, z)
 	basis = basis.scaled(Vector3(1.0, dist, 1.0))
 	_mesh_inst.global_transform = Transform3D(basis, mid)
+
 
 func _process(delta: float) -> void:
 	_t += delta

@@ -14,6 +14,7 @@ var _blink_side: float = 1.0
 # Visual: antler arcs pulse.
 var _antlers: Array[Node3D] = []
 
+
 func _ready() -> void:
 	super._ready()
 	var stats: Dictionary = Settings.ENEMY_STATS.get(enemy_id, {})
@@ -21,14 +22,17 @@ func _ready() -> void:
 	_blink_cooldown = float(stats.get("blink_cooldown", _blink_cooldown))
 	_blink_cd = _blink_cooldown * 0.5
 
+
 ## OVERRIDE: tick the blink while fighting; blink sideways when ready.
 func _do_attack(delta: float) -> void:
 	_tick_blink(delta)
 	super._do_attack(delta)
 
+
 func _do_chase(delta: float) -> void:
 	_tick_blink(delta)
 	super._do_chase(delta)
+
 
 func _tick_blink(delta: float) -> void:
 	if _blink_cd > 0.0:
@@ -47,13 +51,14 @@ func _tick_blink(delta: float) -> void:
 	var hop := global_position + tangent * randf_range(_blink_range * 0.8, _blink_range * 1.2)
 	var snapped := _snap_to_navmesh(hop)
 	if snapped == Vector3.ZERO or snapped.distance_to(global_position) < 1.0:
-		_blink_cd = 0.6   # bad spot — retry soon
+		_blink_cd = 0.6  # bad spot — retry soon
 		return
 	global_position = snapped
 	velocity = Vector3.ZERO
 	_blink_cd = _blink_cooldown
 	if _target and is_instance_valid(_target):
 		_face_towards(_target.global_position, 1.0)
+
 
 ## OVERRIDE: cache the antler pivots + the electric core.
 func _cache_proc_parts() -> void:
@@ -69,6 +74,7 @@ func _cache_proc_parts() -> void:
 		_pulse_part = core as MeshInstance3D
 		_pulse_base_energy = _read_emission_energy(core as MeshInstance3D)
 	_has_proc_anim = not _antlers.is_empty() or _pulse_part != null
+
 
 ## OVERRIDE: crackling pulse — fast flicker (storm-spirit energy), antlers quiver.
 func _animate_visual(_delta: float) -> void:

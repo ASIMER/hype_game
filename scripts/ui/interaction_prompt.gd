@@ -6,10 +6,10 @@ class_name InteractionPrompt
 ## While holding E to revive a downed teammate it morphs into a teal REVIVING… bar
 ## (Events.revive_channel, fired on the local reviver) so the progress is unmistakable.
 
-const KEY_COL := Color(0.91, 0.64, 0.24, 1.0)      # amber #e8a33d
+const KEY_COL := Color(0.91, 0.64, 0.24, 1.0)  # amber #e8a33d
 const TEXT_COL := Color(0.847, 0.871, 0.894, 1.0)  # dim #d8dee4
 const PANEL_BG := Color(0.03, 0.05, 0.07, 0.78)
-const REVIVE_COL := Color(0.30, 0.85, 0.62, 1.0)   # teal-green revive accent
+const REVIVE_COL := Color(0.30, 0.85, 0.62, 1.0)  # teal-green revive accent
 const PANEL_W := 320.0
 const PANEL_H := 38.0
 const BOTTOM_GAP := 120.0
@@ -17,7 +17,7 @@ const CAP := 26.0  # key-cap size
 
 var _prompt: String = ""
 var _shown: bool = false
-var _revive_frac: float = -1.0   # >= 0 while channeling a teammate revive; -1 = not reviving
+var _revive_frac: float = -1.0  # >= 0 while channeling a teammate revive; -1 = not reviving
 
 
 func _ready() -> void:
@@ -72,19 +72,40 @@ func _draw() -> void:
 	var cap_rect := Rect2(cap_pos, Vector2(CAP, CAP))
 	draw_rect(cap_rect, Color(accent, 0.30 if _revive_frac >= 0.0 else 0.16), true)
 	draw_rect(cap_rect, accent, false, 1.5)
-	draw_string(font, cap_pos + Vector2(CAP * 0.5 - 5.0, CAP * 0.5 + 6.0),
-		"E", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, accent)
+	draw_string(
+		font,
+		cap_pos + Vector2(CAP * 0.5 - 5.0, CAP * 0.5 + 6.0),
+		"E",
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		16,
+		accent
+	)
 
 	var text_x := cap_pos.x + CAP + 12.0
 	if _revive_frac < 0.0:
 		# Normal prompt text.
-		draw_string(font, Vector2(text_x, PANEL_H * 0.5 + 6.0),
-			_prompt, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - CAP - 30.0, 16, TEXT_COL)
+		draw_string(
+			font,
+			Vector2(text_x, PANEL_H * 0.5 + 6.0),
+			_prompt,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			PANEL_W - CAP - 30.0,
+			16,
+			TEXT_COL
+		)
 		return
 
 	# --- Reviving: label + filling progress bar + percent ---
-	draw_string(font, Vector2(text_x, 15.0),
-		tr("REVIVING…"), HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - text_x - 12.0, 13, REVIVE_COL)
+	draw_string(
+		font,
+		Vector2(text_x, 15.0),
+		tr("REVIVING…"),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		PANEL_W - text_x - 12.0,
+		13,
+		REVIVE_COL
+	)
 	var bar_x := text_x
 	var bar_w := PANEL_W - bar_x - 12.0
 	var bar_y := PANEL_H - 12.0
@@ -93,5 +114,4 @@ func _draw() -> void:
 	draw_rect(Rect2(bar_x, bar_y, bar_w * clampf(_revive_frac, 0.0, 1.0), bar_h), REVIVE_COL, true)
 	draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(REVIVE_COL, 0.7), false, 1.0)
 	var pct := str(int(round(clampf(_revive_frac, 0.0, 1.0) * 100.0))) + "%"
-	draw_string(font, Vector2(bar_x, 15.0),
-		pct, HORIZONTAL_ALIGNMENT_RIGHT, bar_w, 13, REVIVE_COL)
+	draw_string(font, Vector2(bar_x, 15.0), pct, HORIZONTAL_ALIGNMENT_RIGHT, bar_w, 13, REVIVE_COL)
