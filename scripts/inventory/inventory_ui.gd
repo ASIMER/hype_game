@@ -17,6 +17,7 @@ class_name InventoryUI
 ## installs at the scene-tree root if not already parented by a HUD.
 
 @onready var _grid: GridContainer = $Panel/Margin/VBox/Grid
+@onready var _header: HBoxContainer = $Panel/Margin/VBox/Header
 @onready var _sort_option: OptionButton = $Panel/Margin/VBox/Header/SortOption
 @onready var _filter_all: Button = $Panel/Margin/VBox/Filters/FilterAll
 @onready var _filter_weapons: Button = $Panel/Margin/VBox/Filters/FilterWeapons
@@ -43,6 +44,10 @@ var _context_menu: PopupMenu = null
 var _context_item: ItemData = null
 var _context_count: int = 0
 
+# Secure-pouch header counter ("SECURE n/2"): a chip Label built at _ready and
+# inserted into the Header HBox. Updated on every refresh.
+var _secure_chip: Label = null
+
 
 func _ready() -> void:
 	visible = false
@@ -67,9 +72,11 @@ func _ready() -> void:
 	_setup_sort_option()
 	_setup_filters()
 	_setup_context_menu()
+	_setup_secure_chip()
 
 	Events.local_player_spawned.connect(_on_local_player_spawned)
 	Events.inventory_changed.connect(_on_inventory_changed)
+	Events.secure_changed.connect(_on_secure_changed)
 
 	# A player may already exist (UI added after spawn) — try to bind now.
 	if _player == null:
@@ -100,6 +107,27 @@ func _setup_context_menu() -> void:
 	_context_menu = PopupMenu.new()
 	add_child(_context_menu)
 	_context_menu.id_pressed.connect(_on_context_id_pressed)
+
+
+## Builds the "SECURE n/2" header chip (micro_header face inside a glass chip) and
+## inserts it into the Header HBox right after the Title, before the sort controls.
+func _setup_secure_chip() -> void:
+	if _header == null:
+		return
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel", UIStyle.chip(UIStyle.AMBER))
+	wrap.tooltip_text = tr("Secured items survive death (deposited with no bonus)")
+	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_secure_chip = UIStyle.micro_header(_secure_chip_text(0), UIStyle.AMBER, 12)
+	_secure_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	wrap.add_child(_secure_chip)
+	_header.add_child(wrap)
+	# Place the chip just after the Title (index 0), before SortLabel/SortOption.
+	_header.move_child(wrap, 1)
+
+
+func _on_secure_changed(_secure: Dictionary) -> void:
+	_refresh()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -180,6 +208,7 @@ func _refresh() -> void:
 			continue
 		_grid.add_child(_make_slot(item, cnt))
 	_update_footer()
+	_update_secure_chip()
 
 
 ## The stacks to render given the active kind filter. Footer totals always use
@@ -251,15 +280,46 @@ func _make_slot(item: ItemData, cnt: int) -> Control:
 		badge.add_theme_constant_override("outline_size", 4)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(badge)
+
+	if _secured_count(item.id) > 0:
+		slot.add_child(_secure_badge())
 	return slot
 
 
-## A dark slot fill with a rarity-colored border.
+## A small amber padlock marker for the top-left of a secured slot. Drawn as a
+## shackle + body rect (no glyph-font dependency) so it renders on any platform.
+func _secure_badge() -> Control:
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(14, 16)
+	pad.position = Vector2(4, 3)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.draw.connect(_draw_padlock.bind(pad))
+	return pad
+
+
+## Renders a tiny padlock into `c` (called from its draw signal): a hollow shackle
+## arc above a filled amber body. Kept self-contained so the glyph can't go tofu.
+func _draw_padlock(c: Control) -> void:
+	var amber: Color = UIStyle.AMBER
+	# Body: rounded amber rect in the lower portion.
+	c.draw_rect(Rect2(Vector2(1, 7), Vector2(12, 9)), amber, true)
+	# Keyhole notch (darker) so it reads as a lock.
+	c.draw_rect(Rect2(Vector2(6, 10), Vector2(2, 4)), UIStyle.GLASS_BG, true)
+	# Shackle: an arc of amber above the body.
+	c.draw_arc(Vector2(7, 7), 4.0, PI, TAU, 10, amber, 2.0, true)
+
+
+## A dark slot fill with a rarity-colored border. Secured slots get an amber
+## border tint + a faintly warmer fill so the lock badge reads as "death-proof".
 func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.92)
+	var secured: bool = _secured_count(item.id) > 0
+	if secured:
+		sb.bg_color = Color(0.12, 0.094, 0.05, 0.94)
+	else:
+		sb.bg_color = Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.92)
 	sb.set_border_width_all(2)
-	sb.border_color = item.rarity_color()
+	sb.border_color = UIStyle.AMBER if secured else item.rarity_color()
 	sb.set_corner_radius_all(4)
 	return sb
 
@@ -307,9 +367,33 @@ func _open_context_menu(item: ItemData, cnt: int) -> void:
 		var mate: Dictionary = GameState.peers.get(to, {})
 		var mate_name: String = mate.get("name", "Raider")
 		_context_menu.add_item(tr("Give to %s") % mate_name, 3)
+	_add_secure_entry(item)
 	_context_menu.reset_size()
 	_context_menu.position = Vector2i(get_viewport().get_mouse_position())
 	_context_menu.popup()
+
+
+## Appends the secure-pouch context entry for `item`. Only shown when the pouch
+## core is present (inv.request_secure). Already-secured items get tr("Unsecure")
+## (id 5); otherwise an eligible item gets tr("Secure") (id 4). Ineligible items
+## get a DISABLED reason: tr("Too heavy to secure") (per-unit weight over the
+## ceiling) or tr("Pouch full") (all distinct slots taken by other ids).
+func _add_secure_entry(item: ItemData) -> void:
+	if _inventory == null or not _inventory.has_method("request_secure"):
+		return
+	var idx: int = _context_menu.item_count
+	if _secured_count(item.id) > 0:
+		_context_menu.add_item(tr("Unsecure"), 5)
+		return
+	if not _light_enough(item):
+		_context_menu.add_item(tr("Too heavy to secure"), 4)
+		_context_menu.set_item_disabled(idx, true)
+		return
+	if _distinct_secured() >= Settings.SECURE_SLOTS:
+		_context_menu.add_item(tr("Pouch full"), 4)
+		_context_menu.set_item_disabled(idx, true)
+		return
+	_context_menu.add_item(tr("Secure"), 4)
 
 
 func _on_context_id_pressed(id: int) -> void:
@@ -324,6 +408,10 @@ func _on_context_id_pressed(id: int) -> void:
 			_split_item(_context_item, _context_count)
 		3:
 			_give_item(_context_item, _context_count)
+		4:
+			_set_secure(_context_item, true)
+		5:
+			_set_secure(_context_item, false)
 	_context_item = null
 	_context_count = 0
 
@@ -377,6 +465,65 @@ func _give_item(item: ItemData, count: int) -> void:
 	if to == 0:
 		return
 	NetworkManager.transfer_item(GameState.local_peer_id(), to, item.id, count)
+
+
+## Flags/unflags an item id as secure via the owner-side request_secure entry point
+## (works for host AND client). Do not touch inv.secure directly — the server
+## clamps + re-mirrors and fires Events.secure_changed, which rebuilds the grid.
+func _set_secure(item: ItemData, on: bool) -> void:
+	if _inventory == null or not _inventory.has_method("request_secure"):
+		return
+	_inventory.request_secure(item.id, on)
+
+
+# ----------------------------------------------------------------- secure pouch
+## The secured-counts dict on the bound inventory, or an empty dict when the
+## secure-pouch core (other lane) isn't merged yet. Read-only — never mutate here;
+## securing goes through the server-authoritative inv.request_secure().
+func _secure_map() -> Dictionary:
+	if _inventory != null and "secure" in _inventory:
+		var s: Variant = _inventory.secure
+		if s is Dictionary:
+			return s
+	return {}
+
+
+## Number of units of an id currently flagged secure (0 if none / unsupported).
+func _secured_count(id: String) -> int:
+	return int(_secure_map().get(id, 0))
+
+
+## Distinct item ids with at least one secured unit — i.e. occupied pouch slots.
+func _distinct_secured() -> int:
+	var n: int = 0
+	var m: Dictionary = _secure_map()
+	for id: String in m:
+		if int(m[id]) > 0:
+			n += 1
+	return n
+
+
+## Whether `item` is light enough (per-unit weight) to ever go in the pouch.
+func _light_enough(item: ItemData) -> bool:
+	return item.weight <= Settings.SECURE_MAX_WEIGHT
+
+
+## "SECURE n/2" label text for the header chip.
+func _secure_chip_text(n: int) -> String:
+	return tr("SECURE %d/%d") % [n, Settings.SECURE_SLOTS]
+
+
+## Refreshes the header chip count; hidden entirely when the pouch core is absent
+## so the UI shows nothing misleading until the other lane merges.
+func _update_secure_chip() -> void:
+	if _secure_chip == null:
+		return
+	var wrap: Node = _secure_chip.get_parent()
+	var supported: bool = _inventory != null and "secure" in _inventory
+	if wrap is CanvasItem:
+		(wrap as CanvasItem).visible = supported
+	if supported:
+		_secure_chip.text = _secure_chip_text(_distinct_secured())
 
 
 ## Where dropped pickups live. Prefer the same parent existing pickups use

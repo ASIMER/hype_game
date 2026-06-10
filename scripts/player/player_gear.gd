@@ -50,6 +50,10 @@ func apply_loadout() -> void:
 	_p._bandages = int(brought.get("loot_bandage", 0))
 	_p._splints = int(brought.get("loot_splint", 0))
 	_p._painkillers = int(brought.get("loot_painkiller", 0))
+	# Batch B: worn-gear aggregates from the LOCAL profile (replicated so the server
+	# validates pickups against carry capacity + remotes see the speed effect).
+	_p.carry_bonus = MetaProgression.gear_carry_bonus()
+	_p.gear_speed_mult = MetaProgression.gear_speed_mult()
 
 
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
@@ -83,12 +87,76 @@ func extracted_consumables() -> Array:
 	return out
 
 
-## Worn-armor damage mitigation (batch B): intact pieces' mitigation is summed
-## (capped) and the absorbed damage drains per-item-ID durability via the gear
-## profile. FOUNDATION STUB — the gear-data lane lands the MetaProgression API;
-## the lead fills this at integration. Stub: pass-through.
-func mitigate_damage(amount: float) -> float:
+## The player's FULL incoming-damage chain, delegated here from
+## player._filter_incoming_damage for size discipline (state stays ON the player):
+## roll i-frames → shield-dome gadgets → buff armor → overshield → worn armor
+## (batch B) → status-effect rolls. Runs authority-local (the Hurtbox forwards
+## hits to the owner).
+func filter_incoming_damage(amount: float, source: Node) -> float:
+	# Dodge-roll i-frames: brief immunity vs ENEMY damage only. Self-damage and the
+	# harness `hurt` QA path carry a non-enemy source, so they still land.
+	var from_enemy := (
+		source != null and is_instance_valid(source) and source.is_in_group(Groups.ENEMIES)
+	)
+	if from_enemy and Time.get_ticks_msec() < int(_p._iframes_until_ms):
+		return 0.0
+	# Shield-dome gadget: standing inside any active dome halves incoming damage.
+	for dome in get_tree().get_nodes_in_group(Groups.DOMES):
+		if not (dome is Node3D):
+			continue
+		var r := float(dome.get("radius")) if dome.get("radius") != null else 0.0
+		if r > 0.0 and _p.global_position.distance_to((dome as Node3D).global_position) <= r:
+			amount *= Settings.DOME_DAMAGE_MULT
+			break
+	var armor: float = clampf(float(_p.call("_buff_sum", "armor")), 0.0, 0.9)
+	amount *= (1.0 - armor)
+	var shield: float = float(_p._overshield)
+	if shield > 0.0:
+		var absorbed: float = minf(shield, amount)
+		_p._overshield = shield - absorbed
+		amount -= absorbed
+	# Status DoT ticks (bleed) bypass worn armor and never re-roll effects.
+	var st: Node = _p.get_node_or_null("Status")
+	if st != null and bool(st.call("is_dot_tick")):
+		return amount
+	# Worn-armor mitigation (batch B) — after overshield; drains gear durability.
+	amount = mitigate_damage(amount)
+	# Status rolls (bleed/fracture chance) see the FINAL applied amount.
+	if st != null and amount > 0.0:
+		st.call("apply_hit_effects", amount, from_enemy)
 	return amount
+
+
+## Worn-armor damage mitigation (batch B): intact equipped pieces' mitigation is
+## summed (capped at ARMOR_MITIGATION_CAP) and the ABSORBED damage drains each
+## intact piece's durability proportionally to its mitigation share. Runs on the
+## authority (the filter chain does), so MetaProgression is the OWNER's profile —
+## correctly per-peer in co-op. Broken pieces (durability 0) contribute nothing
+## until repaired in the Hub.
+func mitigate_damage(amount: float) -> float:
+	if amount <= 0.0:
+		return amount
+	var pieces: Array = MetaProgression.equipped_armor_pieces()
+	var mit_total: float = 0.0
+	var intact: Array = []
+	for p in pieces:
+		var d: Dictionary = p
+		if bool(d.get("broken", false)) or float(d.get("mitigation", 0.0)) <= 0.0:
+			continue
+		mit_total += float(d["mitigation"])
+		intact.append(d)
+	if intact.is_empty():
+		return amount
+	mit_total = minf(mit_total, Settings.ARMOR_MITIGATION_CAP)
+	var absorbed: float = amount * mit_total
+	# Drain durability proportionally to each piece's share of the total mitigation.
+	var share_base: float = 0.0
+	for d in intact:
+		share_base += float(d["mitigation"])
+	for d in intact:
+		var share: float = float(d["mitigation"]) / maxf(share_base, 0.001)
+		MetaProgression.drain_armor(String(d["id"]), absorbed * share)
+	return amount - absorbed
 
 
 ## Throw the SELECTED grenade type from the chest along the aim direction. All throws

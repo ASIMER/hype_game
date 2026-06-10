@@ -29,6 +29,16 @@ const STOCK: Dictionary = {
 	"key_lodge": 700,
 	"key_temple": 700,
 	"loot_flare": 150,
+	# Batch B: worn armor + medicine (≈ value × 2 markup, like the rest).
+	"armor_helmet_t1": 440,
+	"armor_helmet_t2": 840,
+	"armor_vest_t1": 600,
+	"armor_vest_t2": 1120,
+	"armor_pack_med": 520,
+	"armor_pack_large": 1040,
+	"loot_bandage": 80,
+	"loot_splint": 160,
+	"loot_painkiller": 120,
 }
 
 # ── Blueprint prices: blueprint id -> buy price ───────────────────────────────

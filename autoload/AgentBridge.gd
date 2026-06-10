@@ -310,6 +310,25 @@ func _handle_line(line: String) -> void:
 			# authority copy — replicates); {action:"open", name?} → server force-open
 			# without a key (name matches the door OR its annex; omitted = ALL).
 			_send(_debug_door(json))
+		"gear":
+			# QA (batch B): worn armor. {action:"state"} → equipped/durability/insurance;
+			# {action:"equip", slot, id} ("" unequips) · {action:"repair", id} ·
+			# {action:"drain", id, amount} (test durability/broken without combat).
+			_send(AgentGearDebug.gear(json))
+		"secure":
+			# QA (batch B): the in-raid secure pouch. {id, on:true|false} flags a stack;
+			# no args = report {secure}. Owner-routed (works from a co-op client).
+			_send(AgentGearDebug.secure(json, get_tree()))
+		"status":
+			# QA (batch B): status effects on the LOCAL player. {action:"apply"|"clear",
+			# effect:"bleed"|"fracture"|"painkiller"} · {action:"list"} · {action:"use",
+			# item:"bandage"|"splint"|"painkiller"|"smart"} (consumes like the H key).
+			_send(AgentGearDebug.status(json, get_tree()))
+		"insure":
+			# QA (batch B): insurance. {id} insures an item · {action:"mature"} rewinds
+			# every pending return_at to NOW (then the Hub poll claims them) ·
+			# {action:"state"} reports current/pending.
+			_send(AgentGearDebug.insure(json))
 		"clock":
 			# Debug: drive the match timer for QA. {action:set, left:<sec>} sets the
 			# remaining time; {action:skip} jumps to ~2s left to trigger the final wave.
@@ -1357,6 +1376,10 @@ func _snapshot() -> Dictionary:
 			"giver_rep": MetaProgression.giver_rep,
 			"questlines": AgentQuestDebug.questlines_meta(),
 			"mutator": GameState.raid_mutator,
+			"gear": MetaProgression.get_equipped_gear(),
+			"armor_durability": MetaProgression.armor_durability,
+			"insured": MetaProgression.insured_current,
+			"insured_pending": MetaProgression.insured_pending,
 		},
 		"agent_held": _held,
 		"stash": Stash.items,
@@ -1426,6 +1449,15 @@ func _snapshot() -> Dictionary:
 		"flashlight": bool(p.get("flashlight_on")) if p.get("flashlight_on") != null else false,
 		"keys": p.get("_keys") if p.get("_keys") != null else {},
 		"flares": int(p.get("_flares")) if p.get("_flares") != null else 0,
+		"status": _status_effects_of(p),
+		"carry_bonus": float(p.get("carry_bonus")) if p.get("carry_bonus") != null else 0.0,
+		"meds":
+		{
+			"bandages": int(p.get("_bandages")) if p.get("_bandages") != null else 0,
+			"splints": int(p.get("_splints")) if p.get("_splints") != null else 0,
+			"painkillers": int(p.get("_painkillers")) if p.get("_painkillers") != null else 0,
+		},
+		"secure": _secure_of(p),
 		"stance": int(p.get("stance")) if p.get("stance") != null else 0,
 		"water": int(p.get("_water_state")) if p.get("_water_state") != null else 0,
 		"noise_radius": p.noise_radius() if p.has_method("noise_radius") else 0.0,
@@ -1666,6 +1698,22 @@ func _local_player(players: Array) -> Node:
 
 func _v3(v: Vector3) -> Array:
 	return [snappedf(v.x, 0.001), snappedf(v.y, 0.001), snappedf(v.z, 0.001)]
+
+
+## Active status effects of a player (batch B), [] when the Status node is absent.
+func _status_effects_of(p: Node) -> Array:
+	var st: Node = p.get_node_or_null("Status")
+	if st != null and st.has_method("active_effects"):
+		return st.call("active_effects")
+	return []
+
+
+## The player's secured pouch dict (batch B), {} when unavailable.
+func _secure_of(p: Node) -> Dictionary:
+	var inv: Node = p.get_node_or_null("Inventory")
+	if inv != null and inv.get("secure") != null:
+		return inv.get("secure")
+	return {}
 
 
 ## Current camera FOV of a player (for verifying ADS zoom), or 0.0 if no camera.

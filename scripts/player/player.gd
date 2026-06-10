@@ -1207,41 +1207,7 @@ func buff_lifesteal_frac() -> float:
 ## Damage filter set on Health: roll i-frames → shield-dome reduction → Juggernaut
 ## armor → Overshield absorb. Runs authority-local (the Hurtbox forwards hits here).
 func _filter_incoming_damage(amount: float, source: Node) -> float:
-	# Dodge-roll i-frames: brief immunity vs ENEMY damage only. Self-damage and the
-	# harness `hurt` QA path carry a non-enemy source, so they still land.
-	if (
-		Time.get_ticks_msec() < _iframes_until_ms
-		and source != null
-		and is_instance_valid(source)
-		and source.is_in_group(Groups.ENEMIES)
-	):
-		return 0.0
-	# Shield-dome gadget: standing inside any active dome halves incoming damage.
-	for dome in get_tree().get_nodes_in_group(Groups.DOMES):
-		if not (dome is Node3D):
-			continue
-		var r := float(dome.get("radius")) if dome.get("radius") != null else 0.0
-		if r > 0.0 and global_position.distance_to((dome as Node3D).global_position) <= r:
-			amount *= Settings.DOME_DAMAGE_MULT
-			break
-	var armor: float = clampf(_buff_sum("armor"), 0.0, 0.9)
-	amount *= (1.0 - armor)
-	if _overshield > 0.0:
-		var absorbed: float = minf(_overshield, amount)
-		_overshield -= absorbed
-		amount -= absorbed
-	# Status DoT ticks (bleed) bypass worn armor and never re-roll effects.
-	if _status != null and _status.is_dot_tick():
-		return amount
-	# Worn-armor mitigation (batch B) — after overshield; drains gear durability.
-	amount = _gear.mitigate_damage(amount)
-	# Status rolls (bleed/fracture chance) see the FINAL applied amount.
-	if _status != null and amount > 0.0:
-		var from_enemy := (
-			source != null and is_instance_valid(source) and source.is_in_group(Groups.ENEMIES)
-		)
-		_status.apply_hit_effects(amount, from_enemy)
-	return amount
+	return _gear.filter_incoming_damage(amount, source)
 
 
 ## Heal a fraction of damage just dealt to an enemy (Lifesteal). Called from the local weapon.
@@ -1394,6 +1360,11 @@ func _true_death() -> void:
 	velocity = Vector3.ZERO
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	Events.player_bleedout.emit(self)
+	# Insurance (batch B): _true_death runs on the OWNER, whose local profile holds
+	# the coverage — convert insured items to pending returns (guarded until the
+	# gear-profile lane lands).
+	if is_multiplayer_authority() and MetaProgression.has_method("convert_insured_to_pending"):
+		MetaProgression.convert_insured_to_pending()
 	var pid := str(name).to_int()
 	if GameState.is_local_authority_server():
 		_server_handle_death(pid)
@@ -1790,6 +1761,17 @@ func _report_death(pid: int) -> void:
 
 
 func _server_handle_death(pid: int) -> void:
+	# Secure pouch (batch B): whatever the dying player secured survives — the server
+	# reads ITS authoritative copy of the inventory and routes the deposit to the
+	# owner's stash (RaidManager handles host-local vs rpc, like grant_extraction).
+	# Gated on the peer still being marked alive: _server_handle_death can run twice
+	# for one death (owner report + server-side resolution) and the deposit must not.
+	var was_alive: bool = bool(GameState.peers.get(pid, {}).get("alive", true))
+	var inv := get_node_or_null("Inventory")
+	if was_alive and inv != null and inv.has_method("secure_stacks"):
+		var kept: Array = inv.secure_stacks()
+		if not kept.is_empty():
+			RaidManager.grant_secure(pid, kept)
 	GameState.mark_dead(pid)
 	GameState.set_downed(pid, false)
 	NetworkManager.broadcast_downed(pid, false)

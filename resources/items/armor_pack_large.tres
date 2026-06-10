@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ArmorData" load_steps=2 format=3 uid="uid://carmorpacklarge"]
+
+[ext_resource type="Script" path="res://scripts/combat/armor_data.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+id = "armor_pack_large"
+display_name = "Expedition Pack"
+kind = 5
+rarity = 2
+weight = 1.5
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "A massive hauler's pack. Adds 30 to your carry weight but slows you down by 7%."
+value = 520
+slot = "backpack"
+durability_max = 0.0
+carry_bonus = 30.0
+speed_mult = 0.93

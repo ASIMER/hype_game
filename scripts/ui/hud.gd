@@ -56,6 +56,9 @@ func _ready() -> void:
 	# Raid mutator chip (batch C) — set before deploy, re-synced at match start.
 	Events.raid_mutator_changed.connect(_on_mutator_changed)
 
+	# Status-effect chips (batch B: bleed / fracture / painkiller, local player only).
+	Events.status_changed.connect(_on_status_changed)
+
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
 	# interaction prompt (interaction_prompt.gd sits at offset_top=-158..bottom=-120).
@@ -83,6 +86,8 @@ var _reloading: bool = false
 var _current_weapon_name: String = "RIFLE"
 var _timer_label: Label
 var _mutator_label: Label  # raid-mutator chip under the match timer (batch C)
+var _status_row: HBoxContainer  # status-effect chips (batch B), above the health bar
+var _status_chips: Dictionary = {}  # effect name -> the chip Label
 var _storm_banner: Label
 var _storm_banner_t: float = 0.0
 # World-event banner — stacked 44px below the storm banner (offset_top -76 vs -120).
@@ -140,6 +145,32 @@ func _build_hud_widgets() -> void:
 	_mutator_label.visible = false
 	$Root.add_child(_mutator_label)
 	_on_mutator_changed(GameState.raid_mutator)
+
+	# Status-effect chip row (batch B), bottom-left above the health bar: small
+	# colored capsules that appear while bleed/fracture/painkiller are active.
+	_status_row = HBoxContainer.new()
+	_status_row.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_status_row.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_status_row.offset_left = 24.0
+	_status_row.offset_top = -96.0
+	_status_row.offset_bottom = -76.0
+	_status_row.add_theme_constant_override("separation", 6)
+	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$Root.add_child(_status_row)
+	for effect in [
+		["bleed", "BLEEDING", UIStyle.RED],
+		["fracture", "FRACTURE", Color(1.0, 0.6, 0.2)],
+		["painkiller", "PAINKILLER", UIStyle.TEAL]
+	]:  # gdlint: ignore=max-line-length
+		var chip := Label.new()
+		chip.text = tr(String(effect[1]))
+		chip.visible = false
+		chip.add_theme_font_size_override("font_size", 12)
+		chip.add_theme_color_override("font_color", effect[2])
+		chip.add_theme_stylebox_override("normal", UIStyle.chip(effect[2]))
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_status_row.add_child(chip)
+		_status_chips[String(effect[0])] = chip
 
 	# Make the wave counter PROMINENT — it was a small grey label tucked behind the
 	# compass strip (easy to miss). Russo One amber, clear of the compass, above the timer.
@@ -560,6 +591,16 @@ func _on_mutator_changed(mutator: String) -> void:
 	_mutator_label.visible = mutator != ""
 	if mutator != "":
 		_mutator_label.text = tr("MUTATOR: %s") % tr(mutator_display(mutator))
+
+
+## Status-effect chips (batch B): toggle the matching capsule — LOCAL player only
+## (statuses are authority-local, but co-op still routes every peer's signal here).
+func _on_status_changed(player: Node, effect: String, active: bool) -> void:
+	if player == null or not is_instance_valid(player) or not player.is_multiplayer_authority():
+		return
+	var chip: Label = _status_chips.get(effect)
+	if chip != null:
+		chip.visible = active
 
 
 func _exit_tree() -> void:

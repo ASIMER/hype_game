@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ArmorData" load_steps=2 format=3 uid="uid://carmorhelmt1"]
+
+[ext_resource type="Script" path="res://scripts/combat/armor_data.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+id = "armor_helmet_t1"
+display_name = "Scout Helmet"
+kind = 5
+rarity = 1
+weight = 1.5
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Lightweight salvaged headgear. Blocks 10% of incoming damage until it cracks."
+value = 220
+slot = "helmet"
+mitigation = 0.1
+durability_max = 60.0

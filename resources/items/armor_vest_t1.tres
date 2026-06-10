@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ArmorData" load_steps=2 format=3 uid="uid://carmorvestt1"]
+
+[ext_resource type="Script" path="res://scripts/combat/armor_data.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+id = "armor_vest_t1"
+display_name = "Scrap Vest"
+kind = 5
+rarity = 1
+weight = 3.0
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Plates bolted onto a harness. Blocks 20% of incoming damage until the plates fail."
+value = 300
+slot = "vest"
+mitigation = 0.2
+durability_max = 110.0

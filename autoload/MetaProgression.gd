@@ -175,6 +175,17 @@ var weapon_perks: Dictionary = {}
 ## paint). Replicated to other peers from the player at spawn so co-op shows your look.
 var unlocked_cosmetics: Array[String] = []
 var equipped_cosmetics: Dictionary = {}
+## Worn gear (AT-RISK): slot (Settings.GEAR_SLOTS) -> armor item id. Empty slot = none.
+var equipped_gear: Dictionary = {}
+## Armor durability pool: item id -> remaining float. An ABSENT id reads as full
+## (its ArmorData.durability_max). NOTE: keyed by item id, so two identical vests in
+## the stash share ONE durability pool — acceptable since gear is max_stack 1 and lost
+## gear comes back fresh (reconcile_gear erases the entry when the piece leaves the stash).
+var armor_durability: Dictionary = {}
+## Insurance (unix-time pattern, like the dailies): item ids covered THIS raid, and
+## pending returns ([{id, return_at}]) awaiting their timer after a death.
+var insured_current: Array = []
+var insured_pending: Array = []
 ## Daily contracts rotation state.
 var last_daily_date: String = ""
 var daily_quest_ids: Array[String] = []
@@ -416,6 +427,222 @@ func get_cosmetics() -> Dictionary:
 	for cat in ProceduralPlayer.CATEGORIES:
 		out[cat] = get_equipped_cosmetic(cat)
 	return out
+
+
+# ---------------------------------------------------------------- gear (at-risk armor)
+func get_equipped_gear() -> Dictionary:
+	return equipped_gear.duplicate()
+
+
+## Equip an armor item in a slot (empty id = unequip). Validates the slot and that the
+## item is an ArmorData declaring that slot. Emits gear_changed + persists.
+func set_equipped_gear(slot: String, id: String) -> void:
+	if slot not in Settings.GEAR_SLOTS:
+		return
+	if id == "":
+		equipped_gear.erase(slot)
+	else:
+		var item := ItemCatalog.get_item(id)
+		if not (item is ArmorData) or (item as ArmorData).slot != slot:
+			return
+		equipped_gear[slot] = id
+	save_profile()
+	Events.gear_changed.emit()
+
+
+## Per-item armor durability resolver: absent id → that item's durability_max (i.e.
+## FULL, never persisted until it takes a hit); an unknown/non-armor id → 0.
+func durability_of(id: String) -> float:
+	if armor_durability.has(id):
+		return float(armor_durability[id])
+	var item := ItemCatalog.get_item(id)
+	if item is ArmorData:
+		return (item as ArmorData).durability_max
+	return 0.0
+
+
+## Maximum durability for an armor id (0 for unknown / indestructible packs).
+func armor_durability_max(id: String) -> float:
+	var item := ItemCatalog.get_item(id)
+	return (item as ArmorData).durability_max if item is ArmorData else 0.0
+
+
+## Set an armor piece's remaining durability (clamped 0..max). Emits armor_changed
+## (broken = value <= 0) + persists.
+func set_armor_durability(id: String, value: float) -> void:
+	var mx := armor_durability_max(id)
+	var v := clampf(value, 0.0, mx)
+	armor_durability[id] = v
+	save_profile()
+	Events.armor_changed.emit(id, v, v <= 0.0)
+
+
+## Drain `amount` of durability from an armor piece (damage absorbed).
+func drain_armor(id: String, amount: float) -> void:
+	if amount <= 0.0:
+		return
+	set_armor_durability(id, durability_of(id) - amount)
+
+
+func is_armor_broken(id: String) -> bool:
+	return durability_of(id) <= 0.0
+
+
+## Currency to fully repair a piece: ceili(value * ARMOR_REPAIR_COST_FRAC * missing_frac).
+## 0 when full or indestructible (durability_max 0).
+func repair_cost(id: String) -> int:
+	var item := ItemCatalog.get_item(id)
+	if not (item is ArmorData):
+		return 0
+	var mx := (item as ArmorData).durability_max
+	if mx <= 0.0:
+		return 0
+	var missing_frac := 1.0 - durability_of(id) / mx
+	if missing_frac <= 0.0:
+		return 0
+	return ceili(item.value * Settings.ARMOR_REPAIR_COST_FRAC * missing_frac)
+
+
+## Repair a piece to full if affordable + actually damaged. Returns true on success.
+func repair_armor(id: String) -> bool:
+	var cost := repair_cost(id)
+	if cost <= 0 or not spend(cost):
+		return false
+	var mx := armor_durability_max(id)
+	armor_durability[id] = mx
+	save_profile()
+	Events.armor_changed.emit(id, mx, false)
+	return true
+
+
+## Drop any equipped gear whose item is no longer in the Stash (lost on a failed raid),
+## erasing its durability entry so it returns FRESH next time. Called when the Hub opens
+## (lead wires this next to reconcile_attachments — see hub.gd). Returns true if changed.
+func reconcile_gear() -> bool:
+	var changed := false
+	for slot in equipped_gear.keys():
+		var id := String(equipped_gear[slot])
+		if Stash.count_of(id) <= 0:
+			equipped_gear.erase(slot)
+			armor_durability.erase(id)
+			changed = true
+	if changed:
+		save_profile()
+	return changed
+
+
+## Sum of carry-weight bonuses from equipped backpacks (read by the player at deploy).
+func gear_carry_bonus() -> float:
+	var total := 0.0
+	for slot in equipped_gear:
+		var item := ItemCatalog.get_item(String(equipped_gear[slot]))
+		if item is ArmorData:
+			total += (item as ArmorData).carry_bonus
+	return total
+
+
+## Product of movement-speed multipliers from equipped gear (heavy pack < 1.0).
+func gear_speed_mult() -> float:
+	var mult := 1.0
+	for slot in equipped_gear:
+		var item := ItemCatalog.get_item(String(equipped_gear[slot]))
+		if item is ArmorData:
+			mult *= (item as ArmorData).speed_mult
+	return mult
+
+
+## One Dictionary per equipped armor piece — the damage-mitigation consumer. Broken
+## pieces are still listed (broken = true) so the consumer can decide to ignore them.
+##   { id, slot, mitigation, durability, durability_max, broken }
+func equipped_armor_pieces() -> Array:
+	var out: Array = []
+	for slot in equipped_gear:
+		var id := String(equipped_gear[slot])
+		var item := ItemCatalog.get_item(id)
+		if not (item is ArmorData):
+			continue
+		var armor := item as ArmorData
+		(
+			out
+			. append(
+				{
+					"id": id,
+					"slot": armor.slot,
+					"mitigation": armor.mitigation,
+					"durability": durability_of(id),
+					"durability_max": armor.durability_max,
+					"broken": is_armor_broken(id),
+				}
+			)
+		)
+	return out
+
+
+# ---------------------------------------------------------------- insurance
+## Currency to insure an item for one raid: ceili(value * INSURANCE_COST_FRAC).
+func insurance_cost(id: String) -> int:
+	var item := ItemCatalog.get_item(id)
+	return ceili(item.value * Settings.INSURANCE_COST_FRAC) if item != null else 0
+
+
+func is_insured(id: String) -> bool:
+	return id in insured_current
+
+
+## Insure an item for the next raid (one entry per id). Returns true on success.
+func insure_item(id: String) -> bool:
+	if id == "" or is_insured(id):
+		return false
+	if not spend(insurance_cost(id)):
+		return false
+	insured_current.append(id)
+	save_profile()
+	Events.insurance_changed.emit()
+	return true
+
+
+## On death (gear lost): convert each insured item into a pending return that matures
+## after INSURANCE_RETURN_MINUTES. Clears current coverage. Emits insurance_changed.
+func convert_insured_to_pending() -> void:
+	if insured_current.is_empty():
+		return
+	var return_at := (
+		Time.get_unix_time_from_system() + int(Settings.INSURANCE_RETURN_MINUTES * 60.0)
+	)
+	for id in insured_current:
+		insured_pending.append({"id": String(id), "return_at": return_at})
+	insured_current.clear()
+	save_profile()
+	Events.insurance_changed.emit()
+
+
+## On a successful extract: the gear survived, so the coverage is simply spent (no return).
+func clear_insurance_on_extract() -> void:
+	if insured_current.is_empty():
+		return
+	insured_current.clear()
+	save_profile()
+	Events.insurance_changed.emit()
+
+
+## Deposit any matured pending insurance back into the Stash. Returns the claimed ids.
+func claim_matured_insurance() -> Array:
+	var now := Time.get_unix_time_from_system()
+	var claimed: Array = []
+	var still_pending: Array = []
+	for entry in insured_pending:
+		if int((entry as Dictionary).get("return_at", 0)) <= now:
+			var id := String((entry as Dictionary).get("id", ""))
+			if id != "":
+				Stash.add(id, 1)
+				claimed.append(id)
+		else:
+			still_pending.append(entry)
+	if not claimed.is_empty():
+		insured_pending = still_pending
+		save_profile()
+		Events.insurance_changed.emit()
+	return claimed
 
 
 # ---------------------------------------------------------------- blueprints
@@ -871,6 +1098,10 @@ func save_profile() -> void:
 	cfg.set_value("meta", "weapon_perks", weapon_perks)
 	cfg.set_value("meta", "unlocked_cosmetics", unlocked_cosmetics)
 	cfg.set_value("meta", "equipped_cosmetics", equipped_cosmetics)
+	cfg.set_value("meta", "equipped_gear", equipped_gear)
+	cfg.set_value("meta", "armor_durability", armor_durability)
+	cfg.set_value("meta", "insured_current", insured_current)
+	cfg.set_value("meta", "insured_pending", insured_pending)
 	cfg.set_value("meta", "last_daily_date", last_daily_date)
 	cfg.set_value("meta", "daily_quest_ids", daily_quest_ids)
 	cfg.set_value("meta", "difficulty", GameState.difficulty)
@@ -978,6 +1209,41 @@ func load_profile() -> void:
 	if raw_ec is Dictionary:
 		for cat in raw_ec as Dictionary:
 			equipped_cosmetics[String(cat)] = String((raw_ec as Dictionary)[cat])
+	# Gear + armor durability (defensively coerced; unknown slots dropped). Pre-batch-B
+	# saves have none → empty defaults; lost gear is reconciled away on the next Hub open.
+	equipped_gear = {}
+	var raw_eg: Variant = cfg.get_value("meta", "equipped_gear", {})
+	if raw_eg is Dictionary:
+		for slot in raw_eg as Dictionary:
+			if String(slot) in Settings.GEAR_SLOTS:
+				equipped_gear[String(slot)] = String((raw_eg as Dictionary)[slot])
+	armor_durability = {}
+	var raw_ad: Variant = cfg.get_value("meta", "armor_durability", {})
+	if raw_ad is Dictionary:
+		for k in raw_ad as Dictionary:
+			armor_durability[String(k)] = float((raw_ad as Dictionary)[k])
+	# Insurance: covered ids (deduped) + pending returns ([{id, return_at}]).
+	insured_current = []
+	var raw_ic: Variant = cfg.get_value("meta", "insured_current", [])
+	if raw_ic is Array:
+		for iid in raw_ic as Array:
+			var sid := String(iid)
+			if sid != "" and sid not in insured_current:
+				insured_current.append(sid)
+	insured_pending = []
+	var raw_ip: Variant = cfg.get_value("meta", "insured_pending", [])
+	if raw_ip is Array:
+		for entry in raw_ip as Array:
+			if entry is Dictionary and (entry as Dictionary).has("id"):
+				(
+					insured_pending
+					. append(
+						{
+							"id": String((entry as Dictionary)["id"]),
+							"return_at": int((entry as Dictionary).get("return_at", 0)),
+						}
+					)
+				)
 	last_daily_date = String(cfg.get_value("meta", "last_daily_date", ""))
 	var raw_dq: Array = cfg.get_value("meta", "daily_quest_ids", [])
 	daily_quest_ids.clear()

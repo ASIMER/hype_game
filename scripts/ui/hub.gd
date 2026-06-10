@@ -97,6 +97,12 @@ func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
 	# Drop any equipped attachment lost on a failed raid (not in the stash anymore).
 	MetaProgression.reconcile_attachments()
+	# Batch B: same for worn gear (lost armor unequips + its durability entry clears),
+	# then hand back insurance returns that matured while away; a 30s repeat catches
+	# returns maturing while the Hub stays open. Guarded until the gear lane lands.
+	if MetaProgression.has_method("reconcile_gear"):
+		MetaProgression.reconcile_gear()
+	_claim_insurance()
 
 	# ── Frosted-glass backdrop (drawn behind all tab panels) ──────────────────
 	var bg := GlassBackdrop.new()
@@ -161,6 +167,7 @@ func _ready() -> void:
 
 	# ── Squad lobby (co-op only) ──────────────────────────────────────────────
 	_build_squad_panel()
+	set_process(true)
 	if not Events.squad_changed.is_connected(_on_squad_changed):
 		Events.squad_changed.connect(_on_squad_changed)
 	if not Events.peer_registered.is_connected(_on_squad_peer):
@@ -182,6 +189,28 @@ func _ready() -> void:
 	# ── Live currency updates (reconnect-safe) ────────────────────────────────
 	if not Events.currency_changed.is_connected(_on_currency_changed):
 		Events.currency_changed.connect(_on_currency_changed)
+
+
+# Insurance maturity poll (batch B): returns can mature WHILE the Hub is open, so
+# re-claim every 30s (delta-accumulated, pause-immune via PROCESS_MODE_ALWAYS).
+var _insurance_accum: float = 0.0
+
+
+func _process(delta: float) -> void:
+	_insurance_accum += delta
+	if _insurance_accum >= 30.0:
+		_insurance_accum = 0.0
+		_claim_insurance()
+
+
+## Hand matured insurance returns back to the stash (guarded until the gear-profile
+## lane lands its MetaProgression API). Notifies once per claimed batch.
+func _claim_insurance() -> void:
+	if not MetaProgression.has_method("claim_matured_insurance"):
+		return
+	var got: Array = MetaProgression.claim_matured_insurance()
+	if not got.is_empty():
+		Events.notify.emit(tr("Insurance returned %d item(s)") % got.size(), 1)
 
 
 func _exit_tree() -> void:

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ArmorData" load_steps=2 format=3 uid="uid://carmorpackmed"]
+
+[ext_resource type="Script" path="res://scripts/combat/armor_data.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+id = "armor_pack_med"
+display_name = "Field Pack"
+kind = 5
+rarity = 1
+weight = 1.0
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "A sturdy field backpack. Adds 15 to your carry weight with no movement penalty."
+value = 260
+slot = "backpack"
+durability_max = 0.0
+carry_bonus = 15.0
