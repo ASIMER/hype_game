@@ -409,7 +409,10 @@ func restart_match() -> void:
 	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
 		NetworkManager.request_redeploy()
 		return
-	# Offline / single-player: reload locally.
+	# Offline / single-player: reload locally. Release any solo pause FIRST (symmetric
+	# with _on_quit_to_menu): a restart from the KIA summary otherwise relies entirely
+	# on the summary's own unpause, and the fresh match must never start frozen.
+	get_tree().paused = false
 	GameState.reset_match()
 	GameState.set_phase(GameState.Phase.IN_MATCH)
 	load_arena()

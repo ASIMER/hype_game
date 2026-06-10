@@ -475,3 +475,13 @@ func _unpause_if_ours() -> void:
 	if _did_pause:
 		_did_pause = false
 		get_tree().paused = false
+
+
+## LIFETIME GUARANTEE (the 4th pause-leak layer): load_arena() rebuilds the UI layer by
+## queue_free'ing its children — including US while we own the solo pause (restart from
+## the KIA screen). The replacement instance never paused (_did_pause=false), so neither
+## its match-start handler nor its watchdog can release the old pause → the fresh match
+## ran frozen forever. Releasing on the way out makes the leak impossible regardless of
+## who frees us or in what order.
+func _exit_tree() -> void:
+	_unpause_if_ours()
