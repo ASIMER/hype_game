@@ -46,9 +46,6 @@ func _ready() -> void:
 	Events.arena_build_progress.emit(0.30, "Structures")
 	await get_tree().process_frame
 	_build_poi_structures()
-	Events.arena_build_progress.emit(0.55, "Ground detail")
-	await get_tree().process_frame
-	_enrich_ground()
 	# Flora (trees/grass/boulders) after structures; collidable pieces join the bake.
 	Events.arena_build_progress.emit(0.75, "Flora")
 	await get_tree().process_frame
@@ -282,36 +279,6 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 		var pile2 := ProceduralBuildings.rubble_pile((spots.size() + j) * 137 + 11)
 		pile2.position = Vector3(s2.x, ProceduralTerrain.height_at(s2.x, s2.y), s2.y)
 		scatter.add_child(pile2)
-
-## Gives the ground a richer weathered material + a faint large-scale tint plane for
-## depth. Collision stays the flat box at y=0 (untouched) so the navmesh is unchanged.
-func _enrich_ground() -> void:
-	var ground_mesh := nav_region.get_node_or_null("Ground/Mesh") as MeshInstance3D
-	if ground_mesh == null:
-		return
-	# Triplanar noise-detailed asphalt: broad cracks/patches via the shared toolkit
-	# (low scale = large-scale features) so the ground reads as worn paving, not flat.
-	var asphalt: StandardMaterial3D = ProcMaterials.weathered(
-		Color(0.16, 0.165, 0.175), 0.0, 0.95, 0.5, 7,
-		Vector3(0.05, 0.05, 0.05), true)
-	ground_mesh.set_surface_override_material(0, asphalt)
-	# Second, very-low-frequency stain layer (no collision): a large faintly-transparent
-	# plane carrying its own coarse grime noise for big tonal patches of dirt/oil.
-	var detail := MeshInstance3D.new()
-	detail.name = "GroundDetail"
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(160, 160)
-	detail.mesh = pm
-	var dm: StandardMaterial3D = ProcMaterials.weathered(
-		Color(0.22, 0.19, 0.15), 0.0, 1.0, 0.35, 13,
-		Vector3(0.02, 0.02, 0.02), true)
-	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	dm.albedo_color = Color(0.22, 0.19, 0.15, 0.22)
-	detail.material_override = dm
-	detail.position = Vector3(0, 0.02, 0)
-	var ground_body := nav_region.get_node_or_null("Ground")
-	if ground_body:
-		ground_body.add_child(detail)
 
 func _bake_navmesh() -> void:
 	if nav_region and nav_region.navigation_mesh:

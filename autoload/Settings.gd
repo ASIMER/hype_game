@@ -55,8 +55,6 @@ const RIVER_DEPTH: float = 0.45  # ≤ navmesh agent_max_climb 0.5 → walkable 
 # for placement now — only the visibility ranges below matter.
 const FLORA_TREES: int = 200
 const FLORA_BUSHES: int = 150
-const FLORA_GRASS_PATCHES: int = 14000  # (legacy) near grass layer count — grass is now density-driven, kept for ref
-const FLORA_GRASS_FAR: int = 3000  # (legacy) far grass layer count — grass is now density-driven, kept for ref
 const GRASS_VIS_RANGE: float = 58.0  # near-layer visibility_range_end (m); wider so grass doesn't pop on the 160m map
 const GRASS_FAR_RANGE: float = 90.0  # far-layer visibility_range_end (m)
 const FLORA_STONES: int = 1000  # small render-only stones (MultiMesh)
@@ -849,6 +847,10 @@ func _ready() -> void:
 	discovery_port = net_port + 1 if net_port != DEFAULT_PORT else DISCOVERY_PORT
 	discovery_port = _arg_int(args, "--discovery-port", discovery_port)
 	instance_label = _arg_str(args, "--label", instance_label)
+	# Data-table validation (debug builds only): typo'd keys / missing scene paths in the
+	# untyped catalogs become LOUD push_errors at boot instead of silent fallbacks.
+	# Deferred so every autoload (MetaProgression et al) exists before it reads them.
+	BootValidate.run.call_deferred()
 
 
 ## Reads the int value following `flag` in args (guards a missing/flag-like/non-int value),

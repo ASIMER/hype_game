@@ -22,10 +22,6 @@ class_name ProceduralTerrain
 ##
 ## PARSE TRAP (warnings-as-errors): never `var x := <Variant>` — all locals are typed.
 
-const HALF: float = 80.0          # ORIGINAL quadrant half-extent (the NW quadrant is ±80)
-const RIM_INNER: float = 64.0     # (legacy) berm start vs distance-from-centre
-const RIM_OUTER: float = 78.0     # (legacy) berm full vs distance-from-centre
-
 # World rectangle: WorldBounds.* (scripts/core/world_bounds.gd) is the ONE source —
 # the original 160×160 map is the NW quadrant; the world grows EAST (+X) and SOUTH (+Z).
 # Perimeter berm rings the RECTANGLE: it ramps up as the distance to the NEAREST wall
@@ -40,12 +36,9 @@ static func _edge_ramp(x: float, z: float) -> float:
 		min(z - WorldBounds.Z_MIN, WorldBounds.Z_MAX - z))
 	return 1.0 - smoothstep(RIM_MARGIN_OUTER, RIM_MARGIN_INNER, wd)
 
-# Terrain blend colors — authored as NATURAL sRGB. The ground albedo is a BAKED sRGB
-# TEXTURE (_bake_ground_texture): _color_srgb() writes these straight into an FORMAT_RGB8
-# Image and the renderer sRGB-decodes the albedo texture automatically — NO manual
-# linearization on the rendered path (the old per-vertex ARRAY_COLOR path was silently
-# lossy on this mesh/material combo in Godot 4.6, rendering grey-white). These are the
-# natural countryside palette in sRGB space.
+# Terrain blend colors — authored as NATURAL sRGB (the natural countryside palette).
+# _color_srgb() blends these per-sample (height+slope); the rendered ground splat reads
+# them via _color_linear (srgb_to_linear at the call site — the sRGB-decode trap).
 const C_GRASS := Color(0.30, 0.47, 0.17)   # lowland grass (bright enough to survive the blue ambient)
 const C_DIRT := Color(0.40, 0.32, 0.21)    # mid elevation dirt
 const C_ROCK := Color(0.38, 0.39, 0.41)    # slope / berm rock
@@ -750,96 +743,6 @@ void fragment() {
 	NORMAL = normalize((VIEW_MATRIX * vec4(worldN, 0.0)).xyz);
 }
 """
-
-# ---------------------------------------------------------------- ground texture bake
-## Bakes the authored sRGB palette (grass/dirt/rock/wet) into an albedo TEXTURE that maps
-## 1:1 over the ±HALF map. Resolution is 2× the vertex grid (161×161 for the 81-vert grid)
-## sampled at half-cell steps for smoothness. Writes sRGB color directly (NO linearization —
-## the renderer sRGB-decodes the albedo texture). Slope is computed by central differences
-## of height_at at the sample point so the rock/dirt blend matches the mesh shading exactly.
-## Bakes the authored sRGB palette into a 481×481 albedo texture from a PRE-SAMPLED quarter-
-## cell height grid `th` (tex_n × tex_n). Slope comes from grid central differences (no extra
-## height_at calls). Per-texel high-freq grain (±0.04) breaks the low-res wash. Linearized at
-## write-time (runtime ImageTextures are read LINEAR by the GPU — the sRGB-decode trap).
-static func _bake_ground_texture(th: PackedFloat32Array, tex_n: int, step: float) -> ImageTexture:
-	var img := Image.create(tex_n, tex_n, false, Image.FORMAT_RGB8)
-	for ty in range(tex_n):
-		var z: float = -HALF + float(ty) * step
-		for tx in range(tex_n):
-			var x: float = -HALF + float(tx) * step
-			var hc: float = th[ty * tex_n + tx]
-			var hl: float = th[ty * tex_n + max(tx - 1, 0)]
-			var hr: float = th[ty * tex_n + min(tx + 1, tex_n - 1)]
-			var hd: float = th[max(ty - 1, 0) * tex_n + tx]
-			var hu: float = th[min(ty + 1, tex_n - 1) * tex_n + tx]
-			var dhdx: float = (hr - hl) / (2.0 * step)
-			var dhdz: float = (hu - hd) / (2.0 * step)
-			var slope: float = sqrt(dhdx * dhdx + dhdz * dhdz)
-			var col: Color = _color_srgb(x, z, hc, slope)
-			# Per-texel high-frequency value grain (±0.04) — deterministic hash of the texel
-			# coords (same _hf idiom) so every peer bakes identical bytes.
-			var gn: int = tx * 1973471149 + ty * 912839821 + Settings.TERRAIN_SEED * 39847
-			var grain: float = (ProcHash.hf(gn) - 0.5) * 0.08   # in [-0.04, +0.04]
-			col.r = clamp(col.r + grain, 0.0, 1.0)
-			col.g = clamp(col.g + grain, 0.0, 1.0)
-			col.b = clamp(col.b + grain, 0.0, 1.0)
-			img.set_pixel(tx, ty, col.srgb_to_linear())
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
-
-## Bakes a tangent-space NORMAL map (tex_n×tex_n) from the SAME pre-sampled height grid via
-## central differences. For a flat-up ground the OpenGL convention is R=nx*0.5+0.5,
-## G=ny*0.5+0.5, B≈1. Slope is exaggerated ×1.5 so the relief reads. RAW FORMAT_RGB8 — NEVER
-## srgb-linearized (a normal map is data; the StandardMaterial samples it as a linear normal).
-static func _bake_ground_normal(th: PackedFloat32Array, tex_n: int, step: float) -> ImageTexture:
-	var exaggerate: float = 1.5
-	var img := Image.create(tex_n, tex_n, false, Image.FORMAT_RGB8)
-	for ty in range(tex_n):
-		for tx in range(tex_n):
-			var hl: float = th[ty * tex_n + max(tx - 1, 0)]
-			var hr: float = th[ty * tex_n + min(tx + 1, tex_n - 1)]
-			var hd: float = th[max(ty - 1, 0) * tex_n + tx]
-			var hu: float = th[min(ty + 1, tex_n - 1) * tex_n + tx]
-			var dhdx: float = (hr - hl) / (2.0 * step) * exaggerate
-			var dhdz: float = (hu - hd) / (2.0 * step) * exaggerate
-			# Tangent-space for a flat-up ground (T=+X, B=+Z, N=+Y): nx=-dhdx, ny(green)=-dhdz.
-			var wn := Vector3(-dhdx, -dhdz, 1.0).normalized()
-			img.set_pixel(tx, ty, Color(wn.x * 0.5 + 0.5, wn.y * 0.5 + 0.5, wn.z * 0.5 + 0.5))
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
-
-## Small high-frequency tiling NoiseTexture2D for the StandardMaterial detail-albedo slot —
-## crisp ~0.4 m grain at close range. Seamless + small so it tiles cheaply over the 160 m
-## ground UV (0..1). Cached so a rebuild reuses one instance.
-static var _detail_tex: NoiseTexture2D = null
-static func _ground_detail_texture() -> NoiseTexture2D:
-	if _detail_tex != null:
-		return _detail_tex
-	var noise := FastNoiseLite.new()
-	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	noise.seed = Settings.TERRAIN_SEED
-	noise.frequency = 0.08            # high freq → fine ~0.4 m grain when tiled over 160 m
-	noise.fractal_octaves = 3
-	var tex := NoiseTexture2D.new()
-	tex.width = 256
-	tex.height = 256
-	tex.seamless = true               # tiles without a visible seam at the 0..1 UV wrap
-	tex.noise = noise
-	# Greyscale centred ~mid so a MIX detail blend nudges albedo lighter/darker subtly.
-	tex.color_ramp = _detail_ramp()
-	_detail_tex = tex
-	return tex
-
-## A subtle grey ramp WITH LOW ALPHA: the StandardMaterial MIX detail blend uses the detail
-## texture's alpha as the overlay strength, so low alpha (~0.18) means the grain only gently
-## modulates the baked palette instead of flooding it grey. Dark→light grey breaks up flats.
-static func _detail_ramp() -> Gradient:
-	var g := Gradient.new()
-	g.set_offset(0, 0.0)
-	g.set_color(0, Color(0.30, 0.28, 0.24, 0.18))
-	g.set_offset(1, 1.0)
-	g.set_color(1, Color(0.70, 0.68, 0.62, 0.18))
-	return g
 
 # ---------------------------------------------------------------- water ribbon
 ## Catmull-Rom interpolation of the centerline at parameter (seg + t), seg in
