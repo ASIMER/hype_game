@@ -22,29 +22,29 @@ class_name GunsmithTab
 ##   Events.currency_changed,   Events.stash_changed
 
 # Project theme colours (mirrors shop_tab.gd).
-const COL_AMBER  := Color(0.91,  0.64,  0.24,  1.0)
-const COL_TEAL   := Color(0.247, 0.71,  0.79,  1.0)
-const COL_DIM    := Color(0.45,  0.50,  0.55,  1.0)
-const COL_WHITE  := Color(0.88,  0.90,  0.92,  1.0)
-const COL_RED    := Color(0.85,  0.30,  0.25,  1.0)
-const COL_ORANGE := Color(0.93,  0.55,  0.15,  1.0)
-const COL_GREEN  := Color(0.40,  0.85,  0.40,  1.0)
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
+const COL_WHITE := UIStyle.WHITE
+const COL_RED := UIStyle.RED
+const COL_ORANGE := Color(0.93, 0.55, 0.15, 1.0)
+const COL_GREEN := UIStyle.GREEN
 
 ## The four canonical attachment slots in display order.
 const SLOTS: Array[String] = ["optic", "mag", "barrel", "grip"]
 ## Slot display names.
 const SLOT_LABELS: Dictionary = {
-	"optic":  "OPTIC",
-	"mag":    "MAG",
+	"optic": "OPTIC",
+	"mag": "MAG",
 	"barrel": "BARREL",
-	"grip":   "GRIP",
+	"grip": "GRIP",
 }
 
 # ── Node refs (built in _build_layout; no @onready) ──────────────────────────
-var _currency_label: Label         = null
-var _weapon_bar: HBoxContainer     = null   # weapon selector buttons
+var _currency_label: Label = null
+var _weapon_bar: HBoxContainer = null  # weapon selector buttons
 var _content_scroll: ScrollContainer = null
-var _content_body: VBoxContainer   = null   # rebuilt on weapon switch
+var _content_body: VBoxContainer = null  # rebuilt on weapon switch
 
 ## Which weapon is currently displayed.
 var _selected_weapon: String = ""
@@ -55,9 +55,9 @@ var _weapon_btns: Dictionary = {}
 # Responsive columns: the attachment-slot rows + perk rows go into GridContainers whose column
 # count is computed from the tab width, so a single slot/perk never stretches full-width on a
 # wide/ultrawide monitor. Recomputed on `resized`. (See UILayout.columns_for.)
-const _CELL_W := 520.0       # target slot/perk cell width (px)
+const _CELL_W := 520.0  # target slot/perk cell width (px)
 const _MAX_COLS := 3
-var _grids: Array[GridContainer] = []   # slot + perk grids (for resize recompute)
+var _grids: Array[GridContainer] = []  # slot + perk grids (for resize recompute)
 
 
 func _ready() -> void:
@@ -85,6 +85,7 @@ func _exit_tree() -> void:
 
 # ── Layout construction ───────────────────────────────────────────────────────
 
+
 ## Builds the static skeleton in code. The weapon-detail body is rebuilt by
 ## _rebuild_content() whenever the selected weapon changes.
 func _build_layout() -> void:
@@ -98,9 +99,9 @@ func _build_layout() -> void:
 	var margin := MarginContainer.new()
 	margin.name = "Margin"
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left",   24)
-	margin.add_theme_constant_override("margin_top",    20)
-	margin.add_theme_constant_override("margin_right",  24)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
 	scroll.add_child(margin)
 
@@ -149,6 +150,7 @@ func _build_layout() -> void:
 
 # ── Weapon selector ───────────────────────────────────────────────────────────
 
+
 ## Rebuilds the weapon selector buttons from the current loadout.
 func _rebuild_weapon_bar() -> void:
 	for c in _weapon_bar.get_children():
@@ -179,6 +181,7 @@ func _rebuild_weapon_bar() -> void:
 
 
 # ── Content body ──────────────────────────────────────────────────────────────
+
 
 ## Clears and rebuilds the attachment + perk panels for _selected_weapon.
 func _rebuild_content() -> void:
@@ -243,7 +246,9 @@ func _build_attachments_section() -> void:
 
 
 ## Builds one attachment slot row: label | current att name + stat delta | dropdown | CLEAR.
-func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[String]) -> HBoxContainer:
+func _build_slot_row(
+	slot_id: String, equipped: Dictionary, owned_atts: Array[String]
+) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.name = "SlotRow_" + slot_id
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -332,7 +337,10 @@ func _build_slot_row(slot_id: String, equipped: Dictionary, owned_atts: Array[St
 				break
 
 	var wid_cap: String = _selected_weapon  # capture for closure
-	opt.item_selected.connect(func(idx: int) -> void: _on_att_selected(wid_cap, slot_id, String(opt.get_item_metadata(idx))))
+	opt.item_selected.connect(
+		func(idx: int) -> void:
+			_on_att_selected(wid_cap, slot_id, String(opt.get_item_metadata(idx)))
+	)
 	row.add_child(opt)
 
 	# CLEAR button — only enabled when something is equipped.
@@ -374,9 +382,9 @@ func _build_perks_section() -> void:
 func _build_perk_row(key: String) -> HBoxContainer:
 	var perk_dict: Dictionary = MetaProgression.WEAPON_PERKS[key] as Dictionary
 
-	var lvl: int  = MetaProgression.weapon_perk_level(_selected_weapon, key)
+	var lvl: int = MetaProgression.weapon_perk_level(_selected_weapon, key)
 	var max_lvl: int = int(perk_dict.get("max_level", 1))
-	var cost: int    = MetaProgression.weapon_perk_cost(_selected_weapon, key)
+	var cost: int = MetaProgression.weapon_perk_cost(_selected_weapon, key)
 
 	var row := HBoxContainer.new()
 	row.name = "PerkRow_" + key
@@ -440,10 +448,10 @@ func _build_perk_row(key: String) -> HBoxContainer:
 	buy_btn.focus_mode = Control.FOCUS_NONE
 
 	if lvl >= max_lvl:
-		buy_btn.text     = tr("MAX")
+		buy_btn.text = tr("MAX")
 		buy_btn.disabled = true
 	else:
-		buy_btn.text     = tr("BUY")
+		buy_btn.text = tr("BUY")
 		buy_btn.disabled = MetaProgression.currency < cost
 		var wid_cap: String = _selected_weapon
 		buy_btn.pressed.connect(func() -> void: _on_buy_perk(wid_cap, key))
@@ -454,6 +462,7 @@ func _build_perk_row(key: String) -> HBoxContainer:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 ## Returns all attachment ids owned (Stash.count_of > 0) that fit _selected_weapon.
 func _owned_attachments_for(weapon_id: String) -> Array[String]:
@@ -477,16 +486,26 @@ func _owned_attachments_for(weapon_id: String) -> Array[String]:
 ## Examples: "+12 mag", "-8% recoil", "+5% dmg".
 func _stat_delta_text(att: AttachmentData) -> String:
 	var parts: Array[String] = []
-	if att.damage_mult    != 1.0:  parts.append("%+.0f%% dmg"    % ((att.damage_mult    - 1.0) * 100.0))
-	if att.fire_rate_mult != 1.0:  parts.append("%+.0f%% firerate" % ((att.fire_rate_mult - 1.0) * 100.0))
-	if att.recoil_mult    != 1.0:  parts.append("%+.0f%% recoil"  % ((att.recoil_mult    - 1.0) * 100.0))
-	if att.spread_mult    != 1.0:  parts.append("%+.0f%% spread"  % ((att.spread_mult    - 1.0) * 100.0))
-	if att.reload_mult    != 1.0:  parts.append("%+.0f%% reload"  % ((att.reload_mult    - 1.0) * 100.0))
-	if att.ads_fov_mult   != 1.0:  parts.append("%+.0f%% zoom"    % ((att.ads_fov_mult   - 1.0) * 100.0))
-	if att.range_mult     != 1.0:  parts.append("%+.0f%% range"   % ((att.range_mult     - 1.0) * 100.0))
-	if att.mag_add        != 0:    parts.append("%+d mag"         % att.mag_add)
-	if att.reserve_add    != 0:    parts.append("%+d reserve"     % att.reserve_add)
-	if att.crit_add       != 0.0:  parts.append("%+.0f%% crit"    % (att.crit_add * 100.0))
+	if att.damage_mult != 1.0:
+		parts.append("%+.0f%% dmg" % ((att.damage_mult - 1.0) * 100.0))
+	if att.fire_rate_mult != 1.0:
+		parts.append("%+.0f%% firerate" % ((att.fire_rate_mult - 1.0) * 100.0))
+	if att.recoil_mult != 1.0:
+		parts.append("%+.0f%% recoil" % ((att.recoil_mult - 1.0) * 100.0))
+	if att.spread_mult != 1.0:
+		parts.append("%+.0f%% spread" % ((att.spread_mult - 1.0) * 100.0))
+	if att.reload_mult != 1.0:
+		parts.append("%+.0f%% reload" % ((att.reload_mult - 1.0) * 100.0))
+	if att.ads_fov_mult != 1.0:
+		parts.append("%+.0f%% zoom" % ((att.ads_fov_mult - 1.0) * 100.0))
+	if att.range_mult != 1.0:
+		parts.append("%+.0f%% range" % ((att.range_mult - 1.0) * 100.0))
+	if att.mag_add != 0:
+		parts.append("%+d mag" % att.mag_add)
+	if att.reserve_add != 0:
+		parts.append("%+d reserve" % att.reserve_add)
+	if att.crit_add != 0.0:
+		parts.append("%+.0f%% crit" % (att.crit_add * 100.0))
 	if parts.is_empty():
 		return ""
 	return "(" + ", ".join(parts) + ")"
@@ -571,6 +590,7 @@ func _icon_cell(id: String, cell_size: int) -> Panel:
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
+
 ## Full refresh: rebuild weapon bar + content body.
 func _refresh() -> void:
 	if not is_inside_tree():
@@ -584,6 +604,7 @@ func _refresh() -> void:
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
 
+
 func _on_data_changed(_weapon_id: String) -> void:
 	## An attachment or perk changed on some weapon — full refresh.
 	_refresh()
@@ -595,6 +616,7 @@ func _on_currency_changed(_amount: int) -> void:
 
 
 # ── Weapon selector ───────────────────────────────────────────────────────────
+
 
 func _on_weapon_selected(weapon_id: String) -> void:
 	if _selected_weapon == weapon_id:
@@ -616,6 +638,7 @@ func _update_weapon_btn_highlights() -> void:
 
 # ── Attachment actions ────────────────────────────────────────────────────────
 
+
 ## Called when the player picks an attachment from a slot's OptionButton.
 ## Empty string means "— pick —" (no-op).
 func _on_att_selected(weapon_id: String, slot_id: String, att_id: String) -> void:
@@ -632,6 +655,7 @@ func _on_clear_slot(weapon_id: String, slot_id: String) -> void:
 
 
 # ── Perk actions ──────────────────────────────────────────────────────────────
+
 
 ## Attempt to purchase the next level of a perk. MetaProgression handles
 ## affordability and spending; weapon_perk_changed fires on success.

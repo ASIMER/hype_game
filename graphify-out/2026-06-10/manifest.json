@@ -978,5 +978,20 @@
     "mtime": 1781102338.678552,
     "ast_hash": "cf8f1000afc8d49cc2effd56e7ffa9e8",
     "semantic_hash": ""
+  },
+  "tools/lint/check_golden.py": {
+    "mtime": 1781102923.1788716,
+    "ast_hash": "bd788f07d279fb782293de4d97bd520f",
+    "semantic_hash": ""
+  },
+  "tools/lint/golden_world.json": {
+    "mtime": 1781103106.948804,
+    "ast_hash": "a0a0ae7a617f0945e274c0a16cbe7767",
+    "semantic_hash": ""
+  },
+  "docs/AUDIT.md": {
+    "mtime": 1781103328.1631598,
+    "ast_hash": "6c540ddc7ae55110599439e61e55250b",
+    "semantic_hash": ""
   }
 }

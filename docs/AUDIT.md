@@ -34,16 +34,16 @@ Per user decision these are **NOT being split** — only de-duplicated and contr
 
 | # | Finding | Risk | Status |
 |---|---|---|---|
-| F1 | **`_h`/`_hf`(/`_hrange`) hash helpers copy-pasted ×3**: `procedural_terrain.gd:80`, `procedural_flora.gd:27`, `procedural_buildings.gd:126`. Editing one desyncs co-op world determinism (peers build different worlds). | CRITICAL | PLANNED-P2 → `scripts/core/proc_hash.gd` (byte-identical math), golden-verified |
-| F2 | **POI coordinates duplicated by hand**: `arena.gd _POI_DEFS` (12 POIs) ↔ `procedural_flora.gd:68 _POI_RECTS` ("Must match arena.gd" comment = manual-sync trap) ↔ extraction-pad coords hardcoded in `procedural_terrain._collect_pads:131` (duplicating the `ExtractionZone*` node positions in Arena.tscn). | CRITICAL | PLANNED-P2 → single source: flora/terrain receive POI defs + extraction points as build params |
-| F3 | **World bounds duplicated**: X_MIN/X_MAX/Z_MIN/Z_MAX/WORLD_CX/CZ in `procedural_terrain.gd:31` AND `procedural_flora.gd:43`; biome split constant 80.0 inside `Settings.biome_at`; map_ui WORLD_MIN/SPAN; world_atmosphere MAP_SPAN/CX/CZ. A future map resize = 5-file hunt. | HIGH | PLANNED-P2 → `scripts/core/world_bounds.gd` |
-| F4 | **5 near-identical player-AoE damage loops**: `robot_worm._bite_area`, `robot_kamikaze._detonate`, `robot_slammer._slam`, `robot_pouncer._swipe_area`, + the boss slam variant in `robot_boss.gd`. Fixing falloff/teamdamage in one ≠ the others. | MED | PLANNED-P2 → `scripts/core/combat_aoe.gd` |
-| F5 | **Orbit steering math ×2**: `robot_flyer._orbit_dir:74` ↔ `robot_strafer._orbit_dir`. | MED | PLANNED-P2 → `scripts/core/steering.gd` |
-| F6 | **`load("res://scripts/visual/…")` by string path ×5 in arena.gd** (terrain/flora/probes/fog/climate, lines 122–202) — every class has a `class_name`; a file move = silent no-op world (guards return null). Historical reason (parallel lanes) no longer applies. | HIGH | PLANNED-P2 → direct class calls |
-| F7 | **Magic strings as contracts**: groups `"players"` (49 call sites), `"enemies"` (9), `"extraction"`, `"arena"`, `"world_events"`; node names `"Health"`, `"Hurtbox"`, `"WeakPoint"`, `"ModelRoot"`, `"Net/Loot"`. A typo compiles fine and silently skips damage/credit (get_node_or_null → null → skip). | HIGH | PLANNED-P2 → `scripts/core/groups.gd` consts + sweep of the hottest literals |
-| F8 | **`ENEMY_STATS`/`POWERS`/`UPGRADES` are untyped dicts** read via `.get(key, default)` at 30+ sites — a typo'd key silently serves the default. | MED | PLANNED-P2 (cheap half): boot-time validation in debug builds (every scene id present, keys whitelisted). Full typed-Resource conversion: DEFERRED (large churn, low payoff while validation exists). |
+| F1 | **`_h`/`_hf`(/`_hrange`) hash helpers copy-pasted ×3**: procedural terrain/flora/buildings. Editing one desyncs co-op world determinism (peers build different worlds). | CRITICAL | **FIXED** → `scripts/core/proc_hash.gd` (`ProcHash.h/hf/hrange`, byte-identical math); golden snapshot MATCH |
+| F2 | **POI coordinates duplicated by hand**: `arena.gd _POI_DEFS` (12 POIs) ↔ flora `_POI_RECTS` ("Must match arena.gd" = manual-sync trap) ↔ extraction-pad coords hardcoded in `procedural_terrain._collect_pads` (duplicating the `ExtractionZone*` node positions in Arena.tscn). | CRITICAL | **FIXED** → both builders receive `_POI_DEFS` + the zone XZ centres read off the REAL `ExtractionZone*` nodes (`arena._extraction_zone_points`); golden MATCH. Kept bit-exact: flora extraction keep-outs apply to the 3 original NW zones ONLY (the 9 new-biome zones never had them — adding them would reshape the world; revisit deliberately) |
+| F3 | **World bounds duplicated** across terrain, flora, `Settings.biome_at`, map_ui, world_atmosphere (+ worm clamp). A future map resize = 5-file hunt. | HIGH | **FIXED** → `scripts/core/world_bounds.gd` (incl. `biome_at`); golden MATCH |
+| F4 | **4 near-identical player-AoE damage loops**: worm bite / kamikaze blast / slammer slam / pouncer swipe. (The boss "slam" turned out single-target — not an AoE loop.) | MED | **FIXED** → `scripts/core/combat_aoe.gd` (`damage_players`, falloff/floor/include_downed cover every variant); live-verified (blast 100→60, slam downs+finishes, bite 100→68) |
+| F5 | **Orbit steering math ×2**: flyer ↔ strafer `_orbit_dir`. | MED | **FIXED** → `scripts/core/steering.gd` (`orbit_dir`); both verified orbiting live |
+| F6 | **`load("res://scripts/visual/…")` by string path ×5 in arena.gd** (+1 in flora→terrain) — every class has a `class_name`; a file move = silent no-op world. | HIGH | **FIXED** → direct class calls; a move is now a compile error |
+| F7 | **Magic strings as contracts**: groups `"players"` (49 call sites), `"enemies"` (9), `"extraction"`, `"arena"`, `"world_events"`, `"pickups"`; node names `"Health"`, `"Hurtbox"`, `"WeakPoint"`, `"ModelRoot"`. A typo compiles fine and silently skips damage/credit. | HIGH | **FIXED** → `scripts/core/groups.gd` + full code-site sweep (37 files). `.tscn` group strings stay literal (scenes can't reference consts) → the VALUES are frozen. `"Net/Loot"`-style node paths left as-is (few sites) |
+| F8 | **`ENEMY_STATS`/`POWERS`/`UPGRADES` are untyped dicts** read via `.get(key, default)` at 30+ sites — a typo'd key silently serves the default. | MED | **FIXED** (cheap half) → `scripts/core/boot_validate.gd`: debug-boot validation (required fields, UNKNOWN-key whitelist, wave-pool scene paths exist); negative-tested. Full typed-Resource conversion: DEFERRED (§7) |
 | F9 | **Autoload coupling knot**: RaidManager ↔ MetaProgression ↔ Stash call each other directly (deploy/extract economy). Documented contract, single ownership each. | LOW | ACCEPTED — refactor would ripple through saves/netcode for no behavioural gain |
-| F10 | **Pause-leak class of bugs**: anything that pauses (`get_tree().paused`) must guarantee its unpause on EVERY exit path incl. harness `restart`. RaidSummary needed 3 layers (unpause-on-match-start, phase-gate, visibility watchdog). | — | FIXED (this session, raid_summary.gd); pattern recorded in memory |
+| F10 | **Pause-leak class of bugs**: anything that pauses (`get_tree().paused`) must guarantee its unpause on EVERY exit path. RaidSummary needed **4 layers**: unpause-on-match-start, phase-gate vs teardown ghost re-fires, visibility watchdog, and **`_exit_tree` release** — `load_arena()` frees the UI layer, so the pause OWNER can be destroyed while paused (restart from the KIA screen froze the fresh match forever; the replacement instance never paused so no handler could release it). `main.restart_match` also unpauses (symmetric with quit-to-menu), and the harness `state` exposes `paused` to name this class instantly. | — | **FIXED** (lifetime layer found while live-verifying F4 — it masqueraded as an enemy-AI regression) |
 | F11 | **Wide-radius spawn fan-out**: wave spawns picked any same-side marker world-wide after the 4× expansion. | — | FIXED (NEAR_SPAWN_RADIUS=70 bias in `wave_manager._spawn_xform`) |
 | F12 | `Arena.tscn` perimeter wall colliders were still at the old ±80 after the 4× expansion (invisible mid-map cross). Single-owner scene rule exists because of exactly this class of edit. | — | FIXED (pre-audit, commit cb272f7) |
 
@@ -51,30 +51,31 @@ Per user decision these are **NOT being split** — only de-duplicated and contr
 
 | Finding | Status |
 |---|---|
-| `COL_*` palette consts re-declared per UI file (hub.gd, loadout_tab, quests_tab, gunsmith_tab, raid_summary…) while `UIStyle.*` is the declared single source. | PLANNED-P2 sweep (values that DIFFER from UIStyle stay + get noted here) |
+| `COL_*` palette consts re-declared per UI file while `UIStyle.*` is the declared single source. | **FIXED** — 46 duplicate declarations across 9 files + scoreboard's row-highlight now reference `UIStyle.*`. Intentionally-distinct values stay local: `progression_tab`/`quests_tab` GREEN shades, `loadout_tab` COL_WARN, `gunsmith_tab` COL_ORANGE, `raid_summary` COL_WIN/COL_LOSS |
 | `tools/agent/raw.py` ↔ `play.py` share the socket protocol by copy. | ACCEPTED — 30-line file, stdlib-only by design |
 
 ## 4. Dead code
 
 | Item | Evidence | Status |
 |---|---|---|
-| `procedural_terrain._bake_ground_texture` / `_bake_ground_normal` / `_ground_detail_texture` (+ the `HALF` const they read) | superseded by ambientCG PBR triplanar splat | PLANNED-P2 delete (after grep re-check) |
-| `RIM_INNER`/`RIM_OUTER` legacy ring consts | old circular-map rim | PLANNED-P2 delete |
-| `FLORA_GRASS_PATCHES`/`FLORA_GRASS_FAR` | grass is density-driven + tiled now | PLANNED-P2 delete (verify no readers) |
-| `arena._enrich_ground` GroundDetail branch | looks up `Ground/Mesh` AFTER `_build_terrain` already removed `Ground` → guaranteed early-return; the asphalt/stain layer never spawns when procedural terrain is on (always) | PLANNED-P2 delete (found during golden-snapshot work) |
+| `procedural_terrain._bake_ground_texture` / `_bake_ground_normal` / `_ground_detail_texture` / `_detail_ramp` (+ the `HALF` const only they read) | superseded by ambientCG PBR triplanar splat (`_color_srgb` stays — it feeds the live splat) | **FIXED** — deleted (≈90 lines); golden MATCH |
+| `RIM_INNER`/`RIM_OUTER` legacy ring consts | old circular-map rim | **FIXED** — deleted |
+| `FLORA_GRASS_PATCHES`/`FLORA_GRASS_FAR` | grass is density-driven + tiled now; zero readers | **FIXED** — deleted |
+| `arena._enrich_ground` | looked up `Ground/Mesh` AFTER `_build_terrain` already removed `Ground` → guaranteed early-return; the asphalt/stain layer never spawned | **FIXED** — function + call + build phase deleted |
 
 ## 5. Lint baseline (gdlint, `gdlintrc` at repo root)
 
-**111 problems** across `scripts/` + `autoload/` at audit time:
+**111 problems** at audit time → **50 after phase 2** (ALL max-line-length, erased by the
+phase-3 `gdformat` baseline). Every named-rule violation was fixed during phase-2 touches:
 
-| Rule | Count | Plan |
-|---|---|---|
-| max-line-length (120) | 100 | Phase-3 `gdformat` baseline auto-fixes the bulk |
-| function-variable-name | 5 | fix during Phase-2 touches |
-| unused-argument | 3 | fix during Phase-2 touches (`_`-prefix) |
-| max-public-methods (40) | 1 | AgentBridge — accepted (dispatcher) unless trivial |
-| function-argument-name | 1 | fix |
-| duplicated-load | 1 | fix |
+| Rule | At audit | After P2 | Resolution |
+|---|---|---|---|
+| max-line-length (120) | 100 | 50 | 12 files already gdformat'ed early (pre-commit gate); rest in phase 3 |
+| function-variable-name | 5 | 0 | locals renamed (they were USED, not unused-markers) |
+| unused-argument | 3 | 0 | `_`-prefixed (override-signature args) |
+| max-public-methods (40) | 1 | 0 | MetaProgression: inline `gdlint: ignore` + doc (its 41 methods ARE the profile API) |
+| function-argument-name | 1 | 0 | `H` → `hgt` |
+| duplicated-load | 1 | 0 | loot_pickup: lazy static cache (preload would be a self scene↔script cycle) |
 
 Config notes: 120-col (long doc comments are idiomatic here), `class-definitions-order` disabled
 (consts/vars are grouped next to the behaviour they configure, on purpose), `max-returns: 16`

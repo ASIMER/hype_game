@@ -2175,7 +2175,7 @@
       "label": "6. Golden determinism snapshot (the refactoring safety net)",
       "file_type": "document",
       "source_file": "docs/AUDIT.md",
-      "source_location": "L85",
+      "source_location": "L86",
       "id": "docs_audit_6_golden_determinism_snapshot_the_refactoring_safety_net",
       "community": 80,
       "norm_label": "6. golden determinism snapshot (the refactoring safety net)"
@@ -2184,7 +2184,7 @@
       "label": "7. Deferred (recorded so they aren't re-litigated)",
       "file_type": "document",
       "source_file": "docs/AUDIT.md",
-      "source_location": "L107",
+      "source_location": "L108",
       "id": "docs_audit_7_deferred_recorded_so_they_aren_t_re_litigated",
       "community": 80,
       "norm_label": "7. deferred (recorded so they aren't re-litigated)"
@@ -2778,7 +2778,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 71,
       "norm_label": "agentbridge._handle_line (command dispatch)",
       "id": "agentbridge_handle_line"
     },
@@ -2804,7 +2804,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 71,
       "norm_label": "agentbridge._aim_at (converging camera aim)",
       "id": "agentbridge_aim_at"
     },
@@ -2817,7 +2817,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 1,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -2843,7 +2843,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 71,
       "norm_label": "agentbridge._ui_action (menu open/close)",
       "id": "agentbridge_ui_action"
     },
@@ -3038,7 +3038,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 1,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -3077,7 +3077,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 1,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -3558,7 +3558,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 71,
       "norm_label": "serverbrowser.add_favorite / record_connect",
       "id": "serverbrowser_add_favorite"
     },
@@ -8911,9 +8911,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden",
-      "target": "lint_check_golden_canonical",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_canonical"
     },
     {
       "relation": "contains",
@@ -8921,9 +8921,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden",
-      "target": "lint_check_golden_diff_report",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_diff_report"
     },
     {
       "relation": "contains",
@@ -8931,9 +8931,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L75",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden",
-      "target": "lint_check_golden_main",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_main"
     },
     {
       "relation": "contains",
@@ -8941,9 +8941,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden",
-      "target": "lint_check_golden_wait_drivable",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_wait_drivable"
     },
     {
       "relation": "rationale_for",
@@ -8951,9 +8951,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden_rationale_1",
-      "target": "lint_check_golden",
-      "confidence_score": 1.0
+      "target": "lint_check_golden"
     },
     {
       "relation": "calls",
@@ -8962,9 +8962,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden_main",
-      "target": "lint_check_golden_canonical",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_canonical"
     },
     {
       "relation": "calls",
@@ -8973,9 +8973,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden_main",
-      "target": "lint_check_golden_wait_drivable",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_wait_drivable"
     },
     {
       "relation": "rationale_for",
@@ -8983,9 +8983,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L33",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden_rationale_33",
-      "target": "lint_check_golden_wait_drivable",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_wait_drivable"
     },
     {
       "relation": "calls",
@@ -8994,9 +8994,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L104",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden_main",
-      "target": "lint_check_golden_diff_report",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_diff_report"
     },
     {
       "relation": "rationale_for",
@@ -9004,9 +9004,9 @@
       "source_file": "tools/lint/check_golden.py",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_check_golden_rationale_47",
-      "target": "lint_check_golden_diff_report",
-      "confidence_score": 1.0
+      "target": "lint_check_golden_diff_report"
     },
     {
       "relation": "contains",
@@ -9014,9 +9014,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world",
-      "target": "lint_golden_world_containers",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_containers"
     },
     {
       "relation": "contains",
@@ -9024,9 +9024,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world",
-      "target": "lint_golden_world_heights",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_heights"
     },
     {
       "relation": "contains",
@@ -9034,9 +9034,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L423",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world",
-      "target": "lint_golden_world_ok",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_ok"
     },
     {
       "relation": "contains",
@@ -9044,9 +9044,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L424",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world",
-      "target": "lint_golden_world_version",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_version"
     },
     {
       "relation": "contains",
@@ -9054,9 +9054,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L425",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world",
-      "target": "lint_golden_world_water",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_water"
     },
     {
       "relation": "contains",
@@ -9064,9 +9064,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L832",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world",
-      "target": "lint_golden_world_zones",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_zones"
     },
     {
       "relation": "contains",
@@ -9074,9 +9074,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers",
-      "target": "lint_golden_world_containers_flora",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_containers_flora"
     },
     {
       "relation": "contains",
@@ -9084,9 +9084,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers",
-      "target": "lint_golden_world_containers_geometry",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_containers_geometry"
     },
     {
       "relation": "contains",
@@ -9094,9 +9094,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers",
-      "target": "lint_golden_world_containers_proceduralterrain",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_containers_proceduralterrain"
     },
     {
       "relation": "contains",
@@ -9104,9 +9104,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers_flora",
-      "target": "lint_golden_world_flora_hash",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_flora_hash"
     },
     {
       "relation": "contains",
@@ -9114,9 +9114,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers_flora",
-      "target": "lint_golden_world_flora_nodes",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_flora_nodes"
     },
     {
       "relation": "contains",
@@ -9124,9 +9124,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers_geometry",
-      "target": "lint_golden_world_geometry_hash",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_geometry_hash"
     },
     {
       "relation": "contains",
@@ -9134,9 +9134,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers_geometry",
-      "target": "lint_golden_world_geometry_nodes",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_geometry_nodes"
     },
     {
       "relation": "contains",
@@ -9144,9 +9144,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers_proceduralterrain",
-      "target": "lint_golden_world_proceduralterrain_hash",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_proceduralterrain_hash"
     },
     {
       "relation": "contains",
@@ -9154,9 +9154,9 @@
       "source_file": "tools/lint/golden_world.json",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lint_golden_world_containers_proceduralterrain",
-      "target": "lint_golden_world_proceduralterrain_nodes",
-      "confidence_score": 1.0
+      "target": "lint_golden_world_proceduralterrain_nodes"
     },
     {
       "relation": "contains",
@@ -9685,9 +9685,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit",
-      "target": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "confidence_score": 1.0
+      "target": "docs_audit_hype_raiders_architecture_audit_v0_3"
     },
     {
       "relation": "contains",
@@ -9695,9 +9695,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "target": "docs_audit_1_god_files_size_inventory",
-      "confidence_score": 1.0
+      "target": "docs_audit_1_god_files_size_inventory"
     },
     {
       "relation": "contains",
@@ -9705,9 +9705,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L33",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "target": "docs_audit_2_fragility_findings_the_change_a_b_breaks_list",
-      "confidence_score": 1.0
+      "target": "docs_audit_2_fragility_findings_the_change_a_b_breaks_list"
     },
     {
       "relation": "contains",
@@ -9715,9 +9715,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "target": "docs_audit_3_duplication_non_fragile_quality",
-      "confidence_score": 1.0
+      "target": "docs_audit_3_duplication_non_fragile_quality"
     },
     {
       "relation": "contains",
@@ -9725,9 +9725,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "target": "docs_audit_4_dead_code",
-      "confidence_score": 1.0
+      "target": "docs_audit_4_dead_code"
     },
     {
       "relation": "contains",
@@ -9735,9 +9735,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L66",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "target": "docs_audit_5_lint_baseline_gdlint_gdlintrc_at_repo_root",
-      "confidence_score": 1.0
+      "target": "docs_audit_5_lint_baseline_gdlint_gdlintrc_at_repo_root"
     },
     {
       "relation": "contains",
@@ -9745,9 +9745,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L85",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "target": "docs_audit_6_golden_determinism_snapshot_the_refactoring_safety_net",
-      "confidence_score": 1.0
+      "target": "docs_audit_6_golden_determinism_snapshot_the_refactoring_safety_net"
     },
     {
       "relation": "contains",
@@ -9755,9 +9755,9 @@
       "source_file": "docs/AUDIT.md",
       "source_location": "L107",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_audit_hype_raiders_architecture_audit_v0_3",
-      "target": "docs_audit_7_deferred_recorded_so_they_aren_t_re_litigated",
-      "confidence_score": 1.0
+      "target": "docs_audit_7_deferred_recorded_so_they_aren_t_re_litigated"
     },
     {
       "relation": "contains",
@@ -13214,5 +13214,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "281c7fadb18438deb3d93f472fc7f4daa3294996"
+  "built_at_commit": "cb551d399e0d3f9fc89ba944601ece4cdd11ffd5"
 }

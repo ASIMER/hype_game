@@ -36,11 +36,11 @@ const DIFFICULTY_DESCS := [
 # NOTE: DIFFICULTY_DESCS are tr()-wrapped at point of use (_refresh_difficulty)
 
 # Colours matching the project theme.
-const COL_AMBER  := Color(0.91, 0.64, 0.24, 1.0)   # amber accent
-const COL_TEAL   := Color(0.247, 0.71, 0.79, 1.0)  # teal accent
-const COL_DIM    := Color(0.45, 0.50, 0.55, 1.0)   # muted label
-const COL_WHITE  := Color(0.88, 0.90, 0.92, 1.0)   # body text
-const COL_RED    := Color(0.85, 0.30, 0.25, 1.0)   # locked / unaffordable hint
+const COL_AMBER  := UIStyle.AMBER   # amber accent
+const COL_TEAL   := UIStyle.TEAL  # teal accent
+const COL_DIM    := UIStyle.DIM   # muted label
+const COL_WHITE  := UIStyle.WHITE   # body text
+const COL_RED    := UIStyle.RED   # locked / unaffordable hint
 
 # ---------------------------------------------------------------- node refs
 @onready var _currency_label: Label      = $Layout/Header/HRow/CurrencyLabel

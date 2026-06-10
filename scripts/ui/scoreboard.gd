@@ -20,7 +20,7 @@ const COL_TEAL   := UIStyle.TEAL
 const COL_TEXT   := UIStyle.TEXT
 const COL_DIM    := UIStyle.DIM
 # PANEL_BG kept as a local alpha-tuned value (UIStyle.GLASS_BG at 0.92).
-const COL_ROW_HL := Color(0.247, 0.71, 0.79, 0.16)  # local player's row tint
+const COL_ROW_HL := Color(UIStyle.TEAL, 0.16)  # local player's row tint
 
 # A player with this many revives earns the "medic" cohesion badge next to their name.
 const MEDIC_BADGE_THRESHOLD := 3

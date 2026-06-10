@@ -5,29 +5,29 @@ extends Control
 ## Refreshed automatically via Events signals.
 
 # ── Theme colours (match hub.gd / shop_tab.gd) ───────────────────────────────
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
-const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
-const COL_DIM   := Color(0.45, 0.50, 0.55, 1.0)
-const COL_WHITE := Color(0.88, 0.90, 0.92, 1.0)
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
+const COL_WHITE := UIStyle.WHITE
 const COL_GREEN := Color(0.36, 0.78, 0.42, 1.0)
-const COL_RED   := Color(0.85, 0.30, 0.25, 1.0)
+const COL_RED := UIStyle.RED
 
 # ── Node refs (assigned in _build_layout) ─────────────────────────────────────
-var _level_label: Label           = null   # "RAIDER LEVEL 7"
-var _xp_bar: ProgressBar          = null   # XP into current level / need
-var _xp_label: Label              = null   # "1240 / 3500 XP  (Total: 14820)"
-var _skill_points_label: Label    = null   # "Skill Points: 2"
-var _milestone_label: Label       = null   # "Next milestone: L5 — +25 Stash Capacity"
-var _skill_rows: VBoxContainer    = null   # one row per Settings.SKILLS key
-var _skill_buy_btns: Dictionary   = {}     # key -> Button
-var _skill_pip_labels: Dictionary = {}     # key -> Label showing "3 / 5"
-var _power_buy_btns: Dictionary   = {}     # power id -> Button (unlock for skill points)
-var _power_status_lbls: Dictionary = {}    # power id -> Label (FREE / OWNED / cost)
-var _rep_tier_label: Label        = null   # "TIER 2 · 10% discount"
-var _rep_bar: ProgressBar         = null
-var _rep_label: Label             = null   # "450 / 800 rep to Tier 3"
-var _rep_reward_label: Label      = null   # next-tier reward hint
-var _mastery_rows: VBoxContainer  = null   # one row per known weapon
+var _level_label: Label = null  # "RAIDER LEVEL 7"
+var _xp_bar: ProgressBar = null  # XP into current level / need
+var _xp_label: Label = null  # "1240 / 3500 XP  (Total: 14820)"
+var _skill_points_label: Label = null  # "Skill Points: 2"
+var _milestone_label: Label = null  # "Next milestone: L5 — +25 Stash Capacity"
+var _skill_rows: VBoxContainer = null  # one row per Settings.SKILLS key
+var _skill_buy_btns: Dictionary = {}  # key -> Button
+var _skill_pip_labels: Dictionary = {}  # key -> Label showing "3 / 5"
+var _power_buy_btns: Dictionary = {}  # power id -> Button (unlock for skill points)
+var _power_status_lbls: Dictionary = {}  # power id -> Label (FREE / OWNED / cost)
+var _rep_tier_label: Label = null  # "TIER 2 · 10% discount"
+var _rep_bar: ProgressBar = null
+var _rep_label: Label = null  # "450 / 800 rep to Tier 3"
+var _rep_reward_label: Label = null  # next-tier reward hint
+var _mastery_rows: VBoxContainer = null  # one row per known weapon
 
 
 func _ready() -> void:
@@ -63,24 +63,30 @@ func _exit_tree() -> void:
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
 
+
 func _on_xp_gained(_amount: int, _source: String) -> void:
 	_refresh_level()
+
 
 func _on_raider_level_up(_new_level: int, _sp: int) -> void:
 	_refresh_level()
 	_refresh_skills()
 
+
 func _on_reputation_changed(_rep: int, _tier: int) -> void:
 	_refresh_rep()
 
+
 func _on_weapon_mastery_changed(_weapon_id: String, _level: int) -> void:
 	_rebuild_mastery_rows()
+
 
 func _on_currency_changed(_amount: int) -> void:
 	_refresh_skills()
 
 
 # ── Layout construction ───────────────────────────────────────────────────────
+
 
 func _build_layout() -> void:
 	var scroll := ScrollContainer.new()
@@ -92,9 +98,9 @@ func _build_layout() -> void:
 	var margin := MarginContainer.new()
 	margin.name = "Margin"
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left",   24)
-	margin.add_theme_constant_override("margin_top",    20)
-	margin.add_theme_constant_override("margin_right",  24)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
 	scroll.add_child(margin)
 
@@ -337,11 +343,14 @@ func _refresh_powers() -> void:
 		var status: Label = _power_status_lbls.get(pid)
 		if status != null:
 			if free:
-				status.text = tr("FREE"); status.add_theme_color_override("font_color", COL_GREEN)
+				status.text = tr("FREE")
+				status.add_theme_color_override("font_color", COL_GREEN)
 			elif owned:
-				status.text = tr("OWNED"); status.add_theme_color_override("font_color", COL_GREEN)
+				status.text = tr("OWNED")
+				status.add_theme_color_override("font_color", COL_GREEN)
 			else:
-				status.text = tr("%d SP") % cost; status.add_theme_color_override("font_color", COL_AMBER)
+				status.text = tr("%d SP") % cost
+				status.add_theme_color_override("font_color", COL_AMBER)
 		var btn: Button = _power_buy_btns.get(pid)
 		if btn != null:
 			btn.visible = not free and not owned
@@ -363,9 +372,11 @@ func _rebuild_mastery_rows() -> void:
 
 	for wid in known_weapons:
 		var w_id: String = String(wid)
-		var lvl: int     = MetaProgression.weapon_mastery_level(w_id)
-		var mxp: int     = MetaProgression.weapon_mastery_xp(w_id)
-		var need: int    = MetaProgression.mastery_to_advance(lvl) if lvl < Settings.WEAPON_MASTERY_MAX else 0
+		var lvl: int = MetaProgression.weapon_mastery_level(w_id)
+		var mxp: int = MetaProgression.weapon_mastery_xp(w_id)
+		var need: int = (
+			MetaProgression.mastery_to_advance(lvl) if lvl < Settings.WEAPON_MASTERY_MAX else 0
+		)
 
 		var row := HBoxContainer.new()
 		row.name = "Mastery_" + w_id
@@ -414,10 +425,10 @@ func _rebuild_mastery_rows() -> void:
 		mbar.theme_type_variation = "FillAmber"
 		if lvl >= Settings.WEAPON_MASTERY_MAX or need <= 0:
 			mbar.max_value = 1.0
-			mbar.value     = 1.0
+			mbar.value = 1.0
 		else:
 			mbar.max_value = float(need)
-			mbar.value     = float(mxp)
+			mbar.value = float(mxp)
 		col.add_child(mbar)
 
 		# XP sub-label + the current "veteran" handling bonus from this level.
@@ -426,10 +437,14 @@ func _rebuild_mastery_rows() -> void:
 		xp_lbl.add_theme_color_override("font_color", COL_DIM)
 		var bonus_txt := ""
 		if lvl > 0:
-			bonus_txt = "   ·   -%d%% recoil, -%d%% spread, -%d%% reload" % [
-				int(round(Settings.WEAPON_MASTERY_RECOIL_PER * lvl * 100.0)),
-				int(round(Settings.WEAPON_MASTERY_SPREAD_PER * lvl * 100.0)),
-				int(round(Settings.WEAPON_MASTERY_RELOAD_PER * lvl * 100.0))]
+			bonus_txt = (
+				"   ·   -%d%% recoil, -%d%% spread, -%d%% reload"
+				% [
+					int(round(Settings.WEAPON_MASTERY_RECOIL_PER * lvl * 100.0)),
+					int(round(Settings.WEAPON_MASTERY_SPREAD_PER * lvl * 100.0)),
+					int(round(Settings.WEAPON_MASTERY_RELOAD_PER * lvl * 100.0))
+				]
+			)
 		if lvl >= Settings.WEAPON_MASTERY_MAX:
 			xp_lbl.text = tr("Mastery complete") + bonus_txt
 		else:
@@ -438,6 +453,7 @@ func _rebuild_mastery_rows() -> void:
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
+
 
 func _refresh() -> void:
 	_refresh_level()
@@ -448,7 +464,7 @@ func _refresh() -> void:
 
 func _refresh_level() -> void:
 	var prog: Dictionary = MetaProgression.level_progress()
-	var lvl: int  = int(prog.get("level", 1))
+	var lvl: int = int(prog.get("level", 1))
 	var into: int = int(prog.get("into", 0))
 	var need: int = int(prog.get("need", 1))
 	var total: int = int(prog.get("total", 0))
@@ -457,7 +473,7 @@ func _refresh_level() -> void:
 		_level_label.text = tr("RAIDER LEVEL %d") % lvl
 	if _xp_bar != null:
 		_xp_bar.max_value = float(maxi(1, need))
-		_xp_bar.value     = float(into)
+		_xp_bar.value = float(into)
 	if _xp_label != null:
 		_xp_label.text = tr("%d / %d XP  (Total: %d)") % [into, need, total]
 	if _skill_points_label != null:
@@ -473,14 +489,17 @@ func _refresh_level() -> void:
 		if ms.is_empty():
 			_milestone_label.text = tr("All Raider milestones earned.")
 		else:
-			_milestone_label.text = tr("Next milestone — Level %d: %s") % [int(ms.get("level", 0)), tr(String(ms.get("label", "")))]
+			_milestone_label.text = (
+				tr("Next milestone — Level %d: %s")
+				% [int(ms.get("level", 0)), tr(String(ms.get("label", "")))]
+			)
 
 
 func _refresh_skills() -> void:
 	for key in _skill_buy_btns:
-		var lvl: int   = MetaProgression.skill_level(String(key))
+		var lvl: int = MetaProgression.skill_level(String(key))
 		var max_l: int = MetaProgression.skill_max(String(key))
-		var maxed: bool = (lvl >= max_l)
+		var maxed: bool = lvl >= max_l
 
 		var pip_lbl: Label = _skill_pip_labels.get(key)
 		if pip_lbl != null:
@@ -493,10 +512,10 @@ func _refresh_skills() -> void:
 		var btn: Button = _skill_buy_btns.get(key)
 		if btn != null:
 			if maxed:
-				btn.text     = tr("MAX")
+				btn.text = tr("MAX")
 				btn.disabled = true
 			else:
-				btn.text     = tr("BUY")
+				btn.text = tr("BUY")
 				btn.disabled = (MetaProgression.skill_points <= 0)
 	_refresh_powers()
 
@@ -519,10 +538,10 @@ func _refresh_rep() -> void:
 		if need <= 0:
 			# Max tier: fill bar.
 			_rep_bar.max_value = 1.0
-			_rep_bar.value     = 1.0
+			_rep_bar.value = 1.0
 		else:
 			_rep_bar.max_value = float(need)
-			_rep_bar.value     = float(into)
+			_rep_bar.value = float(into)
 
 	if _rep_label != null:
 		if need <= 0:
@@ -556,6 +575,7 @@ func _refresh_rep() -> void:
 
 # ── Button handlers ───────────────────────────────────────────────────────────
 
+
 func _on_buy_skill(key: String) -> void:
 	MetaProgression.buy_skill(key)
 	# Skills and level both refresh via Events.raider_level_up / currency_changed,
@@ -565,6 +585,7 @@ func _on_buy_skill(key: String) -> void:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 func _make_panel() -> PanelContainer:
 	var pc := PanelContainer.new()
@@ -600,16 +621,20 @@ func _icon_cell(id: String, cell_size: int) -> Panel:
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
-		tex.offset_left = 6;  tex.offset_top = 6
-		tex.offset_right = -6; tex.offset_bottom = -6
+		tex.offset_left = 6
+		tex.offset_top = 6
+		tex.offset_right = -6
+		tex.offset_bottom = -6
 		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(tex)
 	else:
 		var box := ColorRect.new()
 		box.color = AssetRegistry.get_color(id)
 		box.set_anchors_preset(Control.PRESET_FULL_RECT)
-		box.offset_left = 8;  box.offset_top = 8
-		box.offset_right = -8; box.offset_bottom = -8
+		box.offset_left = 8
+		box.offset_top = 8
+		box.offset_right = -8
+		box.offset_bottom = -8
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(box)
 	return slot

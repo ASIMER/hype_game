@@ -56,9 +56,9 @@ const DIFFICULTY_DESCS := [
 # tr() applied at use-time (in _refresh_difficulty) so the locale is live.
 
 # Project theme colours (match Workshop.gd / MainMenu.tscn).
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
-const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
-const COL_DIM   := Color(0.45, 0.50, 0.55, 1.0)
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL  := UIStyle.TEAL
+const COL_DIM   := UIStyle.DIM
 
 # Squad status-dot colours: amber = leader/host, green = ready, yellow = not ready.
 const DOT_LEADER := Color(0.91, 0.64, 0.24, 1.0)

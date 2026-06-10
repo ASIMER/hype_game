@@ -32,12 +32,12 @@ const BLUEPRINT_PRICE: Dictionary = {
 const BLUEPRINT_PRICE_DEFAULT := 400
 
 # Project theme colours (matching workshop_tab.gd / loadout_tab.gd).
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
-const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
-const COL_DIM   := Color(0.45, 0.50, 0.55, 1.0)
-const COL_WHITE := Color(0.88, 0.90, 0.92, 1.0)
-const COL_RED   := Color(0.85, 0.30, 0.25, 1.0)
-const COL_GREEN := Color(0.4, 0.85, 0.4, 1.0)
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL  := UIStyle.TEAL
+const COL_DIM   := UIStyle.DIM
+const COL_WHITE := UIStyle.WHITE
+const COL_RED   := UIStyle.RED
+const COL_GREEN := UIStyle.GREEN
 
 # ── Node refs (assigned by _build_layout; no @onready — tree is built in code) ─
 var _currency_label: Label       = null

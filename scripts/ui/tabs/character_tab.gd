@@ -20,12 +20,12 @@ class_name CharacterTab
 ## Refreshed automatically on Events.cosmetics_changed + Events.currency_changed.
 
 # ── Palette ──────────────────────────────────────────────────────────────────
-const COL_AMBER := Color(0.91,  0.64,  0.24,  1.0)
-const COL_TEAL  := Color(0.247, 0.71,  0.79,  1.0)
-const COL_DIM   := Color(0.45,  0.50,  0.55,  1.0)
-const COL_WHITE := Color(0.88,  0.90,  0.92,  1.0)
-const COL_RED   := Color(0.85,  0.30,  0.25,  1.0)
-const COL_GREEN := Color(0.40,  0.85,  0.40,  1.0)
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL  := UIStyle.TEAL
+const COL_DIM   := UIStyle.DIM
+const COL_WHITE := UIStyle.WHITE
+const COL_RED   := UIStyle.RED
+const COL_GREEN := UIStyle.GREEN
 
 # Display label for each category (tr()-wrapped at use-time).
 const CAT_LABELS: Dictionary = {
