@@ -46,6 +46,10 @@ func apply_loadout() -> void:
 		if kc > 0:
 			_p._keys[kid] = kc
 	_p._flares = int(brought.get("loot_flare", 0))
+	# Batch B: medicine 2.0 consumables (counters replicate like _medkits).
+	_p._bandages = int(brought.get("loot_bandage", 0))
+	_p._splints = int(brought.get("loot_splint", 0))
+	_p._painkillers = int(brought.get("loot_painkiller", 0))
 
 
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
@@ -68,7 +72,23 @@ func extracted_consumables() -> Array:
 			out.append({"id": String(kid), "count": kc})
 	if int(_p._flares) > 0:
 		out.append({"id": "loot_flare", "count": int(_p._flares)})
+	for med in [
+		["loot_bandage", "_bandages"],
+		["loot_splint", "_splints"],
+		["loot_painkiller", "_painkillers"]
+	]:  # gdlint: ignore=max-line-length
+		var mc := int(_p.get(String(med[1])))
+		if mc > 0:
+			out.append({"id": String(med[0]), "count": mc})
 	return out
+
+
+## Worn-armor damage mitigation (batch B): intact pieces' mitigation is summed
+## (capped) and the absorbed damage drains per-item-ID durability via the gear
+## profile. FOUNDATION STUB — the gear-data lane lands the MetaProgression API;
+## the lead fills this at integration. Stub: pass-through.
+func mitigate_damage(amount: float) -> float:
+	return amount
 
 
 ## Throw the SELECTED grenade type from the chest along the aim direction. All throws

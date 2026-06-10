@@ -62,6 +62,16 @@ var _gadget_counts: Dictionary = {}
 var flashlight_on: bool = false
 var _keys: Dictionary = {}
 var _flares: int = 0
+## Batch B gear/medicine: backpack carry bonus (replicated — the SERVER validates
+## pickups against capacity) + worn-gear speed multiplier, and the three med-item
+## counters (replicated for extraction accounting, exactly like _medkits).
+var carry_bonus: float = 0.0
+var gear_speed_mult: float = 1.0
+var _bandages: int = 0
+var _splints: int = 0
+var _painkillers: int = 0
+var _status: PlayerStatus = null  # the Status child (bleed/fracture/painkiller)
+var _fall_peak: float = 0.0  # peak downward speed while airborne (fracture check)
 var _stamina: float = Settings.MAX_STAMINA
 var _max_stamina: float = Settings.MAX_STAMINA  # base * meta stamina upgrade (set in _ready)
 var _sprint_locked: bool = false  # true after exhausting stamina, until it regens
@@ -156,6 +166,7 @@ func _ready() -> void:
 	_gear = PlayerGear.new()
 	_gear.name = "Gear"
 	add_child(_gear)
+	_status = get_node_or_null("Status") as PlayerStatus
 
 	# Health is tuned from the central Settings and wired to the global bus so HUD
 	# and match-flow workstreams react without referencing the Player directly.
@@ -289,6 +300,12 @@ func _physics_process(delta: float) -> void:
 	# Gravity (uses the project's configured gravity vector).
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+		_fall_peak = maxf(_fall_peak, -velocity.y)
+	elif _fall_peak > 0.0:
+		# Landed this frame — a hard fall can fracture (the Status component decides).
+		if _status != null:
+			_status.on_landed(_fall_peak)
+		_fall_peak = 0.0
 
 	var jump_edge: bool
 	if AgentBridge.active:
@@ -403,6 +420,7 @@ func _physics_process(delta: float) -> void:
 					and moving
 					and not _sprint_locked
 					and _stamina > 0.0
+					and (_status == null or _status.can_sprint())
 				)
 				if sprinting:
 					speed = Settings.PLAYER_SPRINT_SPEED
@@ -414,6 +432,11 @@ func _physics_process(delta: float) -> void:
 				speed *= Settings.CARRY_SPEED_MULT
 			# Active power-cache buff (Swift / Frenzy).
 			speed *= buff_speed_mult()
+			# Worn-gear weight (heavy backpack) + status effects (fracture limp;
+			# a painkiller masks the penalty inside speed_mult).
+			speed *= gear_speed_mult
+			if _status != null:
+				speed *= _status.speed_mult()
 			# Enemy-applied chill/slow debuff (cryo-mortar hits), time-boxed.
 			if Time.get_ticks_msec() < _slow_until_ms:
 				speed *= _slow_mult
@@ -807,13 +830,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		flashlight_on = not flashlight_on
 
 
-## Consume a medkit to restore HP (instant). Authority-gated by the caller.
+## H = smart-heal TRIAGE (medkit if hurt → bandage if bleeding → splint if fractured
+## → painkiller), implemented in the Status component. Authority-gated by the caller.
 func _try_heal() -> void:
-	if _medkits <= 0 or health.is_dead or health.current >= health.max_health:
-		return
-	_medkits -= 1
-	health.heal(Settings.HEAL_AMOUNT)
-	Events.player_healed.emit(self, Settings.HEAL_AMOUNT)
+	if _status != null:
+		_status.smart_heal()
 
 
 # Grenade selection/throw + gadget placement live in the PlayerGear child component
@@ -1209,6 +1230,17 @@ func _filter_incoming_damage(amount: float, source: Node) -> float:
 		var absorbed: float = minf(_overshield, amount)
 		_overshield -= absorbed
 		amount -= absorbed
+	# Status DoT ticks (bleed) bypass worn armor and never re-roll effects.
+	if _status != null and _status.is_dot_tick():
+		return amount
+	# Worn-armor mitigation (batch B) — after overshield; drains gear durability.
+	amount = _gear.mitigate_damage(amount)
+	# Status rolls (bleed/fracture chance) see the FINAL applied amount.
+	if _status != null and amount > 0.0:
+		var from_enemy := (
+			source != null and is_instance_valid(source) and source.is_in_group(Groups.ENEMIES)
+		)
+		_status.apply_hit_effects(amount, from_enemy)
 	return amount
 
 

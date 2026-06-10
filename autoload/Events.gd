@@ -43,6 +43,22 @@ signal raid_mutator_changed(mutator: String)
 ## An extraction zone was force-opened (paid charge / signal flare) for `seconds`.
 signal extraction_force_opened(zone: Node, seconds: float)
 
+# --- Gear / survival (batch B) ---
+## The local profile's equipped gear (helmet/vest/backpack) changed — Hub UI refresh.
+signal gear_changed
+## A worn armor piece's durability changed (drain on absorb / repair / break).
+## `id` = the armor item id; `durability` = its remaining pool; `broken` latches at 0.
+signal armor_changed(id: String, durability: float, broken: bool)
+## A status effect (bleed/fracture/painkiller) was applied/cleared on `player` —
+## HUD status icons + SFX. `active` false = the effect ended.
+signal status_changed(player: Node, effect: String, active: bool)
+## The local player's in-raid secure pouch changed (UI lock badges + "n/2" counter).
+signal secure_changed(secure: Dictionary)
+## Secured items survived a death and were deposited into the stash.
+signal secure_returned(items: Array)
+## Insurance state changed (bought / converted to pending / matured back to stash).
+signal insurance_changed
+
 # --- Power caches / timed buffs (Vampire-Survivors-style) ---
 ## A power cache was opened by `player`. The opener's HUD plays the non-blocking side reveal.
 signal power_cache_opened(player: Node, cache: Node)

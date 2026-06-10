@@ -946,6 +946,38 @@ const RAID_MUTATORS := ["fog", "double_loot", "elite_patrols", "night_raid"]
 const MUTATOR_FOG_DENSITY: float = 0.0175  # half the storm's whole-map murk
 const MUTATOR_ELITE_PATROL_BONUS: float = 0.25  # added elite-mod chance in patrols
 
+# --- Armor / gear (batch B) ---------------------------------------------------------
+# Worn gear slots (ArmorData.slot must be one of these). Mitigation from intact
+# pieces is summed and CAPPED; absorbed damage drains per-item-ID durability
+# (MetaProgression.armor_durability — two identical vests share one durability pool,
+# a documented limitation of id-keyed persistence). 0 durability = BROKEN (inert).
+const GEAR_SLOTS := ["helmet", "vest", "backpack"]
+const ARMOR_MITIGATION_CAP: float = 0.45  # max summed damage reduction
+const ARMOR_REPAIR_COST_FRAC: float = 0.4  # repair = ceili(value * this * missing_frac)
+
+# --- Secure pouch (batch B) ---------------------------------------------------------
+# In-raid pouch: items secured here survive DEATH (deposited with no bonus). Server-
+# validated (slots/weight); the death deposit routes like grant_extraction.
+const SECURE_SLOTS: int = 2
+const SECURE_MAX_WEIGHT: float = 2.0  # per-item weight ceiling to secure
+
+# --- Status effects / medicine 2.0 (batch B) ----------------------------------------
+const BLEED_HIT_THRESHOLD: float = 12.0  # enemy hit >= this may inflict bleed
+const BLEED_CHANCE: float = 0.35
+const BLEED_DPS_TICK: float = 2.0  # damage per tick
+const BLEED_TICK_INTERVAL: float = 2.0  # seconds between ticks
+const BLEED_DURATION: float = 30.0  # self-clears after this (or a bandage)
+const FRACTURE_FALL_SPEED: float = 14.0  # landing with a fall peak above this
+const FRACTURE_HIT_THRESHOLD: float = 30.0  # ...or a single hit >= this
+const FRACTURE_SPEED_MULT: float = 0.7  # move speed while fractured (no sprint)
+const PAINKILLER_DURATION: float = 60.0  # suppresses status PENALTIES (not the DoT)
+
+# --- Insurance (batch B) -------------------------------------------------------------
+# Insure equipped gear/attachments for a fraction of value; a DEATH converts insured
+# items to "pending" and they return to the stash after the real-time delay.
+const INSURANCE_COST_FRAC: float = 0.30
+const INSURANCE_RETURN_MINUTES: float = 10.0  # real minutes until a lost item returns
+
 # Biomes: WorldBounds.biome_at(x,z) (scripts/core/world_bounds.gd) classifies the 4×
 # map quadrants (NW urban / NE snow / SW desert / SE rain) for biome-EXCLUSIVE spawning.
 

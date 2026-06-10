@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://cplayer0arc01"]
+[gd_scene load_steps=11 format=3 uid="uid://cplayer0arc01"]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/combat/hurtbox.gd" id="5_hurtbox"]
 [ext_resource type="Script" path="res://scripts/player/player_animator.gd" id="6_animator"]
 [ext_resource type="Script" path="res://scripts/fx/camera_fx.gd" id="7_camfx"]
+[ext_resource type="Script" path="res://scripts/player/player_status.gd" id="8_status"]
 
 [sub_resource type="CapsuleShape3D" id="Capsule_body"]
 radius = 0.4
@@ -55,6 +56,21 @@ properties/12/replication_mode = 1
 properties/13/path = NodePath(".:_flares")
 properties/13/spawn = true
 properties/13/replication_mode = 1
+properties/14/path = NodePath(".:carry_bonus")
+properties/14/spawn = true
+properties/14/replication_mode = 1
+properties/15/path = NodePath(".:gear_speed_mult")
+properties/15/spawn = true
+properties/15/replication_mode = 1
+properties/16/path = NodePath(".:_bandages")
+properties/16/spawn = true
+properties/16/replication_mode = 1
+properties/17/path = NodePath(".:_splints")
+properties/17/spawn = true
+properties/17/replication_mode = 1
+properties/18/path = NodePath(".:_painkillers")
+properties/18/spawn = true
+properties/18/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2
@@ -95,6 +111,9 @@ collision_mask = 1
 
 [node name="CameraFX" type="Node" parent="CameraPivot/SpringArm3D/Camera3D"]
 script = ExtResource("7_camfx")
+
+[node name="Status" type="Node" parent="."]
+script = ExtResource("8_status")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2_health")
