@@ -65,12 +65,15 @@ Per user decision these are **NOT being split** — only de-duplicated and contr
 
 ## 5. Lint baseline (gdlint, `gdlintrc` at repo root)
 
-**111 problems** at audit time → **50 after phase 2** (ALL max-line-length, erased by the
-phase-3 `gdformat` baseline). Every named-rule violation was fixed during phase-2 touches:
+**111 problems** at audit time → **50 after phase 2** → **0 after the phase-3 `gdformat`
+baseline** (112 files formatted in one style commit; verified behaviour-neutral: import +
+server smoke + golden MATCH after formatting). gdlint AND `gdformat --check` are now both
+ZERO and enforced per-edit by the PostToolUse hook + pre-commit (`resource_index.gd` exempt —
+generated). `max-file-lines` re-based 1600→1800 (wrapping grew the god files).
 
 | Rule | At audit | After P2 | Resolution |
 |---|---|---|---|
-| max-line-length (120) | 100 | 50 | 12 files already gdformat'ed early (pre-commit gate); rest in phase 3 |
+| max-line-length (120) | 100 | 50 → 0 | 12 files gdformat'ed early (pre-commit gate); the rest in the phase-3 baseline; 2 unsplittable lines carry inline ignores (a localization-key string; a 23-pattern match arm) |
 | function-variable-name | 5 | 0 | locals renamed (they were USED, not unused-markers) |
 | unused-argument | 3 | 0 | `_`-prefixed (override-signature args) |
 | max-public-methods (40) | 1 | 0 | MetaProgression: inline `gdlint: ignore` + doc (its 41 methods ARE the profile API) |
