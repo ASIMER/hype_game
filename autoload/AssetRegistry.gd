@@ -81,6 +81,27 @@ const CATALOG := {
 		"prim": Prim.BOX, "size": Vector3(1.0, 1.7, 1.0), "color": Color(0.92, 0.72, 0.18),
 		"model_scale": 0.42, "model_rot_deg": Vector3(0, 180, 0), "model_offset": Vector3(0, -0.85, 0) },
 
+	# --- Biome fauna (v0.3, all-procedural ProceduralModels builders; the `color` also
+	# tints HP bars / weak-point markers / death debris). 3 per new biome. ---
+	"robot_sandworm":   { "model": "", "icon": "",
+		"prim": Prim.CAPSULE, "size": Vector3(1.0, 1.1, 1.0), "color": Color(0.86, 0.6, 0.2) },
+	"robot_scarab":     { "model": "", "icon": "",
+		"prim": Prim.SPHERE, "size": Vector3(0.6, 0.5, 0.6), "color": Color(0.82, 0.4, 0.12) },
+	"robot_dustdevil":  { "model": "", "icon": "",
+		"prim": Prim.CYLINDER, "size": Vector3(0.9, 1.6, 0.9), "color": Color(0.88, 0.72, 0.4) },
+	"robot_frosthound": { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(0.7, 1.0, 1.3), "color": Color(0.55, 0.82, 0.95) },
+	"robot_cryomortar": { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(1.4, 1.6, 1.4), "color": Color(0.35, 0.65, 0.92) },
+	"robot_avalanche":  { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(1.5, 2.0, 1.2), "color": Color(0.88, 0.93, 0.98) },
+	"robot_oni":        { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(1.3, 2.2, 1.0), "color": Color(0.88, 0.22, 0.2) },
+	"robot_kappa":      { "model": "", "icon": "",
+		"prim": Prim.CAPSULE, "size": Vector3(0.9, 1.3, 0.9), "color": Color(0.3, 0.76, 0.45) },
+	"robot_raiju":      { "model": "", "icon": "",
+		"prim": Prim.BOX, "size": Vector3(0.6, 1.0, 1.2), "color": Color(0.45, 0.65, 1.0) },
+
 	# --- Expansion: items ---
 	"loot_medkit": { "model": "", "icon": "",
 		"prim": Prim.BOX, "size": Vector3(0.4, 0.28, 0.4), "color": Color(0.9, 0.95, 0.95) },

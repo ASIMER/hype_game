@@ -16,7 +16,8 @@ class_name ProceduralModels
 
 # Builders registered here are chosen by AssetRegistry over the single-primitive
 # fallback. Attachment ids dispatch to family builders (optic/mag/barrel/grip).
-const ENEMY_BUILDERS := ["robot_tick", "robot_wasp", "robot_bastion", "robot_boss", "robot_caller"]
+const ENEMY_BUILDERS := ["robot_tick", "robot_wasp", "robot_bastion", "robot_boss", "robot_caller",
+	"robot_sandworm", "robot_scarab", "robot_dustdevil"]
 const ITEM_BUILDERS := ["loot_medkit", "loot_cell", "loot_chemicals", "loot_stim",
 	"loot_circuit", "loot_circuit_pack", "loot_artifact", "loot_grenade",
 	"loot_grenade_mk2", "loot_ammo", "loot_scrap", "loot_plastic", "loot_data_chip"]
@@ -40,6 +41,9 @@ static func build(id: String) -> Node3D:
 		"robot_bastion": return build_robot_bastion()
 		"robot_boss": return build_robot_boss()
 		"robot_caller": return build_robot_caller()
+		"robot_sandworm": return build_robot_sandworm()
+		"robot_scarab": return build_robot_scarab()
+		"robot_dustdevil": return build_robot_dustdevil()
 		"loot_medkit": return build_medkit()
 		"loot_cell": return build_battery(AssetRegistry.get_color(id))
 		"loot_chemicals": return build_canister(AssetRegistry.get_color(id))
@@ -599,3 +603,114 @@ static func build_att_grip(id: String) -> Node3D:
 ## Small helper: a tinted low-metal material for accent bits.
 static func col_mat(col: Color) -> StandardMaterial3D:
 	return _mat(col, 0.3, 0.45)
+
+# ================================================================= BIOME FAUNA (v0.3)
+# Mechanical biome enemies — same discipline as the enemies above: StandardMaterial3D
+# only (hit-flash compatible), authored facing -Z, named parts for the per-frame idle
+# animation hooks in the enemy scripts (robot_worm / robot_kamikaze / robot_strafer).
+
+## DESERT — Sand-worm: a segmented mechanical drill-worm. Horizontal body along Z with
+## a drill-cone head (-Z), a glowing amber MAW ring (the weak point sits there in the
+## scene), 7 tapered ring segments under pivots "Seg0".."Seg6" (the crawl undulation
+## sways the pivots), dorsal fins, and a tail spike. ModelRoot at y=0 — body axis ≈y0.5.
+static func build_robot_sandworm() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_sandworm")  # sandy amber
+	var shell := ProcMaterials.weathered(Color(0.55, 0.42, 0.26), 0.55, 0.5, 0.55, 41, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.2, 0.17, 0.14), 0.5, 0.55)
+	var plate := _mat(Color(0.4, 0.3, 0.18), 0.6, 0.45)
+	var maw_mat := _mat(accent_col, 0.0, 0.3, accent_col, 6.0)
+
+	# Drill head: a ribbed cone whose apex faces -Z (the travel direction).
+	_part(root, _cone(0.4, 0.8, 12), dark, Vector3(0, 0.5, -0.85), Vector3(-90, 0, 0))
+	_part(root, _cone(0.3, 0.62, 10), plate, Vector3(0, 0.5, -0.8), Vector3(-90, 0, 0))
+	# Glowing maw ring just behind the drill (named for the emission pulse).
+	var maw := _part(root, _cyl(0.46, 0.12, 16), maw_mat, Vector3(0, 0.5, -0.42), Vector3(90, 0, 0))
+	maw.name = "Maw"
+
+	# 7 tapered body segments, each under its own pivot so the crawl can undulate them.
+	for i in 7:
+		var t := float(i) / 6.0
+		var r: float = lerpf(0.44, 0.2, t)
+		var y: float = lerpf(0.5, 0.36, t)
+		var pivot := Node3D.new()
+		pivot.name = "Seg%d" % i
+		pivot.position = Vector3(0, y, -0.15 + float(i) * 0.27)
+		root.add_child(pivot)
+		var seg_mat := shell if (i % 2 == 0) else dark
+		_part(pivot, _sphere(r, false, 8, 14), seg_mat, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 0.85, 0.78))
+		# Dorsal fin on every other segment for a serrated silhouette.
+		if i % 2 == 0:
+			_part(pivot, _cone(0.1, 0.26, 6), plate, Vector3(0, r * 0.8, 0))
+	# Tail spike (+Z rear).
+	_part(root, _cone(0.16, 0.5, 8), dark, Vector3(0, 0.36, 1.85), Vector3(90, 0, 0))
+	return root
+
+## DESERT — Scarab: a squat kamikaze beetle. Domed rust-orange shell, 4 stub legs under
+## pivots "Leg0".."Leg3", front mandibles, and a rear glowing red "Core" that the script
+## blinks faster while ARMED. ModelRoot at y=0 — feet at ground.
+static func build_robot_scarab() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_scarab")  # rust orange
+	var shell := ProcMaterials.weathered(Color(0.5, 0.27, 0.12), 0.55, 0.5, 0.55, 43, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.16, 0.14, 0.13), 0.45, 0.55)
+	var leg_mat := _mat(Color(0.3, 0.26, 0.22), 0.55, 0.45)
+	var core_mat := _mat(Color(0.95, 0.2, 0.12), 0.0, 0.3, Color(0.95, 0.2, 0.12), 6.0)
+	var accent := _mat(accent_col, 0.3, 0.45)
+
+	# Domed carapace + dark underbelly.
+	_part(root, _sphere(0.3, true, 8, 14), shell, Vector3(0, 0.16, 0), Vector3.ZERO, Vector3(1.2, 0.9, 1.35))
+	_part(root, _box(Vector3(0.4, 0.12, 0.5)), dark, Vector3(0, 0.12, 0))
+	# Shell seam stripe + the rear ARMING core (named for the blink).
+	_part(root, _box(Vector3(0.04, 0.04, 0.5)), accent, Vector3(0, 0.42, 0))
+	var core := _part(root, _sphere(0.1, false, 8, 12), core_mat, Vector3(0, 0.4, 0.22))
+	core.name = "Core"
+	# Front mandible prongs (-Z).
+	_part(root, _cone(0.045, 0.2, 6), dark, Vector3(0.1, 0.1, -0.42), Vector3(-100, 0, 0))
+	_part(root, _cone(0.045, 0.2, 6), dark, Vector3(-0.1, 0.1, -0.42), Vector3(-100, 0, 0))
+	# 4 stub legs under pivots (2 per side) for the skitter sway.
+	var li := 0
+	for side in [-1.0, 1.0]:
+		for z in [-0.14, 0.18]:
+			var zf := float(z)
+			var attach := Vector3(side * 0.22, 0.12, zf)
+			var pivot := Node3D.new()
+			pivot.name = "Leg%d" % li
+			pivot.position = attach
+			root.add_child(pivot)
+			_strut(pivot, Vector3.ZERO, Vector3(side * 0.2, -0.12, 0.02), 0.04, leg_mat)
+			_part(pivot, _sphere(0.045, false, 6, 8), dark, Vector3(side * 0.2, -0.12, 0.02))
+			li += 1
+	return root
+
+## DESERT — Dust-devil: a grounded strafing gunner riding a SPINNING sand-skirt cone
+## (pivot named "Skirt", spun by the script), with a slim torso, a single amber "Eye",
+## and vent fins. ModelRoot at y=0 — skirt base at ground.
+static func build_robot_dustdevil() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_dustdevil")  # sand amber
+	var sand := ProcMaterials.weathered(Color(0.62, 0.5, 0.3), 0.4, 0.6, 0.5, 47, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.22, 0.2, 0.17), 0.5, 0.5)
+	var eye_mat := _mat(accent_col, 0.0, 0.3, accent_col, 6.0)
+	var plate := _mat(Color(0.45, 0.36, 0.22), 0.6, 0.45)
+
+	# Spinning skirt: an inverted dust cone + 3 angled vanes, all under the "Skirt" pivot.
+	var skirt := Node3D.new()
+	skirt.name = "Skirt"
+	root.add_child(skirt)
+	_part(skirt, _cone(0.55, 0.95, 14), sand, Vector3(0, 0.48, 0))
+	for i in 3:
+		var ang := TAU * float(i) / 3.0
+		_part(skirt, _box(Vector3(0.06, 0.5, 0.28)), plate,
+			Vector3(cos(ang) * 0.34, 0.42, sin(ang) * 0.34),
+			Vector3(0, rad_to_deg(-ang), 18))
+	# Torso column + shoulder ring + head dome.
+	_part(root, _cyl(0.26, 0.5, 12), dark, Vector3(0, 1.18, 0))
+	_part(root, _cyl(0.32, 0.1, 12), plate, Vector3(0, 1.0, 0))
+	_part(root, _sphere(0.24, true, 8, 12), sand, Vector3(0, 1.46, 0))
+	# Single amber sensor eye (-Z) + two rear vents.
+	var eye := _part(root, _sphere(0.09, false, 8, 12), eye_mat, Vector3(0, 1.42, -0.22))
+	eye.name = "Eye"
+	_part(root, _box(Vector3(0.1, 0.18, 0.05)), dark, Vector3(0.14, 1.25, 0.24), Vector3(0, 15, 0))
+	_part(root, _box(Vector3(0.1, 0.18, 0.05)), dark, Vector3(-0.14, 1.25, 0.24), Vector3(0, -15, 0))
+	return root

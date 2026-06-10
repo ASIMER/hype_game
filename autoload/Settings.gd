@@ -390,7 +390,48 @@ const ENEMY_STATS := {
 	# Elite grunt: a tankier, harder-hitting grunt with an exposed weak point (the
 	# WeakPoint Hurtbox Area in its scene takes ×2.5 — reward precise fire).
 	"robot_elite":   { "health": 140.0, "speed": 4.2, "damage": 15.0, "detect": 22.0, "attack_range": 2.4,  "cooldown": 1.1,  "score": 40 },
+
+	# --- Biome fauna (v0.3): 3 per NEW biome, biome-EXCLUSIVE spawns (see biome_at +
+	# wave_manager BIOME pools). All mechanical; behaviour params live alongside the
+	# stats so the scripts read ONE dict. ---
+	# DESERT (SW): the sand-worm burrows underground (untargetable, fast), LEAPS out at
+	# the player, crawls vulnerable for surface_time, then re-burrows (robot_worm.gd).
+	"robot_sandworm":  { "health": 160.0, "speed": 3.4, "damage": 16.0, "detect": 32.0, "attack_range": 2.4, "cooldown": 1.2, "score": 50,
+		"burrow_speed": 7.5, "surface_time": 5.0, "emerge_range": 5.0, "leap_damage": 14.0, "leap_radius": 2.4 },
+	# Scarab: fast skitterer that ARMS in range (blinking core) then self-destructs.
+	"robot_scarab":    { "health": 18.0,  "speed": 6.4, "damage": 0.0,  "detect": 24.0, "attack_range": 2.8, "cooldown": 0.5, "score": 12,
+		"fuse": 0.8, "blast_radius": 3.4, "blast_damage": 24.0 },
+	# Dust-devil: grounded orbit-strafing gunner wrapped in a spinning sand skirt.
+	"robot_dustdevil": { "health": 55.0,  "speed": 4.8, "damage": 6.0,  "detect": 28.0, "attack_range": 16.0, "cooldown": 1.1, "score": 22, "ranged": true },
+	# SNOW (NE): frost-hound = quadruped with a low fast LUNGE on cooldown.
+	"robot_frosthound": { "health": 60.0, "speed": 5.4, "damage": 10.0, "detect": 26.0, "attack_range": 2.2, "cooldown": 1.2, "score": 24,
+		"pounce_range": 7.0, "pounce_up": 5.0, "pounce_fwd": 9.0, "pounce_cooldown": 4.0, "pounce_damage": 12.0, "pounce_radius": 1.8 },
+	# Cryo-mortar: slow long-range frost artillery; hits SLOW the player briefly.
+	"robot_cryomortar": { "health": 120.0, "speed": 2.0, "damage": 9.0, "detect": 30.0, "attack_range": 22.0, "cooldown": 0.35, "score": 35, "ranged": true, "burst": true,
+		"slow_mult": 0.6, "slow_dur": 1.6 },
+	# Avalanche: tank brute with a telegraphed AoE ground SLAM.
+	"robot_avalanche": { "health": 190.0, "speed": 2.4, "damage": 12.0, "detect": 22.0, "attack_range": 3.2, "cooldown": 2.4, "score": 55,
+		"slam_radius": 3.6, "slam_windup": 0.9, "slam_damage": 20.0 },
+	# RAIN (SE): oni = temple-guardian brute; its WeakPoint sits on its BACK (×3 — flank it).
+	"robot_oni":       { "health": 180.0, "speed": 3.4, "damage": 17.0, "detect": 24.0, "attack_range": 2.6, "cooldown": 1.4, "score": 55 },
+	# Kappa: HIGH-arc pouncer that leaps onto the player (shares robot_pouncer.gd with the hound).
+	"robot_kappa":     { "health": 70.0,  "speed": 4.6, "damage": 9.0,  "detect": 26.0, "attack_range": 2.2, "cooldown": 1.1, "score": 26,
+		"pounce_range": 9.0, "pounce_up": 8.0, "pounce_fwd": 7.0, "pounce_cooldown": 5.0, "pounce_damage": 14.0, "pounce_radius": 2.2 },
+	# Raiju: storm-spirit skirmisher — electric hitscan + short sideways BLINK teleports.
+	"robot_raiju":     { "health": 50.0,  "speed": 5.0, "damage": 7.0,  "detect": 28.0, "attack_range": 15.0, "cooldown": 1.2, "score": 26, "ranged": true,
+		"blink_range": 5.0, "blink_cooldown": 3.0 },
 }
+
+# --- Biomes (the 4× map quadrants) -------------------------------------------
+## Which biome a world position belongs to: the ORIGINAL map is the NW "urban"
+## quadrant; the 3 new quadrants are themed (NE snow / SW desert / SE rain — see
+## CLAUDE.md). Single source of truth for biome-EXCLUSIVE enemy spawning: the wave
+## manager classifies each resolved SPAWN POINT through this and draws the enemy
+## scene from that biome's pool (wave/patrol/storm).
+func biome_at(x: float, z: float) -> String:
+	if x < 80.0:
+		return "urban" if z < 80.0 else "desert"
+	return "snow" if z < 80.0 else "rain"
 
 # Difficulty multipliers, keyed by GameState.Difficulty. enemy_health/enemy_damage
 # scale per-enemy stats (robot_enemy._load_stats); enemy_count scales the wave size

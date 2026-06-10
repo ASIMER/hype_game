@@ -153,6 +153,11 @@ func _ready() -> void:
 
 ## Reset all accumulators when a NEW match begins so each run is clean.
 func _on_match_started() -> void:
+	# SAFETY: a new match can start through paths that bypass our buttons (the harness
+	# `restart` cmd, server-driven redeploys) — if WE paused the tree for the solo
+	# summary, always release it here or the fresh match runs frozen.
+	_unpause_if_ours()
+	hide()
 	_loot_counts.clear()
 	_loot_bonus = 0
 	_blueprints.clear()

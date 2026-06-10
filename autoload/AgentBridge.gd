@@ -739,6 +739,16 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 		"boss": "res://scenes/enemies/RobotBoss.tscn",
 		"caller": "res://scenes/enemies/RobotCaller.tscn",
 		"elite": "res://scenes/enemies/RobotElite.tscn",
+		# Biome fauna (v0.3): desert / snow / rain rosters.
+		"worm": "res://scenes/enemies/RobotSandworm.tscn",
+		"scarab": "res://scenes/enemies/RobotScarab.tscn",
+		"dustdevil": "res://scenes/enemies/RobotDustdevil.tscn",
+		"frosthound": "res://scenes/enemies/RobotFrosthound.tscn",
+		"cryomortar": "res://scenes/enemies/RobotCryomortar.tscn",
+		"avalanche": "res://scenes/enemies/RobotAvalanche.tscn",
+		"oni": "res://scenes/enemies/RobotOni.tscn",
+		"kappa": "res://scenes/enemies/RobotKappa.tscn",
+		"raiju": "res://scenes/enemies/RobotRaiju.tscn",
 	}
 	var path: String = scene_map.get(eid, "")
 	if path == "" or not ResourceLoader.exists(path):
@@ -1097,7 +1107,7 @@ func _snapshot() -> Dictionary:
 		var st := -1
 		if "current_state" in e:
 			st = int(e.current_state)
-		enemies.append({
+		var erec := {
 			"name": e.name,
 			"id": str(e.get("enemy_id")) if "enemy_id" in e else "?",
 			"pos": _v3(e.global_position),
@@ -1107,7 +1117,11 @@ func _snapshot() -> Dictionary:
 			"target": (str(e.get_target().name) if (e.has_method("get_target") and e.get_target() != null) else ""),
 			"investigating": st == 3,
 			"dist": p.global_position.distance_to(e.global_position),
-		})
+		}
+		# Worm burrow cycle (0 BURROWED / 1 EMERGE / 2 SURFACE / 3 SUBMERGE) for QA.
+		if "phase" in e:
+			erec["phase"] = int(e.get("phase"))
+		enemies.append(erec)
 	d["enemies"] = enemies
 
 	# All players (incl. remotes) with their REPLICATED cosmetics — proves co-op appearance
