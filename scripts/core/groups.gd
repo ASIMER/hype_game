@@ -12,6 +12,9 @@ const EXTRACTION := "extraction"
 const ARENA := "arena"
 const WORLD_EVENTS := "world_events"
 const PICKUPS := "pickups"
+const SMOKE := "smoke_clouds"  # active smoke-grenade clouds (enemy LOS test)
+const DOMES := "shield_domes"  # active shield-dome gadgets (damage-mult test)
+const WAVE_MANAGER := "wave_manager"  # the per-match WaveManager registers itself
 
 # Load-bearing child-node names (get_node_or_null targets on players/enemies).
 const NODE_HEALTH := "Health"

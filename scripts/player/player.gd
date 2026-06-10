@@ -59,7 +59,8 @@ var _interact_timer: float = 0.0
 
 # --- Stance state machine (authority only) ---
 ## Movement stance. PUBLIC so the combat lane can read it (stance_spread_mult()).
-enum Stance { STAND, CROUCH, SLIDE }
+## ROLL is APPENDED last — `stance` replicates as an int (never reorder).
+enum Stance { STAND, CROUCH, SLIDE, ROLL }
 var stance: int = Stance.STAND
 
 # --- Character customization (spawn-replicated; see Player.tscn MultiplayerSynchronizer) ---

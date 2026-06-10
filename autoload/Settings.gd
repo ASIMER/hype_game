@@ -11,7 +11,7 @@ const DEFAULT_IP: String = "127.0.0.1"
 const DISCOVERY_PORT: int = 24566
 ## Game build version (canonical = the VERSION file at the repo root). Stamped into
 ## save files so loads survive game updates (see MetaProgression/Stash version checks).
-const GAME_VERSION: String = "0.3.0"
+const GAME_VERSION: String = "0.4.0"
 ## Max number of non-daily contracts the player can have ACTIVE (accepted) at once.
 ## Manual-accept enforces it; dailies are exempt.
 const ACTIVE_QUEST_CAP: int = 6
@@ -78,6 +78,24 @@ const SLIDE_SPEED: float = 9.5  # initial slide speed (decays to crouch speed)
 const SLIDE_TIME: float = 0.7  # slide duration (s)
 const SLIDE_CAMERA_DROP: float = 0.8  # camera drop during a slide
 const CROUCH_CAMERA_LERP: float = 10.0  # camera-height ease speed
+# Dodge-roll (Stance.ROLL): committed burst in the input direction with brief i-frames
+# vs ENEMY damage (player._iframes_until_ms — deliberately NOT Health.invulnerable,
+# godmode owns that). Drains stamina; cooldown stops roll-spam.
+const ROLL_SPEED: float = 11.0  # initial roll speed (decays to walk speed)
+const ROLL_TIME: float = 0.45  # roll duration (s)
+const ROLL_IFRAME_TIME: float = 0.35  # invulnerability window vs enemies (s)
+const ROLL_STAMINA_COST: float = 25.0
+const ROLL_COOLDOWN: float = 1.2  # s between rolls
+const ROLL_CAMERA_DROP: float = 0.5  # camera drop during the roll
+# Mantle (climb low obstacles on jump near a wall): ledge height window + motion time.
+const MANTLE_MAX_HEIGHT: float = 1.2  # highest climbable ledge (m above feet)
+const MANTLE_MIN_HEIGHT: float = 0.5  # below this just step/jump normally
+const MANTLE_TIME: float = 0.35  # up-and-over duration (s)
+const MANTLE_PROBE: float = 1.0  # forward wall-probe length (m)
+# Ziplines (authored anchor pairs between POIs; ride is authority-local movement).
+const ZIPLINE_SPEED: float = 12.0  # m/s along the cable
+const ZIPLINE_HANG: float = 1.7  # rider hangs this far below the cable
+const ZIPLINE_END_RADIUS: float = 2.2  # mount Area3D radius at each anchor
 # Stance spread multipliers (applied to weapon.spread_deg at fire time — crouch < stand <
 # move < sprint, ADS tightest; the dynamic crosshair shows the resulting cone).
 const SPREAD_MULT_CROUCH: float = 0.45
@@ -510,6 +528,40 @@ const GRENADE_DAMAGE: float = 70.0
 const GRENADE_RADIUS: float = 5.5
 const GRENADE_FUSE: float = 1.6
 const GRENADE_THROW_FORCE: float = 15.0
+
+# --- Grenade types (batch A): the synced per-type counts dict uses these ids. "frag"
+# is the classic damage grenade; the others are utility (see scripts/items/grenade_*.gd).
+const GRENADE_TYPES := ["frag", "smoke", "emp", "decoy"]
+# Maps a grenade type to its consumable item id (bring-list / loot / stash economy).
+const GRENADE_ITEM_IDS := {
+	"frag": "loot_grenade",
+	"smoke": "loot_grenade_smoke",
+	"emp": "loot_grenade_emp",
+	"decoy": "loot_grenade_decoy",
+}
+const SMOKE_DURATION: float = 10.0  # smoke cloud lifetime (s)
+const SMOKE_RADIUS: float = 5.0  # LOS-blocking sphere radius (m)
+const EMP_RADIUS: float = 6.0  # stun radius vs robots (m)
+const EMP_STUN_TIME: float = 3.5  # robot stun duration (s)
+const EMP_BOSS_STUN_MULT: float = 0.4  # bosses shrug most of the stun off
+const DECOY_DURATION: float = 8.0  # noise-beacon lifetime (s)
+const DECOY_PULSE: float = 1.5  # s between noise pulses
+const DECOY_LOUDNESS: float = NOISE_GRENADE * 0.8
+
+# --- Deployable gadgets (batch A): brought from the stash, placed with keys 6/7/8,
+# server-spawned under Arena/Net/Gadgets so every peer sees them.
+const GADGET_TYPES := ["gadget_turret", "gadget_dome", "gadget_sensor"]
+const TURRET_RANGE: float = 14.0  # auto-turret acquisition range (m, LOS required)
+const TURRET_DAMAGE: float = 6.0  # per tick
+const TURRET_TICK: float = 0.5  # s between shots
+const TURRET_LIFETIME: float = 25.0  # s
+const TURRET_HP: float = 80.0  # enemies can destroy it
+const DOME_RADIUS: float = 4.0  # shield dome radius (m)
+const DOME_DAMAGE_MULT: float = 0.5  # damage taken by players inside
+const DOME_DURATION: float = 10.0  # s
+const SENSOR_RANGE: float = 18.0  # motion-sensor ping radius (m)
+const SENSOR_DURATION: float = 25.0  # s
+const SENSOR_PULSE: float = 2.0  # s between ping sweeps
 
 # Per-enemy archetype stats (read by enemies-dev / robot_enemy). Falls back to the
 # legacy ENEMY_* constants above for "robot_grunt". flying/ranged are behaviour flags.

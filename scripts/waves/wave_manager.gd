@@ -164,6 +164,9 @@ const BOSS_CHECK_INTERVAL: float = 0.5
 
 
 func _ready() -> void:
+	# Discoverable by systems that request reinforcements (recon drone, siege event)
+	# without copy-pasting a director-resolution helper.
+	add_to_group(Groups.WAVE_MANAGER)
 	# Resolve the Arena root and the enemy container. The Arena exposes
 	# get_enemy_spawn_point(index); enemies live under Net/Enemies.
 	_arena = _resolve_arena()

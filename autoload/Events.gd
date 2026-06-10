@@ -20,6 +20,18 @@ signal ads_changed(player: Node, active: bool)
 signal grenade_thrown(player: Node, from_pos: Vector3, dir: Vector3)
 signal grenade_exploded(world_pos: Vector3, damage: float, radius: float)
 signal player_healed(player: Node, amount: float)
+## The local player's selected grenade type changed (B cycles) — drives the HUD chip.
+signal grenade_selection_changed(type: String, count: int)
+## A deployable gadget was placed / ran out (HUD + SFX; world nodes replicate anyway).
+signal gadget_placed(player: Node, type: String, world_pos: Vector3)
+signal gadget_expired(type: String, world_pos: Vector3)
+## A robot was EMP-stunned for `duration` seconds (FX/SFX hook; server-side gameplay).
+signal enemy_stunned(enemy: Node, duration: float)
+
+# --- Movement (batch A) ---
+signal player_rolled(player: Node)
+signal player_mantled(player: Node)
+signal zipline_ride_started(player: Node, zipline: Node)
 
 # --- Power caches / timed buffs (Vampire-Survivors-style) ---
 ## A power cache was opened by `player`. The opener's HUD plays the non-blocking side reveal.
