@@ -2247,7 +2247,7 @@
       "label": "3. `state` JSON schema",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L75",
+      "source_location": "L76",
       "id": "docs_testing_3_state_json_schema",
       "community": 9,
       "norm_label": "3. `state` json schema"
@@ -2256,7 +2256,7 @@
       "label": "4. Driving it",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L122",
+      "source_location": "L123",
       "id": "docs_testing_4_driving_it",
       "community": 9,
       "norm_label": "4. driving it"
@@ -2265,7 +2265,7 @@
       "label": "5. Validation commands (run after every change)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L127",
+      "source_location": "L128",
       "id": "docs_testing_5_validation_commands_run_after_every_change",
       "community": 9,
       "norm_label": "5. validation commands (run after every change)"
@@ -2274,7 +2274,7 @@
       "label": "6. QA workflow (test matrix)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L137",
+      "source_location": "L138",
       "id": "docs_testing_6_qa_workflow_test_matrix",
       "community": 9,
       "norm_label": "6. qa workflow (test matrix)"
@@ -2283,7 +2283,7 @@
       "label": "7. Co-op multi-instance testing (instances playing together)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L151",
+      "source_location": "L152",
       "id": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
       "community": 9,
       "norm_label": "7. co-op multi-instance testing (instances playing together)"
@@ -2292,7 +2292,7 @@
       "label": "Host \u2192 join \u2192 ready \u2192 deploy sequence",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L166",
+      "source_location": "L167",
       "id": "docs_testing_host_join_ready_deploy_sequence",
       "community": 9,
       "norm_label": "host \u2192 join \u2192 ready \u2192 deploy sequence"
@@ -2301,7 +2301,7 @@
       "label": "Co-op checks worth running",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L180",
+      "source_location": "L181",
       "id": "docs_testing_co_op_checks_worth_running",
       "community": 9,
       "norm_label": "co-op checks worth running"
@@ -2310,7 +2310,7 @@
       "label": "LAN discovery test",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L188",
+      "source_location": "L189",
       "id": "docs_testing_lan_discovery_test",
       "community": 9,
       "norm_label": "lan discovery test"
@@ -2319,7 +2319,7 @@
       "label": "WAN / hairpin test",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L197",
+      "source_location": "L198",
       "id": "docs_testing_wan_hairpin_test",
       "community": 9,
       "norm_label": "wan / hairpin test"
@@ -2328,7 +2328,7 @@
       "label": "Per-instance save isolation",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L204",
+      "source_location": "L205",
       "id": "docs_testing_per_instance_save_isolation",
       "community": 9,
       "norm_label": "per-instance save isolation"
@@ -2337,7 +2337,7 @@
       "label": "8. Parallel testing (2\u20134 instances at once)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L208",
+      "source_location": "L209",
       "id": "docs_testing_8_parallel_testing_2_4_instances_at_once",
       "community": 9,
       "norm_label": "8. parallel testing (2\u20134 instances at once)"
@@ -2796,7 +2796,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 72,
       "norm_label": "agentbridge._handle_line (command dispatch)",
       "id": "agentbridge_handle_line"
     },
@@ -2809,7 +2809,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -2822,7 +2822,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 72,
       "norm_label": "agentbridge._aim_at (converging camera aim)",
       "id": "agentbridge_aim_at"
     },
@@ -2835,7 +2835,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 72,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -2861,7 +2861,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 72,
       "norm_label": "agentbridge._ui_action (menu open/close)",
       "id": "agentbridge_ui_action"
     },
@@ -3056,7 +3056,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 72,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -3095,7 +3095,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 1,
+      "community": 72,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -3303,7 +3303,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -3407,7 +3407,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -3537,7 +3537,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -3576,7 +3576,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 72,
       "norm_label": "serverbrowser.add_favorite / record_connect",
       "id": "serverbrowser_add_favorite"
     },
@@ -4460,7 +4460,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -4473,7 +4473,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -9273,9 +9273,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_hype_raiders_project_guide_read_me_first",
-      "target": "claude_quality_gates_linters_hooks_golden_snapshot_docs_audit_md_is_the_full_audit",
-      "confidence_score": 1.0
+      "target": "claude_quality_gates_linters_hooks_golden_snapshot_docs_audit_md_is_the_full_audit"
     },
     {
       "relation": "contains",
@@ -9543,9 +9543,9 @@
       "source_file": "docs/ARCHITECTURE.md",
       "source_location": "L154",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
-      "target": "docs_architecture_11_quality_gates_scripts_core_the_audit_pass_full_report_docs_audit_md",
-      "confidence_score": 1.0
+      "target": "docs_architecture_11_quality_gates_scripts_core_the_audit_pass_full_report_docs_audit_md"
     },
     {
       "relation": "contains",
@@ -13252,5 +13252,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "a4d450665c01a447454dc24e48d5b16ce19bbca7"
+  "built_at_commit": "bf76fa5f7425711228c80928e27dbafff15bb536"
 }
