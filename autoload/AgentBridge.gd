@@ -202,10 +202,12 @@ func _handle_line(line: String) -> void:
 			_send({"ok": true})
 		"spawn":
 			# Debug: spawn an enemy archetype near the local player for verification.
+			# Optional mods: ["armored","swift","volatile","regenerating"] (elite QA).
 			var ok := _debug_spawn(
 				str(json.get("id", "wasp")),
 				float(json.get("dist", 9.0)),
-				bool(json.get("hunter", true))
+				bool(json.get("hunter", true)),
+				json.get("mods", []) if json.get("mods") is Array else []
 			)
 			_send({"ok": ok})
 		"event":
@@ -909,8 +911,9 @@ func _debug_crosshair() -> Dictionary:
 
 
 ## Debug: instance an enemy archetype in front of the local player (for verifying
-## the new types). Server-authoritative; reuses the wave enemy container.
-func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
+## the new types). Server-authoritative; reuses the wave enemy container. `mods`
+## forces elite-modifier prefixes via the same name-encode channel waves use.
+func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array = []) -> bool:
 	if not GameState.is_local_authority_server():
 		return false
 	var scene_map := {
@@ -932,6 +935,11 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 		"oni": "res://scenes/enemies/RobotOni.tscn",
 		"kappa": "res://scenes/enemies/RobotKappa.tscn",
 		"raiju": "res://scenes/enemies/RobotRaiju.tscn",
+		# Batch D: biome minibosses + the recon drone.
+		"snowgolem": "res://scenes/enemies/RobotSnowGolem.tscn",
+		"dunewarden": "res://scenes/enemies/RobotDuneWarden.tscn",
+		"onichief": "res://scenes/enemies/RobotOniChief.tscn",
+		"specter": "res://scenes/enemies/RobotSpecter.tscn",
 	}
 	var path: String = scene_map.get(eid, "")
 	if path == "" or not ResourceLoader.exists(path):
@@ -947,6 +955,15 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 	var enemy: Node = (load(path) as PackedScene).instantiate()
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
+	# Forced elite modifiers: encode prefix letters into the node name (the same
+	# replication channel the wave roll uses; robot_enemy parses it in _ready).
+	if not mods.is_empty():
+		var flags := ""
+		var letter := {"armored": "A", "swift": "S", "volatile": "V", "regenerating": "R"}
+		for m in mods:
+			flags += String(letter.get(String(m), ""))
+		if flags != "":
+			enemy.name = "%s_mod%s" % [enemy.name, flags]
 	container.add_child(enemy, true)
 	var fwd := -(p as Node3D).global_transform.basis.z
 	fwd.y = 0.0
@@ -1386,6 +1403,13 @@ func _snapshot() -> Dictionary:
 		# EMP stun (server-side window; duck-typed so this works pre-feature too).
 		var stun_ms: Variant = e.get("_stunned_until_ms")
 		erec["stunned"] = stun_ms != null and int(stun_ms) > Time.get_ticks_msec()
+		# Elite modifiers (batch D) + the recon drone's channel progress (duck-typed).
+		var emods: Variant = e.get("modifiers")
+		if emods is Array and not (emods as Array).is_empty():
+			erec["modifiers"] = emods
+		var chan: Variant = e.get("_channel_t")
+		if chan != null:
+			erec["channel"] = float(chan)
 		enemies.append(erec)
 	d["enemies"] = enemies
 

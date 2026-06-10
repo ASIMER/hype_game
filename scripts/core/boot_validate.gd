@@ -43,6 +43,8 @@ const _STAT_KNOWN := [
 	"slow_mult",
 	"blink_range",
 	"blink_cooldown",
+	"channel_time",
+	"recon_reinforce",
 ]
 
 

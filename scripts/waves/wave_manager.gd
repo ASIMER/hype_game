@@ -57,6 +57,7 @@ const SCENE_AVALANCHE := "res://scenes/enemies/RobotAvalanche.tscn"
 const SCENE_ONI := "res://scenes/enemies/RobotOni.tscn"
 const SCENE_KAPPA := "res://scenes/enemies/RobotKappa.tscn"
 const SCENE_RAIJU := "res://scenes/enemies/RobotRaiju.tscn"
+const SCENE_SPECTER := "res://scenes/enemies/RobotSpecter.tscn"
 
 # BIOME-EXCLUSIVE wave rosters: every spawn classifies its RESOLVED spawn point through
 # WorldBounds.biome_at(x,z) and draws from THAT biome's per-wave pool — so a squad fighting
@@ -100,11 +101,12 @@ const BIOME_STORM_POOLS := {
 
 # Between-wave patrol pools per biome. Urban is EMPTY = keep the legacy caller-first
 # behaviour. Desert patrols include the WORM — a stealthable burrowed ambusher guarding
-# the ruins is exactly the biome's flavour.
+# the ruins is exactly the biome's flavour. The SPECTER recon drone patrols everywhere
+# (it calls reinforcements onto a spotted player — kill it fast / break LOS).
 const BIOME_PATROL_POOLS := {
-	"desert": [SCENE_WORM, SCENE_SCARAB, SCENE_DUSTDEVIL],
-	"snow": [SCENE_FROSTHOUND, SCENE_CRYOMORTAR],
-	"rain": [SCENE_KAPPA, SCENE_RAIJU],
+	"desert": [SCENE_WORM, SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_SPECTER],
+	"snow": [SCENE_FROSTHOUND, SCENE_CRYOMORTAR, SCENE_SPECTER],
+	"rain": [SCENE_KAPPA, SCENE_RAIJU, SCENE_SPECTER],
 }
 
 var _arena: Node3D = null
@@ -121,6 +123,9 @@ var _started: bool = false
 var _wave_total: int = 0  # enemies to spawn this wave
 var _wave_spawned: int = 0  # enemies spawned so far this wave
 var _boss_spawned: bool = false  # boss-wave: ensures exactly one boss is spawned
+# Wave-4 champion bookkeeping: biome -> true once its miniboss replaced a spawn
+# this match (a fresh WaveManager is created per arena load, so no reset needed).
+var _champion_spawned: Dictionary = {}
 
 # Wave watchdog: once the whole wave has spawned, if the alive count stops dropping
 # for WATCHDOG_STALL seconds (a straggler jammed somewhere unreachable), relocate
@@ -446,6 +451,18 @@ func _scene_for_spawn(biome: String = "urban") -> String:
 			return SCENE_BOSS
 		# No boss art — fall through to a heavy so the final wave still bites.
 		return SCENE_BASTION if ResourceLoader.exists(SCENE_BASTION) else SCENE_GRUNT
+	# Wave-4 "champion": ONE miniboss per non-urban biome per match replaces a normal
+	# spawn (wave accounting untouched). One-flag revertible (CHAMPION_WAVE_ENABLED).
+	if (
+		Settings.CHAMPION_WAVE_ENABLED
+		and wave >= Settings.CHAMPION_WAVE
+		and biome != "urban"
+		and not _champion_spawned.get(biome, false)
+	):
+		var champ: String = String(Settings.MINIBOSS_BY_BIOME.get(biome, ""))
+		if champ != "" and ResourceLoader.exists(champ):
+			_champion_spawned[biome] = true
+			return champ
 	var pools: Dictionary = BIOME_WAVE_POOLS.get(biome, WAVE_POOLS)
 	var pool: Array = pools.get(clampi(wave, 1, MAX_WAVE), [SCENE_GRUNT])
 	if pool.is_empty():
@@ -583,12 +600,47 @@ func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -
 	# that may not have it — prevents "Invalid set index" at runtime).
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
+	# Elite modifiers (batch D): NAME-ENCODE the rolled prefixes — auto-spawn replicates
+	# scene path + node NAME only, so the name is the one free spawn-data channel that
+	# reaches clients with zero per-scene ReplConfig churn (parsed in robot_enemy._ready).
+	var mods := _roll_modifiers(xform, scene_path)
+	if mods != "":
+		enemy.name = "%s_mod%s" % [enemy.name, mods]
 	_enemies_container.add_child(enemy, true)
 	# Position at the pre-resolved marker (reachable side of the river + de-stack jitter).
 	if enemy is Node3D and _arena:
 		(enemy as Node3D).global_transform = xform
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
+
+
+## Roll elite-modifier prefixes for a spawn (server-only path). Returns the encoded
+## flag string ("A"rmored / "S"wift / "V"olatile / "R"egenerating, e.g. "AV") or "".
+## Chance scales with the wave + a flat bonus outside urban; the wave-5 boss and the
+## minibosses are excluded (they ARE the elites). Read through a func, not inline
+## consts — the batch-C "elite patrols" mutator raises the chance here later.
+func _roll_modifiers(xform: Transform3D, scene_path: String) -> String:
+	if scene_path == SCENE_BOSS:
+		return ""
+	for biome_scene in Settings.MINIBOSS_BY_BIOME.values():
+		if scene_path == String(biome_scene):
+			return ""
+	var biome := WorldBounds.biome_at(xform.origin.x, xform.origin.z)
+	var chance := (
+		Settings.ELITE_MOD_BASE_CHANCE
+		+ Settings.ELITE_MOD_PER_WAVE * float(GameState.current_wave)
+		+ (Settings.ELITE_MOD_BIOME_BONUS if biome != "urban" else 0.0)
+	)
+	if randf() > chance:
+		return ""
+	var letters := ["A", "S", "V", "R"]
+	var first: String = letters[randi() % letters.size()]
+	var flags := first
+	if randf() < Settings.ELITE_MOD_DOUBLE_CHANCE:
+		var second: String = letters[randi() % letters.size()]
+		if second != first:
+			flags += second
+	return flags
 
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
@@ -720,6 +772,10 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 		enemy.add_to_group(Groups.ENEMIES)
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
+	# Elite modifiers roll on reinforcements/patrols too (same name-encode channel).
+	var mods := _roll_modifiers(xform, scene_path)
+	if mods != "":
+		enemy.name = "%s_mod%s" % [enemy.name, mods]
 	_enemies_container.add_child(enemy, true)
 	if enemy is Node3D and _arena:
 		(enemy as Node3D).global_transform = xform

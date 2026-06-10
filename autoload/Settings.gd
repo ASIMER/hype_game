@@ -795,7 +795,109 @@ const ENEMY_STATS := {
 		"blink_range": 5.0,
 		"blink_cooldown": 3.0
 	},
+	# --- Batch D: per-biome MINIBOSSES (scene-clones on existing scripts) + recon drone.
+	"robot_snow_golem":
+	{
+		# Snow golem: oversized avalanche-slammer — slow, huge slam, a wall of HP.
+		"health": 520.0,
+		"speed": 2.2,
+		"damage": 16.0,
+		"detect": 30.0,
+		"attack_range": 4.5,
+		"cooldown": 2.8,
+		"score": 150,
+		"slam_radius": 6.0,
+		"slam_windup": 1.1,
+		"slam_damage": 30.0
+	},
+	"robot_dune_warden":
+	{
+		# Dune warden: heavy orbit-strafing gunner (dustdevil base, miniboss-scaled).
+		"health": 420.0,
+		"speed": 3.6,
+		"damage": 9.0,
+		"detect": 34.0,
+		"attack_range": 18.0,
+		"cooldown": 0.9,
+		"score": 150,
+		"ranged": true,
+		"burst": true
+	},
+	"robot_oni_chief":
+	# Oni chief: brute melee lord — back WeakPoint x3 is the intended counterplay.
+	{
+		# Big-body rule: attack_range > its parking distance (radii + separation).
+		"health": 560.0,
+		"speed": 3.2,
+		"damage": 22.0,
+		"detect": 28.0,
+		"attack_range": 3.8,
+		"cooldown": 1.6,
+		"score": 170
+	},
+	"robot_specter":
+	# Recon drone: does NOT attack — confirmed LOS for channel_time CALLS
+	{
+		# reinforcements onto you (kill it fast / break LOS / smoke it).
+		"health": 26.0,
+		"speed": 6.0,
+		"damage": 0.0,
+		"detect": 34.0,
+		"attack_range": 18.0,
+		"cooldown": 2.0,
+		"score": 35,
+		"flying": true,
+		"hover": 6.0,
+		"ranged": true,
+		"channel_time": 2.5,
+		"recon_reinforce": 3
+	},
 }
+
+## Per-biome miniboss scene (the ONE source both spawn paths read: the world-event
+## miniboss picks the local biome's boss; the wave-4 champion uses the same map).
+const MINIBOSS_BY_BIOME := {
+	"snow": "res://scenes/enemies/RobotSnowGolem.tscn",
+	"desert": "res://scenes/enemies/RobotDuneWarden.tscn",
+	"rain": "res://scenes/enemies/RobotOniChief.tscn",
+}
+## Wave-4 "champion": one miniboss replaces a normal spawn in a non-urban biome
+## (one per biome per match). Flag so the balance change is one-line revertible.
+const CHAMPION_WAVE_ENABLED := true
+const CHAMPION_WAVE: int = 4
+
+# --- Elite enemy modifiers (batch D): name-encoded prefixes rolled per spawn -----
+# Chance = BASE + PER_WAVE*wave + (BIOME_BONUS outside urban); DOUBLE_CHANCE of the
+# rolled elites gain a second distinct prefix. The boss is excluded. Stats apply
+# server-side after _load_stats; the tint runs on every peer (parsed from the name).
+const ELITE_MOD_BASE_CHANCE: float = 0.06
+const ELITE_MOD_PER_WAVE: float = 0.02
+const ELITE_MOD_BIOME_BONUS: float = 0.04
+const ELITE_MOD_DOUBLE_CHANCE: float = 0.15
+const ELITE_MOD_STATS := {
+	"armored": {"health_mult": 2.2},
+	"swift": {"speed_mult": 1.4},
+	"volatile": {"aoe_damage": 25.0, "aoe_radius": 4.0},
+	"regenerating": {"regen": 2.0},
+}
+const ELITE_MOD_COLORS := {
+	"armored": Color(0.45, 0.62, 0.95),
+	"swift": Color(0.95, 0.85, 0.25),
+	"volatile": Color(0.95, 0.45, 0.15),
+	"regenerating": Color(0.35, 0.9, 0.45),
+}
+
+# --- Recon drone (robot_specter) ---------------------------------------------
+const RECON_RETREAT_TIME: float = 6.0  # flee duration after a successful call
+const RECON_RECHANNEL_CD: float = 10.0  # s before it may channel again
+
+# --- Siege world event (kind 4) ------------------------------------------------
+const SIEGE_HOLD_TIME: float = 60.0  # s of in-zone presence to win
+const SIEGE_WAVE_INTERVAL: float = 12.0  # s between reinforcement waves
+const SIEGE_WAVE_BASE: int = 2  # first wave size (grows +1 per wave)
+const SIEGE_LOOT_COUNT: int = 6  # tier-3 loot rolls on success
+const SIEGE_MAX_LIFETIME: float = 150.0  # director failsafe timeout
+const SIEGE_RADIUS: float = 10.0  # defend-zone radius (m)
 
 # Biomes: WorldBounds.biome_at(x,z) (scripts/core/world_bounds.gd) classifies the 4×
 # map quadrants (NW urban / NE snow / SW desert / SE rain) for biome-EXCLUSIVE spawning.

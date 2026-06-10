@@ -383,10 +383,17 @@ func _start_miniboss() -> void:
 
 	var spawn_pos: Vector3 = _squad_pos()
 
-	# Spawn one RobotElite as the roaming mini-boss.
-	wm.spawn_reinforcements(1, spawn_pos, true, "res://scenes/enemies/RobotElite.tscn")
+	# BIOME-AWARE roaming mini-boss (batch D): the squad's biome picks its themed boss
+	# (snow golem / dune warden / oni chief); the urban quadrant keeps the RobotElite.
+	var biome := WorldBounds.biome_at(spawn_pos.x, spawn_pos.z)
+	var boss_scene := String(
+		Settings.MINIBOSS_BY_BIOME.get(biome, "res://scenes/enemies/RobotElite.tscn")
+	)
+	if not ResourceLoader.exists(boss_scene):
+		boss_scene = "res://scenes/enemies/RobotElite.tscn"
+	wm.spawn_reinforcements(1, spawn_pos, true, boss_scene)
 
-	# Find the freshly-spawned Elite: scan Net/Enemies for the newest RobotElite.
+	# Find the freshly-spawned boss: scan Net/Enemies newest-first for the chosen scene.
 	_active_miniboss = null
 	var arena: Node = _get_arena()
 	if arena != null:
@@ -396,7 +403,7 @@ func _start_miniboss() -> void:
 			var children: Array = enemies_node.get_children()
 			for i in range(children.size() - 1, -1, -1):
 				var c: Node = children[i]
-				if is_instance_valid(c) and "RobotElite" in c.get_class() or _is_elite_node(c):
+				if is_instance_valid(c) and _is_scene_node(c, boss_scene):
 					_active_miniboss = c
 					break
 			# Fallback: pick the newest child (it was just added).
@@ -417,10 +424,11 @@ func _start_miniboss() -> void:
 	Events.notify.emit(tr("Hostile Elite detected — eliminate the target"), 2)
 
 
-func _is_elite_node(node: Node) -> bool:
-	# Check the scene file path as a reliable identifier.
+## True when `node` was instanced from `scene_path` — the scene file path is the
+## reliable identifier (node names carry spawn suffixes / elite-modifier encodings).
+func _is_scene_node(node: Node, scene_path: String) -> bool:
 	var sc: String = node.get_scene_file_path() if node.has_method("get_scene_file_path") else ""
-	return sc.contains("RobotElite")
+	return sc == scene_path
 
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
