@@ -286,6 +286,30 @@ func _handle_line(line: String) -> void:
 			# QA: NavigationServer visibility (maps/regions/per-enemy agent path state)
 			# for diagnosing ground-enemy pathing failures. Read-only.
 			_send(NavDebug.capture(get_tree()))
+		"mutator":
+			# QA (batch C): {id:"fog"|"double_loot"|"elite_patrols"|"night_raid"|""} forces
+			# the raid mutator for every FOLLOWING deploy AND applies it immediately
+			# (fog/elite_patrols react live; double_loot/night_raid need a redeploy).
+			# {clear:true} drops the force (next deploy rolls naturally). No args = report.
+			if bool(json.get("clear", false)):
+				NetworkManager.forced_mutator = null
+			elif json.has("id"):
+				var mid := str(json.get("id", ""))
+				NetworkManager.forced_mutator = mid
+				NetworkManager.set_raid_mutator(mid)
+			_send(
+				{
+					"ok": true,
+					"mutator": GameState.raid_mutator,
+					"forced": NetworkManager.forced_mutator,
+				}
+			)
+		"door":
+			# QA (batch C): locked annex doors. {action:"list"} → every door's state;
+			# {action:"give_key", id, count} → grant keys to the LOCAL player (its
+			# authority copy — replicates); {action:"open", name?} → server force-open
+			# without a key (name matches the door OR its annex; omitted = ALL).
+			_send(_debug_door(json))
 		"clock":
 			# Debug: drive the match timer for QA. {action:set, left:<sec>} sets the
 			# remaining time; {action:skip} jumps to ~2s left to trigger the final wave.
@@ -608,7 +632,7 @@ func _handle_line(line: String) -> void:
 		"quest":
 			# QA: inspect + drive the quest lifecycle without grinding.
 			# {quest, action:"state"|"offer"|"accept"|"claim"|"stats"|"grantkills"|"evaluate", id?, eid?, n?}
-			_send(_debug_quest(json))
+			_send(AgentQuestDebug.handle(json, get_tree()))
 		"summary":
 			# QA: drive the post-raid RaidSummary buttons ({action:"continue"|"restart"}).
 			var m := get_tree().current_scene
@@ -770,6 +794,54 @@ func _debug_hurt(target: String, amount: float, weak: bool) -> Dictionary:
 		return {"ok": false, "error": "no Health on target"}
 	hp.take_damage(amount, me)
 	return {"ok": true, "target": str(node.name), "weak": false, "health": hp.current}
+
+
+## QA driver for the locked annex doors (batch C) — see the "door" command.
+func _debug_door(json: Dictionary) -> Dictionary:
+	var action := str(json.get("action", "list"))
+	match action:
+		"give_key":
+			var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+			if p == null or not ("_keys" in p):
+				return {"ok": false, "error": "no player"}
+			var kid := str(json.get("id", "key_tower"))
+			var keys: Dictionary = p.get("_keys")
+			keys[kid] = int(keys.get(kid, 0)) + int(json.get("count", 1))
+			p.set("_keys", keys)
+			return {"ok": true, "keys": keys}
+		"open":
+			var which := str(json.get("name", ""))
+			var opened: Array = []
+			for d in get_tree().get_nodes_in_group(Groups.LOCKED_DOORS):
+				if which != "" and not _door_matches(d, which):
+					continue
+				if d.has_method("debug_force_open"):
+					d.call("debug_force_open")
+					opened.append(_door_entry(d))
+			return {"ok": true, "opened": opened}
+		_:
+			var doors: Array = []
+			for d in get_tree().get_nodes_in_group(Groups.LOCKED_DOORS):
+				doors.append(_door_entry(d))
+			return {"ok": true, "doors": doors}
+
+
+func _door_matches(d: Node, which: String) -> bool:
+	if String(d.name).contains(which):
+		return true
+	var par := d.get_parent()
+	return par != null and String(par.name).contains(which)
+
+
+func _door_entry(d: Node) -> Dictionary:
+	var pos: Vector3 = (d as Node3D).global_position if d is Node3D else Vector3.ZERO
+	return {
+		"name": String(d.name),
+		"annex": String(d.get_parent().name) if d.get_parent() != null else "",
+		"key": str(d.call("key_id")) if d.has_method("key_id") else "",
+		"opened": bool(d.get("opened")),
+		"pos": _v3(pos),
+	}
 
 
 ## Debug: drive MetaProgression / Progression directly (jump XP/level/rep/mastery/skills
@@ -1223,6 +1295,12 @@ func _extraction_zone_states() -> Array:
 		entry["window_left"] = (
 			float(z.call("window_remaining")) if z.has_method("window_remaining") else 0.0
 		)
+		# Batch C typed zones: paid/signal identity + whether a bought/flared window
+		# is currently counting down (the director leaves such zones alone).
+		if "zone_type" in z:
+			entry["type"] = String(z.get("zone_type"))
+		if z.has_method("override_active"):
+			entry["override"] = bool(z.call("override_active"))
 		out.append(entry)
 	return out
 
@@ -1245,6 +1323,13 @@ func _snapshot() -> Dictionary:
 			"final_wave": GameState.final_wave
 		},
 		"extraction_zones": _extraction_zone_states(),
+		# Batch C world clock — a pure function of the synced match timer (DayNight).
+		"world":
+		{
+			"hour": DayNight.current_hour(),
+			"night": DayNight.is_night(DayNight.current_hour()),
+			"mutator": GameState.raid_mutator,
+		},
 		"meta":
 		{
 			"currency": MetaProgression.currency,
@@ -1270,7 +1355,8 @@ func _snapshot() -> Dictionary:
 			"kills_by_type": MetaProgression.kills_by_type,
 			"extractions_total": MetaProgression.extractions_total,
 			"giver_rep": MetaProgression.giver_rep,
-			"questlines": _questlines_meta(),
+			"questlines": AgentQuestDebug.questlines_meta(),
+			"mutator": GameState.raid_mutator,
 		},
 		"agent_held": _held,
 		"stash": Stash.items,
@@ -1337,6 +1423,9 @@ func _snapshot() -> Dictionary:
 		),
 		"zipline": p.get("_zipline") != null,
 		"mantling": bool(p.get("_mantling")) if p.get("_mantling") != null else false,
+		"flashlight": bool(p.get("flashlight_on")) if p.get("flashlight_on") != null else false,
+		"keys": p.get("_keys") if p.get("_keys") != null else {},
+		"flares": int(p.get("_flares")) if p.get("_flares") != null else 0,
 		"stance": int(p.get("stance")) if p.get("stance") != null else 0,
 		"water": int(p.get("_water_state")) if p.get("_water_state") != null else 0,
 		"noise_radius": p.noise_radius() if p.has_method("noise_radius") else 0.0,
@@ -1565,179 +1654,6 @@ func _debug_pickup() -> Dictionary:
 		return {"ok": false, "reason": "pickup has no _request_pickup"}
 	best.call("_request_pickup", plr)
 	return {"ok": true, "id": str(best.get("item_id")), "dist": snappedf(best_d, 0.01)}
-
-
-## Compact per-questline progress for state.meta (line id -> {done,total,current}).
-func _questlines_meta() -> Dictionary:
-	var out: Dictionary = {}
-	for l in Quests.questlines():
-		var ql := l as QuestLine
-		var lp: Dictionary = Quests.line_progress(ql)
-		out[ql.id] = {
-			"done": lp.get("done", 0),
-			"total": lp.get("total", 0),
-			"current": lp.get("current_id", "")
-		}
-	return out
-
-
-## QA driver for the quest lifecycle (see the "quest" command).
-func _debug_quest(json: Dictionary) -> Dictionary:
-	var action := str(json.get("action", "state"))
-	var id := str(json.get("id", ""))
-	match action:
-		"offer":
-			return {"ok": Quests.offer(id), "state": Quests.state_of(id)}
-		"accept":
-			return {"ok": Quests.accept(id), "state": Quests.state_of(id)}
-		"claim":
-			return {"ok": Quests.claim(id), "state": Quests.state_of(id)}
-		"evaluate":
-			if has_node("/root/QuestDirector"):
-				get_node("/root/QuestDirector").evaluate_offers()
-			return {"ok": true}
-		"roll":
-			# Force one per-raid weighted random offer (test the random board without raiding).
-			if has_node("/root/QuestDirector"):
-				get_node("/root/QuestDirector").roll_random_offer()
-			return {"ok": true, "available": Quests.available_count()}
-		"detail":
-			# QA: open the rich detail modal for `id` (the harness can't click the ⓘ button).
-			var sc := get_tree().current_scene
-			var host: Node = null
-			for n in sc.find_children("*", "CanvasLayer", true, false):
-				host = n
-				break
-			if host == null:
-				host = sc
-			var modal: Node = (load("res://scripts/ui/quest_detail.gd") as GDScript).new()
-			host.add_child(modal)
-			modal.call("open", id)
-			return {"ok": true}
-		"lines":
-			var lines: Array = []
-			for l in Quests.questlines():
-				var ql := l as QuestLine
-				var lp: Dictionary = Quests.line_progress(ql)
-				var steps: Array = []
-				for s in Quests.line_steps(ql):
-					steps.append(
-						{"id": (s as QuestData).id, "state": Quests.state_of((s as QuestData).id)}
-					)
-				lines.append(
-					{
-						"id": ql.id,
-						"title": ql.title,
-						"giver": ql.giver,
-						"done": lp.get("done", 0),
-						"total": lp.get("total", 0),
-						"current": lp.get("current_id", ""),
-						"steps": steps
-					}
-				)
-			return {"ok": true, "lines": lines}
-		"grantkills":
-			# Simulate n personal kills of an archetype: bumps kills_by_type + fires player_kill
-			# (so kill quests advance + the director re-evaluates), exactly like real kills.
-			var eid := str(json.get("eid", "robot_grunt"))
-			var n := int(json.get("n", 1))
-			for _i in range(maxi(0, n)):
-				MetaProgression.record_kill_type(eid)
-				Events.player_kill.emit(eid)
-			MetaProgression.save_profile()
-			return {"ok": true, "eid": eid, "kills": MetaProgression.kills_of(eid)}
-		"stats":
-			return {
-				"ok": true,
-				"kills_by_type": MetaProgression.kills_by_type,
-				"extractions": MetaProgression.extractions_total,
-				"quest_states": MetaProgression.quest_states
-			}
-		"grantrep":
-			# QA: bump a giver's reputation to test tier unlocks + exclusive-contract offers.
-			var giver := str(json.get("giver", ""))
-			MetaProgression.grant_giver_rep(giver, int(json.get("n", 1)))
-			if has_node("/root/QuestDirector"):
-				get_node("/root/QuestDirector").evaluate_offers()
-			return {
-				"ok": true,
-				"giver": giver,
-				"rep": MetaProgression.giver_rep_of(giver),
-				"tier": MetaProgression.giver_rep_tier(giver)
-			}
-		"sim":
-			# QA: emit an objective event so non-kill quests advance without a full raid.
-			var kind := str(json.get("kind", ""))
-			var n := int(json.get("n", json.get("count", 1)))
-			var sid2 := str(json.get("id", json.get("eid", "")))
-			match kind:
-				"extract":
-					Events.raid_loot_granted.emit([], 0)
-				"extract_item":
-					Events.raid_loot_granted.emit([{"id": sid2, "count": n}], 0)
-				"wave":
-					Events.wave_cleared.emit(n)
-				"pickup":
-					Events.item_picked_up.emit(
-						_local_player(get_tree().get_nodes_in_group(Groups.PLAYERS)), sid2, n
-					)
-			return {"ok": true, "kind": kind}
-		"reset":
-			# QA: wipe quest lifecycle + decision stats + giver rep for a clean fixture.
-			MetaProgression.quest_states = {}
-			MetaProgression.quest_progress = {}
-			MetaProgression.completed_quests.clear()
-			MetaProgression.kills_by_type = {}
-			MetaProgression.extractions_total = 0
-			MetaProgression.giver_rep = {}
-			MetaProgression.save_profile()
-			if has_node("/root/QuestDirector"):
-				get_node("/root/QuestDirector").evaluate_offers()
-			return {"ok": true}
-		"givers":
-			var gv: Array = []
-			var seen: Dictionary = {}
-			for l in Quests.questlines():
-				seen[(l as QuestLine).giver] = true
-			for q in Quests.all():
-				if (q as QuestData).giver != "":
-					seen[(q as QuestData).giver] = true
-			for g in seen:
-				if String(g) == "":
-					continue
-				gv.append(
-					{
-						"giver": g,
-						"rep": MetaProgression.giver_rep_of(g),
-						"tier": MetaProgression.giver_rep_tier(g)
-					}
-				)
-			return {"ok": true, "givers": gv}
-		_:
-			# "state": full board snapshot.
-			var out: Array = []
-			for q in Quests.all():
-				var qd := q as QuestData
-				(
-					out
-					. append(
-						{
-							"id": qd.id,
-							"title": qd.title,
-							"state": Quests.state_of(qd.id),
-							"daily": qd.daily,
-							"progress": Quests.progress(qd.id),
-							"target": qd.obj_count,
-							"obj_type": qd.obj_type,
-							"obj_target": qd.obj_target,
-							"questline": qd.questline,
-							"offer_weight": qd.offer_weight,
-							"unlocked": Quests.is_unlocked(qd),
-							"hint": Quests.unlock_hint(qd),
-						}
-					)
-				)
-			return {"ok": true, "quests": out}
 
 
 func _local_player(players: Array) -> Node:

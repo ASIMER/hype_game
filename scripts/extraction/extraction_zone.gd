@@ -40,6 +40,31 @@ const _CLOSED_TINT := Color(0.95, 0.6, 0.15)  # dim amber
 var _open: bool = true
 var _window_remaining: float = 0.0
 
+# --- Typed extraction zones (batch C) ---------------------------------------------
+# Some zones are SPECIAL (resolved from this node's OWN name via
+# Settings.EXTRACTION_ZONE_TYPES — zero Arena.tscn edits):
+#   "paid"   — stays closed; a player pays Settings.PAID_EXTRACT_COST to call evac.
+#   "signal" — stays closed; a player burns a Signal Flare to call evac, which also
+#              rings the dinner bell (noise + a guaranteed reinforcement wave).
+#   ""       — the classic rotating-window zone (all behavior below is inert).
+# A typed zone is EXEMPT from the director's rotation (rotation_exempt) and is opened
+# only by a force_open countdown (override_active) — except the final storm, which
+# forces every zone open via set_window(true, 0) and we honor that.
+var zone_type: String = ""
+# Server-side force-open countdown (seconds the bought/flared window stays open).
+var _override_left: float = 0.0
+# Local-player interaction state (runs on the HOLDER's own peer — input is local).
+# The purchase/flare gesture is a sustained hold of "interact" while inside the zone.
+var _local_inside: Node = null  # this peer's own player standing in the zone (or null)
+var _hold_elapsed_interact: float = 0.0  # seconds the local player has held "interact"
+var _last_typed_prompt: String = ""  # de-dupe Events.interaction_available spam
+var _request_cooldown: float = 0.0  # suppress hold re-fire during the server round-trip
+const _TYPED_HOLD_TIME: float = 1.6  # seconds to hold "interact" to buy/flare
+# Beacon idle/closed identity hues per type (open still reads green for ALL types —
+# we only retint the CLOSED/idle colour so the map/world read "this one is special").
+const _PAID_TINT := Color(0.95, 0.78, 0.18)  # gold/amber — "costs credits"
+const _SIGNAL_TINT := Color(0.7, 0.4, 1.0)  # violet — "needs a flare"
+
 
 ## True while this zone accepts extraction progress.
 func is_open() -> bool:
@@ -76,25 +101,95 @@ func set_window(open: bool, remaining: float) -> void:
 	Events.extraction_window_changed.emit(self, _open, _window_remaining)
 
 
+# ============================================================ TYPED-ZONE PUBLIC API
+# Duck-typed by ExtractionDirector: it skips rotating any zone whose rotation_exempt()
+# or override_active() is true, so a paid/signal zone never auto-opens/closes — only a
+# force_open countdown (or the storm's blanket set_window) controls it.
+
+
+## A typed zone opts OUT of the director's timed open/close rotation entirely.
+func rotation_exempt() -> bool:
+	return zone_type != ""
+
+
+## True while a paid/signal force-open window is actively counting down (the director
+## leaves the zone alone while this holds).
+func override_active() -> bool:
+	return _override_left > 0.0
+
+
+## SERVER-auth: open this zone for `seconds` (a paid charge / signal flare). Starts the
+## override countdown (ticked down in _physics_process) and announces it so HUDs/audio
+## react. When it expires we re-close (unless the storm has since forced everything open).
+func force_open(seconds: float) -> void:
+	if not _is_server:
+		return
+	_override_left = maxf(seconds, 0.0)
+	_apply_window_all(true, _override_left)
+	Events.extraction_force_opened.emit(self, _override_left)
+
+
+## Drive the window on EVERY peer: locally (server) plus a mirror RPC to the clients, so a
+## paid/signal zone's beacon flips green + its map countdown updates on every machine (the
+## director's rotation is server-only and doesn't touch typed zones). set_window is
+## idempotent on same-state, so this is safe to call alongside any other window source.
+func _apply_window_all(open: bool, remaining: float) -> void:
+	set_window(open, remaining)
+	if multiplayer.has_multiplayer_peer():
+		_mirror_window.rpc(open, remaining)
+
+
+## CLIENT-side window mirror (server → clients). Runs set_window locally so the open/closed
+## beacon tint + the map/minimap countdown track the bought/flared window on every peer.
+@rpc("authority", "call_remote", "reliable")
+func _mirror_window(open: bool, remaining: float) -> void:
+	set_window(open, remaining)
+
+
 func _ready() -> void:
 	add_to_group(Groups.EXTRACTION)  # so the minimap/compass can mark zones
+	# Resolve our type from our OWN node name (paid / signal / classic) BEFORE building
+	# the beacon so it picks the right idle hue, and so we can start typed zones closed.
+	zone_type = String(Settings.EXTRACTION_ZONE_TYPES.get(String(name), ""))
+	if zone_type != "":
+		# Typed zones are NOT usable until paid-for / flared — start closed.
+		_open = false
+		_window_remaining = 0.0
 	# Visual beacon (clients build it too so the landmark shows on every machine).
 	_build_beacon()
 	_is_server = GameState.is_local_authority_server()
-	if not _is_server:
-		# Clients don't advance extraction timers (server-auth), but still animate the
-		# beacon via _process. Disable only the server-auth _physics_process.
+	if _is_server:
+		body_entered.connect(_on_body_entered)
+		body_exited.connect(_on_body_exited)
+		# Pick up any players already overlapping when we attach.
+		for body in get_overlapping_bodies():
+			_on_body_entered(body)
+		return
+	# --- Pure client ---
+	if zone_type == "":
+		# Classic zone: visual-only on a client (window mirrors via Events). No physics.
 		set_physics_process(false)
 		return
+	# Typed zone on a client: the purchase/flare interaction is a LOCAL-player action
+	# (input is local), so the client DOES track its own player + run the hold poll in
+	# _physics_process — but it never advances the server-auth extraction fill.
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
-	# Pick up any players already overlapping when we attach.
 	for body in get_overlapping_bodies():
 		_on_body_entered(body)
 
 
 func _on_body_entered(body: Node) -> void:
 	if not _is_player(body):
+		return
+	# Typed-zone local interaction: remember THIS peer's own player standing inside so the
+	# purchase/flare hold poll (in _physics_process) has a subject. Runs on every peer
+	# (the holder's input is local), BEFORE the _open gate (typed zones start closed).
+	if zone_type != "" and _is_local_player(body):
+		_local_inside = body
+		_refresh_typed_prompt()
+	# Only the server advances the extraction fill (clients of a typed zone fall through).
+	if not _is_server:
 		return
 	if _completed.has(body):
 		return
@@ -110,6 +205,14 @@ func _on_body_entered(body: Node) -> void:
 
 
 func _on_body_exited(body: Node) -> void:
+	# Typed-zone local interaction: our player left → drop the hold + clear its prompt.
+	if body == _local_inside:
+		_local_inside = null
+		_hold_elapsed_interact = 0.0
+		_request_cooldown = 0.0
+		if _last_typed_prompt != "":
+			_last_typed_prompt = ""
+			Events.interaction_cleared.emit()
 	if not _timers.has(body):
 		return
 	_timers.erase(body)
@@ -119,6 +222,24 @@ func _on_body_exited(body: Node) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# (A) Server: tick the paid/signal force-open window down; re-close when it lapses.
+	# During the storm every zone is force-open (set_window from the director) so the
+	# override is moot — drop it and let the storm own the window, never fighting it.
+	if _is_server and _override_left > 0.0:
+		if _storm_active():
+			_override_left = 0.0
+		else:
+			_override_left = maxf(_override_left - delta, 0.0)
+			_window_remaining = _override_left
+			if _override_left <= 0.0:
+				_apply_window_all(false, 0.0)
+	# (B) Local typed-zone interaction (paid charge / signal flare hold) — the holder's
+	# own peer drives this; input is local. No-op for classic zones / when no local player.
+	if zone_type != "":
+		_update_typed_interaction(delta)
+	# (C) Server-auth extraction fill (unchanged) — clients never reach here.
+	if not _is_server:
+		return
 	# Closed window: no progress accrues (timers are cleared on close, but guard so a
 	# late body_entered race can't sneak in a fill).
 	if not _open:
@@ -196,6 +317,284 @@ func _is_player(body: Node) -> bool:
 	return body != null and body.is_in_group(Groups.PLAYERS)
 
 
+# ============================================================ TYPED-ZONE INTERACTION
+# A paid/signal zone is opened by a deliberate HOLD of "interact" while standing inside
+# it. The hold channel runs on the INTERACTING player's own peer (only that peer can read
+# its interact button — exactly the discipline of the revive channel + locked_door.gd).
+# On completion it fires a request the SERVER validates: PAID charges the holder's own
+# MetaProgression profile (currency is per-peer-local, so the spend MUST happen on the
+# owner — the task's 3-leg _charge_request/_charge_confirm handshake), while SIGNAL
+# consumes the holder's replicated `_flares` on the SERVER's copy (mirrors locked_door's
+# key consume) then force-opens + rings the dinner bell (noise + a reinforcement wave).
+
+
+## Per-frame hold channel for the local player standing in a typed zone. No-op for the
+## classic zone, when no local player is inside, while the zone is already open, or during
+## the storm (then the server-side proximity fill drives extraction like any open zone).
+func _update_typed_interaction(delta: float) -> void:
+	if _request_cooldown > 0.0:
+		_request_cooldown = maxf(0.0, _request_cooldown - delta)
+	var p: Node = _local_inside
+	# Drop the channel if our player left, went down, or stopped being ours.
+	if p == null or not is_instance_valid(p) or not _is_local_player(p):
+		_local_inside = null
+		_reset_typed_hold()
+		return
+	# Already open (force-opened) or storm: extraction proceeds via the proximity fill —
+	# no buy/flare prompt. Clear any in-progress hold + its prompt.
+	if _open or _storm_active():
+		_reset_typed_hold()
+		return
+	_refresh_typed_prompt()
+	# Hold gate (cooldown suppresses re-fire during the server round-trip).
+	if _request_cooldown > 0.0:
+		return
+	if not _player_holds_interact(p):
+		_hold_elapsed_interact = 0.0
+		return
+	_hold_elapsed_interact = minf(_hold_elapsed_interact + delta, _TYPED_HOLD_TIME)
+	if _hold_elapsed_interact >= _TYPED_HOLD_TIME:
+		_hold_elapsed_interact = 0.0
+		_request_cooldown = 1.0  # suppress re-fire until the server answers
+		if zone_type == "paid":
+			_paid_hold_done()
+		elif zone_type == "signal":
+			_signal_hold_done()
+
+
+## Show the contextual prompt for the local player (de-duped so an unchanged string isn't
+## re-emitted every frame). The hold % is folded into the text as live progress feedback.
+func _refresh_typed_prompt() -> void:
+	if _local_inside == null or not is_instance_valid(_local_inside):
+		return
+	if _open or _storm_active():
+		return
+	var prompt: String = ""
+	var holding: bool = _hold_elapsed_interact > 0.0
+	var pct: int = int(round(clampf(_hold_elapsed_interact / _TYPED_HOLD_TIME, 0.0, 1.0) * 100.0))
+	if zone_type == "paid":
+		if holding:
+			prompt = tr("Calling extraction… %d%%") % pct
+		else:
+			prompt = tr("Pay %d cr to call extraction [hold E]") % Settings.PAID_EXTRACT_COST
+	elif zone_type == "signal":
+		if _flares_of(_local_inside) <= 0:
+			prompt = tr("Requires a Signal Flare")
+		elif holding:
+			prompt = tr("Firing signal flare… %d%%") % pct
+		else:
+			prompt = tr("Fire signal flare [hold E]")
+	if prompt != "" and prompt != _last_typed_prompt:
+		_last_typed_prompt = prompt
+		Events.interaction_available.emit(prompt, self)
+
+
+## Clear the in-progress hold + its on-screen prompt (no longer interacting).
+func _reset_typed_hold() -> void:
+	_hold_elapsed_interact = 0.0
+	if _last_typed_prompt != "":
+		_last_typed_prompt = ""
+		Events.interaction_cleared.emit()
+
+
+# ─── PAID: charge the holder's own profile (currency is per-peer-local) ───────────
+
+
+## Holder finished the buy-hold. The host owns its own profile → spend + open directly; a
+## client asks the server to start the charge handshake (server can't touch a client's
+## currency, which lives in that client's MetaProgression autoload).
+func _paid_hold_done() -> void:
+	if _is_server:
+		if _owner_charge(Settings.PAID_EXTRACT_COST):
+			force_open(Settings.PAID_EXTRACT_WINDOW)
+	else:
+		_paid_request.rpc_id(1)
+
+
+## SERVER: a client wants to pay-extract here. Validate it is standing in the zone, then
+## ask THAT client (the owner of the currency) to charge itself.
+@rpc("any_peer", "call_remote", "reliable")
+func _paid_request() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender: int = multiplayer.get_remote_sender_id()
+	if not _peer_inside(sender):
+		return
+	_charge_request.rpc_id(sender, Settings.PAID_EXTRACT_COST)
+
+
+## OWNER (a client): the server asked us to pay. Spend from our local profile and report
+## the result back so the SERVER can force the window open (only it owns world state).
+@rpc("authority", "call_remote", "reliable")
+func _charge_request(cost: int) -> void:
+	_charge_confirm.rpc_id(1, _owner_charge(cost))
+
+
+## SERVER: the owner reports its charge result. On success, force the window open. We do
+## NOT re-check proximity here — _paid_request already gated entry on being inside, and the
+## owner has now SPENT, so the bought window is owed even if it stepped out mid-handshake.
+@rpc("any_peer", "call_remote", "reliable")
+func _charge_confirm(ok: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	if not ok:
+		return
+	force_open(Settings.PAID_EXTRACT_WINDOW)
+
+
+## Spend the paid-extract cost from THIS peer's own MetaProgression (host or client owner).
+## Notifies locally either way; persists the deduction on success. Returns the spend result.
+func _owner_charge(cost: int) -> bool:
+	if not MetaProgression.spend(cost):
+		Events.notify.emit(tr("Not enough credits"), 2)
+		return false
+	MetaProgression.save_profile()
+	Events.notify.emit(tr("Extraction called"), 1)
+	return true
+
+
+# ─── SIGNAL: consume the holder's replicated flare on the SERVER (dinner bell) ────
+
+
+## Holder finished the flare-hold. Single-player counts as server; a client routes the
+## request so the SERVER consumes the flare + rings the bell (mirrors locked_door's key).
+func _signal_hold_done() -> void:
+	if _is_server:
+		_server_try_signal(_local_peer_id())
+	else:
+		_signal_request.rpc_id(1, multiplayer.get_unique_id())
+
+
+## SERVER entry: a peer asks to fire a flare here.
+@rpc("any_peer", "call_local", "reliable")
+func _signal_request(requester_peer: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_try_signal(requester_peer)
+
+
+## SERVER: validate the requester holds a flare, consume it on the server's copy of that
+## player (replicates back to the owner), then force-open + report the noise + summon the
+## guaranteed reinforcement wave. Refuses with a "needs flare" flash if they have none.
+func _server_try_signal(requester_peer: int) -> void:
+	if _open or _storm_active():
+		return
+	var p: Node = _player_for_peer(requester_peer)
+	if p == null:
+		return
+	if _flares_of(p) <= 0:
+		if requester_peer == _local_peer_id():
+			_flash_needs_flare()
+		elif requester_peer > 0:
+			_needs_flare_rpc.rpc_id(requester_peer)
+		return
+	# Consume on the OWNER, not here: `_flares` replicates authority→peers (the
+	# player's peer owns it), so a server-side decrement would be overwritten by the
+	# owner's next sync tick — same discipline as grenade/medkit counts (and the
+	# locked-door key consume). The server has already validated ≥1.
+	if requester_peer == _local_peer_id():
+		_consume_flare_local(p)
+	else:
+		_consume_flare_rpc.rpc_id(requester_peer)
+	force_open(Settings.SIGNAL_EXTRACT_WINDOW)
+	NetworkManager.report_noise(global_position, Settings.SIGNAL_FLARE_NOISE, 2)
+	AIDirector.request_reinforcements(Settings.SIGNAL_REINFORCEMENTS, global_position)
+
+
+## OWNER-side: decrement our replicated flare count (authority-owned property).
+@rpc("authority", "call_remote", "reliable")
+func _consume_flare_rpc() -> void:
+	_consume_flare_local(_player_for_peer(_local_peer_id()))
+
+
+func _consume_flare_local(p: Node) -> void:
+	if p == null or not ("_flares" in p):
+		return
+	p.set("_flares", maxi(0, _flares_of(p) - 1))
+
+
+## Tell a remote requester it lacks a flare (server → that peer).
+@rpc("authority", "call_remote", "reliable")
+func _needs_flare_rpc() -> void:
+	_flash_needs_flare()
+
+
+## Surface the "requires a Signal Flare" message locally (the requester's HUD).
+func _flash_needs_flare() -> void:
+	Events.notify.emit(tr("Requires a Signal Flare"), 2)
+
+
+# ─── typed-zone helpers ───────────────────────────────────────────────────────
+
+
+## True if `body` is THIS peer's own, non-downed player (only it can read its interact
+## button + spend its profile — exactly the locked_door / revive discipline).
+func _is_local_player(body: Node) -> bool:
+	if body == null or not is_instance_valid(body):
+		return false
+	if body.has_method("is_downed") and body.is_downed():
+		return false
+	if not multiplayer.has_multiplayer_peer():
+		return true  # single-player: the lone local player
+	return body.get_multiplayer_authority() == multiplayer.get_unique_id()
+
+
+## Read the player's HELD interact via the same hook the revive/carry channels use.
+func _player_holds_interact(p: Node) -> bool:
+	if p != null and p.has_method("_act_held"):
+		return bool(p.call("_act_held", "interact"))
+	return false
+
+
+## The replicated flare count on a player node (0 if unavailable).
+func _flares_of(p: Node) -> int:
+	if p != null and is_instance_valid(p) and "_flares" in p:
+		return int(p.get("_flares"))
+	return 0
+
+
+## True while the final storm is forcing every zone open.
+func _storm_active() -> bool:
+	return GameState.final_wave
+
+
+## True if a player owned by `peer_id` is currently standing in this zone.
+func _peer_inside(peer_id: int) -> bool:
+	for b in get_overlapping_bodies():
+		if _is_player(b) and _peer_id_for(b) == peer_id:
+			return true
+	return false
+
+
+## Resolve a peer id to its player node (named after the peer id, per arena._spawn_player).
+func _player_for_peer(peer_id: int) -> Node:
+	if get_tree() == null:
+		return null
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
+		if str(p.name).is_valid_int() and str(p.name).to_int() == peer_id:
+			return p
+	return null
+
+
+func _local_peer_id() -> int:
+	if multiplayer.has_multiplayer_peer():
+		return multiplayer.get_unique_id()
+	return 1
+
+
+## The CLOSED/idle beacon hue, tinted by zone type so the map/world read which evac is
+## special: paid → gold, signal → violet, classic → the usual dim amber. (Open always
+## reads green for every type — only the closed identity colour changes.)
+func _closed_tint() -> Color:
+	match zone_type:
+		"paid":
+			return _PAID_TINT
+		"signal":
+			return _SIGNAL_TINT
+		_:
+			return _CLOSED_TINT
+
+
 # ============================================================ PROCEDURAL BEACON
 # Visual landmark only — none of this touches the server-auth window/progress logic.
 
@@ -220,7 +619,7 @@ func _build_beacon() -> void:
 	_beacon = Node3D.new()
 	_beacon.name = "ProcBeacon"
 	add_child(_beacon)
-	var tint := _OPEN_TINT if _open else _CLOSED_TINT
+	var tint := _OPEN_TINT if _open else _closed_tint()
 
 	# Glowing core — a small bright sphere just above the ground.
 	var core_mat := _emis(tint, 6.0)
@@ -353,7 +752,7 @@ func _additive(tint: Color, energy: float) -> StandardMaterial3D:
 func _apply_beacon_tint() -> void:
 	if _beacon == null:
 		return
-	var tint := _OPEN_TINT if _open else _CLOSED_TINT
+	var tint := _OPEN_TINT if _open else _closed_tint()
 	var energy_mul := 1.0 if _open else 0.55  # dim when closed
 	for m in _beacon_mats:
 		m.emission = tint
@@ -408,6 +807,6 @@ func _process(delta: float) -> void:
 		var rm := ring.material_override as StandardMaterial3D
 		if rm != null:
 			var fade := (1.0 - phase) * (0.6 if _open else 0.3)
-			var tint := _OPEN_TINT if _open else _CLOSED_TINT
+			var tint := _OPEN_TINT if _open else _closed_tint()
 			rm.albedo_color = Color(tint.r, tint.g, tint.b, fade * 0.5)
 			rm.emission_energy_multiplier = 2.0 * fade * _beacon_pulse_base

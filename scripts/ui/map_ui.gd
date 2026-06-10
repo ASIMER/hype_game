@@ -53,6 +53,18 @@ var _pulse: float = 0.0
 # kind (int) -> { "label": String, "pos": Vector3, "active": bool, "ratio": float }
 var _event_cache: Dictionary = {}
 
+# --- Raid-mutator cache (from Events.raid_mutator_changed; "" = none) ---
+# Drawn as a compact header label; refreshed live + re-read when the map opens.
+var _mutator: String = ""
+
+# Mutator id → tr-able Title Case display name (ids per Settings.RAID_MUTATORS).
+const MUTATOR_NAMES := {
+	"fog": "Fog",
+	"double_loot": "Double Loot",
+	"elite_patrols": "Elite Patrols",
+	"night_raid": "Night Raid",
+}
+
 
 func _ready() -> void:
 	layer = 80  # above the HUD, below pause menus
@@ -74,6 +86,9 @@ func _ready() -> void:
 	Events.world_event_started.connect(_on_world_event_started)
 	Events.world_event_ended.connect(_on_world_event_ended)
 	Events.world_event_progress.connect(_on_world_event_progress)
+	# Raid mutator — cache the active id; read live now (covers a roll before this UI).
+	Events.raid_mutator_changed.connect(_on_raid_mutator_changed)
+	_mutator = GameState.raid_mutator
 
 	_bind_existing_player()
 
@@ -115,6 +130,7 @@ func set_open(open: bool) -> void:
 	_is_open = open
 	visible = open
 	if open:
+		_mutator = GameState.raid_mutator
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	else:
 		# Restore capture so the player can keep playing — unless something else
@@ -133,6 +149,7 @@ func _on_map_toggled(open: bool) -> void:
 	_is_open = open
 	visible = open
 	if open:
+		_mutator = GameState.raid_mutator
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif not get_tree().paused:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -213,6 +230,25 @@ func _on_world_event_ended(kind: int, _success: bool) -> void:
 func _on_world_event_progress(kind: int, ratio: float) -> void:
 	if _event_cache.has(kind):
 		(_event_cache[kind] as Dictionary)["ratio"] = ratio
+
+
+# --- Raid-mutator signal handler -------------------------------------------
+
+
+func _on_raid_mutator_changed(mutator: String) -> void:
+	_mutator = mutator
+	if _is_open and _draw:
+		_draw.queue_redraw()
+
+
+## Localized Title Case display name for the active mutator id, or "" if none.
+## Routes through MUTATOR_NAMES then tr() so the label is translatable; an unknown
+## id falls back to a tr() of the raw id (still beats showing nothing).
+func mutator_label() -> String:
+	if _mutator == "":
+		return ""
+	var key: String = MUTATOR_NAMES.get(_mutator, _mutator)
+	return tr(key)
 
 
 # --- Drawing helpers (used by the inner MapDraw) ----------------------------
@@ -453,6 +489,19 @@ class MapDraw:
 				Color(tier_col.r, tier_col.g, tier_col.b, 0.95)
 			)
 
+	# Typed extraction-zone hues (batch C): the bright (open) and dim (closed) tone
+	# per zone_type. "" (classic) keeps the established green/grey.
+	const ZONE_HUE_OPEN := {
+		"": Color(0.25, 1.0, 0.45),  # classic — green
+		"paid": Color(1.0, 0.78, 0.25),  # amber/gold
+		"signal": Color(0.72, 0.45, 1.0),  # violet
+	}
+	const ZONE_HUE_CLOSED := {
+		"": Color(0.55, 0.6, 0.62),  # classic — grey
+		"paid": Color(0.6, 0.52, 0.34),  # muted gold
+		"signal": Color(0.5, 0.42, 0.62),  # muted violet
+	}
+
 	func _draw_extractions(font: Font, panel: Rect2) -> void:
 		for z in owner_ui.get_tree().get_nodes_in_group(Groups.EXTRACTION):
 			if not (z is Node3D):
@@ -460,19 +509,30 @@ class MapDraw:
 			var zp := owner_ui.world_to_panel((z as Node3D).global_position, panel)
 			var w: Dictionary = owner_ui._window_for(z)
 			var is_open_z: bool = bool(w.get("open", true))
+			# A typed zone may force itself active (e.g. a held signal) — reflect that.
+			if z.has_method("override_active") and bool(z.call("override_active")):
+				is_open_z = true
 			var remaining: float = float(w.get("remaining", 0.0))
+			# Duck-typed zone class: "paid" / "signal" / "" (classic). Default "".
+			var ztype: String = ""
+			if "zone_type" in z:
+				ztype = String(z.get("zone_type"))
 			var col: Color
 			var r: float = 7.0
 			if is_open_z:
-				# Pulsing green.
+				# Pulsing in the type's hue.
 				var t: float = 0.5 + 0.5 * sin(owner_ui.get_pulse() * 4.0)
-				col = Color(0.25, 1.0, 0.45, 0.55 + 0.45 * t)
+				var hue: Color = ZONE_HUE_OPEN.get(ztype, ZONE_HUE_OPEN[""]) as Color
+				col = Color(hue.r, hue.g, hue.b, 0.55 + 0.45 * t)
 				r = 7.0 + 2.0 * t
 			else:
-				col = Color(0.55, 0.6, 0.62, 0.7)  # dim grey when closed
+				var hue_c: Color = ZONE_HUE_CLOSED.get(ztype, ZONE_HUE_CLOSED[""]) as Color
+				col = Color(hue_c.r, hue_c.g, hue_c.b, 0.7)  # dim when closed
 			# Outer ring + filled core.
 			draw_arc(zp, r + 3.0, 0.0, TAU, 24, col, 2.0)
 			draw_circle(zp, r, Color(col.r, col.g, col.b, 0.4))
+			# Typed-zone glyph centred on the marker (paid "$" / signal lightning).
+			_draw_zone_glyph(font, zp, ztype, col)
 			# "EXTRACT" tag + countdown.
 			var tag := tr("EXTRACT")
 			if remaining > 0.0:
@@ -480,6 +540,36 @@ class MapDraw:
 			elif not is_open_z:
 				tag += "  " + tr("(closed)")
 			draw_string(font, zp + Vector2(10, 4), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col)
+
+	# Small typed glyph drawn centred on an extraction marker: a "$" for paid zones
+	# and a stylized lightning zigzag for signal zones (font-glyph-free so it renders
+	# crisply at any size); classic zones get nothing.
+	func _draw_zone_glyph(font: Font, center: Vector2, ztype: String, col: Color) -> void:
+		var glyph_col := Color(col.r, col.g, col.b, 0.98)
+		match ztype:
+			"paid":
+				# Centred "$" — font glyph is fine here (always present in the base font).
+				draw_string(
+					font,
+					center + Vector2(-3.0, 4.0),
+					"$",
+					HORIZONTAL_ALIGNMENT_LEFT,
+					-1,
+					12,
+					glyph_col
+				)
+			"signal":
+				# Stylized lightning zigzag (a 4-point polyline) — avoids "⚡" font misses.
+				var pts := PackedVector2Array(
+					[
+						center + Vector2(1.5, -6.0),
+						center + Vector2(-2.5, 0.5),
+						center + Vector2(2.0, 0.0),
+						center + Vector2(-1.5, 6.0),
+					]
+				)
+				for i in range(pts.size() - 1):
+					draw_line(pts[i], pts[i + 1], glyph_col, 1.8)
 
 	# Event kind → Color accent (distinct per type).
 	const EVENT_COLORS := [
@@ -603,6 +693,20 @@ class MapDraw:
 			20,
 			Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.95)
 		)
+
+		# Active raid mutator — compact label beside the title in the header strip.
+		var mut_name: String = owner_ui.mutator_label()
+		if mut_name != "":
+			var title_w: float = font.get_string_size(tr("TACTICAL MAP"), 0, -1, 20).x
+			draw_string(
+				font,
+				Vector2(panel.position.x + title_w + 18.0, panel.position.y - 32.0),
+				tr("MUTATOR: %s") % mut_name,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				13,
+				Color(UIStyle.TEAL.r, UIStyle.TEAL.g, UIStyle.TEAL.b, 0.95)
+			)
 
 		# Match timer (mm:ss), top-right of the panel header.
 		var left: float = maxf(0.0, GameState.match_time_left)

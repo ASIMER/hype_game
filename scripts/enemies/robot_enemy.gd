@@ -378,6 +378,10 @@ func _physics_process(delta: float) -> void:
 		proximity_radius *= 0.5
 	var near := _target != null and dist <= proximity_radius
 
+	# Night (batch C): sight range shrinks after dark — DayNight reads the synced match
+	# clock, so server/headless agree. Hearing + proximity senses deliberately unchanged.
+	var detect: float = _stat_detect * DayNight.detect_mult(DayNight.current_hour())
+
 	# Smoke temporarily suppresses a hunter's wallhack: if the line to the target is
 	# smoked, the force-CHASE override is withheld THIS tick and we fall through to the
 	# normal perception evaluate (it resumes once the cloud fades or LOS re-confirms).
@@ -393,18 +397,16 @@ func _physics_process(delta: float) -> void:
 	if hunter and _target != null and not hunter_smoked:
 		current_state = _fsm.evaluate(_target, dist, true, 1.0e9, _stat_attack_range)
 	elif current_state != State.INVESTIGATE:
-		current_state = _fsm.evaluate(
-			_target, dist, has_los or near, _stat_detect, _stat_attack_range
-		)
+		current_state = _fsm.evaluate(_target, dist, has_los or near, detect, _stat_attack_range)
 	else:
 		# While investigating, promote to CHASE/ATTACK the moment LOS is confirmed
 		# within detect — or the player gets close. evaluate() has no INVESTIGATE case (it
 		# would return INVESTIGATE unchanged), so seed the FSM into CHASE first, then let
 		# evaluate resolve CHASE→ATTACK (or back to PATROL if the gap reopens).
-		if _target != null and (has_los or near) and dist <= _stat_detect:
+		if _target != null and (has_los or near) and dist <= detect:
 			_fsm.state = State.CHASE
 			current_state = _fsm.evaluate(
-				_target, dist, has_los or near, _stat_detect, _stat_attack_range
+				_target, dist, has_los or near, detect, _stat_attack_range
 			)
 
 	# Cascading alert edge detection: the moment we enter CHASE, wake nearby non-hunters.
@@ -1401,6 +1403,11 @@ func _spawn_loot() -> void:
 	# add_child here was auto-spawned with the scene's default item_id, so clients
 	# saw the wrong model (or nothing) for every enemy drop.
 	LootPickup.spawn_at(container, global_position, loot_id, 1)
+	# Batch C: elites/minibosses may ALSO drop a biome-matched annex key — an extra
+	# independent roll (LootTables gates it on this enemy's modifiers/enemy_id).
+	var key_id: String = LootTables.roll_key_drop(self, global_position)
+	if key_id != "":
+		LootPickup.spawn_at(container, global_position + Vector3(0.7, 0.0, 0.0), key_id, 1)
 
 
 ## Find the sibling Net/Loot container (../../Loot relative to Net/Enemies);

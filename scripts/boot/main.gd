@@ -155,6 +155,9 @@ func _on_hub_deploy() -> void:
 		if not NetworkManager.is_offline:
 			NetworkManager.start_offline()
 		GameState.reset_match()
+		# Solo bypasses request_start — roll the raid mutator here (same reason as
+		# the offline restart path: reset just cleared it).
+		NetworkManager.roll_raid_mutator()
 		_do_deploy()
 		return
 	# Co-op leader: ask the server to start the squad (gated on all members ready).
@@ -476,5 +479,8 @@ func restart_match() -> void:
 	# on the summary's own unpause, and the fresh match must never start frozen.
 	get_tree().paused = false
 	GameState.reset_match()
+	# Solo bypasses request_redeploy, so roll the raid mutator here (reset just cleared
+	# it; without this single-player would never see a mutator on restart).
+	NetworkManager.roll_raid_mutator()
 	GameState.set_phase(GameState.Phase.IN_MATCH)
 	load_arena()

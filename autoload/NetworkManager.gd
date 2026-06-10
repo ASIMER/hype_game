@@ -112,7 +112,7 @@ func request_start() -> bool:
 	if not GameState.squad_all_ready():
 		return false
 	GameState.reset_match()
-	_roll_raid_mutator()
+	roll_raid_mutator()
 	_loaded.clear()
 	_begin_deploy.rpc()
 	return true
@@ -127,7 +127,7 @@ func request_redeploy() -> bool:
 	if not multiplayer.is_server():
 		return false
 	GameState.reset_match()
-	_roll_raid_mutator()
+	roll_raid_mutator()
 	_loaded.clear()
 	_begin_deploy.rpc()
 	return true
@@ -142,8 +142,10 @@ var forced_mutator: Variant = null
 ## SERVER: roll this match's raid mutator ONCE per deploy, BEFORE any peer loads its
 ## arena (double_loot is read at build time). 35% chance of exactly one mutator; the
 ## result is synced now AND re-synced in begin_match (covers a peer that was still
-## connecting when the roll happened). Debug-forceable via set_raid_mutator.
-func _roll_raid_mutator() -> void:
+## connecting when the roll happened). Debug-forceable via set_raid_mutator. PUBLIC:
+## the offline solo deploy/restart paths in main.gd roll through here too (they call
+## GameState.reset_match() directly, never request_start/request_redeploy).
+func roll_raid_mutator() -> void:
 	if forced_mutator != null:
 		set_raid_mutator(String(forced_mutator))
 		return

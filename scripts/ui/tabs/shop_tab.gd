@@ -23,6 +23,12 @@ const STOCK: Dictionary = {
 	"loot_scrap": 10,
 	"loot_cell": 40,
 	"loot_plastic": 15,
+	# Batch C: annex keys (price mirrors Settings.KEY_SHOP_PRICE — const init can't
+	# read the autoload; keep in sync) + the signal-extraction flare.
+	"key_tower": 700,
+	"key_lodge": 700,
+	"key_temple": 700,
+	"loot_flare": 150,
 }
 
 # ── Blueprint prices: blueprint id -> buy price ───────────────────────────────

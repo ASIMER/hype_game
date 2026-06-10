@@ -1073,6 +1073,149 @@ static func sd_seed(n: int) -> int:
 	return 9173 + n * 577
 
 
+# ================================================================ LOCKED LOOT ANNEX (batch C)
+# A small windowless storage room bolted onto a landmark, sealed by a key-gated LockedDoor.
+# The lead places this at the 3 landmarks (Settings.LOCKED_ROOM_POIS) and spawns EPIC loot at
+# the returned `loot_points` meta. Built from the SAME themed wall/material helpers the
+# landmark builders use so it reads as part of the structure. Collidable (layer 1) so the
+# navmesh routes around it and the only way in is through the door. All jitter from ProcHash.
+
+
+## Theme → [wall_mat, trim_mat, roof_mat] using the existing themed material helpers, so the
+## annex matches the landmark it's attached to. Falls back to worn concrete for any unknown
+## theme. `sid` threads per-piece grime variation.
+static func _annex_mats(theme: String, sid: int) -> Array[StandardMaterial3D]:
+	match theme:
+		"temple":
+			return [mat_plaster(sid), mat_lacquer(sid + 1), mat_roofwood(sid + 2)]
+		"snow_lodge":
+			return [mat_timber(sid), mat_roofwood(sid + 1), mat_roofwood(sid + 2)]
+		"tower":
+			return [mat_concrete(sid), mat_concrete_dark(sid + 1), mat_concrete_dark(sid + 2)]
+		_:
+			return [mat_concrete(sid), mat_concrete_dark(sid + 1), mat_concrete_dark(sid + 2)]
+
+
+## A key-locked loot annex: a windowless w×d room, h tall — 3 solid walls + a roof + a doorway
+## gap in the front (+Z) wall holding a LockedDoor panel (key `key_id`) + a keypad. Built from
+## the themed materials so it reads as a storage room on the landmark. Returns the annex Node3D
+## with `loot_points` meta = an Array[Vector3] of 2–3 LOCAL interior floor points (the lead
+## converts to world + spawns EPIC loot). Feet at local y≈0; the caller positions/rotates it.
+## All size jitter is deterministic via ProcHash(seed_val,...).
+static func locked_annex(
+	w: float, d: float, h: float, theme: String, key_id: String, seed_val: int
+) -> Node3D:
+	var root := Node3D.new()
+	var mats := _annex_mats(theme, seed_val)
+	var wall_mat: StandardMaterial3D = mats[0]
+	var trim_mat: StandardMaterial3D = mats[1]
+	var roof_mat: StandardMaterial3D = mats[2]
+	var th: float = 0.3  # wall thickness
+
+	# Modest deterministic size jitter so the 3 annexes aren't byte-identical (±0.3 m).
+	var jw: float = w + (ProcHash.hf(seed_val * 7 + 1) - 0.5) * 0.6
+	var jd: float = d + (ProcHash.hf(seed_val * 7 + 2) - 0.5) * 0.6
+	var jh: float = h + (ProcHash.hf(seed_val * 7 + 3) - 0.5) * 0.4
+	var hw: float = jw * 0.5
+	var hd: float = jd * 0.5
+
+	# Floor slab (top face at local y=0 → interior floor sits at y=0).
+	_place(root, floor_slab(jw, jd, trim_mat), Vector3(0, 0.0, 0))
+	# Three solid walls: back (-Z) + the two sides. No windows (a sealed vault).
+	_solid(root, Vector3(jw, jh, th), wall_mat, Vector3(0, jh * 0.5, -hd + th * 0.5))
+	_solid(root, Vector3(th, jh, jd), wall_mat, Vector3(-hw + th * 0.5, jh * 0.5, 0))
+	_solid(root, Vector3(th, jh, jd), wall_mat, Vector3(hw - th * 0.5, jh * 0.5, 0))
+	# Front (+Z) wall with a centered doorway gap: left pier + right pier + lintel above.
+	var dw: float = 1.6  # doorway clear width
+	var dh: float = min(2.2, jh - 0.3)  # doorway clear height
+	var side: float = (jw - dw) * 0.5
+	var fz: float = hd - th * 0.5
+	if side > 0.05:
+		_solid(root, Vector3(side, jh, th), wall_mat, Vector3(-(jw - side) * 0.5, jh * 0.5, fz))
+		_solid(root, Vector3(side, jh, th), wall_mat, Vector3((jw - side) * 0.5, jh * 0.5, fz))
+	var lintel_h: float = jh - dh
+	if lintel_h > 0.05:
+		_solid(root, Vector3(dw, lintel_h, th), wall_mat, Vector3(0, dh + lintel_h * 0.5, fz))
+	# Flat roof slab (with parapet) capping the room; trim-coloured.
+	_place(root, roof(jw, jd, roof_mat), Vector3(0, jh, 0))
+	# Snow theme gets a snow cap on the roof for landmark cohesion (render-only).
+	if theme == "snow_lodge":
+		_decor(
+			root, Vector3(jw * 0.96, 0.16, jd * 0.96), mat_snow(seed_val), Vector3(0, jh + 0.1, 0)
+		)
+	# A warm interior lamp so the loot reads once you're inside.
+	_light_fixture(root, Vector3(0, jh - 0.35, 0), seed_val + 500)
+
+	# --- The LockedDoor panel filling the doorway gap (+Z), plus a keypad beside it. ---
+	_build_annex_door(root, key_id, dw, dh, th, fz, seed_val)
+
+	# Interior loot points: 2–3 LOCAL floor points spread inside, clear of the walls.
+	var pts: Array[Vector3] = []
+	var inset: float = 0.9
+	pts.append(Vector3(-hw + inset, 0.0, -hd + inset))
+	pts.append(Vector3(hw - inset, 0.0, -hd + inset))
+	# A third point only if the room is large enough to hold it without overlap.
+	if jw > 4.0:
+		pts.append(Vector3(0.0, 0.0, 0.0))
+	root.set_meta("loot_points", pts)
+	return root
+
+
+## Build the LockedDoor StaticBody3D into the annex doorway gap (centred on +Z) + a small
+## emissive keypad beside it. The door panel collider (layer 1, named "CollisionShape3D" so
+## the script's `$CollisionShape3D` resolves) fully blocks the gap until opened. Tags the door
+## with its key id + the keypad material so locked_door.gd can validate the key and flip the
+## keypad green on open.
+static func _build_annex_door(
+	parent: Node3D, key_id: String, dw: float, dh: float, th: float, fz: float, sid: int
+) -> void:
+	var door := LockedDoor.new()
+	door.name = "LockedDoor"
+	door.collision_layer = 1
+	door.collision_mask = 0
+	door.position = Vector3(0, dh * 0.5, fz)
+	# Panel mesh (slightly oversized vs the gap so there's no light seam) + its collider.
+	var panel_size := Vector3(dw + 0.1, dh, th + 0.06)
+	var panel_mat := mat_metal_dark(sid * 3 + 7)
+	var mi := MeshInstance3D.new()
+	mi.mesh = ProceduralModels._box(panel_size)
+	mi.material_override = panel_mat
+	door.add_child(mi)
+	var col := CollisionShape3D.new()
+	col.name = "CollisionShape3D"
+	var shape := BoxShape3D.new()
+	shape.size = panel_size
+	col.shape = shape
+	door.add_child(col)
+	# A pair of riveted cross-braces on the panel face (render-only silhouette detail).
+	var brace := mat_rust(sid * 5 + 2)
+	_decor(
+		door,
+		Vector3(panel_size.x * 0.92, 0.16, 0.05),
+		brace,
+		Vector3(0, dh * 0.22, th * 0.5 + 0.04)
+	)
+	_decor(
+		door,
+		Vector3(panel_size.x * 0.92, 0.16, 0.05),
+		brace,
+		Vector3(0, -dh * 0.22, th * 0.5 + 0.04)
+	)
+
+	# Emissive keypad beside the door (render-only), on the +Z face, +X side of the gap.
+	var keypad_mat := ProcMaterials.emissive(Color(1.0, 0.55, 0.15), 2.4)
+	var keypad := MeshInstance3D.new()
+	keypad.mesh = ProceduralModels._box(Vector3(0.22, 0.34, 0.08))
+	keypad.material_override = keypad_mat
+	# Sit it on the lintel/right pier just outside the panel, at chest height.
+	keypad.position = Vector3(dw * 0.5 + 0.3, dh * 0.3, th * 0.5 + 0.05)
+	door.add_child(keypad)
+
+	door.set_meta("key_id", key_id)
+	door.set_meta("keypad_mat", keypad_mat)
+	parent.add_child(door)
+
+
 # ---------------------------------------------------------------- placement helpers
 ## Adds a prebuilt sub-assembly `child` under `parent` at `offset`.
 static func _place(parent: Node3D, child: Node3D, offset: Vector3) -> void:

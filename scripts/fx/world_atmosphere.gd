@@ -15,6 +15,13 @@ class_name WorldAtmosphere
 ## cloud puffs; instead it raises cumulus coverage/thickness + atm_darkness and
 ## drops sun_energy/exposure on the live SkyDome so the cinematic clouds go dark
 ## and overcast.
+##
+## Day-night cycle: every frame while a match runs (and not yet stormed), the sky clock +
+## the Arena sun + ambient are driven from DayNight (scripts/core/day_night.gd) — a PURE
+## function of the synced match timer, so the sky is identical on every peer with zero new
+## netcode. Sky3D's own Sun/Moon lights + auto-clock are disabled (the Arena's root
+## DirectionalLight3D is the only sun), and the "fog" raid mutator lays a permanent
+## half-storm volumetric murk from t=0.
 
 # World bounds: WorldBounds.* (scripts/core/world_bounds.gd) is the ONE source. The
 # ambient particle fields cover the whole rectangle, centred on (CX,CZ) — not the origin.
@@ -33,6 +40,12 @@ var _world_env_node: WorldEnvironment
 # The Sky3D SkyDome node (driving clouds/atmosphere). Typed as Node so this script
 # does not hard-depend on the Sky3D class_name being registered.
 var _skydome: Node
+# The Sky3D WorldEnvironment node itself (== _world_env_node when Sky3D is present) and its
+# TimeOfDay child. Setting TimeOfDay.current_time spins the sky dome to that hour; we drive
+# it every frame from DayNight so the sky is a pure function of the synced match clock. Both
+# typed as Node so this script never hard-depends on the Sky3D class_names being registered.
+var _sky3d: Node
+var _tod: Node
 
 # Captured baseline (day) values. These are CAPTURED from the live Environment +
 # SkyDome in _ready() so the storm tween always scales the real defaults. The
@@ -70,6 +83,15 @@ const DAY_CUMULUS_INTENSITY := 0.7
 const DAY_ATM_DARKNESS := 0.45
 const DAY_SKYDOME_EXPOSURE := 1.0
 
+# Day-night drive (per-frame, from DayNight.sun_ratio). The sun energy + ambient + sun pitch
+# lerp between a NIGHT floor (sun_ratio 0) and the bright-DAY top (sun_ratio 1) — DAY_SUN_ENERGY
+# is the noon energy, so the drive never exceeds the authored day. Pitch sweeps shallow at
+# dawn/dusk to steep at noon (the sun rides high mid-day), yaw/roll kept from the captured base.
+const NIGHT_SUN_ENERGY := 0.15
+const NIGHT_AMBIENT := 0.4
+const DAYNIGHT_PITCH_LOW := -15.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0)
+const DAYNIGHT_PITCH_HIGH := -55.0  # sun pitch (deg) at noon (sun_ratio 1)
+
 # Storm look targets for the SkyDome.
 const STORM_CUMULUS_COVERAGE := 0.92
 const STORM_CUMULUS_THICKNESS := 0.06
@@ -82,6 +104,11 @@ const STORM_VOLUMETRIC_DENSITY := 0.035
 
 var _storm_tween: Tween
 var _stormed := false
+# "fog" raid mutator: when active, the GLOBAL volumetric fog base density is raised from 0 to
+# Settings.MUTATOR_FOG_DENSITY (a permanent half-storm murk from t=0). The storm still wins
+# while it is active (it tweens density higher); _restore_day resets BACK to this base, so the
+# murk persists across the storm fade-out as long as the mutator is set.
+var _fog_mutator_active := false
 
 
 func _ready() -> void:
@@ -112,6 +139,15 @@ func _ready() -> void:
 	if Events and not Events.graphics_quality_changed.is_connected(_apply_graphics_quality):
 		Events.graphics_quality_changed.connect(_apply_graphics_quality)
 	_apply_graphics_quality(int(SettingsManager.get_value("graphics_quality")))
+	# Raid mutators: the "fog" mutator lays a permanent half-storm murk from t=0; listen for
+	# changes AND apply whatever the match already started with (the signal may have fired
+	# before this node loaded).
+	if Events and not Events.raid_mutator_changed.is_connected(_on_raid_mutator_changed):
+		Events.raid_mutator_changed.connect(_on_raid_mutator_changed)
+	if GameState:
+		_apply_fog_mutator(GameState.raid_mutator == "fog")
+	# Drive the day-night sky every frame (in _process). Headless already returned above.
+	set_process(true)
 
 
 # ---------------------------------------------------------------------------
@@ -155,9 +191,12 @@ func _apply_graphics_quality(level: int) -> void:
 		# The "volumetric_fog_density" setting is now the ZONES' density multiplier
 		# (applied below via ProceduralFogZones.apply_density), not a global density.
 		_env.volumetric_fog_enabled = bool(SettingsManager.get_value("volumetric_fog"))
-		_base_vol_fog_density = 0.0
+		# Base global density is 0 normally, or the fog-mutator murk when that mutator is on.
+		_base_vol_fog_density = _vol_fog_base()
 		if _env.volumetric_fog_enabled:
-			_env.volumetric_fog_density = 0.0
+			# Don't stomp the storm's higher density mid-storm; otherwise apply the base.
+			if not _stormed:
+				_env.volumetric_fog_density = _base_vol_fog_density
 			_env.volumetric_fog_length = 220.0
 			_env.volumetric_fog_detail_spread = 2.6
 		# Rescale the local fog zones' density from the settings slider (live, no rebuild).
@@ -335,12 +374,34 @@ func _find_env_and_light() -> void:
 	# The Sky3D SkyDome drives the cloud/atmosphere look. It is a child of the
 	# Sky3D WorldEnvironment node and exposes cumulus_*/atm_darkness/exposure.
 	_skydome = _find_skydome(we)
+	# The Sky3D node itself + its TimeOfDay child (drives the sky dome's clock). When Sky3D
+	# is present, `we` IS the Sky3D node (Sky3D extends WorldEnvironment).
+	_sky3d = we if (we != null and we.get("sky3d_enabled") != null) else null
+	_tod = _find_tod(we)
+	# "Two suns" guard: make absolutely sure Sky3D does NOT cast its own Sun/Moon lights and
+	# does NOT auto-progress its clock — we own both (the Arena's root DirectionalLight3D for
+	# light, DayNight for the clock). The scene already authors these off; re-assert at runtime
+	# so a future scene edit / shared resource can't reintroduce a second sun.
+	if _sky3d != null:
+		_sky3d.set("lights_enabled", false)
+		_sky3d.set("game_time_enabled", false)
+		_sky3d.set("editor_time_enabled", false)
+	if _tod != null:
+		_tod.set("game_time_enabled", false)
+		_tod.set("editor_time_enabled", false)
 	# Our main shadow-casting sun lives at the scene root (NOT under Sky3D, whose
 	# own SunLight/MoonLight are disabled). Prefer that one.
 	_sun = _find_main_sun(root, we)
 	if Settings and Settings.NET_DEBUG:
 		print(
-			"[atmosphere] env=", _env != null, " skydome=", _skydome != null, " sun=", _sun != null
+			"[atmosphere] env=",
+			_env != null,
+			" skydome=",
+			_skydome != null,
+			" tod=",
+			_tod != null,
+			" sun=",
+			_sun != null
 		)
 
 
@@ -362,6 +423,19 @@ func _find_skydome(we: Node) -> Node:
 	for c in we.get_children():
 		# SkyDome is the child carrying cloud/atmosphere setters.
 		if c.get("cumulus_coverage") != null and c.get("atm_darkness") != null:
+			return c
+	return null
+
+
+## Finds the Sky3D TimeOfDay child by its signature properties (current_time + minutes_per_day,
+## which the SkyDome does NOT have). Returns null when Sky3D is absent — the day-night drive
+## then simply no-ops (env/sun-only). Searched among the WorldEnvironment's CHILDREN, so the
+## Sky3D node's own current_time alias is not mistaken for it.
+func _find_tod(we: Node) -> Node:
+	if we == null:
+		return null
+	for c in we.get_children():
+		if c.get("current_time") != null and c.get("minutes_per_day") != null:
 			return c
 	return null
 
@@ -459,15 +533,23 @@ func _restore_day() -> void:
 		_env.fog_density = DAY_FOG_DENSITY
 		_env.fog_light_color = DAY_FOG_COLOR
 		_env.glow_intensity = DAY_GLOW
-		# Reset volumetric fog to its live (quality-setting) density, undoing any storm thicken.
+		# Reset volumetric fog to its base density (0, or the fog-mutator murk), undoing the
+		# storm thicken.
 		if _env.volumetric_fog_enabled:
-			_env.volumetric_fog_density = _base_vol_fog_density
+			_env.volumetric_fog_density = _vol_fog_base()
 	if _sun != null:
 		_sun.light_energy = DAY_SUN_ENERGY
 		if _base_sun_rot != Vector3.ZERO:
 			_sun.rotation = _base_sun_rot
 	if _dust_mat != null:
 		_dust_mat.color = Color(0.85, 0.84, 0.8, 0.18)
+	# Reset the sky clock + day-night sun/ambient to the match-start hour, so a fresh raid never
+	# inherits the previous raid's night. The per-frame drive corrects to the true hour next
+	# frame (e.g. immediately under the night_raid mutator). Guarded: this runs once at _ready
+	# BEFORE _capture_baseline, when _base_sun_rot is still ZERO and _tod may be null — both
+	# branches inside _apply_daynight are null-safe, and _base_sun_rot.y/.z = 0 is the harmless
+	# default pre-capture (the authored yaw is applied from the very first _process frame).
+	_apply_daynight(Settings.DAY_NIGHT_START_HOUR)
 
 
 func _on_final_wave() -> void:
@@ -534,3 +616,72 @@ func _apply_storm_instant() -> void:
 	if _sun != null:
 		_sun.light_energy = _base_sun_energy * 0.4
 		_sun.rotation = _base_sun_rot + Vector3(deg_to_rad(-18.0), deg_to_rad(35.0), 0.0)
+
+
+# ---------------------------------------------------------------------------
+# Day-night cycle (per-frame; a pure function of the synced match clock via DayNight)
+# ---------------------------------------------------------------------------
+## Drive the sky clock + sun + ambient from the match timer every frame while a match is
+## running. The STORM owns the look once it has fired (its tween animates the same props), so
+## skip entirely while `_stormed`. Works offline too — DayNight reads GameState, which is set
+## in single-player as well as co-op. Headless never reaches here (set_process false in _ready
+## via the early return).
+func _process(_delta: float) -> void:
+	if _stormed:
+		return
+	if GameState == null or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	_apply_daynight(DayNight.current_hour())
+
+
+## Apply one day-night frame for the given in-game hour: spin the Sky3D dome to that hour and
+## lerp the Arena sun energy + pitch and the WorldEnvironment ambient off DayNight.sun_ratio.
+## Used both per-frame (_process) and as the static reset in _restore_day. The sun's yaw/roll
+## are kept from the captured base; only pitch (rotation.x) sweeps with the day.
+func _apply_daynight(hour: float) -> void:
+	if _tod != null:
+		_tod.set("current_time", hour)
+	var s: float = DayNight.sun_ratio(hour)
+	if _sun != null:
+		_sun.light_energy = lerpf(NIGHT_SUN_ENERGY, DAY_SUN_ENERGY, s)
+		# Only sweep pitch once the authored yaw/roll have been captured — before that (the
+		# single _restore_day call inside _ready, pre-capture) leave rotation untouched so
+		# _capture_baseline reads the real authored sun rotation, not a zero-yaw computed one.
+		if _captured:
+			var pitch: float = deg_to_rad(lerpf(DAYNIGHT_PITCH_LOW, DAYNIGHT_PITCH_HIGH, s))
+			_sun.rotation = Vector3(pitch, _base_sun_rot.y, _base_sun_rot.z)
+	if _env != null:
+		_env.ambient_light_energy = lerpf(NIGHT_AMBIENT, DAY_AMBIENT, s)
+
+
+# ---------------------------------------------------------------------------
+# Fog raid mutator
+# ---------------------------------------------------------------------------
+## The base GLOBAL volumetric-fog density for normal play: 0 (fog lives only in FogZones),
+## or Settings.MUTATOR_FOG_DENSITY while the "fog" mutator is active.
+func _vol_fog_base() -> float:
+	return Settings.MUTATOR_FOG_DENSITY if _fog_mutator_active else 0.0
+
+
+## React to the active raid mutator changing mid-session (server broadcasts it). Only the fog
+## mutator changes anything here; night_raid is handled purely by DayNight.current_hour (the
+## clock start shifts), and the per-frame drive picks it up with no extra work.
+func _on_raid_mutator_changed(mutator: String) -> void:
+	_apply_fog_mutator(mutator == "fog")
+
+
+## Turn the fog-mutator murk on/off: update the tracked base and, unless the storm currently
+## owns the density, write it live so the change is immediate. The storm tween (if active) keeps
+## its higher value; _restore_day will settle back onto this base when the storm clears.
+func _apply_fog_mutator(active: bool) -> void:
+	_fog_mutator_active = active
+	_base_vol_fog_density = _vol_fog_base()
+	if _env == null or _stormed:
+		return
+	if _env.volumetric_fog_enabled:
+		_env.volumetric_fog_density = _base_vol_fog_density
+	# Volumetric fog is a manual graphics lever (off for most presets) and the murk is
+	# gated on it — exactly like the storm's. So the mutator ALSO raises the classic
+	# distance fog (gate-free) or it would be a visual no-op on those configs; the
+	# baseline DAY_FOG_DENSITY is near-imperceptible, ×12 reads as a hazy raid.
+	_env.fog_density = DAY_FOG_DENSITY * (12.0 if active else 1.0)

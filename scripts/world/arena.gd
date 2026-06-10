@@ -248,6 +248,7 @@ func _build_poi_structures() -> void:
 	var geometry := nav_region.get_node_or_null("Geometry") as Node3D
 	if geometry == null:
 		return
+	_annexes.clear()
 	for poi_name in _POI_DEFS.keys():
 		var def: Dictionary = _POI_DEFS[poi_name]
 		var old := geometry.get_node_or_null(poi_name)
@@ -279,7 +280,49 @@ func _build_poi_structures() -> void:
 		building.name = poi_name
 		building.position = Vector3(def["x"], 0.0, def["z"])
 		geometry.add_child(building)
+		# Batch C: the 3 landmark POIs get a key-locked loot annex bolted on just
+		# outside their footprint (door facing away from the landmark).
+		if Settings.LOCKED_ROOM_POIS.has(poi_name):
+			_build_locked_annex(geometry, poi_name, def)
 	_rebuild_scatter(geometry)
+
+
+# Locked-annex roots built this arena (batch C) — read by _populate_locked_loot.
+var _annexes: Array[Node3D] = []
+var _locked_loot_done: bool = false  # idempotence: begin_match can re-fire
+
+
+## Build + place the key-locked annex for landmark `poi_name`: just outside the
+## footprint on a ProcHash-picked cardinal side, door (+Z) facing OUTWARD from the
+## landmark, floor seated on the real terrain (the annex sits off the flattened y=0
+## pad). Under the navmesh Geometry node so the bake routes around its walls (and the
+## closed door seals the interior out of the navmesh entirely).
+func _build_locked_annex(geometry: Node3D, poi_name: String, def: Dictionary) -> void:
+	var cfg: Dictionary = Settings.LOCKED_ROOM_POIS[poi_name]
+	var idx: int = _POI_DEFS.keys().find(poi_name)
+	var seed_val: int = 7100 + idx * 131
+	const ANNEX_W := 5.0
+	const ANNEX_D := 4.2
+	const ANNEX_H := 3.0
+	var stale := geometry.get_node_or_null("%s_Annex" % poi_name)
+	if stale:
+		stale.free()
+	var annex := ProceduralBuildings.locked_annex(
+		ANNEX_W, ANNEX_D, ANNEX_H, String(cfg["theme"]), String(cfg["key"]), seed_val
+	)
+	annex.name = "%s_Annex" % poi_name
+	var sides: Array[Vector3] = [
+		Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)
+	]
+	var dir: Vector3 = sides[int(ProcHash.hf(seed_val + 9) * 4.0) % 4]
+	var clearance: float = maxf(float(def["w"]), float(def["d"])) * 0.5 + ANNEX_D * 0.5 + 0.8
+	var pos := Vector3(def["x"], 0.0, def["z"]) + dir * clearance
+	pos.y = ProceduralTerrain.height_at(pos.x, pos.z)
+	annex.position = pos
+	# Door wall is the annex's local +Z — face it outward (away from the landmark).
+	annex.rotation.y = atan2(dir.x, dir.z)
+	geometry.add_child(annex)
+	_annexes.append(annex)
 
 
 ## Replaces the old Scatter cubes with deterministic procedural rubble piles spread
@@ -443,6 +486,7 @@ func _on_match_started() -> void:
 	# synchronized deploy) does every peer have its Net/Loot MultiplayerSpawner, so the
 	# pickups actually replicate to clients. Guarded internally + idempotent.
 	_populate_world_loot()
+	_populate_locked_loot()
 	# NOTE: players are spawned ONLY here, after the synchronized deploy guarantees
 	# EVERY peer has loaded its arena (and thus its MultiplayerSpawner). We deliberately
 	# do NOT spawn on peer-register/connect anymore: doing so created a peer's player on
@@ -589,10 +633,13 @@ func _populate_world_loot() -> void:
 	var poi_points: Array[Vector3] = get_poi_points()
 	if poi_points.is_empty():
 		return
+	# Batch C "double_loot" mutator: every world-loot count is doubled (rolled on the
+	# server BEFORE the arena built, so it's already synced by the time we populate).
+	var loot_mult: int = 2 if GameState.raid_mutator == "double_loot" else 1
 	for cache_pos in cache_points:
 		var best_idx: int = _nearest_poi_index(cache_pos, poi_points)
 		var tier: int = get_poi_tier(best_idx)
-		var count_to_spawn: int = int(Settings.RISK_TIER_CACHE_COUNT.get(tier, 2))
+		var count_to_spawn: int = int(Settings.RISK_TIER_CACHE_COUNT.get(tier, 2)) * loot_mult
 		for _i in range(count_to_spawn):
 			var id: String = LootTables.roll_by_tier(tier)
 			if id == "":
@@ -646,6 +693,8 @@ func _scatter_field_loot(poi_points: Array[Vector3]) -> void:
 			var tier: int = get_poi_tier(pidx) if pidx >= 0 else 1
 			var pos: Vector3 = snap_to_navmesh(Vector3(px, 0.6, pz))
 			var count: int = 2 if tier >= 3 else 1  # richer biomes drop a bit more
+			if GameState.raid_mutator == "double_loot":
+				count *= 2
 			for _i in range(count):
 				var id: String = LootTables.roll_by_tier(tier)
 				if id == "":
@@ -654,6 +703,34 @@ func _scatter_field_loot(poi_points: Array[Vector3]) -> void:
 				LootPickup.spawn_at(loot, pos + j, id, 1)
 			z += step
 		x += step
+
+
+## Server-only: high-tier loot INSIDE each locked annex, at the builder-tagged local
+## `loot_points`. Deliberately NOT snapped to the navmesh — the sealed interior is
+## navmesh-dark (the closed door blocked the bake), which also means enemies never
+## path inside; the room is a safe payoff once the key is spent. Replicates via the
+## Net/Loot spawner like all world loot.
+func _populate_locked_loot() -> void:
+	if not GameState.is_local_authority_server():
+		return
+	# Idempotent: begin_match can re-fire for a later joiner — never double-fill.
+	if _locked_loot_done:
+		return
+	_locked_loot_done = true
+	for annex in _annexes:
+		if not is_instance_valid(annex):
+			continue
+		var pts: Array = annex.get_meta("loot_points", [])
+		var spawned: int = 0
+		for p in pts:
+			if spawned >= Settings.LOCKED_LOOT_ROLLS:
+				break
+			var id: String = LootTables.roll_by_tier(3)
+			if id == "":
+				continue
+			var world_p: Vector3 = annex.to_global(Vector3(p)) + Vector3.UP * 0.45
+			LootPickup.spawn_at(loot, world_p, id, 1)
+			spawned += 1
 
 
 ## Scatter a few Power Caches (Vampire-Survivors-style buff chests) at POI centres, snapped to

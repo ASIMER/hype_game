@@ -54,9 +54,22 @@ static func drop(loot_root: Node, pos: Vector3, id: String, count: int = 1) -> L
 ## explicit tier (1–3) to override (e.g. from a caller that already knows it).
 ## Tier 1 uses the legacy ENEMY_DROP_TABLE for backward compatibility; tier 2–3
 ## escalates by drawing from LootTables so higher-risk zones give better drops.
-static func drop_for_enemy(loot_root: Node, pos: Vector3, tier: int = 0) -> LootPickup:
+##
+## `enemy` (optional, default null) is the dying enemy node. When supplied, an EXTRA
+## independent annex-key roll (LootTables.roll_key_drop) runs for elites/minibosses and,
+## on success, spawns a biome-matched key as a SECOND pickup. Passing null keeps the old
+## behaviour (normal drop only) so existing call sites stand unchanged.
+static func drop_for_enemy(
+	loot_root: Node, pos: Vector3, tier: int = 0, enemy: Node = null
+) -> LootPickup:
 	if not GameState.is_local_authority_server():
 		return null
+	# Independent annex-key roll for elites/minibosses (extra drop, never replaces the
+	# normal one). Spawned through the same LootPickup.spawn_at path as every other id.
+	var key_id: String = LootTables.roll_key_drop(enemy, pos)
+	if key_id != "":
+		var key_jitter := Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(-0.6, 0.6))
+		LootPickup.spawn_at(loot_root, pos + key_jitter, key_id, 1)
 	# Resolve auto tier.
 	var resolved_tier: int = tier if tier >= 1 else tier_at(pos)
 	var id: String = ""

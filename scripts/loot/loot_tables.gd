@@ -11,6 +11,21 @@ class_name LootTables
 ##
 ## EXCLUDED from world-loot rolls: WEAPON + KEY kinds (guns / schematics are not
 ## scattered as ground clutter). ATTACHMENT, MATERIAL, CONSUMABLE are kept.
+##
+## ANNEX KEYS are the one deliberate exception to "KEY is never rolled as clutter":
+## roll_key_drop() hands a biome-matched annex key to ELITE / MINIBOSS deaths only,
+## as an EXTRA independent roll on top of the normal drop (it never goes through the
+## clutter tables / _filter_world_loot). Key ids + drop chance are frozen in Settings
+## (LOCKED_ROOM_POIS / KEY_DROP_CHANCE); the miniboss enemy_ids are MINIBOSS_IDS below.
+
+# Per-biome miniboss enemy_ids (batch D). These always carry the annex-key roll,
+# matching Settings.MINIBOSS_BY_BIOME (which holds scene paths; enemies expose the
+# enemy_id string, so the contract is duplicated here as ids).
+const MINIBOSS_IDS: Array[String] = [
+	"robot_snow_golem",
+	"robot_dune_warden",
+	"robot_oni_chief",
+]
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -54,9 +69,57 @@ static func roll_for_enemy(tier: int) -> String:
 	return _weighted_roll(candidates)
 
 
+## EXTRA drop roll for an annex key on an ELITE / MINIBOSS death, biome-matched to
+## `pos`. Returns the key item id to spawn (e.g. "key_lodge"), or "" for no key.
+## This is INDEPENDENT of the normal enemy drop — the caller spawns both. Pass the
+## dying enemy NODE so we can read its modifiers/enemy_id; a null/plain enemy → "".
+##
+## Detection (carrier?): the enemy is a key carrier if it is an ELITE (a non-empty
+## `modifiers` array, else a "_mod" token in its node name — batch D name-encoding)
+## OR a MINIBOSS (its `enemy_id` is in MINIBOSS_IDS). Only then do we roll the
+## independent randf() < Settings.KEY_DROP_CHANCE. Runtime RNG is intentional here
+## (enemy drops are not part of the world-build determinism — see header note).
+static func roll_key_drop(enemy: Node, pos: Vector3) -> String:
+	if enemy == null:
+		return ""
+	if not _is_key_carrier(enemy):
+		return ""
+	if randf() >= Settings.KEY_DROP_CHANCE:
+		return ""
+	return _key_for_biome(WorldBounds.biome_at(pos.x, pos.z))
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+
+## True when a dying enemy should roll an annex key: an ELITE (modifier-bearing) or a
+## per-biome MINIBOSS. Prefers the reachable `modifiers` array; falls back to the
+## "_mod" node-name token (the array is empty before _ready, but a death is post-spawn).
+static func _is_key_carrier(enemy: Node) -> bool:
+	var mods: Variant = enemy.get("modifiers")
+	if mods is Array and not (mods as Array).is_empty():
+		return true
+	if String(enemy.name).contains("_mod"):
+		return true
+	var eid: Variant = enemy.get("enemy_id")
+	return eid is String and MINIBOSS_IDS.has(eid)
+
+
+## Map a biome (WorldBounds.biome_at) to its annex-key id. Snow/rain map to their own
+## sealed-room key; urban → the tower key. DESERT has NO locked room of its own, so its
+## elites carry the neighbouring URBAN tower key (key_tower) — deliberate, not a fallthrough.
+static func _key_for_biome(biome: String) -> String:
+	match biome:
+		"snow":
+			return "key_lodge"
+		"rain":
+			return "key_temple"
+		"desert":
+			return "key_tower"  # no desert annex — carry the adjacent urban tower key
+		_:
+			return "key_tower"  # urban (and any unknown) → tower key
 
 
 ## Remove WEAPON and KEY kinds from a candidate list (no guns/schematics as clutter).

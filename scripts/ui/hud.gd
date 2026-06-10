@@ -53,6 +53,9 @@ func _ready() -> void:
 	Events.world_event_started.connect(_on_world_event_started)
 	Events.environmental_surge_changed.connect(_on_surge_changed)
 
+	# Raid mutator chip (batch C) — set before deploy, re-synced at match start.
+	Events.raid_mutator_changed.connect(_on_mutator_changed)
+
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
 	# interaction prompt (interaction_prompt.gd sits at offset_top=-158..bottom=-120).
@@ -79,6 +82,7 @@ var _weapon_label: Label
 var _reloading: bool = false
 var _current_weapon_name: String = "RIFLE"
 var _timer_label: Label
+var _mutator_label: Label  # raid-mutator chip under the match timer (batch C)
 var _storm_banner: Label
 var _storm_banner_t: float = 0.0
 # World-event banner — stacked 44px below the storm banner (offset_top -76 vs -120).
@@ -120,6 +124,22 @@ func _build_hud_widgets() -> void:
 	_timer_label.add_theme_constant_override("outline_size", 4)
 	_timer_label.text = ""
 	$Root.add_child(_timer_label)
+
+	# Raid-mutator chip just under the match timer (visible only when a mutator is
+	# active this raid). Violet to read as "world rule", not a warning.
+	_mutator_label = Label.new()
+	_mutator_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_mutator_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_mutator_label.offset_top = 106.0
+	_mutator_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mutator_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mutator_label.add_theme_font_size_override("font_size", 15)
+	_mutator_label.add_theme_color_override("font_color", Color(0.78, 0.55, 0.95))
+	_mutator_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_mutator_label.add_theme_constant_override("outline_size", 4)
+	_mutator_label.visible = false
+	$Root.add_child(_mutator_label)
+	_on_mutator_changed(GameState.raid_mutator)
 
 	# Make the wave counter PROMINENT — it was a small grey label tucked behind the
 	# compass strip (easy to miss). Russo One amber, clear of the compass, above the timer.
@@ -517,6 +537,29 @@ func _on_surge_changed(active: bool, kind: int) -> void:
 	else:
 		_surge_vignette.visible = false
 		_surge_vignette.color.a = 0.0
+
+
+## Raid-mutator chip (batch C). The display names are tr-able CSV keys shared with
+## the tactical map — keep both in sync when adding a mutator.
+static func mutator_display(mutator: String) -> String:
+	match mutator:
+		"fog":
+			return "Fog"
+		"double_loot":
+			return "Double Loot"
+		"elite_patrols":
+			return "Elite Patrols"
+		"night_raid":
+			return "Night Raid"
+	return mutator.capitalize()
+
+
+func _on_mutator_changed(mutator: String) -> void:
+	if _mutator_label == null:
+		return
+	_mutator_label.visible = mutator != ""
+	if mutator != "":
+		_mutator_label.text = tr("MUTATOR: %s") % tr(mutator_display(mutator))
 
 
 func _exit_tree() -> void:

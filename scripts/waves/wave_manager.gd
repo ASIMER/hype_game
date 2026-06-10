@@ -617,9 +617,12 @@ func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -
 ## Roll elite-modifier prefixes for a spawn (server-only path). Returns the encoded
 ## flag string ("A"rmored / "S"wift / "V"olatile / "R"egenerating, e.g. "AV") or "".
 ## Chance scales with the wave + a flat bonus outside urban; the wave-5 boss and the
-## minibosses are excluded (they ARE the elites). Read through a func, not inline
-## consts — the batch-C "elite patrols" mutator raises the chance here later.
-func _roll_modifiers(xform: Transform3D, scene_path: String) -> String:
+## minibosses are excluded (they ARE the elites). Chance is read here PER SPAWN (never
+## cached at _ready), so a `raid_mutator` set before deploy is in effect all match.
+## `bonus` (default 0.0 → every existing call site is identical) is added to the roll
+## chance: the batch-C "elite_patrols" mutator passes MUTATOR_ELITE_PATROL_BONUS from
+## the patrol-spawn path ONLY, so wave/storm/reinforcement spawns are unchanged.
+func _roll_modifiers(xform: Transform3D, scene_path: String, bonus: float = 0.0) -> String:
 	if scene_path == SCENE_BOSS:
 		return ""
 	for biome_scene in Settings.MINIBOSS_BY_BIOME.values():
@@ -630,6 +633,7 @@ func _roll_modifiers(xform: Transform3D, scene_path: String) -> String:
 		Settings.ELITE_MOD_BASE_CHANCE
 		+ Settings.ELITE_MOD_PER_WAVE * float(GameState.current_wave)
 		+ (Settings.ELITE_MOD_BIOME_BONUS if biome != "urban" else 0.0)
+		+ bonus
 	)
 	if randf() > chance:
 		return ""
@@ -889,6 +893,16 @@ func _spawn_patrol_enemy(index: int) -> void:
 	# Patrols are NOT hunters — they roam/sense normally so the player can avoid them.
 	if "hunter" in enemy:
 		enemy.hunter = false
+	# Elite modifiers (same NAME-encode channel as wave/reinforcement spawns). The
+	# "elite_patrols" raid mutator makes roaming patrols nastier by adding
+	# MUTATOR_ELITE_PATROL_BONUS to the roll chance HERE ONLY — wave/storm/reinforcement
+	# spawns pass no bonus, so they are unchanged.
+	var patrol_bonus: float = (
+		Settings.MUTATOR_ELITE_PATROL_BONUS if GameState.raid_mutator == "elite_patrols" else 0.0
+	)
+	var mods := _roll_modifiers(xform, scene_path, patrol_bonus)
+	if mods != "":
+		enemy.name = "%s_mod%s" % [enemy.name, mods]
 	_enemies_container.add_child(enemy, true)
 	if enemy is Node3D and _arena:
 		(enemy as Node3D).global_transform = xform
