@@ -1,0 +1,22 @@
+# Normalize line endings: the project is authored on Windows (CRLF working tree),
+# stored LF-normalized in git ("text" attr) — kills the per-commit CRLF warnings.
+* text=auto
+*.gd text
+*.tscn text
+*.tres text
+*.cfg text
+*.csv text
+*.md text
+*.py text
+*.ps1 text
+*.json text
+*.gdshader text
+# Binaries — never touch.
+*.png binary
+*.glb binary
+*.gltf binary
+*.ttf binary
+*.wav binary
+*.ogg binary
+*.exe binary
+*.zip binary

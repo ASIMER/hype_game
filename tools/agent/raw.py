@@ -2,7 +2,10 @@
 """Send a raw JSON command to the AgentBridge and print the reply.
 Usage: python raw.py '{"cmd":"ui","action":"hub_gunsmith"}'
 """
-import json, os, socket, sys
+import json
+import os
+import socket
+import sys
 
 HOST = "127.0.0.1"
 # Port: argv[2] or $AGENT_PORT or default 24700 (for driving multiple instances).

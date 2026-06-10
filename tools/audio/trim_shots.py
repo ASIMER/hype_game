@@ -6,7 +6,10 @@ The OpenGameArt "Gunshot Sounds" files are long takes containing several shots
 first transient, cuts a short window around it, fades the tail, and overwrites the
 file in place. Stdlib only (wave/struct). Run after fetch_real_audio.ps1 copies them.
 """
-import wave, struct, glob, os
+import glob
+import os
+import struct
+import wave
 
 # Per-file window length (seconds) after the onset — enough for the crack + a little tail.
 WINDOW = {

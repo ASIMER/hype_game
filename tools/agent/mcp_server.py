@@ -12,12 +12,11 @@ line on stdout. Logs go to stderr ONLY -- stdout must stay pure JSON-RPC.
 
 import json
 import os
-import socket
 import sys
 
 # Import send() from the sibling play.py regardless of cwd.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from play import send, AgentError, DEFAULT_HOST, DEFAULT_PORT  # noqa: E402
+from play import DEFAULT_HOST, DEFAULT_PORT, AgentError, send  # noqa: E402
 
 # Target a specific game instance so several MCP servers (e.g. one per git worktree) each
 # drive their own `--agent-port N` instance without getting confused. Port resolution, in
