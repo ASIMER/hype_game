@@ -4,7 +4,7 @@ extends Node
 
 # Networking
 const DEFAULT_PORT: int = 24565
-const MAX_PLAYERS: int = 8   # listen-server cap; "however many friends join" (ENet-safe)
+const MAX_PLAYERS: int = 8  # listen-server cap; "however many friends join" (ENet-safe)
 const DEFAULT_IP: String = "127.0.0.1"
 ## UDP port the host answers LAN-discovery pings on (separate from the ENet game port
 ## so it doesn't fight the ENet socket). ServerBrowser broadcasts here to find servers.
@@ -27,10 +27,10 @@ const AVAILABLE_OFFER_CAP: int = 4
 const GIVER_REP_TIERS := [0, 3, 7, 12, 18]
 const GIVER_REP_BASELINE_ON_CLAIM: int = 1
 const GIVER_REP_TIER_REWARDS := {
-	1: { "currency": 200 },
-	2: { "currency": 400 },
-	3: { "currency": 700 },
-	4: { "currency": 1200 },
+	1: {"currency": 200},
+	2: {"currency": 400},
+	3: {"currency": 700},
+	4: {"currency": 1200},
 }
 # When true, the netcode emits [net]/[arena]/[client] diagnostic prints (connection,
 # roster sync, spawn/replication). Off for normal play; flip on to debug co-op.
@@ -42,12 +42,12 @@ const AGENT_PORT: int = 24700
 
 # Terrain / world visuals (ALL world-gen must stay deterministic for co-op — every
 # peer builds its own arena locally, so geometry derives ONLY from these constants).
-const TERRAIN_SEED: int = 1337            # the one seed all terrain noise derives from
-const TERRAIN_CELL: float = 1.0           # heightmap grid step (m); 1 m = smooth river banks
-const TERRAIN_HILL_AMP: float = 3.5       # max rolling-hill height (m); keep slopes well under 47°
-const TERRAIN_RIM_HEIGHT: float = 7.0     # rocky berm height near the perimeter walls
-const RIVER_WIDTH: float = 5.0            # river channel width (m)
-const RIVER_DEPTH: float = 0.45           # ≤ navmesh agent_max_climb 0.5 → walkable ford everywhere
+const TERRAIN_SEED: int = 1337  # the one seed all terrain noise derives from
+const TERRAIN_CELL: float = 1.0  # heightmap grid step (m); 1 m = smooth river banks
+const TERRAIN_HILL_AMP: float = 3.5  # max rolling-hill height (m); keep slopes well under 47°
+const TERRAIN_RIM_HEIGHT: float = 7.0  # rocky berm height near the perimeter walls
+const RIVER_WIDTH: float = 5.0  # river channel width (m)
+const RIVER_DEPTH: float = 0.45  # ≤ navmesh agent_max_climb 0.5 → walkable ford everywhere
 # Flora budgets (MultiMesh where possible; trees/boulders are individual nodes).
 # 4× MAP: counts scaled ~2.5× for the 320×320 world (the scatter spreads EVENLY across the
 # whole rectangle via per-cell acceptance, so these are expected totals, not corner caps).
@@ -55,12 +55,12 @@ const RIVER_DEPTH: float = 0.45           # ≤ navmesh agent_max_climb 0.5 → 
 # for placement now — only the visibility ranges below matter.
 const FLORA_TREES: int = 200
 const FLORA_BUSHES: int = 150
-const FLORA_GRASS_PATCHES: int = 14000    # (legacy) near grass layer count — grass is now density-driven, kept for ref
-const FLORA_GRASS_FAR: int = 3000         # (legacy) far grass layer count — grass is now density-driven, kept for ref
-const GRASS_VIS_RANGE: float = 58.0       # near-layer visibility_range_end (m); wider so grass doesn't pop on the 160m map
-const GRASS_FAR_RANGE: float = 90.0       # far-layer visibility_range_end (m)
-const FLORA_STONES: int = 1000            # small render-only stones (MultiMesh)
-const FLORA_BOULDERS: int = 36            # big collidable cover rocks
+const FLORA_GRASS_PATCHES: int = 14000  # (legacy) near grass layer count — grass is now density-driven, kept for ref
+const FLORA_GRASS_FAR: int = 3000  # (legacy) far grass layer count — grass is now density-driven, kept for ref
+const GRASS_VIS_RANGE: float = 58.0  # near-layer visibility_range_end (m); wider so grass doesn't pop on the 160m map
+const GRASS_FAR_RANGE: float = 90.0  # far-layer visibility_range_end (m)
+const FLORA_STONES: int = 1000  # small render-only stones (MultiMesh)
+const FLORA_BOULDERS: int = 36  # big collidable cover rocks
 # Building interior lighting (shadowless warm omnis; budget ≤ ~14 lights map-wide)
 const INTERIOR_LIGHT_ENERGY: float = 2.6
 const INTERIOR_LIGHT_RANGE: float = 10.0
@@ -74,12 +74,12 @@ const MOUSE_SENSITIVITY: float = 0.0025
 const CAMERA_PITCH_MIN: float = -1.2
 const CAMERA_PITCH_MAX: float = 0.6
 # Crouch + slide (Arc Raiders-style stances).
-const PLAYER_CROUCH_SPEED: float = 2.6      # m/s while crouched
-const CROUCH_CAMERA_DROP: float = 0.55      # camera_pivot.y drop when crouched
-const SLIDE_SPEED: float = 9.5              # initial slide speed (decays to crouch speed)
-const SLIDE_TIME: float = 0.7               # slide duration (s)
-const SLIDE_CAMERA_DROP: float = 0.8        # camera drop during a slide
-const CROUCH_CAMERA_LERP: float = 10.0      # camera-height ease speed
+const PLAYER_CROUCH_SPEED: float = 2.6  # m/s while crouched
+const CROUCH_CAMERA_DROP: float = 0.55  # camera_pivot.y drop when crouched
+const SLIDE_SPEED: float = 9.5  # initial slide speed (decays to crouch speed)
+const SLIDE_TIME: float = 0.7  # slide duration (s)
+const SLIDE_CAMERA_DROP: float = 0.8  # camera drop during a slide
+const CROUCH_CAMERA_LERP: float = 10.0  # camera-height ease speed
 # Stance spread multipliers (applied to weapon.spread_deg at fire time — crouch < stand <
 # move < sprint, ADS tightest; the dynamic crosshair shows the resulting cone).
 const SPREAD_MULT_CROUCH: float = 0.45
@@ -88,17 +88,17 @@ const SPREAD_MULT_MOVE: float = 1.7
 const SPREAD_MULT_SPRINT: float = 2.6
 const SPREAD_MULT_SLIDE: float = 3.0
 const SPREAD_MULT_ADS: float = 0.4
-const FP_SPRING_LENGTH: float = 0.15        # spring length in first-person view
+const FP_SPRING_LENGTH: float = 0.15  # spring length in first-person view
 # Co-op downed / revive loop.
-const BLEEDOUT_TIME: float = 45.0           # seconds downed before true death (no revive)
-const REVIVE_CHANNEL_TIME: float = 4.0      # hold-to-revive duration (s)
-const REVIVE_HEALTH_FRAC: float = 0.35      # fraction of max HP restored on revive
-const DOWNED_MOVE_SPEED: float = 2.0        # crawl speed while downed (m/s) — enough to reach cover / an evac
-const DOWNED_CAMERA_DROP: float = 1.0       # camera drop while downed
-const GIVE_UP_HOLD_TIME: float = 2.0        # hold the give_up key this long while downed to self-finish (skip bleedout)
-const CARRY_SPEED_MULT: float = 0.5         # carrier move-speed multiplier while carrying a buddy
-const KNOCKDOWN_SHIELD_ABSORB: float = 150.0 # damage a knockdown shield soaks while downed
-const SELF_REVIVE_ITEM: String = "loot_self_revive"       # consumable id that self-revives when downed
+const BLEEDOUT_TIME: float = 45.0  # seconds downed before true death (no revive)
+const REVIVE_CHANNEL_TIME: float = 4.0  # hold-to-revive duration (s)
+const REVIVE_HEALTH_FRAC: float = 0.35  # fraction of max HP restored on revive
+const DOWNED_MOVE_SPEED: float = 2.0  # crawl speed while downed (m/s) — enough to reach cover / an evac
+const DOWNED_CAMERA_DROP: float = 1.0  # camera drop while downed
+const GIVE_UP_HOLD_TIME: float = 2.0  # hold the give_up key this long while downed to self-finish (skip bleedout)
+const CARRY_SPEED_MULT: float = 0.5  # carrier move-speed multiplier while carrying a buddy
+const KNOCKDOWN_SHIELD_ABSORB: float = 150.0  # damage a knockdown shield soaks while downed
+const SELF_REVIVE_ITEM: String = "loot_self_revive"  # consumable id that self-revives when downed
 const KNOCKDOWN_SHIELD_ITEM: String = "loot_knockdown_shield"
 
 # Combat
@@ -111,7 +111,7 @@ const ENEMY_DETECT_RADIUS: float = 18.0
 # attacking; a large value lets them deal damage from across the arena (they hold
 # position and strike when in ATTACK state — see robot_enemy._do_attack).
 const ENEMY_ATTACK_RANGE: float = 2.2
-const ENEMY_MOVE_SPEED: float = 4.0     # close distance faster -> pressure (player walk 5.5)
+const ENEMY_MOVE_SPEED: float = 4.0  # close distance faster -> pressure (player walk 5.5)
 const ENEMY_DAMAGE: float = 8.0
 const ENEMY_ATTACK_COOLDOWN: float = 1.2
 
@@ -133,23 +133,23 @@ const EXTRACT_WINDOW_STAGGER: float = 28.0
 # Match timer — the raid has a hard time budget. When it expires the FINAL "storm"
 # wave begins (see WaveManager) and forces extraction. Gradual wave progression is
 # preserved up to that point.
-const MATCH_DURATION: float = 540.0          # 9 minutes
-const FINAL_WAVE_WARN: float = 30.0          # warn the player this many seconds before
-const FINAL_WAVE_COUNT_MULT: float = 3.5     # storm wave size vs a normal late wave
-const FINAL_WAVE_CONCURRENT: int = 18        # storm raises the alive-cap hard
-const FINAL_WAVE_SPAWN_INTERVAL: float = 0.5 # and spawns much faster
+const MATCH_DURATION: float = 540.0  # 9 minutes
+const FINAL_WAVE_WARN: float = 30.0  # warn the player this many seconds before
+const FINAL_WAVE_COUNT_MULT: float = 3.5  # storm wave size vs a normal late wave
+const FINAL_WAVE_CONCURRENT: int = 18  # storm raises the alive-cap hard
+const FINAL_WAVE_SPAWN_INTERVAL: float = 0.5  # and spawns much faster
 
 # Atmosphere / mood — ambient particle density + how long the day→storm visual
 # transition takes when the final wave begins (world_atmosphere.gd reads these).
-const ATMOSPHERE_DUST := 170      # ambient dust-mote particle count (4× map → ~2× to hold density)
-const ATMOSPHERE_EMBERS := 70     # drifting ember particle count
-const STORM_TWEEN_TIME := 6.0     # seconds to lerp sky/fog/light into the storm look
+const ATMOSPHERE_DUST := 170  # ambient dust-mote particle count (4× map → ~2× to hold density)
+const ATMOSPHERE_EMBERS := 70  # drifting ember particle count
+const STORM_TWEEN_TIME := 6.0  # seconds to lerp sky/fog/light into the storm look
 
 # Ballistics — shots now arc under gravity (bullet drop). The shot is resolved as a
 # stepped raycast along the trajectory; per-weapon muzzle velocity may override.
-const BULLET_GRAVITY: float = 9.8            # m/s² downward on the projectile
+const BULLET_GRAVITY: float = 9.8  # m/s² downward on the projectile
 const BULLET_MUZZLE_VELOCITY: float = 120.0  # m/s default (high = flat; low = droppy)
-const BULLET_STEP: float = 2.5               # metres per ballistic raycast segment
+const BULLET_STEP: float = 2.5  # metres per ballistic raycast segment
 
 # Waves — spawns are STAGGERED (a steady trickle, capped concurrency) rather than
 # dumped all at once, so late waves stay beatable-but-challenging instead of an
@@ -157,7 +157,7 @@ const BULLET_STEP: float = 2.5               # metres per ballistic raycast segm
 const WAVE_BASE_ENEMIES: int = 3
 const WAVE_ENEMY_GROWTH: int = 2
 const WAVE_INTERMISSION: float = 6.0
-const WAVE_MAX_CONCURRENT: int = 6      # never more than this many alive at once
+const WAVE_MAX_CONCURRENT: int = 6  # never more than this many alive at once
 const WAVE_SPAWN_INTERVAL: float = 1.2  # seconds between trickle spawns
 
 # --- AI perception / sound stealth (Batch 2 "Living threat") ----------------
@@ -165,12 +165,12 @@ const WAVE_SPAWN_INTERVAL: float = 1.2  # seconds between trickle spawns
 # whose radius reaches it; non-hunter enemies INVESTIGATE the source (or CHASE if very
 # close). Gunfire/grenades route through NetworkManager.report_noise; footstep loudness
 # is derived per-frame from a player's speed + stance (no RPC — server reads synced state).
-const NOISE_GUNFIRE: float = 22.0            # unsuppressed shot audible radius
-const NOISE_GRENADE: float = 34.0            # explosion audible radius (always loud)
-const NOISE_WALK: float = 8.0                # standing/walking footstep loudness
-const NOISE_SPRINT: float = 16.0             # sprinting is loud
-const NOISE_CROUCH_MULT: float = 0.4         # crouch-walking is quiet (×NOISE_WALK)
-const NOISE_IDLE: float = 2.5                # barely-moving hum (still faintly audible up close)
+const NOISE_GUNFIRE: float = 22.0  # unsuppressed shot audible radius
+const NOISE_GRENADE: float = 34.0  # explosion audible radius (always loud)
+const NOISE_WALK: float = 8.0  # standing/walking footstep loudness
+const NOISE_SPRINT: float = 16.0  # sprinting is loud
+const NOISE_CROUCH_MULT: float = 0.4  # crouch-walking is quiet (×NOISE_WALK)
+const NOISE_IDLE: float = 2.5  # barely-moving hum (still faintly audible up close)
 # A noise this loud or louder at the enemy counts as a "spike" → CHASE straight away
 # (instead of the cautious INVESTIGATE walk-to-the-sound). Fraction of the heard radius.
 const NOISE_CHASE_FRACTION: float = 0.45
@@ -181,8 +181,8 @@ const PROXIMITY_AGGRO_RADIUS: float = 9.0
 # INVESTIGATE behaviour: move to the last-heard point at this speed mult, look around,
 # then give up after GIVEUP seconds with no confirmation and return to PATROL.
 const INVESTIGATE_SPEED_MULT: float = 0.8
-const INVESTIGATE_GIVEUP: float = 8.0        # seconds investigating before giving up
-const INVESTIGATE_ARRIVE: float = 1.8        # within this of the point = "arrived, look around"
+const INVESTIGATE_GIVEUP: float = 8.0  # seconds investigating before giving up
+const INVESTIGATE_ARRIVE: float = 1.8  # within this of the point = "arrived, look around"
 # Cascading alert: an enemy entering CHASE flips nearby NON-hunter enemies within this
 # radius to INVESTIGATE its target (so a firefight wakes the block). Each enemy only
 # re-alerts once per ALERT_REFRACTORY window so it can't ping-pong.
@@ -195,7 +195,7 @@ const ALERT_REFRACTORY: float = 4.0
 const DIRECTOR_CAMP_RADIUS: float = 14.0
 const DIRECTOR_CAMP_TIME: float = 10.0
 const DIRECTOR_FLANK_COUNT: int = 3
-const DIRECTOR_CAMP_COOLDOWN: float = 18.0   # min seconds between flank punishes
+const DIRECTOR_CAMP_COOLDOWN: float = 18.0  # min seconds between flank punishes
 # Boss-phase support adds: when the boss drops below this HP fraction, spawn a few adds (once).
 const DIRECTOR_BOSS_ADD_HP: float = 0.5
 const DIRECTOR_BOSS_ADD_COUNT: int = 3
@@ -214,30 +214,30 @@ const PATROL_COUNT: int = 3
 # loot (rarity-weighted) + more world-loot caches. Keyed by the POI names in
 # arena.gd::_POI_DEFS. arena.get_poi_tier() reads this; the map shades by tier.
 const POI_RISK_TIERS := {
-	"POI_NorthTower":   3,
+	"POI_NorthTower": 3,
 	"POI_EastWarehouse": 1,
-	"POI_Plaza":        2,
-	"POI_SWHouse":      1,
-	"POI_SouthYard":    2,
-	"POI_EastYard":     3,
+	"POI_Plaza": 2,
+	"POI_SWHouse": 1,
+	"POI_SouthYard": 2,
+	"POI_EastYard": 3,
 	# New far-quadrant POIs: the themed landmarks are high-risk/high-reward (tier 3), their
 	# fillers tier 2 — the long trek out to the new quadrants should pay off.
-	"POI_SnowLodge":    3,
-	"POI_SnowDepot":    2,
-	"POI_DesertRuins":  3,
-	"POI_RuinColumns":  2,
-	"POI_Temple":       3,
-	"POI_ShrineHouse":  2,
+	"POI_SnowLodge": 3,
+	"POI_SnowDepot": 2,
+	"POI_DesertRuins": 3,
+	"POI_RuinColumns": 2,
+	"POI_Temple": 3,
+	"POI_ShrineHouse": 2,
 }
 # Per-tier loot rarity band [min, max] (ItemData.Rarity: 0 COMMON…4 LEGENDARY). The
 # loot_tables roll picks within the band, weighted toward the lower (commoner) end.
 const RISK_TIER_LOOT := {
-	1: [0, 1],   # COMMON–UNCOMMON
-	2: [1, 2],   # UNCOMMON–RARE
-	3: [2, 3],   # RARE–EPIC
+	1: [0, 1],  # COMMON–UNCOMMON
+	2: [1, 2],  # UNCOMMON–RARE
+	3: [2, 3],  # RARE–EPIC
 }
 # How many world-loot pickups to scatter near a POI of each tier (at arena build).
-const RISK_TIER_CACHE_COUNT := { 1: 2, 2: 3, 3: 4 }
+const RISK_TIER_CACHE_COUNT := {1: 2, 2: 3, 3: 4}
 # Map shading per tier (low green → high red).
 const RISK_TIER_COLORS := {
 	1: Color(0.45, 0.85, 0.5),
@@ -251,13 +251,13 @@ const RISK_TIER_COLORS := {
 const WORLD_EVENT_FIRST_DELAY: float = 60.0
 const WORLD_EVENT_INTERVAL: float = 90.0
 const WORLD_EVENT_JITTER: float = 25.0
-const SUPPLY_CACHE_HOLD_TIME: float = 8.0     # seconds a player must hold the cache to crack it
-const SUPPLY_CACHE_GUARDS: int = 3            # defenders spawned around a cache
-const SUPPLY_CACHE_LOOT: int = 5              # loot pickups dropped when cracked
-const MINIBOSS_REWARD_CURRENCY: int = 150     # bonus on the mini-boss kill
-const CONTESTED_POI_DURATION: float = 45.0    # how long a POI stays "hot"
+const SUPPLY_CACHE_HOLD_TIME: float = 8.0  # seconds a player must hold the cache to crack it
+const SUPPLY_CACHE_GUARDS: int = 3  # defenders spawned around a cache
+const SUPPLY_CACHE_LOOT: int = 5  # loot pickups dropped when cracked
+const MINIBOSS_REWARD_CURRENCY: int = 150  # bonus on the mini-boss kill
+const CONTESTED_POI_DURATION: float = 45.0  # how long a POI stays "hot"
 const CONTESTED_POI_GUARDS: int = 4
-const SURGE_DURATION: float = 25.0            # enemy-surge / sensor-blackout window
+const SURGE_DURATION: float = 25.0  # enemy-surge / sensor-blackout window
 
 # --- Progression: Raider Level + XP (Batch 3) --------------------------------
 # Account XP curve: xp needed to go from level n→n+1 = BASE * GROWTH^(n-1).
@@ -266,15 +266,43 @@ const XP_CURVE_GROWTH: float = 1.35
 const SKILL_POINTS_PER_LEVEL: int = 1
 const XP_PER_KILL: int = 30
 const XP_PER_EXTRACT: int = 500
-const XP_PER_EVENT: int = 250                 # completing a world event
-const XP_PER_RARE_LOOT: int = 60              # per RARE+ item in the extracted haul
+const XP_PER_EVENT: int = 250  # completing a world event
+const XP_PER_RARE_LOOT: int = 60  # per RARE+ item in the extracted haul
 # Account skill tree. key -> { name, desc, max, mult_field (a player_mods key), per }.
 # Skills fold MULTIPLICATIVELY into MetaProgression.player_mods() alongside upgrades.
 const SKILLS := {
-	"vitality":  { "name": "Vitality", "desc": "+6% max health / level", "max": 5, "field": "health_mult", "per": 0.06 },
-	"scavenger": { "name": "Scavenger", "desc": "+8% loot value / level", "max": 5, "field": "loot_mult", "per": 0.08 },
-	"endurance": { "name": "Endurance", "desc": "+8% stamina / level", "max": 5, "field": "stamina_mult", "per": 0.08 },
-	"gunner":    { "name": "Gunner", "desc": "+4% weapon damage / level", "max": 5, "field": "damage_mult", "per": 0.04 },
+	"vitality":
+	{
+		"name": "Vitality",
+		"desc": "+6% max health / level",
+		"max": 5,
+		"field": "health_mult",
+		"per": 0.06
+	},
+	"scavenger":
+	{
+		"name": "Scavenger",
+		"desc": "+8% loot value / level",
+		"max": 5,
+		"field": "loot_mult",
+		"per": 0.08
+	},
+	"endurance":
+	{
+		"name": "Endurance",
+		"desc": "+8% stamina / level",
+		"max": 5,
+		"field": "stamina_mult",
+		"per": 0.08
+	},
+	"gunner":
+	{
+		"name": "Gunner",
+		"desc": "+4% weapon damage / level",
+		"max": 5,
+		"field": "damage_mult",
+		"per": 0.04
+	},
 }
 
 # --- Power caches: timed buffs (Vampire-Survivors-style) ----------------------
@@ -283,23 +311,133 @@ const SKILLS := {
 # `mag` is the effect magnitude (mult delta, flat, or fraction depending on field). `free` powers
 # can roll from raid 1; the rest are UNLOCKED with skill points (`cost`) in the RAIDER tab. `color`
 # tints the reveal/icon. Pool that can roll = MetaProgression.available_powers().
-const POWER_REVEAL_TIME: float = 2.6            # length of the non-blocking lottery reveal
+const POWER_REVEAL_TIME: float = 2.6  # length of the non-blocking lottery reveal
 # Power icons are CC BY 3.0 from game-icons.net (see docs/ASSETS.md / tools/art/fetch_power_icons.ps1).
 const POWERS := {
-	"berserk":    { "name": "Berserk",    "desc": "+60% weapon damage",        "field": "damage",      "mag": 0.60, "dur": 22.0, "color": Color(0.95, 0.32, 0.26), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/berserk.svg" },
-	"rapidfire":  { "name": "Rapid Fire",  "desc": "+45% fire rate",            "field": "fire_rate",   "mag": 0.45, "dur": 22.0, "color": Color(0.98, 0.74, 0.25), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/rapidfire.svg" },
-	"swift":      { "name": "Swift",       "desc": "+35% move speed",           "field": "speed",       "mag": 0.35, "dur": 25.0, "color": Color(0.30, 0.80, 0.95), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/swift.svg" },
-	"overshield": { "name": "Overshield",  "desc": "Absorb 90 damage",          "field": "overshield",  "mag": 90.0, "dur": 30.0, "color": Color(0.40, 0.70, 1.00), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/overshield.svg" },
-	"regen":      { "name": "Regen",       "desc": "Heal 9 HP/sec",             "field": "regen",       "mag": 9.0,  "dur": 20.0, "color": Color(0.36, 0.90, 0.55), "rarity": 1, "free": true,  "cost": 0, "icon": "res://assets/ui/icons/powers/regen.svg" },
-	"lifesteal":  { "name": "Lifesteal",   "desc": "Heal 30% of damage dealt",  "field": "lifesteal",   "mag": 0.30, "dur": 22.0, "color": Color(0.80, 0.25, 0.55), "rarity": 2, "free": false, "cost": 1, "icon": "res://assets/ui/icons/powers/lifesteal.svg" },
-	"juggernaut": { "name": "Juggernaut",  "desc": "−45% damage taken",         "field": "armor",       "mag": 0.45, "dur": 24.0, "color": Color(0.75, 0.78, 0.85), "rarity": 2, "free": false, "cost": 1, "icon": "res://assets/ui/icons/powers/juggernaut.svg" },
-	"adrenaline": { "name": "Adrenaline",  "desc": "Infinite stamina + reload", "field": "adrenaline",  "mag": 0.40, "dur": 24.0, "color": Color(0.95, 0.55, 0.20), "rarity": 2, "free": false, "cost": 1, "icon": "res://assets/ui/icons/powers/adrenaline.svg" },
-	"frenzy":     { "name": "Frenzy",      "desc": "+40% damage, fire & speed",  "field": "frenzy",      "mag": 0.40, "dur": 18.0, "color": Color(1.00, 0.40, 0.85), "rarity": 3, "free": false, "cost": 2, "icon": "res://assets/ui/icons/powers/frenzy.svg" },
+	"berserk":
+	{
+		"name": "Berserk",
+		"desc": "+60% weapon damage",
+		"field": "damage",
+		"mag": 0.60,
+		"dur": 22.0,
+		"color": Color(0.95, 0.32, 0.26),
+		"rarity": 1,
+		"free": true,
+		"cost": 0,
+		"icon": "res://assets/ui/icons/powers/berserk.svg"
+	},
+	"rapidfire":
+	{
+		"name": "Rapid Fire",
+		"desc": "+45% fire rate",
+		"field": "fire_rate",
+		"mag": 0.45,
+		"dur": 22.0,
+		"color": Color(0.98, 0.74, 0.25),
+		"rarity": 1,
+		"free": true,
+		"cost": 0,
+		"icon": "res://assets/ui/icons/powers/rapidfire.svg"
+	},
+	"swift":
+	{
+		"name": "Swift",
+		"desc": "+35% move speed",
+		"field": "speed",
+		"mag": 0.35,
+		"dur": 25.0,
+		"color": Color(0.30, 0.80, 0.95),
+		"rarity": 1,
+		"free": true,
+		"cost": 0,
+		"icon": "res://assets/ui/icons/powers/swift.svg"
+	},
+	"overshield":
+	{
+		"name": "Overshield",
+		"desc": "Absorb 90 damage",
+		"field": "overshield",
+		"mag": 90.0,
+		"dur": 30.0,
+		"color": Color(0.40, 0.70, 1.00),
+		"rarity": 1,
+		"free": true,
+		"cost": 0,
+		"icon": "res://assets/ui/icons/powers/overshield.svg"
+	},
+	"regen":
+	{
+		"name": "Regen",
+		"desc": "Heal 9 HP/sec",
+		"field": "regen",
+		"mag": 9.0,
+		"dur": 20.0,
+		"color": Color(0.36, 0.90, 0.55),
+		"rarity": 1,
+		"free": true,
+		"cost": 0,
+		"icon": "res://assets/ui/icons/powers/regen.svg"
+	},
+	"lifesteal":
+	{
+		"name": "Lifesteal",
+		"desc": "Heal 30% of damage dealt",
+		"field": "lifesteal",
+		"mag": 0.30,
+		"dur": 22.0,
+		"color": Color(0.80, 0.25, 0.55),
+		"rarity": 2,
+		"free": false,
+		"cost": 1,
+		"icon": "res://assets/ui/icons/powers/lifesteal.svg"
+	},
+	"juggernaut":
+	{
+		"name": "Juggernaut",
+		"desc": "−45% damage taken",
+		"field": "armor",
+		"mag": 0.45,
+		"dur": 24.0,
+		"color": Color(0.75, 0.78, 0.85),
+		"rarity": 2,
+		"free": false,
+		"cost": 1,
+		"icon": "res://assets/ui/icons/powers/juggernaut.svg"
+	},
+	"adrenaline":
+	{
+		"name": "Adrenaline",
+		"desc": "Infinite stamina + reload",
+		"field": "adrenaline",
+		"mag": 0.40,
+		"dur": 24.0,
+		"color": Color(0.95, 0.55, 0.20),
+		"rarity": 2,
+		"free": false,
+		"cost": 1,
+		"icon": "res://assets/ui/icons/powers/adrenaline.svg"
+	},
+	"frenzy":
+	{
+		"name": "Frenzy",
+		"desc": "+40% damage, fire & speed",
+		"field": "frenzy",
+		"mag": 0.40,
+		"dur": 18.0,
+		"color": Color(1.00, 0.40, 0.85),
+		"rarity": 3,
+		"free": false,
+		"cost": 2,
+		"icon": "res://assets/ui/icons/powers/frenzy.svg"
+	},
 }
 
 ## Cached power-icon textures (loaded once; null if missing/headless). Drawn tinted by the power
 ## colour in the reveal reel / active-buff strip / RAIDER tab.
 static var _power_icon_cache: Dictionary = {}
+
+
 static func power_icon(power_id: String) -> Texture2D:
 	if _power_icon_cache.has(power_id):
 		return _power_icon_cache[power_id]
@@ -312,25 +450,26 @@ static func power_icon(power_id: String) -> Texture2D:
 	_power_icon_cache[power_id] = tex
 	return tex
 
+
 # --- Progression: Vendor Reputation (Batch 3) --------------------------------
 # Cumulative rep thresholds per tier (index = tier; rep >= threshold → that tier).
 const REP_TIER_THRESHOLDS := [0, 300, 800, 1600, 2800]
 # Reward granted when a NEW tier is reached: currency + an optional blueprint to learn.
 const REP_TIER_REWARDS := {
-	1: { "currency": 200, "blueprint": "" },
-	2: { "currency": 400, "blueprint": "bp_suppressor" },
-	3: { "currency": 700, "blueprint": "bp_stim" },
-	4: { "currency": 1200, "blueprint": "bp_drum_mag" },
+	1: {"currency": 200, "blueprint": ""},
+	2: {"currency": 400, "blueprint": "bp_suppressor"},
+	3: {"currency": 700, "blueprint": "bp_stim"},
+	4: {"currency": 1200, "blueprint": "bp_drum_mag"},
 }
 # Shop price discount fraction per rep tier (tier 0 = none … tier 4 = 20% off).
-const REP_TIER_DISCOUNT := { 0: 0.0, 1: 0.05, 2: 0.10, 3: 0.15, 4: 0.20 }
+const REP_TIER_DISCOUNT := {0: 0.0, 1: 0.05, 2: 0.10, 3: 0.15, 4: 0.20}
 const REP_PER_EXTRACT: int = 50
-const REP_PER_CONTRACT: int = 120             # claiming a quest
-const REP_PER_HIGH_TIER_HAUL: int = 80        # extracting RARE+ loot
+const REP_PER_CONTRACT: int = 120  # claiming a quest
+const REP_PER_HIGH_TIER_HAUL: int = 80  # extracting RARE+ loot
 
 # --- Progression: Weapon Mastery (Batch 3) -----------------------------------
 # Per-weapon mastery XP from use (kills/damage). Level n→n+1 needs BASE*n mastery xp.
-const WEAPON_MASTERY_BASE: float = 8.0        # ~8 kills for level 1, scaling up
+const WEAPON_MASTERY_BASE: float = 8.0  # ~8 kills for level 1, scaling up
 const WEAPON_MASTERY_MAX: int = 10
 const WEAPON_MASTERY_XP_PER_KILL: int = 1
 # "Veteran" ramp (validation pass): mastery levels gently improve the gun you USE — a small
@@ -346,22 +485,22 @@ const WEAPON_MASTERY_RELOAD_PER: float = 0.010
 # without an Arc-Raiders-style tech tree). Applied idempotently on level-up + on load.
 #   kind: "unlock_weapon" (free weapon id) | "stash" (+capacity) | "currency" (one-time CR).
 const RAIDER_MILESTONES := {
-	3:  { "kind": "unlock_weapon", "value": "smg",   "label": "Free SMG" },
-	5:  { "kind": "stash",         "value": 25,      "label": "+25 Stash Capacity" },
-	8:  { "kind": "currency",      "value": 500,     "label": "+500 Credits" },
-	12: { "kind": "unlock_weapon", "value": "dmr",   "label": "Free DMR" },
+	3: {"kind": "unlock_weapon", "value": "smg", "label": "Free SMG"},
+	5: {"kind": "stash", "value": 25, "label": "+25 Stash Capacity"},
+	8: {"kind": "currency", "value": 500, "label": "+500 Credits"},
+	12: {"kind": "unlock_weapon", "value": "dmr", "label": "Free DMR"},
 }
 
 # Camera / ADS / peek
 const DEFAULT_FOV: float = 60.0
-const ADS_FOV: float = 42.0             # zoomed FOV when aiming (per-weapon may override)
-const ADS_SENS_SCALE: float = 0.5       # look sensitivity multiplier while aiming
-const ADS_SPRING_LENGTH: float = 2.0    # camera pulled in when aiming
+const ADS_FOV: float = 42.0  # zoomed FOV when aiming (per-weapon may override)
+const ADS_SENS_SCALE: float = 0.5  # look sensitivity multiplier while aiming
+const ADS_SPRING_LENGTH: float = 2.0  # camera pulled in when aiming
 const DEFAULT_SPRING_LENGTH: float = 4.0
-const SHOULDER_OFFSET: float = 0.5      # over-the-shoulder camera x-offset (flipped by swap)
-const AIM_TWEEN_SPEED: float = 10.0     # lerp speed for fov/length/offset
-const PEEK_PROBE: float = 1.4           # side-raycast distance to detect a wall to lean past
-const PEEK_SHIFT: float = 0.7           # extra lateral camera shift when leaning out
+const SHOULDER_OFFSET: float = 0.5  # over-the-shoulder camera x-offset (flipped by swap)
+const AIM_TWEEN_SPEED: float = 10.0  # lerp speed for fov/length/offset
+const PEEK_PROBE: float = 1.4  # side-raycast distance to detect a wall to lean past
+const PEEK_SHIFT: float = 0.7  # extra lateral camera shift when leaning out
 
 # Weapons
 const WEAPON_SWITCH_TIME: float = 0.35
@@ -377,74 +516,250 @@ const GRENADE_THROW_FORCE: float = 15.0
 # Per-enemy archetype stats (read by enemies-dev / robot_enemy). Falls back to the
 # legacy ENEMY_* constants above for "robot_grunt". flying/ranged are behaviour flags.
 const ENEMY_STATS := {
-	"robot_grunt":   { "health": 40.0,  "speed": 4.0, "damage": 8.0,  "detect": 18.0, "attack_range": 2.2,  "cooldown": 1.2,  "score": 10 },
-	"robot_heavy":   { "health": 95.0,  "speed": 2.8, "damage": 14.0, "detect": 18.0, "attack_range": 2.6,  "cooldown": 1.6,  "score": 25 },
-	"robot_tick":    { "health": 14.0,  "speed": 6.6, "damage": 5.0,  "detect": 22.0, "attack_range": 1.6,  "cooldown": 0.8,  "score": 6 },
-	"robot_wasp":    { "health": 22.0,  "speed": 5.2, "damage": 6.0,  "detect": 26.0, "attack_range": 15.0, "cooldown": 1.4,  "score": 14, "flying": true, "hover": 4.5, "ranged": true },
-	"robot_bastion": { "health": 170.0, "speed": 2.2, "damage": 10.0, "detect": 28.0, "attack_range": 20.0, "cooldown": 0.25, "score": 45, "ranged": true, "burst": true },
-	"robot_boss":    { "health": 650.0, "speed": 2.6, "damage": 22.0, "detect": 45.0, "attack_range": 22.0, "cooldown": 0.4,  "score": 250, "ranged": true },
+	"robot_grunt":
+	{
+		"health": 40.0,
+		"speed": 4.0,
+		"damage": 8.0,
+		"detect": 18.0,
+		"attack_range": 2.2,
+		"cooldown": 1.2,
+		"score": 10
+	},
+	"robot_heavy":
+	{
+		"health": 95.0,
+		"speed": 2.8,
+		"damage": 14.0,
+		"detect": 18.0,
+		"attack_range": 2.6,
+		"cooldown": 1.6,
+		"score": 25
+	},
+	"robot_tick":
+	{
+		"health": 14.0,
+		"speed": 6.6,
+		"damage": 5.0,
+		"detect": 22.0,
+		"attack_range": 1.6,
+		"cooldown": 0.8,
+		"score": 6
+	},
+	"robot_wasp":
+	{
+		"health": 22.0,
+		"speed": 5.2,
+		"damage": 6.0,
+		"detect": 26.0,
+		"attack_range": 15.0,
+		"cooldown": 1.4,
+		"score": 14,
+		"flying": true,
+		"hover": 4.5,
+		"ranged": true
+	},
+	"robot_bastion":
+	{
+		"health": 170.0,
+		"speed": 2.2,
+		"damage": 10.0,
+		"detect": 28.0,
+		"attack_range": 20.0,
+		"cooldown": 0.25,
+		"score": 45,
+		"ranged": true,
+		"burst": true
+	},
+	"robot_boss":
+	{
+		"health": 650.0,
+		"speed": 2.6,
+		"damage": 22.0,
+		"detect": 45.0,
+		"attack_range": 22.0,
+		"cooldown": 0.4,
+		"score": 250,
+		"ranged": true
+	},
 	# Caller ("Snitch"): low HP, fast, keeps its distance and — instead of dealing
 	# damage — fires Events.enemy_alerted so the director summons reinforcements. Kill
-	# it fast or get swarmed. Behaviour lives in robot_caller.gd (caller flag).
-	"robot_caller":  { "health": 30.0,  "speed": 5.0, "damage": 0.0,  "detect": 30.0, "attack_range": 14.0, "cooldown": 6.0,  "score": 30, "caller": true },
+	"robot_caller":
+	{
+		# it fast or get swarmed. Behaviour lives in robot_caller.gd (caller flag).
+		"health": 30.0,
+		"speed": 5.0,
+		"damage": 0.0,
+		"detect": 30.0,
+		"attack_range": 14.0,
+		"cooldown": 6.0,
+		"score": 30,
+		"caller": true
+	},
 	# Elite grunt: a tankier, harder-hitting grunt with an exposed weak point (the
-	# WeakPoint Hurtbox Area in its scene takes ×2.5 — reward precise fire).
-	"robot_elite":   { "health": 140.0, "speed": 4.2, "damage": 15.0, "detect": 22.0, "attack_range": 2.4,  "cooldown": 1.1,  "score": 40 },
-
+	"robot_elite":
+	{
+		# WeakPoint Hurtbox Area in its scene takes ×2.5 — reward precise fire).
+		"health": 140.0,
+		"speed": 4.2,
+		"damage": 15.0,
+		"detect": 22.0,
+		"attack_range": 2.4,
+		"cooldown": 1.1,
+		"score": 40
+	},
 	# --- Biome fauna (v0.3): 3 per NEW biome, biome-EXCLUSIVE spawns (see biome_at +
 	# wave_manager BIOME pools). All mechanical; behaviour params live alongside the
 	# stats so the scripts read ONE dict. ---
 	# DESERT (SW): the sand-worm burrows underground (untargetable, fast), LEAPS out at
-	# the player, crawls vulnerable for surface_time, then re-burrows (robot_worm.gd).
-	"robot_sandworm":  { "health": 160.0, "speed": 3.4, "damage": 16.0, "detect": 32.0, "attack_range": 2.4, "cooldown": 1.2, "score": 50,
-		"burrow_speed": 7.5, "surface_time": 5.0, "emerge_range": 5.0, "leap_damage": 14.0, "leap_radius": 2.4 },
-	# Scarab: fast skitterer that ARMS in range (blinking core) then self-destructs.
-	"robot_scarab":    { "health": 18.0,  "speed": 6.4, "damage": 0.0,  "detect": 24.0, "attack_range": 2.8, "cooldown": 0.5, "score": 12,
-		"fuse": 0.8, "blast_radius": 3.4, "blast_damage": 24.0 },
-	# Dust-devil: grounded orbit-strafing gunner wrapped in a spinning sand skirt.
-	"robot_dustdevil": { "health": 55.0,  "speed": 4.8, "damage": 6.0,  "detect": 28.0, "attack_range": 16.0, "cooldown": 1.1, "score": 22, "ranged": true },
-	# SNOW (NE): frost-hound = quadruped with a low fast LUNGE on cooldown.
-	"robot_frosthound": { "health": 60.0, "speed": 5.4, "damage": 10.0, "detect": 26.0, "attack_range": 2.2, "cooldown": 1.2, "score": 24,
-		"pounce_range": 7.0, "pounce_up": 5.0, "pounce_fwd": 9.0, "pounce_cooldown": 4.0, "pounce_damage": 12.0, "pounce_radius": 1.8 },
-	# Cryo-mortar: slow long-range frost artillery; hits SLOW the player briefly.
-	"robot_cryomortar": { "health": 120.0, "speed": 2.0, "damage": 9.0, "detect": 30.0, "attack_range": 22.0, "cooldown": 0.35, "score": 35, "ranged": true, "burst": true,
-		"slow_mult": 0.6, "slow_dur": 1.6 },
+	"robot_sandworm":
+	{
+		# the player, crawls vulnerable for surface_time, then re-burrows (robot_worm.gd).
+		"health": 160.0,
+		"speed": 3.4,
+		"damage": 16.0,
+		"detect": 32.0,
+		"attack_range": 2.4,
+		"cooldown": 1.2,
+		"score": 50,
+		"burrow_speed": 7.5,
+		"surface_time": 5.0,
+		"emerge_range": 5.0,
+		"leap_damage": 14.0,
+		"leap_radius": 2.4
+	},
+	"robot_scarab":
+	{
+		# Scarab: fast skitterer that ARMS in range (blinking core) then self-destructs.
+		"health": 18.0,
+		"speed": 6.4,
+		"damage": 0.0,
+		"detect": 24.0,
+		"attack_range": 2.8,
+		"cooldown": 0.5,
+		"score": 12,
+		"fuse": 0.8,
+		"blast_radius": 3.4,
+		"blast_damage": 24.0
+	},
+	"robot_dustdevil":
+	{
+		# Dust-devil: grounded orbit-strafing gunner wrapped in a spinning sand skirt.
+		"health": 55.0,
+		"speed": 4.8,
+		"damage": 6.0,
+		"detect": 28.0,
+		"attack_range": 16.0,
+		"cooldown": 1.1,
+		"score": 22,
+		"ranged": true
+	},
+	"robot_frosthound":
+	{
+		# SNOW (NE): frost-hound = quadruped with a low fast LUNGE on cooldown.
+		"health": 60.0,
+		"speed": 5.4,
+		"damage": 10.0,
+		"detect": 26.0,
+		"attack_range": 2.2,
+		"cooldown": 1.2,
+		"score": 24,
+		"pounce_range": 7.0,
+		"pounce_up": 5.0,
+		"pounce_fwd": 9.0,
+		"pounce_cooldown": 4.0,
+		"pounce_damage": 12.0,
+		"pounce_radius": 1.8
+	},
+	"robot_cryomortar":
+	{
+		# Cryo-mortar: slow long-range frost artillery; hits SLOW the player briefly.
+		"health": 120.0,
+		"speed": 2.0,
+		"damage": 9.0,
+		"detect": 30.0,
+		"attack_range": 22.0,
+		"cooldown": 0.35,
+		"score": 35,
+		"ranged": true,
+		"burst": true,
+		"slow_mult": 0.6,
+		"slow_dur": 1.6
+	},
 	# Avalanche: tank brute with a telegraphed AoE ground SLAM.
-	# attack_range covers its FAT body (r0.7 + player + separation park it at ~3.3 m).
-	"robot_avalanche": { "health": 190.0, "speed": 2.4, "damage": 12.0, "detect": 22.0, "attack_range": 3.8, "cooldown": 2.4, "score": 55,
-		"slam_radius": 4.2, "slam_windup": 0.9, "slam_damage": 20.0 },
+	"robot_avalanche":
+	{
+		# attack_range covers its FAT body (r0.7 + player + separation park it at ~3.3 m).
+		"health": 190.0,
+		"speed": 2.4,
+		"damage": 12.0,
+		"detect": 22.0,
+		"attack_range": 3.8,
+		"cooldown": 2.4,
+		"score": 55,
+		"slam_radius": 4.2,
+		"slam_windup": 0.9,
+		"slam_damage": 20.0
+	},
 	# RAIN (SE): oni = temple-guardian brute; its WeakPoint sits on its BACK (×3 — flank it).
-	# attack_range covers its big body (r0.6 parks it at ~3.1 m from a player).
-	"robot_oni":       { "health": 180.0, "speed": 3.4, "damage": 17.0, "detect": 24.0, "attack_range": 3.4, "cooldown": 1.4, "score": 55 },
+	"robot_oni":
+	{
+		# attack_range covers its big body (r0.6 parks it at ~3.1 m from a player).
+		"health": 180.0,
+		"speed": 3.4,
+		"damage": 17.0,
+		"detect": 24.0,
+		"attack_range": 3.4,
+		"cooldown": 1.4,
+		"score": 55
+	},
 	# Kappa: HIGH-arc pouncer that leaps onto the player (shares robot_pouncer.gd with the hound).
-	# pounce_up tuned for the project's gravity=20 (apex = up²/40 ≈ 3 m — it leaps ONTO you).
-	"robot_kappa":     { "health": 70.0,  "speed": 4.6, "damage": 9.0,  "detect": 26.0, "attack_range": 2.2, "cooldown": 1.1, "score": 26,
-		"pounce_range": 9.0, "pounce_up": 11.0, "pounce_fwd": 7.0, "pounce_cooldown": 5.0, "pounce_damage": 14.0, "pounce_radius": 2.2 },
-	# Raiju: storm-spirit skirmisher — electric hitscan + short sideways BLINK teleports.
-	"robot_raiju":     { "health": 50.0,  "speed": 5.0, "damage": 7.0,  "detect": 28.0, "attack_range": 15.0, "cooldown": 1.2, "score": 26, "ranged": true,
-		"blink_range": 5.0, "blink_cooldown": 3.0 },
+	"robot_kappa":
+	{
+		# pounce_up tuned for the project's gravity=20 (apex = up²/40 ≈ 3 m — it leaps ONTO you).
+		"health": 70.0,
+		"speed": 4.6,
+		"damage": 9.0,
+		"detect": 26.0,
+		"attack_range": 2.2,
+		"cooldown": 1.1,
+		"score": 26,
+		"pounce_range": 9.0,
+		"pounce_up": 11.0,
+		"pounce_fwd": 7.0,
+		"pounce_cooldown": 5.0,
+		"pounce_damage": 14.0,
+		"pounce_radius": 2.2
+	},
+	"robot_raiju":
+	{
+		# Raiju: storm-spirit skirmisher — electric hitscan + short sideways BLINK teleports.
+		"health": 50.0,
+		"speed": 5.0,
+		"damage": 7.0,
+		"detect": 28.0,
+		"attack_range": 15.0,
+		"cooldown": 1.2,
+		"score": 26,
+		"ranged": true,
+		"blink_range": 5.0,
+		"blink_cooldown": 3.0
+	},
 }
 
-# --- Biomes (the 4× map quadrants) -------------------------------------------
-## Which biome a world position belongs to: the ORIGINAL map is the NW "urban"
-## quadrant; the 3 new quadrants are themed (NE snow / SW desert / SE rain — see
-## CLAUDE.md). Single source of truth for biome-EXCLUSIVE enemy spawning: the wave
-## manager classifies each resolved SPAWN POINT through this and draws the enemy
-## scene from that biome's pool (wave/patrol/storm).
-func biome_at(x: float, z: float) -> String:
-	if x < 80.0:
-		return "urban" if z < 80.0 else "desert"
-	return "snow" if z < 80.0 else "rain"
+# Biomes: WorldBounds.biome_at(x,z) (scripts/core/world_bounds.gd) classifies the 4×
+# map quadrants (NW urban / NE snow / SW desert / SE rain) for biome-EXCLUSIVE spawning.
 
 # Difficulty multipliers, keyed by GameState.Difficulty. enemy_health/enemy_damage
 # scale per-enemy stats (robot_enemy._load_stats); enemy_count scales the wave size
 # (wave_manager._enemy_count_for_wave); player_damage scales outgoing weapon damage
 # (a small assist on Easy / handicap on Hard). Normal is the 1.0 baseline.
 const DIFFICULTY_MODS := {
-	0: { "enemy_health": 0.55, "enemy_damage": 0.50, "enemy_count": 0.60, "player_damage": 1.40 }, # EASY
-	1: { "enemy_health": 1.00, "enemy_damage": 1.00, "enemy_count": 1.00, "player_damage": 1.00 }, # NORMAL
-	2: { "enemy_health": 1.45, "enemy_damage": 1.40, "enemy_count": 1.35, "player_damage": 0.90 }, # HARD
+	0: {"enemy_health": 0.55, "enemy_damage": 0.50, "enemy_count": 0.60, "player_damage": 1.40},  # EASY
+	1: {"enemy_health": 1.00, "enemy_damage": 1.00, "enemy_count": 1.00, "player_damage": 1.00},  # NORMAL
+	2: {"enemy_health": 1.45, "enemy_damage": 1.40, "enemy_count": 1.35, "player_damage": 0.90},  # HARD
 }
+
 
 ## Returns the multiplier dict for a GameState.Difficulty value (falls back to Normal).
 func difficulty_mods(d: int = -1) -> Dictionary:
@@ -452,23 +767,24 @@ func difficulty_mods(d: int = -1) -> Dictionary:
 		d = GameState.difficulty
 	return DIFFICULTY_MODS.get(d, DIFFICULTY_MODS[1])
 
+
 # Sprint stamina + interaction range.
 const MAX_STAMINA: float = 100.0
-const STAMINA_DRAIN: float = 28.0      # per second while sprinting
-const STAMINA_REGEN: float = 22.0      # per second while not sprinting
-const STAMINA_SPRINT_MIN: float = 10.0 # need at least this to start sprinting
-const INTERACT_RANGE: float = 3.5      # metres for the "[E]" prompt
+const STAMINA_DRAIN: float = 28.0  # per second while sprinting
+const STAMINA_REGEN: float = 22.0  # per second while not sprinting
+const STAMINA_SPRINT_MIN: float = 10.0  # need at least this to start sprinting
+const INTERACT_RANGE: float = 3.5  # metres for the "[E]" prompt
 
 # Runtime-mutable settings (driven by SettingsManager / the settings menu).
 var mouse_sensitivity: float = MOUSE_SENSITIVITY
-var fov: float = DEFAULT_FOV            # camera FOV (player.gd reads this)
-var sfx_volume: float = 0.9             # 0..1, applied to AudioManager
+var fov: float = DEFAULT_FOV  # camera FOV (player.gd reads this)
+var sfx_volume: float = 0.9  # 0..1, applied to AudioManager
 var invert_y: bool = false
-var ads_toggle: bool = false            # false = hold to aim, true = toggle
+var ads_toggle: bool = false  # false = hold to aim, true = toggle
 # HUD layout (ultrawide comfort): edge-anchored UI insets toward center by these fractions
 # of the viewport (0 = at the screen edge). Read by minimap/killfeed/hud/stats_overlay.
-var ui_edge_margin: float = 0.0         # horizontal inset (fraction of viewport width)
-var ui_top_margin: float = 0.0          # vertical inset (fraction of viewport height)
+var ui_edge_margin: float = 0.0  # horizontal inset (fraction of viewport width)
+var ui_top_margin: float = 0.0  # vertical inset (fraction of viewport height)
 # "Military glass" UI FX master toggle (set by SettingsManager from the Interface tab):
 # scanline/grain/vignette overlay + frosted-glass blur behind modals. Read by FXOverlay
 # + GlassBackdrop; false → plain dim (cheap fallback for Low-end / preference).
@@ -479,18 +795,18 @@ var camera_shoulder_scale: float = 1.0  # multiplies SHOULDER_OFFSET (over-shoul
 var default_first_person: bool = false  # spawn in first-person view
 # Graphics-quality scale for rebuild-bound levers (set by SettingsManager from the quality
 # preset; read at arena build, so a change applies on the NEXT raid). 1.0 = Ultra ceiling.
-var grass_density_scale: float = 1.0    # multiplies the near/far grass caps in procedural_flora
-var water_refraction: float = 0.12      # water.gdshader refract_amt baked at water build (0 = flat/cheap)
+var grass_density_scale: float = 1.0  # multiplies the near/far grass caps in procedural_flora
+var water_refraction: float = 0.12  # water.gdshader refract_amt baked at water build (0 = flat/cheap)
 # "RT-style" tier rebuild-bound levers (scene nodes spawned at arena build; Ultra+RT only).
 var reflection_probes_enabled: bool = false  # spawn baked ReflectionProbes at POIs (off-screen reflections)
-var voxelgi_enabled: bool = false            # EXPERIMENTAL runtime VoxelGI bake (heavy)
+var voxelgi_enabled: bool = false  # EXPERIMENTAL runtime VoxelGI bake (heavy)
 # Cinematic pass III rebuild-bound levers (read at arena build; apply on the NEXT raid).
-var draw_distance_scale: float = 1.0         # multiplies flora/grass visibility ranges
-var terrain_detail_scale: float = 1.0        # multiplies ground-mesh subdivision density
-var terrain_parallax_enabled: bool = false   # parallax-occlusion mapping baked into the ground material
-var local_fog_enabled: bool = false          # spawn localized FogVolume zones at POIs
-var climate_zones_enabled: bool = true       # spawn localized rain/snow/desert zones at the far landmarks
-var climate_density: float = 1.0             # multiplies climate precipitation amount + fog density (0..2)
+var draw_distance_scale: float = 1.0  # multiplies flora/grass visibility ranges
+var terrain_detail_scale: float = 1.0  # multiplies ground-mesh subdivision density
+var terrain_parallax_enabled: bool = false  # parallax-occlusion mapping baked into the ground material
+var local_fog_enabled: bool = false  # spawn localized FogVolume zones at POIs
+var climate_zones_enabled: bool = true  # spawn localized rain/snow/desert zones at the far landmarks
+var climate_density: float = 1.0  # multiplies climate precipitation amount + fog density (0..2)
 
 # --- Multi-instance / git-worktree parallelism -----------------------------
 # To run several game instances at once (each driven by its own agent, often from a
@@ -508,12 +824,13 @@ var climate_density: float = 1.0             # multiplies climate precipitation 
 # AgentBridge / NetworkManager / MetaProgression / SettingsManager so they read these safely.
 var agent_port: int = AGENT_PORT
 var instance_tag: String = ""
-var net_port: int = DEFAULT_PORT          # ENet game port (host bind / client connect / discovery reply)
+var net_port: int = DEFAULT_PORT  # ENet game port (host bind / client connect / discovery reply)
 var discovery_port: int = DISCOVERY_PORT  # LAN-discovery UDP port (defaults to net_port + 1)
-var instance_label: String = ""           # e.g. the worktree branch; shown in the window title
+var instance_label: String = ""  # e.g. the worktree branch; shown in the window title
 ## EPHEMERAL: when true, PROGRESSION saves (profile/stash) are no-ops — for test runs that must
 ## not persist or touch the real save. Set by --no-save.
 var ephemeral_save: bool = false
+
 
 func _ready() -> void:
 	var args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
@@ -533,6 +850,7 @@ func _ready() -> void:
 	discovery_port = _arg_int(args, "--discovery-port", discovery_port)
 	instance_label = _arg_str(args, "--label", instance_label)
 
+
 ## Reads the int value following `flag` in args (guards a missing/flag-like/non-int value),
 ## else returns `fallback`.
 func _arg_int(args: PackedStringArray, flag: String, fallback: int) -> int:
@@ -543,6 +861,7 @@ func _arg_int(args: PackedStringArray, flag: String, fallback: int) -> int:
 			return int(raw)
 	return fallback
 
+
 ## Reads the string value following `flag` in args, else returns `fallback`.
 func _arg_str(args: PackedStringArray, flag: String, fallback: String) -> String:
 	var idx := args.find(flag)
@@ -552,6 +871,7 @@ func _arg_str(args: PackedStringArray, flag: String, fallback: String) -> String
 			return raw
 	return fallback
 
+
 ## The window title for this instance: plain "Hype Raiders" for a normal single run, else
 ## "Hype Raiders_<label>" (worktree branch) with the control/net ports appended so parallel
 ## instances are tellable apart in the OS task manager / window list.
@@ -560,6 +880,7 @@ func window_title() -> String:
 		return "Hype Raiders"
 	var tag := instance_label if instance_label != "" else instance_tag
 	return "Hype Raiders_%s [a:%d n:%d]" % [tag, agent_port, net_port]
+
 
 ## Per-instance user:// path. Single instance → `user://<base>.<ext>`; under
 ## `--agent-port N` → `user://<base>_N.<ext>`, so concurrent instances never clobber

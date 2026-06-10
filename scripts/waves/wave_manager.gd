@@ -59,7 +59,7 @@ const SCENE_KAPPA := "res://scenes/enemies/RobotKappa.tscn"
 const SCENE_RAIJU := "res://scenes/enemies/RobotRaiju.tscn"
 
 # BIOME-EXCLUSIVE wave rosters: every spawn classifies its RESOLVED spawn point through
-# Settings.biome_at(x,z) and draws from THAT biome's per-wave pool — so a squad fighting
+# WorldBounds.biome_at(x,z) and draws from THAT biome's per-wave pool — so a squad fighting
 # in the desert gets worms/scarabs/dust-devils, the snow gets hounds/mortars/avalanches,
 # the rain temple gets kappas/raijus/onis, and the original NW "urban" quadrant keeps the
 # classic robot roster (WAVE_POOLS above). The wave-5 BOSS stays global (any biome).
@@ -531,7 +531,7 @@ func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -
 	# WHERE first, so the WHAT can be biome-exclusive (xform → biome → pool).
 	var xform: Transform3D = _spawn_xform(index)
 	if scene_path.is_empty():
-		scene_path = _scene_for_spawn(Settings.biome_at(xform.origin.x, xform.origin.z))
+		scene_path = _scene_for_spawn(WorldBounds.biome_at(xform.origin.x, xform.origin.z))
 	if not ResourceLoader.exists(scene_path):
 		push_warning("WaveManager: %s not present — skipping enemy spawn" % scene_path)
 		return
@@ -662,7 +662,7 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 	# WHERE first; an empty path then draws from the spawn point's biome pool.
 	var xform: Transform3D = _spawn_xform(index)
 	if scene_path.is_empty():
-		scene_path = _scene_for_spawn(Settings.biome_at(xform.origin.x, xform.origin.z))
+		scene_path = _scene_for_spawn(WorldBounds.biome_at(xform.origin.x, xform.origin.z))
 	if not ResourceLoader.exists(scene_path):
 		push_warning("WaveManager: reinforcement scene %s missing — skipping" % scene_path)
 		return
@@ -762,7 +762,7 @@ func _spawn_patrol_enemy(index: int) -> void:
 	# fields burrowed ambush-WORMS); urban keeps the stealthable Caller/Snitch.
 	var marker_offset: int = 8 + index
 	var xform: Transform3D = _spawn_xform(marker_offset)
-	var biome: String = Settings.biome_at(xform.origin.x, xform.origin.z)
+	var biome: String = WorldBounds.biome_at(xform.origin.x, xform.origin.z)
 	var scene_path: String
 	var pool: Array = BIOME_PATROL_POOLS.get(biome, [])
 	if pool.is_empty():

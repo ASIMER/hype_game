@@ -26,17 +26,10 @@ class_name ProceduralFlora
 # with terrain/buildings so every procedural system stays determinism-synchronized.
 
 # ---------------------------------------------------------------- world rectangle
-# The map grew 4× (E+S): the original 160×160 field is the NW quadrant; the world is
-# now the rectangle X∈[X_MIN,X_MAX], Z∈[Z_MIN,Z_MAX] (centre 80,80). Mirrors the bounds
-# in procedural_terrain.gd. ALL scatter spans this rectangle (NOT the old origin-centred
-# ±70), and uses EVEN per-cell acceptance — never a fill-from-a-corner cap — so the new
-# +X/+Z quadrants are populated, not barren.
-const X_MIN: float = -80.0
-const X_MAX: float = 240.0
-const Z_MIN: float = -80.0
-const Z_MAX: float = 240.0
-const WORLD_CX: float = 80.0
-const WORLD_CZ: float = 80.0
+# World bounds: WorldBounds.* (scripts/core/world_bounds.gd) is the ONE source. ALL
+# scatter spans the full rectangle (NOT the old origin-centred ±70), and uses EVEN
+# per-cell acceptance — never a fill-from-a-corner cap — so the new +X/+Z quadrants
+# are populated, not barren.
 
 # ---------------------------------------------------------------- terrain hook
 ## Resolved once in build(): the terrain GDScript (or null when terrain-dev's file
@@ -80,7 +73,8 @@ const _CIRCLES: Array = [
 ## field. `allow_berm` lets boulders sit a little closer to the perimeter wall (inset 5 vs 8).
 static func _blocked(x: float, z: float, allow_berm: bool = false) -> bool:
 	var inset: float = 5.0 if allow_berm else 8.0
-	if x < X_MIN + inset or x > X_MAX - inset or z < Z_MIN + inset or z > Z_MAX - inset:
+	if (x < WorldBounds.X_MIN + inset or x > WorldBounds.X_MAX - inset
+			or z < WorldBounds.Z_MIN + inset or z > WorldBounds.Z_MAX - inset):
 		return true
 	for r in _CIRCLES:
 		var dx: float = x - float(r[0])
@@ -214,22 +208,22 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 	for i in range(_TREE_MODELS.size()):
 		buckets.append([] as Array[Transform3D])
 
-	# EVEN spread over the whole rectangle: walk the grid across X_MIN..X_MAX / Z_MIN..Z_MAX
+	# EVEN spread over the whole rectangle: walk the grid across the WorldBounds rect
 	# and accept a per-cell PROBABILITY tuned so the expected total ≈ FLORA_TREES — NOT a
 	# fill-until-target cap (which would pile every tree into the NW corner and leave the new
 	# +X/+Z quadrants bare). The river/keep-out losses just thin it locally.
 	var target: int = Settings.FLORA_TREES
 	var placed: int = 0
 	var step: float = 7.0
-	var nx: int = int((X_MAX - X_MIN) / step)
-	var nz: int = int((Z_MAX - Z_MIN) / step)
+	var nx: int = int((WorldBounds.X_MAX - WorldBounds.X_MIN) / step)
+	var nz: int = int((WorldBounds.Z_MAX - WorldBounds.Z_MIN) / step)
 	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 95)
 	var gx: int = 0
-	var x: float = X_MIN + step * 0.5
-	while x <= X_MAX - step * 0.5:
+	var x: float = WorldBounds.X_MIN + step * 0.5
+	while x <= WorldBounds.X_MAX - step * 0.5:
 		var gz: int = 0
-		var z: float = Z_MIN + step * 0.5
-		while z <= Z_MAX - step * 0.5:
+		var z: float = WorldBounds.Z_MIN + step * 0.5
+		while z <= WorldBounds.Z_MAX - step * 0.5:
 			var cell: int = ProcHash.h(seed * 911 + gx * 257 + gz * 31 + 7)
 			# Jitter keeps accepted sites off a visible lattice.
 			if (cell % 100) < accept:
@@ -296,15 +290,15 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 	var target: int = Settings.FLORA_BUSHES
 	var placed: int = 0
 	var step: float = 6.5
-	var nx: int = int((X_MAX - X_MIN) / step)
-	var nz: int = int((Z_MAX - Z_MIN) / step)
+	var nx: int = int((WorldBounds.X_MAX - WorldBounds.X_MIN) / step)
+	var nz: int = int((WorldBounds.Z_MAX - WorldBounds.Z_MIN) / step)
 	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 90)
 	var gx: int = 0
-	var x: float = X_MIN + step * 0.5
-	while x <= X_MAX - step * 0.5:
+	var x: float = WorldBounds.X_MIN + step * 0.5
+	while x <= WorldBounds.X_MAX - step * 0.5:
 		var gz: int = 0
-		var z: float = Z_MIN + step * 0.5
-		while z <= Z_MAX - step * 0.5:
+		var z: float = WorldBounds.Z_MIN + step * 0.5
+		while z <= WorldBounds.Z_MAX - step * 0.5:
 			var cell: int = ProcHash.h(seed * 1303 + gx * 193 + gz * 47 + 17)
 			if (cell % 100) < accept:
 				var px: float = x + ProcHash.hrange(cell + 1, -2.4, 2.4)
@@ -445,8 +439,8 @@ static func _emit_grass_tiled(parent: Node3D, prefix: String, mesh: ArrayMesh,
 	var buckets: Dictionary = {}
 	for xf in xforms:
 		var p: Vector3 = xf.origin
-		var gx: int = int(floor((p.x - X_MIN) / GRASS_TILE_M))
-		var gz: int = int(floor((p.z - Z_MIN) / GRASS_TILE_M))
+		var gx: int = int(floor((p.x - WorldBounds.X_MIN) / GRASS_TILE_M))
+		var gz: int = int(floor((p.z - WorldBounds.Z_MIN) / GRASS_TILE_M))
 		var key: int = gx * 1000 + gz
 		if not buckets.has(key):
 			buckets[key] = []
@@ -488,14 +482,14 @@ static func _emit_grass_tiled(parent: Node3D, prefix: String, mesh: ArrayMesh,
 ## 1.0 = full), `salt` separates the near/far hash streams, `scale_mul` sizes the tufts,
 ## `clump` toggles the patchy density variation. Keeps every keep-out / river guard.
 ##
-## 4× MAP: spans X_MIN..X_MAX / Z_MIN..Z_MAX with EVEN per-cell acceptance (no fill-from-a-
+## 4× MAP: spans the WorldBounds rect with EVEN per-cell acceptance (no fill-from-a-
 ## corner instance cap) so every quadrant is grassed; tiling in _emit_grass_tiled bounds the
 ## per-frame draw to the visible bubble. A high safety_cap only guards a degenerate run.
 static func _grass_transforms(seed: int, density: float, grid: float, salt: int,
 		scale_mul: float, clump: bool) -> Array[Transform3D]:
 	var xforms: Array[Transform3D] = []
-	var nx: int = int(ceil((X_MAX - X_MIN) / grid))
-	var nz: int = int(ceil((Z_MAX - Z_MIN) / grid))
+	var nx: int = int(ceil((WorldBounds.X_MAX - WorldBounds.X_MIN) / grid))
+	var nz: int = int(ceil((WorldBounds.Z_MAX - WorldBounds.Z_MIN) / grid))
 	var i: int = 0
 	var placed: int = 0
 	var cells: int = nx * nz
@@ -505,13 +499,13 @@ static func _grass_transforms(seed: int, density: float, grid: float, salt: int,
 		var cz: int = i / nx
 		i += 1
 		var hcell: int = ProcHash.h(seed * salt + cx * 131 + cz * 71 + 3)
-		var bx: float = X_MIN + (float(cx) + 0.5) * grid
-		var bz: float = Z_MIN + (float(cz) + 0.5) * grid
+		var bx: float = WorldBounds.X_MIN + (float(cx) + 0.5) * grid
+		var bz: float = WorldBounds.Z_MIN + (float(cz) + 0.5) * grid
 		# Per-cell emission weight: base `density` × (optional) coarse ~6 m clump field.
 		var dens_mul: float = density
 		if clump:
-			var clx: int = int(floor((bx - X_MIN) / 6.0))
-			var clz: int = int(floor((bz - Z_MIN) / 6.0))
+			var clx: int = int(floor((bx - WorldBounds.X_MIN) / 6.0))
+			var clz: int = int(floor((bz - WorldBounds.Z_MIN) / 6.0))
 			var cf: float = ProcHash.hf(ProcHash.h(seed * 769 + clx * 211 + clz * 97 + 5))
 			# Map the clump field to an emission weight; floor raised so no bald patches.
 			dens_mul = (GRASS_CLUMP_FLOOR + cf * GRASS_CLUMP_RANGE) * density
@@ -622,8 +616,8 @@ static func _build_stones(root: Node3D, seed: int) -> void:
 	var xforms_a: Array[Transform3D] = []
 	var xforms_b: Array[Transform3D] = []
 	var step: float = 4.5
-	var nx: int = int((X_MAX - X_MIN) / step)
-	var nz: int = int((Z_MAX - Z_MIN) / step)
+	var nx: int = int((WorldBounds.X_MAX - WorldBounds.X_MIN) / step)
+	var nz: int = int((WorldBounds.Z_MAX - WorldBounds.Z_MIN) / step)
 	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 90)
 	var i: int = 0
 	var placed: int = 0
@@ -635,8 +629,8 @@ static func _build_stones(root: Node3D, seed: int) -> void:
 		var hcell: int = ProcHash.h(seed * 3217 + cx * 149 + cz * 89 + 13)
 		if (hcell % 100) >= accept:
 			continue
-		var bx: float = X_MIN + (float(cx) + 0.5) * step
-		var bz: float = Z_MIN + (float(cz) + 0.5) * step
+		var bx: float = WorldBounds.X_MIN + (float(cx) + 0.5) * step
+		var bz: float = WorldBounds.Z_MIN + (float(cz) + 0.5) * step
 		var px: float = bx + ProcHash.hrange(hcell + 1, -step * 0.5, step * 0.5)
 		var pz: float = bz + ProcHash.hrange(hcell + 2, -step * 0.5, step * 0.5)
 		if _blocked(px, pz):
@@ -708,8 +702,8 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 		var hk: int = ProcHash.h(seed * 4099 + k * 37 + 9)
 		var ang: float = float(k) * 2.39996323  # golden angle (rad)
 		var rad: float = ProcHash.hrange(hk + 1, 20.0, 150.0)
-		var cx: float = WORLD_CX + cos(ang) * rad + ProcHash.hrange(hk + 2, -4.0, 4.0)
-		var cz: float = WORLD_CZ + sin(ang) * rad + ProcHash.hrange(hk + 3, -4.0, 4.0)
+		var cx: float = WorldBounds.CX + cos(ang) * rad + ProcHash.hrange(hk + 2, -4.0, 4.0)
+		var cz: float = WorldBounds.CZ + sin(ang) * rad + ProcHash.hrange(hk + 3, -4.0, 4.0)
 		candidates.append(Vector2(cx, cz))
 
 	var placed: Array[Vector2] = []

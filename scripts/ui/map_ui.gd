@@ -17,10 +17,8 @@ class_name MapUI
 ## in any state. Root node is named "MapUI" and exposes set_open(bool) so the
 ## AgentBridge QA hook can drive it.
 
-# World bounds: the arena is now a 320×320 rectangle X∈[-80,240], Z∈[-80,240] (the original
-# 160×160 map is the NW quadrant). The map is mapped from (coord - WORLD_MIN)/WORLD_SPAN.
-const WORLD_MIN := -80.0
-const WORLD_SPAN := 320.0
+# World bounds: WorldBounds.* (scripts/core/world_bounds.gd) is the ONE source. The
+# map projection is (coord - WorldBounds.X_MIN) / WorldBounds.SPAN (square world).
 # Panel inset from the screen edges (px).
 const PANEL_MARGIN := 64.0
 # POI display names in the order arena.get_poi_points() returns them (POIMarkers
@@ -228,8 +226,8 @@ func _poi_tier(index: int) -> int:
 ## World (x,z) → panel-local pixel coords. NORTH-UP, world-aligned (no yaw):
 ## +x → right, +z (south) → down. Maps the 320×320 world rectangle onto the panel rect.
 func world_to_panel(wpos: Vector3, panel: Rect2) -> Vector2:
-	var nx: float = clampf((wpos.x - WORLD_MIN) / WORLD_SPAN, 0.0, 1.0)
-	var nz: float = clampf((wpos.z - WORLD_MIN) / WORLD_SPAN, 0.0, 1.0)
+	var nx: float = clampf((wpos.x - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0)
+	var nz: float = clampf((wpos.z - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0)
 	return panel.position + Vector2(nx * panel.size.x, nz * panel.size.y)
 
 func get_player() -> Node3D:
@@ -299,8 +297,10 @@ class MapDraw extends Control:
 			draw_line(Vector2(panel.position.x, fy), Vector2(panel.position.x + panel.size.x, fy), col, 1.0)
 		# Centre crosshair (origin = Plaza).
 		var ctr := owner_ui.world_to_panel(Vector3.ZERO, panel)
-		draw_line(Vector2(ctr.x, panel.position.y), Vector2(ctr.x, panel.position.y + panel.size.y), Color(1, 1, 1, 0.10), 1.0)
-		draw_line(Vector2(panel.position.x, ctr.y), Vector2(panel.position.x + panel.size.x, ctr.y), Color(1, 1, 1, 0.10), 1.0)
+		draw_line(Vector2(ctr.x, panel.position.y),
+			Vector2(ctr.x, panel.position.y + panel.size.y), Color(1, 1, 1, 0.10), 1.0)
+		draw_line(Vector2(panel.position.x, ctr.y),
+			Vector2(panel.position.x + panel.size.x, ctr.y), Color(1, 1, 1, 0.10), 1.0)
 
 	func _draw_compass(font: Font, panel: Rect2) -> void:
 		# North is -z (up), world-aligned.

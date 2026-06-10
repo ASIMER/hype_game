@@ -24,16 +24,8 @@ const HALF: float = 80.0          # ORIGINAL quadrant half-extent (the NW quadra
 const RIM_INNER: float = 64.0     # (legacy) berm start vs distance-from-centre
 const RIM_OUTER: float = 78.0     # (legacy) berm full vs distance-from-centre
 
-# --- World rectangle (4× expansion). The original 160×160 map is the NW quadrant
-# (X∈[-80,80], Z∈[-80,80]); the world grows EAST (+X) and SOUTH (+Z) to 320×320. ALL
-# original content keeps its coordinates — only the bounds + new content extend.
-const SPAN: float = 320.0                       # full edge length (4× area vs the old 160)
-const X_MIN: float = -80.0
-const Z_MIN: float = -80.0
-const X_MAX: float = -80.0 + 320.0              # 240
-const Z_MAX: float = -80.0 + 320.0              # 240
-const WORLD_CX: float = 80.0                    # rectangle centre X ((X_MIN+X_MAX)/2)
-const WORLD_CZ: float = 80.0                    # rectangle centre Z
+# World rectangle: WorldBounds.* (scripts/core/world_bounds.gd) is the ONE source —
+# the original 160×160 map is the NW quadrant; the world grows EAST (+X) and SOUTH (+Z).
 # Perimeter berm rings the RECTANGLE: it ramps up as the distance to the NEAREST wall
 # drops from RIM_MARGIN_INNER (start) to RIM_MARGIN_OUTER (full berm) — same 16 m..2 m feel.
 const RIM_MARGIN_INNER: float = 16.0
@@ -41,7 +33,9 @@ const RIM_MARGIN_OUTER: float = 2.0
 
 ## Perimeter-berm ramp 0..1 by distance to the nearest rectangle wall (1 = at/over the wall).
 static func _edge_ramp(x: float, z: float) -> float:
-	var wd: float = min(min(x - X_MIN, X_MAX - x), min(z - Z_MIN, Z_MAX - z))
+	var wd: float = min(
+		min(x - WorldBounds.X_MIN, WorldBounds.X_MAX - x),
+		min(z - WorldBounds.Z_MIN, WorldBounds.Z_MAX - z))
 	return 1.0 - smoothstep(RIM_MARGIN_OUTER, RIM_MARGIN_INNER, wd)
 
 # Terrain blend colors — authored as NATURAL sRGB. The ground albedo is a BAKED sRGB
@@ -413,7 +407,7 @@ static func _build_ground(root: Node3D) -> void:
 	var detail: float = clampf(Settings.terrain_detail_scale, 1.0, 2.0)
 	# Bigger map → a slightly larger min cell so the 320×320 grid stays a sane tri count.
 	var cell: float = maxf(Settings.TERRAIN_CELL / detail, 0.8)
-	var n: int = int(round(SPAN / cell))            # cells per side over the 320 m rectangle
+	var n: int = int(round(WorldBounds.SPAN / cell))            # cells per side over the 320 m rectangle
 	var verts: int = n + 1
 
 	# Precompute height + per-vertex color/normal grids. Building the surface from
@@ -423,8 +417,8 @@ static func _build_ground(root: Node3D) -> void:
 	heights.resize(verts * verts)
 	for iz in range(verts):
 		for ix in range(verts):
-			var x: float = X_MIN + float(ix) * cell
-			var z: float = Z_MIN + float(iz) * cell
+			var x: float = WorldBounds.X_MIN + float(ix) * cell
+			var z: float = WorldBounds.Z_MIN + float(iz) * cell
 			heights[iz * verts + ix] = height_at(x, z)
 
 	# Smooth per-vertex normals + UVs from central differences on the height grid.
@@ -439,8 +433,8 @@ static func _build_ground(root: Node3D) -> void:
 	grid_uv.resize(verts * verts)
 	for iz in range(verts):
 		for ix in range(verts):
-			var x: float = X_MIN + float(ix) * cell
-			var z: float = Z_MIN + float(iz) * cell
+			var x: float = WorldBounds.X_MIN + float(ix) * cell
+			var z: float = WorldBounds.Z_MIN + float(iz) * cell
 			var hc: float = heights[iz * verts + ix]
 			var hl: float = heights[iz * verts + max(ix - 1, 0)]
 			var hr: float = heights[iz * verts + min(ix + 1, verts - 1)]
@@ -453,7 +447,7 @@ static func _build_ground(root: Node3D) -> void:
 			grid_pos[idx] = Vector3(x, hc, z)
 			grid_nrm[idx] = nrm
 			# UV maps the whole rectangle 1:1 onto [0..1]² so the baked texture aligns.
-			grid_uv[idx] = Vector2((x - X_MIN) / SPAN, (z - Z_MIN) / SPAN)
+			grid_uv[idx] = Vector2((x - WorldBounds.X_MIN) / WorldBounds.SPAN, (z - WorldBounds.Z_MIN) / WorldBounds.SPAN)
 
 	# Build the triangle soup (positions/normals/uvs) + collision faces in one pass.
 	var mverts := PackedVector3Array()
@@ -1018,7 +1012,7 @@ static func _build_backdrop(root: Node3D) -> void:
 	var container := Node3D.new()
 	container.name = "MountainBackdrop"
 	# Ring the bigger 320×320 map: centre on the world centre (80,80), well outside the walls.
-	container.position = Vector3(WORLD_CX, 0.0, WORLD_CZ)
+	container.position = Vector3(WorldBounds.CX, 0.0, WorldBounds.CZ)
 	root.add_child(container)
 	var rock_mat := StandardMaterial3D.new()
 	rock_mat.albedo_color = Color(0.32, 0.33, 0.36)

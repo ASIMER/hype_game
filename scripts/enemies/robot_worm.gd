@@ -121,8 +121,8 @@ func _tick_burrowed(delta: float) -> void:
 
 ## Clamp inside the world rectangle + pin the body below the terrain surface.
 func _pin_underground() -> void:
-	global_position.x = clampf(global_position.x, ProceduralTerrain.X_MIN + 4.0, ProceduralTerrain.X_MAX - 4.0)
-	global_position.z = clampf(global_position.z, ProceduralTerrain.Z_MIN + 4.0, ProceduralTerrain.Z_MAX - 4.0)
+	global_position.x = clampf(global_position.x, WorldBounds.X_MIN + 4.0, WorldBounds.X_MAX - 4.0)
+	global_position.z = clampf(global_position.z, WorldBounds.Z_MIN + 4.0, WorldBounds.Z_MAX - 4.0)
 	global_position.y = ProceduralTerrain.height_at(global_position.x, global_position.z) - BURROW_DEPTH
 
 ## Burst out of the ground in a leap toward the prey.
