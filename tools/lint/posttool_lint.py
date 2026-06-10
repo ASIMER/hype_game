@@ -1,16 +1,16 @@
 """Claude Code PostToolUse hook: auto-lint the file just edited by Edit/Write.
 
 Reads the hook JSON from stdin, extracts tool_input.file_path, and runs the
-matching linter (.gd -> gdlint, .py -> ruff). On violations it prints the linter
-output and exits 2 — a BLOCKING result that feeds the output back to Claude so
-the violation is fixed immediately, with no manual lint runs (and no tokens
-spent invoking linters by hand). Anything else (other extensions, missing
-tools, parse problems of the hook input itself) exits 0 silently — the hook
-must never break unrelated edits.
+matching linter (.gd -> gdlint + gdformat --check, .py -> ruff). On violations
+it prints the linter output and exits 2 — a BLOCKING result that feeds the
+output back to Claude so the violation is fixed immediately, with no manual
+lint runs (and no tokens spent invoking linters by hand). Anything else (other
+extensions, missing tools, parse problems of the hook input itself) exits 0
+silently — the hook must never break unrelated edits.
 
-NOTE: gdformat --check is intentionally NOT enforced here until the one-time
-formatting baseline lands (docs/AUDIT.md, phase 3) — before that nearly every
-legacy file would fail the check and block unrelated work.
+gdformat --check became enforceable once the one-time formatting baseline
+landed (docs/AUDIT.md phase 3; commit "style: gdformat baseline").
+scripts/resource_index.gd is exempt — it is REGENERATED unformatted per build.
 """
 
 import json
@@ -19,8 +19,10 @@ import subprocess
 import sys
 
 GDLINT = r"C:\Users\illya\miniconda3\Scripts\gdlint.exe"
+GDFORMAT = r"C:\Users\illya\miniconda3\Scripts\gdformat.exe"
 RUFF = r"C:\Users\illya\.local\bin\ruff.exe"
 PROJECT = r"C:\personal\hype game"
+FORMAT_EXEMPT = ("resource_index.gd",)
 
 
 def main() -> int:
@@ -41,33 +43,33 @@ def main() -> int:
 
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".gd":
-        cmd = [GDLINT, file_path]
+        cmds = [("gdlint", [GDLINT, file_path])]
+        if os.path.basename(file_path) not in FORMAT_EXEMPT:
+            cmds.append(("gdformat --check (fix: run gdformat on the file)",
+                         [GDFORMAT, "--check", file_path]))
     elif ext == ".py":
-        cmd = [RUFF, "check", "--no-fix", file_path]
+        cmds = [("ruff", [RUFF, "check", "--no-fix", file_path])]
     else:
         return 0
-    if not os.path.isfile(cmd[0]):
-        return 0  # linter not installed — never block
 
-    try:
-        res = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=60, cwd=PROJECT
+    for label, cmd in cmds:
+        if not os.path.isfile(cmd[0]):
+            continue  # linter not installed — never block
+        try:
+            res = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=60, cwd=PROJECT
+            )
+        except Exception:
+            continue
+        if res.returncode == 0:
+            continue
+        # Violations: surface them to Claude as blocking feedback.
+        sys.stderr.write(
+            "[lint] %s violations in %s:\n%s%s"
+            % (label, os.path.basename(file_path), res.stdout or "", res.stderr or "")
         )
-    except Exception:
-        return 0
-    if res.returncode == 0:
-        return 0
-    # Violations: surface them to Claude as blocking feedback.
-    sys.stderr.write(
-        "[lint] %s violations in %s:\n%s%s"
-        % (
-            "gdlint" if ext == ".gd" else "ruff",
-            os.path.basename(file_path),
-            res.stdout or "",
-            res.stderr or "",
-        )
-    )
-    return 2
+        return 2
+    return 0
 
 
 if __name__ == "__main__":

@@ -3,14 +3,20 @@
 # Safety net outside Claude Code — the PostToolUse hook covers in-session edits.
 # INSTALL (once per clone): cp tools/lint/pre-commit .git/hooks/pre-commit
 GDLINT="/c/Users/illya/miniconda3/Scripts/gdlint.exe"
+GDFORMAT="/c/Users/illya/miniconda3/Scripts/gdformat.exe"
 RUFF="/c/Users/illya/.local/bin/ruff.exe"
 fail=0
 files=$(git diff --cached --name-only --diff-filter=ACM)
 for f in $files; do
   case "$f" in
+    scripts/resource_index.gd)
+      ;; # generated unformatted per build — lint/format exempt
     *.gd)
       if [ -x "$GDLINT" ]; then
         "$GDLINT" "$f" || fail=1
+      fi
+      if [ -x "$GDFORMAT" ]; then
+        "$GDFORMAT" --check "$f" || fail=1
       fi
       ;;
     *.py)
