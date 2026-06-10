@@ -9,8 +9,8 @@ class_name ProceduralTerrain
 ##   static build(parent, poi_defs) -> Node3D   (adds itself under parent, returns root)
 ##   static height_at(x, z) -> float             (PURE; same math the mesh uses)
 ##
-## DETERMINISM: ALL variation derives ONLY from Settings.TERRAIN_SEED via the `_h`/`_hf`
-## arithmetic-hash idiom (copied from procedural_buildings.gd). NO randf/randi/Time so
+## DETERMINISM: ALL variation derives ONLY from Settings.TERRAIN_SEED via the shared
+## ProcHash.h/hf arithmetic hash (scripts/core/proc_hash.gd). NO randf/randi/Time so
 ## every co-op peer bakes byte-identical geometry + collision.
 ##
 ## PADS: every building footprint / extraction zone / spawn cluster / plaza / scatter
@@ -76,15 +76,8 @@ const RIVER_PTS: Array[Vector2] = [
 static var _pads: Array[Dictionary] = []
 static var _pads_ready: bool = false
 
-# ---------------------------------------------------------------- seed hashing
-static func _h(n: int) -> int:
-	var x: int = (n * 2654435761) ^ 0x27d4eb2d
-	x = (x ^ (x >> 15)) * 0x85ebca6b
-	x = x ^ (x >> 13)
-	return abs(x)
-
-static func _hf(n: int) -> float:
-	return float(_h(n) % 100000) / 100000.0
+# Seed hashing: ProcHash.h/hf (scripts/core/proc_hash.gd) — ONE copy shared with
+# flora/buildings so every procedural system stays determinism-synchronized.
 
 # ---------------------------------------------------------------- value noise
 ## Deterministic 2D value-noise in [-1,1], seeded from TERRAIN_SEED. Pure integer hash
@@ -107,7 +100,7 @@ static func _vnoise(x: float, z: float) -> float:
 
 static func _lattice(xi: int, zi: int) -> float:
 	var n: int = xi * 374761393 + zi * 668265263 + Settings.TERRAIN_SEED * 2246822519
-	return _hf(n) * 2.0 - 1.0
+	return ProcHash.hf(n) * 2.0 - 1.0
 
 ## Fractal value noise (4 octaves) in roughly [-1,1].
 static func _fbm(x: float, z: float) -> float:
@@ -385,7 +378,7 @@ static func _color_srgb(x: float, z: float, h: float, slope: float) -> Color:
 	# Subtle deterministic per-vertex value jitter (±0.03) to break up flat fields. Hash
 	# of the integer cell coords → same idiom as the seed hashing, so every peer matches.
 	var jn: int = int(round(x)) * 92837111 + int(round(z)) * 689287499 + Settings.TERRAIN_SEED
-	var jitter: float = (_hf(jn) - 0.5) * 0.06   # in [-0.03, +0.03]
+	var jitter: float = (ProcHash.hf(jn) - 0.5) * 0.06   # in [-0.03, +0.03]
 	c.r = clamp(c.r + jitter, 0.0, 1.0)
 	c.g = clamp(c.g + jitter, 0.0, 1.0)
 	c.b = clamp(c.b + jitter, 0.0, 1.0)
@@ -508,13 +501,13 @@ static func _build_ground(root: Node3D) -> void:
 	# avoids UV stretch on slopes and keeps the 1K detail crisp under the close-up
 	# camera-down shot. RENDER-ONLY: the mesh still owns relief/collision/height_at/river.
 	mi.material_override = _build_ground_material()
-	root.add_child(_make_ground_body(mesh, mi, faces))
+	root.add_child(_make_ground_body(mi, faces))
 
 
 ## Builds the ground StaticBody3D (collision unchanged) wrapping the mesh + material.
 ## Split out only so _build_ground stays readable after the material swap; the collision
 ## shape / layers / backface flag are byte-identical to the original inline path.
-static func _make_ground_body(mesh: ArrayMesh, mi: MeshInstance3D, faces: PackedVector3Array) -> StaticBody3D:
+static func _make_ground_body(mi: MeshInstance3D, faces: PackedVector3Array) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = "Terrain"
 	body.collision_layer = 1
@@ -789,7 +782,7 @@ static func _bake_ground_texture(th: PackedFloat32Array, tex_n: int, step: float
 			# Per-texel high-frequency value grain (±0.04) — deterministic hash of the texel
 			# coords (same _hf idiom) so every peer bakes identical bytes.
 			var gn: int = tx * 1973471149 + ty * 912839821 + Settings.TERRAIN_SEED * 39847
-			var grain: float = (_hf(gn) - 0.5) * 0.08   # in [-0.04, +0.04]
+			var grain: float = (ProcHash.hf(gn) - 0.5) * 0.08   # in [-0.04, +0.04]
 			col.r = clamp(col.r + grain, 0.0, 1.0)
 			col.g = clamp(col.g + grain, 0.0, 1.0)
 			col.b = clamp(col.b + grain, 0.0, 1.0)
@@ -1032,14 +1025,14 @@ static func _build_backdrop(root: Node3D) -> void:
 	rock_mat.roughness = 1.0
 	var count: int = 14
 	for i in range(count):
-		var ang: float = (TAU * float(i) / float(count)) + _hf(i * 7 + 1) * 0.4
+		var ang: float = (TAU * float(i) / float(count)) + ProcHash.hf(i * 7 + 1) * 0.4
 		# rad ≥ 235 keeps every peak OUTSIDE the rectangle even toward a corner (the SE/etc.
 		# corners sit ~226 m from the centre 80,80); 235..335 rings the whole 320 m world.
-		var rad: float = 235.0 + _hf(i * 13 + 3) * 100.0        # 235..335 (beyond the corner wall dist)
+		var rad: float = 235.0 + ProcHash.hf(i * 13 + 3) * 100.0        # 235..335 (beyond the corner wall dist)
 		# Height scales with distance: near ring ≈30 m, far ring up to ~68 m (taller — farther).
 		var dist_t: float = clamp((rad - 235.0) / 100.0, 0.0, 1.0)
-		var height: float = lerp(30.0, 68.0, dist_t) + (_hf(i * 17 + 5) - 0.5) * 10.0
-		var base_r: float = height * (0.7 + _hf(i * 19 + 2) * 0.4)
+		var height: float = lerp(30.0, 68.0, dist_t) + (ProcHash.hf(i * 17 + 5) - 0.5) * 10.0
+		var base_r: float = height * (0.7 + ProcHash.hf(i * 19 + 2) * 0.4)
 		var px: float = cos(ang) * rad
 		var pz: float = sin(ang) * rad
 		var peak := MeshInstance3D.new()
@@ -1054,8 +1047,8 @@ static func _build_backdrop(root: Node3D) -> void:
 		# Sit the cone so its base is near the ground level (slightly sunk).
 		peak.position = Vector3(px, height * 0.5 - 4.0, pz)
 		# Slight tilt + scale jitter so the ring isn't a uniform fan.
-		peak.rotation = Vector3(0.0, _hf(i * 23 + 9) * TAU, deg_to_rad((_hf(i * 29 + 4) - 0.5) * 10.0))
-		peak.scale = Vector3(1.0, 1.0 + _hf(i * 31) * 0.3, 0.85 + _hf(i * 37) * 0.4)
+		peak.rotation = Vector3(0.0, ProcHash.hf(i * 23 + 9) * TAU, deg_to_rad((ProcHash.hf(i * 29 + 4) - 0.5) * 10.0))
+		peak.scale = Vector3(1.0, 1.0 + ProcHash.hf(i * 31) * 0.3, 0.85 + ProcHash.hf(i * 37) * 0.4)
 		peak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		container.add_child(peak)
 		# Snowy cap: a smaller white cone near the top.

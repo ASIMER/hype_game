@@ -6,8 +6,8 @@ class_name ProceduralFlora
 ##
 ## EVERYTHING is DETERMINISTIC — co-op peers each build the arena locally, so the
 ## geometry MUST be identical on every machine. All placement and per-instance
-## variation derives ONLY from `Settings.TERRAIN_SEED` + the arithmetic-hash idiom
-## (`_h`/`_hf`, copied from procedural_buildings.gd). NO randf/randi/Time.
+## variation derives ONLY from `Settings.TERRAIN_SEED` + the shared ProcHash.h/hf/hrange
+## arithmetic hash (scripts/core/proc_hash.gd). NO randf/randi/Time.
 ##
 ## Ground height comes from procedural_terrain.gd's `height_at(x,z)` if that file
 ## exists (terrain-dev builds it in parallel); otherwise we fall back to y=0 so this
@@ -22,21 +22,8 @@ class_name ProceduralFlora
 ## PARSE TRAP (warnings-as-errors): never `var x := <Variant>`; every Dictionary.get
 ## and ternary local below is explicitly typed.
 
-# ---------------------------------------------------------------- seed helpers
-## Cheap deterministic positive hash of an int → big positive int.
-static func _h(n: int) -> int:
-	var x: int = (n * 2654435761) ^ 0x27d4eb2d
-	x = (x ^ (x >> 15)) * 0x85ebca6b
-	x = x ^ (x >> 13)
-	return abs(x)
-
-## Deterministic float in [0,1) from seed `n`.
-static func _hf(n: int) -> float:
-	return float(_h(n) % 100000) / 100000.0
-
-## Deterministic float in [lo,hi) from seed `n`.
-static func _hrange(n: int, lo: float, hi: float) -> float:
-	return lo + _hf(n) * (hi - lo)
+# Seed hashing: ProcHash.h/hf/hrange (scripts/core/proc_hash.gd) — ONE copy shared
+# with terrain/buildings so every procedural system stays determinism-synchronized.
 
 # ---------------------------------------------------------------- world rectangle
 # The map grew 4× (E+S): the original 160×160 field is the NW quadrant; the world is
@@ -243,11 +230,11 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 		var gz: int = 0
 		var z: float = Z_MIN + step * 0.5
 		while z <= Z_MAX - step * 0.5:
-			var cell: int = _h(seed * 911 + gx * 257 + gz * 31 + 7)
+			var cell: int = ProcHash.h(seed * 911 + gx * 257 + gz * 31 + 7)
 			# Jitter keeps accepted sites off a visible lattice.
 			if (cell % 100) < accept:
-				var px: float = x + _hrange(cell + 1, -2.6, 2.6)
-				var pz: float = z + _hrange(cell + 2, -2.6, 2.6)
+				var px: float = x + ProcHash.hrange(cell + 1, -2.6, 2.6)
+				var pz: float = z + ProcHash.hrange(cell + 2, -2.6, 2.6)
 				if not _blocked(px, pz):
 					var gy: float = _ground_y(px, pz)
 					if gy >= -0.05:  # not in the river
@@ -269,12 +256,12 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 ## collidable trunk cylinder (layer 1) sized to the scaled model footprint.
 static func _place_tree(colliders: Node3D, buckets: Array, hseed: int,
 		x: float, y: float, z: float) -> void:
-	var mi: int = _h(hseed + 5) % _TREE_MODELS.size()
+	var mi: int = ProcHash.h(hseed + 5) % _TREE_MODELS.size()
 	var base_scale: float = float(_TREE_MODELS[mi][1])
 	var trunk_r: float = float(_TREE_MODELS[mi][2])
-	var yaw: float = _hrange(hseed + 11, 0.0, TAU)
+	var yaw: float = ProcHash.hrange(hseed + 11, 0.0, TAU)
 	# Slight per-instance scale variation so the same model doesn't read as clones.
-	var sc: float = base_scale * _hrange(hseed + 13, 0.82, 1.18)
+	var sc: float = base_scale * ProcHash.hrange(hseed + 13, 0.82, 1.18)
 	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
 	(buckets[mi] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y, z)))
 
@@ -318,18 +305,18 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 		var gz: int = 0
 		var z: float = Z_MIN + step * 0.5
 		while z <= Z_MAX - step * 0.5:
-			var cell: int = _h(seed * 1303 + gx * 193 + gz * 47 + 17)
+			var cell: int = ProcHash.h(seed * 1303 + gx * 193 + gz * 47 + 17)
 			if (cell % 100) < accept:
-				var px: float = x + _hrange(cell + 1, -2.4, 2.4)
-				var pz: float = z + _hrange(cell + 2, -2.4, 2.4)
+				var px: float = x + ProcHash.hrange(cell + 1, -2.4, 2.4)
+				var pz: float = z + ProcHash.hrange(cell + 2, -2.4, 2.4)
 				if not _blocked(px, pz):
 					var gy: float = _ground_y(px, pz)
 					if gy >= -0.05:
-						var mi: int = _h(cell + 51) % _BUSH_MODELS.size()
+						var mi: int = ProcHash.h(cell + 51) % _BUSH_MODELS.size()
 						var bscale: float = float(_BUSH_MODELS[mi][1])
-						var yaw: float = _hrange(cell + 3, 0.0, TAU)
+						var yaw: float = ProcHash.hrange(cell + 3, 0.0, TAU)
 						# Bushes are small/low — keep them under 1× so they don't tower.
-						var sc: float = bscale * _hrange(cell + 4, 0.55, 0.95)
+						var sc: float = bscale * ProcHash.hrange(cell + 4, 0.55, 0.95)
 						var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(
 							Vector3(sc, sc, sc))
 						(buckets[mi] as Array[Transform3D]).append(
@@ -517,7 +504,7 @@ static func _grass_transforms(seed: int, density: float, grid: float, salt: int,
 		var cx: int = i % nx
 		var cz: int = i / nx
 		i += 1
-		var hcell: int = _h(seed * salt + cx * 131 + cz * 71 + 3)
+		var hcell: int = ProcHash.h(seed * salt + cx * 131 + cz * 71 + 3)
 		var bx: float = X_MIN + (float(cx) + 0.5) * grid
 		var bz: float = Z_MIN + (float(cz) + 0.5) * grid
 		# Per-cell emission weight: base `density` × (optional) coarse ~6 m clump field.
@@ -525,22 +512,22 @@ static func _grass_transforms(seed: int, density: float, grid: float, salt: int,
 		if clump:
 			var clx: int = int(floor((bx - X_MIN) / 6.0))
 			var clz: int = int(floor((bz - Z_MIN) / 6.0))
-			var cf: float = _hf(_h(seed * 769 + clx * 211 + clz * 97 + 5))
+			var cf: float = ProcHash.hf(ProcHash.h(seed * 769 + clx * 211 + clz * 97 + 5))
 			# Map the clump field to an emission weight; floor raised so no bald patches.
 			dens_mul = (GRASS_CLUMP_FLOOR + cf * GRASS_CLUMP_RANGE) * density
 		# Probabilistically skip cells per the (clumped) density (deterministic per-cell hash).
-		if _hf(hcell + 9) > dens_mul:
+		if ProcHash.hf(hcell + 9) > dens_mul:
 			continue
-		var px: float = bx + _hrange(hcell + 1, -grid * 0.5, grid * 0.5)
-		var pz: float = bz + _hrange(hcell + 2, -grid * 0.5, grid * 0.5)
+		var px: float = bx + ProcHash.hrange(hcell + 1, -grid * 0.5, grid * 0.5)
+		var pz: float = bz + ProcHash.hrange(hcell + 2, -grid * 0.5, grid * 0.5)
 		if _blocked(px, pz):
 			continue
 		var gy: float = _ground_y(px, pz)
 		if gy < -0.05:
 			continue
-		var yaw: float = _hrange(hcell + 3, 0.0, TAU)
+		var yaw: float = ProcHash.hrange(hcell + 3, 0.0, TAU)
 		# Denser clumps get slightly taller tufts too.
-		var sc: float = _hrange(hcell + 4, 0.85, 1.15) * scale_mul
+		var sc: float = ProcHash.hrange(hcell + 4, 0.85, 1.15) * scale_mul
 		var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
 		xforms.append(Transform3D(basis, Vector3(px, gy, pz)))
 		placed += 1
@@ -563,19 +550,19 @@ static func _grass_card_mesh() -> ArrayMesh:
 	# 26k clumped instance count still reads as a solid carpet, not discrete tufts.
 	var blades: int = 6
 	for bi in range(blades):
-		var bh: int = _h(98731 + bi * 53)
+		var bh: int = ProcHash.h(98731 + bi * 53)
 		# Even fan + a hashed nudge so blades aren't a perfect star.
-		var ang: float = (float(bi) / float(blades)) * TAU + _hrange(bh + 1, -0.35, 0.35)
+		var ang: float = (float(bi) / float(blades)) * TAU + ProcHash.hrange(bh + 1, -0.35, 0.35)
 		var dx: float = cos(ang)
 		var dz: float = sin(ang)
 		# Tall blades so the field reads as cinematic grass from the raised 3rd-person
 		# camera, not a mown lawn that vanishes into a flat ground texture.
-		var hgt: float = _hrange(bh + 2, 0.75, 1.15)
+		var hgt: float = ProcHash.hrange(bh + 2, 0.75, 1.15)
 		var base_half: float = 0.055
 		var tip_half: float = 0.012
 		# Lean direction (mostly outward along the blade, slight sideways drift).
-		var lean: float = _hrange(bh + 3, 0.06, 0.16)
-		var side: float = _hrange(bh + 4, -0.05, 0.05)
+		var lean: float = ProcHash.hrange(bh + 3, 0.06, 0.16)
+		var side: float = ProcHash.hrange(bh + 4, -0.05, 0.05)
 		var sx: float = -dz  # perpendicular for the sideways drift
 		var sz: float = dx
 		var mid_half: float = (base_half + tip_half) * 0.5
@@ -645,31 +632,31 @@ static func _build_stones(root: Node3D, seed: int) -> void:
 		var cx: int = i % nx
 		var cz: int = i / nx
 		i += 1
-		var hcell: int = _h(seed * 3217 + cx * 149 + cz * 89 + 13)
+		var hcell: int = ProcHash.h(seed * 3217 + cx * 149 + cz * 89 + 13)
 		if (hcell % 100) >= accept:
 			continue
 		var bx: float = X_MIN + (float(cx) + 0.5) * step
 		var bz: float = Z_MIN + (float(cz) + 0.5) * step
-		var px: float = bx + _hrange(hcell + 1, -step * 0.5, step * 0.5)
-		var pz: float = bz + _hrange(hcell + 2, -step * 0.5, step * 0.5)
+		var px: float = bx + ProcHash.hrange(hcell + 1, -step * 0.5, step * 0.5)
+		var pz: float = bz + ProcHash.hrange(hcell + 2, -step * 0.5, step * 0.5)
 		if _blocked(px, pz):
 			continue
 		var gy: float = _ground_y(px, pz)
 		if gy < -0.05:
 			continue
-		var yaw: float = _hrange(hcell + 3, 0.0, TAU)
-		var s: float = _hrange(hcell + 4, 0.18, 0.5)
+		var yaw: float = ProcHash.hrange(hcell + 3, 0.0, TAU)
+		var s: float = ProcHash.hrange(hcell + 4, 0.18, 0.5)
 		# Flat-ish: squash Y, slight non-uniform X/Z.
-		var sx: float = s * _hrange(hcell + 6, 0.8, 1.3)
-		var sz: float = s * _hrange(hcell + 7, 0.8, 1.3)
-		var sy: float = s * _hrange(hcell + 8, 0.35, 0.6)
+		var sx: float = s * ProcHash.hrange(hcell + 6, 0.8, 1.3)
+		var sz: float = s * ProcHash.hrange(hcell + 7, 0.8, 1.3)
+		var sy: float = s * ProcHash.hrange(hcell + 8, 0.35, 0.6)
 		var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sx, sy, sz))
 		# Stone mesh is a unit sphere centred on its origin (half-height = 0.5*sy). Sit it
 		# low so it stays embedded in / flush with the ground on slopes rather than perched
 		# on a flat-ground assumption (the old +0.4*sy floated on relief).
 		var xf := Transform3D(basis, Vector3(px, gy + sy * 0.15, pz))
 		# Deterministic 50/50 shade split.
-		if (_h(hcell + 5) % 2) == 0:
+		if (ProcHash.h(hcell + 5) % 2) == 0:
 			xforms_a.append(xf)
 		else:
 			xforms_b.append(xf)
@@ -718,11 +705,11 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 	var candidates: Array = []
 	var n_cand: int = 200
 	for k in range(n_cand):
-		var hk: int = _h(seed * 4099 + k * 37 + 9)
+		var hk: int = ProcHash.h(seed * 4099 + k * 37 + 9)
 		var ang: float = float(k) * 2.39996323  # golden angle (rad)
-		var rad: float = _hrange(hk + 1, 20.0, 150.0)
-		var cx: float = WORLD_CX + cos(ang) * rad + _hrange(hk + 2, -4.0, 4.0)
-		var cz: float = WORLD_CZ + sin(ang) * rad + _hrange(hk + 3, -4.0, 4.0)
+		var rad: float = ProcHash.hrange(hk + 1, 20.0, 150.0)
+		var cx: float = WORLD_CX + cos(ang) * rad + ProcHash.hrange(hk + 2, -4.0, 4.0)
+		var cz: float = WORLD_CZ + sin(ang) * rad + ProcHash.hrange(hk + 3, -4.0, 4.0)
 		candidates.append(Vector2(cx, cz))
 
 	var placed: Array[Vector2] = []
@@ -750,7 +737,7 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 			continue
 		if river_bank:
 			near_river_done += 1
-		var hseed: int = _h(seed * 7919 + placed.size() * 53 + 21)
+		var hseed: int = ProcHash.h(seed * 7919 + placed.size() * 53 + 21)
 		_place_boulder(colliders, buckets, hseed, c.x, maxf(gy, 0.0), c.y)
 		placed.append(c)
 
@@ -764,11 +751,11 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 ## emit a sphere collider sized to the scaled rock footprint (~1.4 m raw radius * scale).
 static func _place_boulder(colliders: Node3D, buckets: Array, hseed: int,
 		x: float, y: float, z: float) -> void:
-	var mi: int = _h(hseed + 1) % _ROCK_MODELS.size()
+	var mi: int = ProcHash.h(hseed + 1) % _ROCK_MODELS.size()
 	var base_scale: float = float(_ROCK_MODELS[mi][1])
-	var yaw: float = _hrange(hseed + 2, 0.0, TAU)
+	var yaw: float = ProcHash.hrange(hseed + 2, 0.0, TAU)
 	# Cover-rock scale: raw models are ~2-3 m wide; 0.7-1.3× keeps a good cover spread.
-	var sc: float = base_scale * _hrange(hseed + 3, 0.7, 1.3)
+	var sc: float = base_scale * ProcHash.hrange(hseed + 3, 0.7, 1.3)
 	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
 	(buckets[mi] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y, z)))
 

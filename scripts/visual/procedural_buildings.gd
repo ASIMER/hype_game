@@ -12,7 +12,7 @@ class_name ProceduralBuildings
 ## Node3D at the POI world center.
 ##
 ## Determinism: NO Math.random()/Date — all variation derives from a passed `seed`
-## int via cheap arithmetic hashing (`_h`).
+## int via the shared ProcHash.h/hf arithmetic hash (scripts/core/proc_hash.gd).
 ##
 ## CRITICAL parse trap (warnings-as-errors): never `var x := <Variant>` from
 ## Dictionary.get()/untyped ternary — every local below is explicitly typed.
@@ -78,7 +78,7 @@ static func mat_container(sid: int) -> StandardMaterial3D:
 		Color(0.46, 0.40, 0.20),  # ochre
 		Color(0.36, 0.37, 0.40),  # gray
 	]
-	var idx: int = _h(sid) % palette.size()
+	var idx: int = ProcHash.h(sid) % palette.size()
 	var c: Color = palette[idx]
 	# Corrugated baked normal/albedo ribs (vertical, ~8 cm pitch) with rust streaks.
 	return ProcMaterials.corrugated(c, sid * 37 + 6)
@@ -121,17 +121,8 @@ static func mat_sandstone_dark(sid: int = 0) -> StandardMaterial3D:
 	return ProcMaterials.weathered(Color(0.56, 0.41, 0.23), 0.0, 0.92, 0.42,
 		sid * 17 + 4, Vector3(0.12, 0.12, 0.12), true, 0.75, true)
 
-# ---------------------------------------------------------------- seed helper
-## Cheap deterministic positive hash of an int → big positive int.
-static func _h(n: int) -> int:
-	var x: int = (n * 2654435761) ^ 0x27d4eb2d
-	x = (x ^ (x >> 15)) * 0x85ebca6b
-	x = x ^ (x >> 13)
-	return abs(x)
-
-## Deterministic float in [0,1) from seed `n`.
-static func _hf(n: int) -> float:
-	return float(_h(n) % 100000) / 100000.0
+# Seed hashing: ProcHash.h/hf (scripts/core/proc_hash.gd) — ONE copy shared with
+# terrain/flora so every procedural system stays determinism-synchronized.
 
 # ---------------------------------------------------------------- solid part
 ## Adds a box that BOTH renders (MeshInstance3D) and collides (StaticBody3D +
@@ -317,17 +308,17 @@ static func rubble_pile(sid: int) -> Node3D:
 	var m_a := mat_concrete(sid * 3 + 1)
 	var m_b := mat_concrete_dark(sid * 3 + 2)
 	var m_c := mat_rust(sid * 3 + 3)
-	var count: int = 3 + (_h(sid) % 3)  # 3..5 chunks
+	var count: int = 3 + (ProcHash.h(sid) % 3)  # 3..5 chunks
 	for i in range(count):
 		var s: int = sid * 31 + i * 7
-		var sx: float = 0.5 + _hf(s) * 1.1
-		var sy: float = 0.3 + _hf(s + 1) * 0.7
-		var sz: float = 0.5 + _hf(s + 2) * 1.1
-		var px: float = (_hf(s + 3) - 0.5) * 2.2
-		var pz: float = (_hf(s + 4) - 0.5) * 2.2
-		var roty: float = _hf(s + 5) * 90.0
+		var sx: float = 0.5 + ProcHash.hf(s) * 1.1
+		var sy: float = 0.3 + ProcHash.hf(s + 1) * 0.7
+		var sz: float = 0.5 + ProcHash.hf(s + 2) * 1.1
+		var px: float = (ProcHash.hf(s + 3) - 0.5) * 2.2
+		var pz: float = (ProcHash.hf(s + 4) - 0.5) * 2.2
+		var roty: float = ProcHash.hf(s + 5) * 90.0
 		var mm: StandardMaterial3D = m_a
-		var pick: int = _h(s + 6) % 3
+		var pick: int = ProcHash.h(s + 6) % 3
 		if pick == 1:
 			mm = m_b
 		elif pick == 2:
@@ -369,7 +360,7 @@ static func build_tower(footprint: Vector2) -> Node3D:
 	var d: float = footprint.y
 	var conc_d := mat_concrete_dark(int(w + d))
 	var th: float = 0.35
-	var storeys: int = 3 + (_h(1) % 2)  # 3..4
+	var storeys: int = 3 + (ProcHash.h(1) % 2)  # 3..4
 	var sh: float = 3.0                  # storey height
 	# Ground slab.
 	_place(root, floor_slab(w, d, conc_d), Vector3(0, 0.0, 0))
@@ -510,7 +501,7 @@ static func build_plaza_cover() -> Node3D:
 	var quad: Array[Vector2] = [Vector2(-7, -7), Vector2(7, -7), Vector2(7, 7), Vector2(-7, 7)]
 	for i in range(quad.size()):
 		var q: Vector2 = quad[i]
-		_solid(root, Vector3(2.4, 1.2, 2.4), conc, Vector3(q.x, 0.6, q.y), float(_h(i) % 30))
+		_solid(root, Vector3(2.4, 1.2, 2.4), conc, Vector3(q.x, 0.6, q.y), float(ProcHash.h(i) % 30))
 	# Two edge barriers (N/S).
 	_solid(root, Vector3(6.0, 1.2, 0.6), conc_d, Vector3(0, 0.6, -10))
 	_solid(root, Vector3(6.0, 1.2, 0.6), conc_d, Vector3(0, 0.6, 10))
@@ -560,7 +551,7 @@ static func build_container_yard(footprint: Vector2, courtyard: bool = true) -> 
 			continue
 		for lv in range(levels):
 			# Slight stagger so stacks don't look perfectly aligned.
-			var jitter: float = (_hf(sd * 13 + lv) - 0.5) * 0.4
+			var jitter: float = (ProcHash.hf(sd * 13 + lv) - 0.5) * 0.4
 			_place(root, container(sx, ch, sz, mat_container(sd + lv)),
 				Vector3(cx + jitter, lv * ch, cz))
 	# A couple of rubble piles in open corners for ground detail (clear of center).
@@ -707,24 +698,28 @@ static func build_snow_lodge(footprint: Vector2) -> Node3D:
 ## One A-frame cabin centred at `base`: a solid timber core (collision) + two steep tilted roof
 ## panels meeting at a ridge (render-only) capped with snow + front/back gables and a dark door.
 static func _build_aframe(parent: Node3D, timber: StandardMaterial3D, roofw: StandardMaterial3D,
-		snow: StandardMaterial3D, base: Vector3, fw: float, dd: float, H: float, sid: int) -> void:
+		snow: StandardMaterial3D, base: Vector3, fw: float, dd: float, hgt: float, sid: int) -> void:
 	var hw: float = fw * 0.5
 	# Solid lower core (navmesh routes around it).
-	var core_h: float = H * 0.42
+	var core_h: float = hgt * 0.42
 	_solid(parent, Vector3(fw * 0.86, core_h, dd * 0.9), timber, base + Vector3(0, core_h * 0.5, 0))
-	# Two roof panels from ground (±hw) up to the ridge (0,H). Render-only tilted boxes.
-	var slant: float = sqrt(hw * hw + H * H)
-	var ang: float = rad_to_deg(atan2(H, hw))
-	_decor(parent, Vector3(slant, 0.34, dd), roofw, base + Vector3(-hw * 0.5, H * 0.5, 0), Vector3(0, 0, ang))
-	_decor(parent, Vector3(slant, 0.34, dd), roofw, base + Vector3(hw * 0.5, H * 0.5, 0), Vector3(0, 0, -ang))
+	# Two roof panels from ground (±hw) up to the ridge (0,hgt). Render-only tilted boxes.
+	var slant: float = sqrt(hw * hw + hgt * hgt)
+	var ang: float = rad_to_deg(atan2(hgt, hw))
+	_decor(parent, Vector3(slant, 0.34, dd), roofw,
+		base + Vector3(-hw * 0.5, hgt * 0.5, 0), Vector3(0, 0, ang))
+	_decor(parent, Vector3(slant, 0.34, dd), roofw,
+		base + Vector3(hw * 0.5, hgt * 0.5, 0), Vector3(0, 0, -ang))
 	# Snow caps on the outer face of each panel.
-	_decor(parent, Vector3(slant * 0.98, 0.16, dd * 0.98), snow, base + Vector3(-hw * 0.5 - 0.12, H * 0.5 + 0.14, 0), Vector3(0, 0, ang))
-	_decor(parent, Vector3(slant * 0.98, 0.16, dd * 0.98), snow, base + Vector3(hw * 0.5 + 0.12, H * 0.5 + 0.14, 0), Vector3(0, 0, -ang))
+	_decor(parent, Vector3(slant * 0.98, 0.16, dd * 0.98), snow,
+		base + Vector3(-hw * 0.5 - 0.12, hgt * 0.5 + 0.14, 0), Vector3(0, 0, ang))
+	_decor(parent, Vector3(slant * 0.98, 0.16, dd * 0.98), snow,
+		base + Vector3(hw * 0.5 + 0.12, hgt * 0.5 + 0.14, 0), Vector3(0, 0, -ang))
 	# Front + back gable panels under the ridge.
 	var gable := ProcMaterials.weathered(Color(0.30, 0.20, 0.12), 0.0, 0.85, 0.45,
 		sid * 7 + 1, Vector3(0.08, 0.08, 0.08), true, 0.7, true)
-	_decor(parent, Vector3(fw * 0.5, H * 0.7, 0.2), gable, base + Vector3(0, H * 0.4, dd * 0.5))
-	_decor(parent, Vector3(fw * 0.5, H * 0.7, 0.2), gable, base + Vector3(0, H * 0.4, -dd * 0.5))
+	_decor(parent, Vector3(fw * 0.5, hgt * 0.7, 0.2), gable, base + Vector3(0, hgt * 0.4, dd * 0.5))
+	_decor(parent, Vector3(fw * 0.5, hgt * 0.7, 0.2), gable, base + Vector3(0, hgt * 0.4, -dd * 0.5))
 	# Dark doorway + a warm window glow on the front gable (+Z).
 	var dark := mat_concrete_dark(sid + 2)
 	_decor(parent, Vector3(1.1, 1.9, 0.12), dark, base + Vector3(0, 0.95, dd * 0.5 + 0.06))
@@ -752,19 +747,19 @@ static func build_desert_ruins(footprint: Vector2) -> Node3D:
 	# Colonnade of round columns (some broken) on an inner ring.
 	var cols: int = 6
 	for i in range(cols):
-		var hk: int = _h(sid * 31 + i * 7)
+		var hk: int = ProcHash.h(sid * 31 + i * 7)
 		var a: float = TAU * float(i) / float(cols)
 		var rr: float = min(ex, ez) * 0.58
 		var cxp: float = cos(a) * rr
 		var czp: float = sin(a) * rr
 		var broken: bool = (hk % 100) < 40
-		var col_h: float = 4.2 if not broken else (1.2 + _hf(hk + 1) * 1.6)
+		var col_h: float = 4.2 if not broken else (1.2 + ProcHash.hf(hk + 1) * 1.6)
 		_solid_cyl(root, 0.42, col_h, sand, Vector3(cxp, 0.5 + col_h * 0.5, czp), 10)
 		if not broken:
 			_solid(root, Vector3(1.1, 0.4, 1.1), sand_d, Vector3(cxp, 0.5 + col_h + 0.2, czp))
 		else:
-			var fx: float = cxp + (_hf(hk + 2) - 0.5) * 2.4
-			var fz: float = czp + (_hf(hk + 3) - 0.5) * 2.4
+			var fx: float = cxp + (ProcHash.hf(hk + 2) - 0.5) * 2.4
+			var fz: float = czp + (ProcHash.hf(hk + 3) - 0.5) * 2.4
 			_solid_cyl(root, 0.42, 0.7, sand_d, Vector3(fx, 0.85, fz), 10, 90.0)
 	# Central obelisk: a 4-sided shaft + a pyramidion cap.
 	var ob_h: float = 8.5
@@ -783,17 +778,17 @@ static func _ruin_wall(parent: Node3D, mat: StandardMaterial3D, sid: int, base: 
 	var segs: int = 5
 	var seg_len: float = length / float(segs)
 	for i in range(segs):
-		var hk: int = _h(sid * 13 + i * 5)
+		var hk: int = ProcHash.h(sid * 13 + i * 5)
 		var toppled: bool = (hk % 100) < 30
-		var hgt: float = 0.6 if toppled else (1.6 + _hf(hk + 1) * 1.8)
+		var hgt: float = 0.6 if toppled else (1.6 + ProcHash.hf(hk + 1) * 1.8)
 		var off: float = -length * 0.5 + (float(i) + 0.5) * seg_len
 		var pos: Vector3 = base + (Vector3(0, hgt * 0.5, off) if along_z else Vector3(off, hgt * 0.5, 0))
 		var sz: Vector3 = Vector3(0.55, hgt, seg_len * 0.92) if along_z else Vector3(seg_len * 0.92, hgt, 0.55)
 		_solid(parent, sz, mat, pos)
 		if toppled:
-			var jitter: float = (_hf(hk + 2) - 0.5) * 1.4
+			var jitter: float = (ProcHash.hf(hk + 2) - 0.5) * 1.4
 			var bpos: Vector3 = base + (Vector3(1.1, 0.2, off + jitter) if along_z else Vector3(off + jitter, 0.2, 1.1))
-			_solid(parent, Vector3(1.0, 0.4, 0.7), mat, bpos, float(_h(hk + 3) % 40))
+			_solid(parent, Vector3(1.0, 0.4, 0.7), mat, bpos, float(ProcHash.h(hk + 3) % 40))
 
 ## Tiny deterministic seed source so rubble varies per call site.
 static func sd_seed(n: int) -> int:
