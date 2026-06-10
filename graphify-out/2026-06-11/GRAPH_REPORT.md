@@ -1,7 +1,7 @@
 # Graph Report - hype game  (2026-06-11)
 
 ## Corpus Check
-- 30 files · ~2,019,622 words
+- 30 files · ~2,019,747 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bf76fa5f`
+- Built from commit: `f16c4e8a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

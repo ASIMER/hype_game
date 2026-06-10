@@ -2247,7 +2247,7 @@
       "label": "3. `state` JSON schema",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L76",
+      "source_location": "L78",
       "id": "docs_testing_3_state_json_schema",
       "community": 9,
       "norm_label": "3. `state` json schema"
@@ -2256,7 +2256,7 @@
       "label": "4. Driving it",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L123",
+      "source_location": "L125",
       "id": "docs_testing_4_driving_it",
       "community": 9,
       "norm_label": "4. driving it"
@@ -2265,7 +2265,7 @@
       "label": "5. Validation commands (run after every change)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L128",
+      "source_location": "L130",
       "id": "docs_testing_5_validation_commands_run_after_every_change",
       "community": 9,
       "norm_label": "5. validation commands (run after every change)"
@@ -2274,7 +2274,7 @@
       "label": "6. QA workflow (test matrix)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L138",
+      "source_location": "L140",
       "id": "docs_testing_6_qa_workflow_test_matrix",
       "community": 9,
       "norm_label": "6. qa workflow (test matrix)"
@@ -2283,7 +2283,7 @@
       "label": "7. Co-op multi-instance testing (instances playing together)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L152",
+      "source_location": "L154",
       "id": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
       "community": 9,
       "norm_label": "7. co-op multi-instance testing (instances playing together)"
@@ -2292,7 +2292,7 @@
       "label": "Host \u2192 join \u2192 ready \u2192 deploy sequence",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L167",
+      "source_location": "L169",
       "id": "docs_testing_host_join_ready_deploy_sequence",
       "community": 9,
       "norm_label": "host \u2192 join \u2192 ready \u2192 deploy sequence"
@@ -2301,7 +2301,7 @@
       "label": "Co-op checks worth running",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L181",
+      "source_location": "L183",
       "id": "docs_testing_co_op_checks_worth_running",
       "community": 9,
       "norm_label": "co-op checks worth running"
@@ -2310,7 +2310,7 @@
       "label": "LAN discovery test",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L189",
+      "source_location": "L191",
       "id": "docs_testing_lan_discovery_test",
       "community": 9,
       "norm_label": "lan discovery test"
@@ -2319,7 +2319,7 @@
       "label": "WAN / hairpin test",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L198",
+      "source_location": "L200",
       "id": "docs_testing_wan_hairpin_test",
       "community": 9,
       "norm_label": "wan / hairpin test"
@@ -2328,7 +2328,7 @@
       "label": "Per-instance save isolation",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L205",
+      "source_location": "L207",
       "id": "docs_testing_per_instance_save_isolation",
       "community": 9,
       "norm_label": "per-instance save isolation"
@@ -2337,7 +2337,7 @@
       "label": "8. Parallel testing (2\u20134 instances at once)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L209",
+      "source_location": "L211",
       "id": "docs_testing_8_parallel_testing_2_4_instances_at_once",
       "community": 9,
       "norm_label": "8. parallel testing (2\u20134 instances at once)"
@@ -13252,5 +13252,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "bf76fa5f7425711228c80928e27dbafff15bb536"
+  "built_at_commit": "f16c4e8a99fd1980ee7e05432543306bb30447f0"
 }
