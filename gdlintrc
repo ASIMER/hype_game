@@ -46,7 +46,9 @@ loop-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
 max-file-lines: 1600
 max-line-length: 120
 max-public-methods: 40
-max-returns: 8
+# 16 (not the stock 8): the AgentBridge debug-command dispatchers + Hub tab routers
+# legitimately early-return once per action branch — that's the cleanest shape for them.
+max-returns: 16
 mixed-tabs-and-spaces: null
 no-elif-return: null
 no-else-return: null
