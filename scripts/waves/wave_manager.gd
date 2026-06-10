@@ -47,6 +47,62 @@ const WAVE_POOLS := {
 	5: [SCENE_GRUNT, SCENE_TICK, SCENE_WASP, SCENE_HEAVY, SCENE_BASTION],
 }
 
+# --- Biome fauna scenes (v0.3) — guarded with ResourceLoader.exists at spawn time. ---
+const SCENE_WORM := "res://scenes/enemies/RobotSandworm.tscn"
+const SCENE_SCARAB := "res://scenes/enemies/RobotScarab.tscn"
+const SCENE_DUSTDEVIL := "res://scenes/enemies/RobotDustdevil.tscn"
+const SCENE_FROSTHOUND := "res://scenes/enemies/RobotFrosthound.tscn"
+const SCENE_CRYOMORTAR := "res://scenes/enemies/RobotCryomortar.tscn"
+const SCENE_AVALANCHE := "res://scenes/enemies/RobotAvalanche.tscn"
+const SCENE_ONI := "res://scenes/enemies/RobotOni.tscn"
+const SCENE_KAPPA := "res://scenes/enemies/RobotKappa.tscn"
+const SCENE_RAIJU := "res://scenes/enemies/RobotRaiju.tscn"
+
+# BIOME-EXCLUSIVE wave rosters: every spawn classifies its RESOLVED spawn point through
+# Settings.biome_at(x,z) and draws from THAT biome's per-wave pool — so a squad fighting
+# in the desert gets worms/scarabs/dust-devils, the snow gets hounds/mortars/avalanches,
+# the rain temple gets kappas/raijus/onis, and the original NW "urban" quadrant keeps the
+# classic robot roster (WAVE_POOLS above). The wave-5 BOSS stays global (any biome).
+const BIOME_WAVE_POOLS := {
+	"desert": {
+		1: [SCENE_SCARAB, SCENE_SCARAB, SCENE_DUSTDEVIL],
+		2: [SCENE_SCARAB, SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_DUSTDEVIL],
+		3: [SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_WORM],
+		4: [SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_DUSTDEVIL, SCENE_WORM],
+		5: [SCENE_SCARAB, SCENE_DUSTDEVIL, SCENE_WORM, SCENE_WORM],
+	},
+	"snow": {
+		1: [SCENE_FROSTHOUND, SCENE_FROSTHOUND, SCENE_FROSTHOUND],
+		2: [SCENE_FROSTHOUND, SCENE_FROSTHOUND, SCENE_CRYOMORTAR],
+		3: [SCENE_FROSTHOUND, SCENE_CRYOMORTAR, SCENE_AVALANCHE],
+		4: [SCENE_FROSTHOUND, SCENE_FROSTHOUND, SCENE_CRYOMORTAR, SCENE_AVALANCHE],
+		5: [SCENE_FROSTHOUND, SCENE_CRYOMORTAR, SCENE_AVALANCHE, SCENE_AVALANCHE],
+	},
+	"rain": {
+		1: [SCENE_KAPPA, SCENE_KAPPA, SCENE_RAIJU],
+		2: [SCENE_KAPPA, SCENE_KAPPA, SCENE_RAIJU, SCENE_RAIJU],
+		3: [SCENE_KAPPA, SCENE_RAIJU, SCENE_ONI],
+		4: [SCENE_KAPPA, SCENE_KAPPA, SCENE_RAIJU, SCENE_ONI],
+		5: [SCENE_KAPPA, SCENE_RAIJU, SCENE_ONI, SCENE_ONI],
+	},
+}
+
+# Storm (final-wave flood) mixes per biome; urban keeps STORM_POOL.
+const BIOME_STORM_POOLS := {
+	"desert": [SCENE_WORM, SCENE_WORM, SCENE_DUSTDEVIL, SCENE_SCARAB, SCENE_SCARAB],
+	"snow": [SCENE_AVALANCHE, SCENE_AVALANCHE, SCENE_CRYOMORTAR, SCENE_FROSTHOUND, SCENE_FROSTHOUND],
+	"rain": [SCENE_ONI, SCENE_ONI, SCENE_RAIJU, SCENE_KAPPA, SCENE_KAPPA],
+}
+
+# Between-wave patrol pools per biome. Urban is EMPTY = keep the legacy caller-first
+# behaviour. Desert patrols include the WORM — a stealthable burrowed ambusher guarding
+# the ruins is exactly the biome's flavour.
+const BIOME_PATROL_POOLS := {
+	"desert": [SCENE_WORM, SCENE_SCARAB, SCENE_DUSTDEVIL],
+	"snow": [SCENE_FROSTHOUND, SCENE_CRYOMORTAR],
+	"rain": [SCENE_KAPPA, SCENE_RAIJU],
+}
+
 var _arena: Node3D = null
 var _enemies_container: Node = null
 var _alive_enemies: Array[Node] = []
@@ -222,7 +278,9 @@ func _spawn_loop() -> void:
 	var cap: int = Settings.FINAL_WAVE_CONCURRENT if _storm else Settings.WAVE_MAX_CONCURRENT
 	var interval: float = Settings.FINAL_WAVE_SPAWN_INTERVAL if _storm else Settings.WAVE_SPAWN_INTERVAL
 	if _wave_spawned < _wave_total and _alive_enemies.size() < cap:
-		_spawn_enemy(_wave_spawned, _scene_for_spawn())
+		# Empty scene path → _spawn_enemy resolves the spawn point first and draws the
+		# enemy from THAT point's biome pool (biome-exclusive rosters).
+		_spawn_enemy(_wave_spawned)
 		_wave_spawned += 1
 	if _wave_spawned < _wave_total:
 		get_tree().create_timer(interval).timeout.connect(_spawn_loop)
@@ -338,14 +396,16 @@ func _enemy_count_for_wave(wave: int) -> int:
 	var count_mult: float = float(Settings.difficulty_mods().get("enemy_count", 1.0))
 	return maxi(1, int(round(base * count_mult)))
 
-## Choose which enemy scene to spawn next based on the current wave's pool. On the
-## final wave the boss is force-spawned first (once); the rest draw from the
-## support pool. Missing scenes fall back to the grunt so a wave never deadlocks.
-func _scene_for_spawn() -> String:
+## Choose which enemy scene to spawn next based on the current wave's pool for the
+## given BIOME (of the already-resolved spawn point — see _spawn_enemy). On the final
+## wave the boss is force-spawned first (once, any biome); the rest draw from the
+## biome's support pool. Missing scenes fall back to the grunt so a wave never deadlocks.
+func _scene_for_spawn(biome: String = "urban") -> String:
 	var wave: int = GameState.current_wave
-	# Storm draws from the heaviest pool — no boss, just an overwhelming heavy stream.
+	# Storm draws from the biome's heaviest pool — no boss, just an overwhelming stream.
 	if _storm:
-		var sp: String = STORM_POOL[randi() % STORM_POOL.size()]
+		var spool: Array = BIOME_STORM_POOLS.get(biome, STORM_POOL)
+		var sp: String = spool[randi() % spool.size()]
 		return sp if ResourceLoader.exists(sp) else SCENE_GRUNT
 	if wave >= MAX_WAVE and not _boss_spawned:
 		_boss_spawned = true
@@ -353,7 +413,8 @@ func _scene_for_spawn() -> String:
 			return SCENE_BOSS
 		# No boss art — fall through to a heavy so the final wave still bites.
 		return SCENE_BASTION if ResourceLoader.exists(SCENE_BASTION) else SCENE_GRUNT
-	var pool: Array = WAVE_POOLS.get(wave, [SCENE_GRUNT])
+	var pools: Dictionary = BIOME_WAVE_POOLS.get(biome, WAVE_POOLS)
+	var pool: Array = pools.get(clampi(wave, 1, MAX_WAVE), [SCENE_GRUNT])
 	if pool.is_empty():
 		return SCENE_GRUNT
 	var pick: String = pool[randi() % pool.size()]
@@ -412,10 +473,13 @@ func _crosses_river(a: Vector3, b: Vector3) -> bool:
 	return false
 
 ## Pick a spawn transform on the player's side of the river so the enemy can actually walk in.
-## Collect EVERY same-side marker, then spread enemies evenly across them (index % count). The
-## old version returned the FIRST same-side marker from `index`, which mapped most wave indices
-## to the SAME marker → a whole wave piled onto one point (stacked, shoved up by collision —
-## "боты падают сверху в одну точку"). Falls back to the index marker if none qualify / no players.
+## Collect EVERY same-side marker, PREFER the ones NEAR a player (the 320×320 map has markers
+## in every quadrant — without the proximity filter a wave fans out across the whole world and
+## treks in from other biomes, diluting the biome-exclusive roster), then spread enemies evenly
+## across the surviving markers (index % count — the de-stack fix). Falls back gracefully:
+## near-markers → any same-side marker → the raw index marker.
+const NEAR_SPAWN_RADIUS: float = 70.0   # markers within this of a player are "local"
+
 func _spawn_xform(index: int) -> Transform3D:
 	if _arena == null:
 		return Transform3D.IDENTITY
@@ -424,12 +488,20 @@ func _spawn_xform(index: int) -> Transform3D:
 	if players.is_empty() or n <= 0:
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
 	var ok: Array[int] = []
+	var near: Array[int] = []
 	for i in n:
-		if _spawn_ok_for_players(_arena.get_enemy_spawn_point(i).origin, players):
-			ok.append(i)
-	if ok.is_empty():
+		var origin: Vector3 = _arena.get_enemy_spawn_point(i).origin
+		if not _spawn_ok_for_players(origin, players):
+			continue
+		ok.append(i)
+		for p in players:
+			if origin.distance_to(p) <= NEAR_SPAWN_RADIUS:
+				near.append(i)
+				break
+	var pick_from: Array[int] = near if not near.is_empty() else ok
+	if pick_from.is_empty():
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
-	return _jittered_spawn(_arena.get_enemy_spawn_point(ok[index % ok.size()]))
+	return _jittered_spawn(_arena.get_enemy_spawn_point(pick_from[index % pick_from.size()]))
 
 ## Spread each spawn around its marker on a small golden-angle DISC so a burst of enemies that
 ## share one marker forms a flat ring (collision resolves them HORIZONTALLY) instead of a
@@ -450,12 +522,18 @@ func _jittered_spawn(xform: Transform3D) -> Transform3D:
 
 ## Spawn one enemy. `as_hunter` defaults true (existing wave/storm behaviour).
 ## Patrols call with `as_hunter = false`; alarms/flanks call with `as_hunter = true`.
-func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE, as_hunter: bool = true) -> void:
-	if not ResourceLoader.exists(scene_path):
-		push_warning("WaveManager: %s not present — skipping enemy spawn" % scene_path)
-		return
+## With an EMPTY `scene_path` the spawn point is resolved FIRST and the scene comes
+## from that point's BIOME pool — the heart of biome-exclusive rosters.
+func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -> void:
 	if _enemies_container == null:
 		push_warning("WaveManager: Net/Enemies container not found — cannot spawn")
+		return
+	# WHERE first, so the WHAT can be biome-exclusive (xform → biome → pool).
+	var xform: Transform3D = _spawn_xform(index)
+	if scene_path.is_empty():
+		scene_path = _scene_for_spawn(Settings.biome_at(xform.origin.x, xform.origin.z))
+	if not ResourceLoader.exists(scene_path):
+		push_warning("WaveManager: %s not present — skipping enemy spawn" % scene_path)
 		return
 	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
 	# Ensure it's discoverable as an enemy even if the scene forgot the group.
@@ -466,9 +544,9 @@ func _spawn_enemy(index: int, scene_path: String = ENEMY_SCENE, as_hunter: bool 
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
-	# Position at a spawn marker the player can actually reach (avoids the wrong river bank).
+	# Position at the pre-resolved marker (reachable side of the river + de-stack jitter).
 	if enemy is Node3D and _arena:
-		(enemy as Node3D).global_transform = _spawn_xform(index)
+		(enemy as Node3D).global_transform = xform
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
 
@@ -535,11 +613,10 @@ func spawn_reinforcements(count: int, near_pos: Vector3, as_hunter: bool = true,
 	if _enemies_container == null or _arena == null:
 		return
 
-	# Resolve scene: caller may override, else use the current wave pool or grunt.
+	# Resolve scene: caller may override; an EMPTY path stays empty here so the
+	# per-spawn helper below can resolve it from each spawn POINT's biome pool.
 	var resolved_path: String = scene_path
-	if resolved_path.is_empty():
-		resolved_path = _scene_for_spawn()
-	if not ResourceLoader.exists(resolved_path):
+	if not resolved_path.is_empty() and not ResourceLoader.exists(resolved_path):
 		resolved_path = SCENE_GRUNT
 
 	# Hard cap: never let alive count exceed FINAL_WAVE_CONCURRENT.
@@ -580,10 +657,14 @@ func spawn_reinforcements(count: int, near_pos: Vector3, as_hunter: bool = true,
 ## used for wave-independent patrol spawns (caller handles tracking in _patrols).
 ## All reinforcement spawns go into _alive_enemies normally.
 func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool) -> void:
+	if _enemies_container == null:
+		return
+	# WHERE first; an empty path then draws from the spawn point's biome pool.
+	var xform: Transform3D = _spawn_xform(index)
+	if scene_path.is_empty():
+		scene_path = _scene_for_spawn(Settings.biome_at(xform.origin.x, xform.origin.z))
 	if not ResourceLoader.exists(scene_path):
 		push_warning("WaveManager: reinforcement scene %s missing — skipping" % scene_path)
-		return
-	if _enemies_container == null:
 		return
 	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
 	if not enemy.is_in_group("enemies"):
@@ -592,7 +673,7 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
 	if enemy is Node3D and _arena:
-		(enemy as Node3D).global_transform = _spawn_xform(index)
+		(enemy as Node3D).global_transform = xform
 	# Reinforcements count toward alive enemies (wave-clear accounting).
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
@@ -661,25 +742,36 @@ func _spawn_patrols() -> void:
 	if _enemies_container == null or _arena == null:
 		return
 
-	# Prefer the Caller/Snitch so its perception makes patrols stealthable;
-	# fall back to the grunt if Lane A's scene isn't available yet.
-	var patrol_scene: String = SCENE_CALLER if ResourceLoader.exists(SCENE_CALLER) else SCENE_GRUNT
-
 	# Patrols PERSIST now, so only TOP UP to a steady target population (PATROL_COUNT live
 	# patrols) — replacing ones the player killed — instead of adding a fresh batch each
 	# intermission (which would accumulate). Also respect the global alive ceiling.
+	# (The patrol SCENE is resolved per spawn point: biome pools, urban = caller/grunt.)
 	var need: int = maxi(0, Settings.PATROL_COUNT - _patrols.size())
 	var current_alive: int = _alive_enemies.size() + _patrols.size()
 	var can_spawn: int = maxi(0, Settings.FINAL_WAVE_CONCURRENT - current_alive)
 	var count: int = mini(need, can_spawn)
 
 	for i in count:
-		_spawn_patrol_enemy(i, patrol_scene)
+		_spawn_patrol_enemy(i)
 
-func _spawn_patrol_enemy(index: int, scene_path: String) -> void:
-	if not ResourceLoader.exists(scene_path):
-		return
+func _spawn_patrol_enemy(index: int) -> void:
 	if _enemies_container == null:
+		return
+	# WHERE first: spread away from the wave markers, then pick the patrol scene from
+	# the spawn point's BIOME pool. New biomes patrol their own fauna (the desert even
+	# fields burrowed ambush-WORMS); urban keeps the stealthable Caller/Snitch.
+	var marker_offset: int = 8 + index
+	var xform: Transform3D = _spawn_xform(marker_offset)
+	var biome: String = Settings.biome_at(xform.origin.x, xform.origin.z)
+	var scene_path: String
+	var pool: Array = BIOME_PATROL_POOLS.get(biome, [])
+	if pool.is_empty():
+		scene_path = SCENE_CALLER if ResourceLoader.exists(SCENE_CALLER) else SCENE_GRUNT
+	else:
+		scene_path = pool[randi() % pool.size()]
+		if not ResourceLoader.exists(scene_path):
+			scene_path = SCENE_GRUNT
+	if not ResourceLoader.exists(scene_path):
 		return
 	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
 	if not enemy.is_in_group("enemies"):
@@ -689,10 +781,7 @@ func _spawn_patrol_enemy(index: int, scene_path: String) -> void:
 		enemy.hunter = false
 	_enemies_container.add_child(enemy, true)
 	if enemy is Node3D and _arena:
-		# Offset the patrol index to spread them away from wave spawn markers; still keep it
-		# to a marker the player can reach.
-		var marker_offset: int = 8 + index
-		(enemy as Node3D).global_transform = _spawn_xform(marker_offset)
+		(enemy as Node3D).global_transform = xform
 	# Track in _patrols, NOT _alive_enemies.
 	_patrols.append(enemy)
 	Events.enemy_spawned.emit(enemy)
