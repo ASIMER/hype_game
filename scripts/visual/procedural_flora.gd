@@ -9,10 +9,8 @@ class_name ProceduralFlora
 ## variation derives ONLY from `Settings.TERRAIN_SEED` + the shared ProcHash.h/hf/hrange
 ## arithmetic hash (scripts/core/proc_hash.gd). NO randf/randi/Time.
 ##
-## Ground height comes from procedural_terrain.gd's `height_at(x,z)` if that file
-## exists (terrain-dev builds it in parallel); otherwise we fall back to y=0 so this
-## works both ways. Inside the river `height_at` is NEGATIVE — we skip planting where
-## height < -0.05.
+## Ground height comes from ProceduralTerrain.height_at(x,z) (direct class call).
+## Inside the river `height_at` is NEGATIVE — we skip planting where height < -0.05.
 ##
 ## Collision model (so the runtime navmesh routes around cover):
 ##   - tree TRUNKS: StaticBody3D + CylinderShape3D (layer 1, mask 0); canopies render-only.
@@ -32,42 +30,38 @@ class_name ProceduralFlora
 # are populated, not barren.
 
 # ---------------------------------------------------------------- terrain hook
-## Resolved once in build(): the terrain GDScript (or null when terrain-dev's file
-## isn't present yet). Stored as a plain Variant so the guarded call is cheap.
-static var _terrain: GDScript = null
-static var _has_terrain: bool = false
-
 static func _ground_y(x: float, z: float) -> float:
-	if _has_terrain:
-		return float(_terrain.height_at(x, z))
-	return 0.0
+	return ProceduralTerrain.height_at(x, z)
 
 # ---------------------------------------------------------------- keep-out tests
-# POI footprints (cx, cz, half-w, half-d) already widened by the +8 m margin; plus
-# the plaza circle, the extraction circles, and the player-spawn cluster.
-const _POI_RECTS: Array = [
-	[-40.0, -45.0, 8.5 + 8.0, 7.5 + 8.0],
-	[45.0, -28.0, 11.0 + 8.0, 9.0 + 8.0],
-	[-52.0, 30.0, 7.5 + 8.0, 7.5 + 8.0],
-	[-30.0, 50.0, 9.0 + 8.0, 8.0 + 8.0],
-	[50.0, 42.0, 9.0 + 8.0, 8.0 + 8.0],
-	# 6 NEW far-quadrant POIs (half-w/half-d + 8 m margin) so flora stops clipping the
-	# temple/lodge/ruins/etc. Must match arena.gd _POI_DEFS.
-	[160.0, -10.0, 11.0 + 8.0, 9.0 + 8.0],   # POI_SnowLodge
-	[205.0, 40.0, 10.0 + 8.0, 8.0 + 8.0],    # POI_SnowDepot
-	[0.0, 158.0, 12.0 + 8.0, 11.0 + 8.0],    # POI_DesertRuins
-	[45.0, 205.0, 8.0 + 8.0, 7.0 + 8.0],     # POI_RuinColumns
-	[160.0, 158.0, 11.0 + 8.0, 11.0 + 8.0],  # POI_Temple
-	[205.0, 205.0, 7.0 + 8.0, 7.0 + 8.0],    # POI_ShrineHouse
-]
-# Circular keep-outs (cx, cz, radius): plaza, the three extraction zones, spawn.
-const _CIRCLES: Array = [
-	[0.0, 0.0, 14.0],     # plaza
-	[45.0, -28.0, 11.0],  # extraction
-	[-30.0, 50.0, 11.0],  # extraction
-	[-52.0, 30.0, 11.0],  # extraction
-	[59.0, 60.0, 17.0],   # player spawn cluster
-]
+# Built in build() from the SAME arena._POI_DEFS the structures use (no hand-copied
+# rect list to drift) + the extraction points arena passes. Rects = POI footprint
+# half-extents + an 8 m margin; the plaza (w=0) becomes a r=14 circle; extraction
+# keep-outs are r=11; the player-spawn cluster circle is flora tuning, kept local.
+const _POI_MARGIN: float = 8.0
+const _PLAZA_KEEPOUT_R: float = 14.0
+const _EXTRACT_KEEPOUT_R: float = 11.0
+const _SPAWN_CIRCLE: Array = [59.0, 60.0, 17.0]
+static var _poi_rects: Array = []  # [cx, cz, half-w+margin, half-d+margin]
+static var _circles: Array = []  # [cx, cz, radius]
+
+
+## Derive the keep-outs from the POI defs + extraction points (called by build()).
+static func _collect_keepouts(poi_defs: Dictionary, extraction_points: Array[Vector2]) -> void:
+	_poi_rects = []
+	_circles = [_SPAWN_CIRCLE]
+	for k in poi_defs.keys():
+		var d: Dictionary = poi_defs[k]
+		var px: float = float(d.get("x", 0.0))
+		var pz: float = float(d.get("z", 0.0))
+		var w: float = float(d.get("w", 0.0))
+		var dd: float = float(d.get("d", 0.0))
+		if w <= 0.1 and dd <= 0.1:
+			_circles.append([px, pz, _PLAZA_KEEPOUT_R])
+		else:
+			_poi_rects.append([px, pz, w * 0.5 + _POI_MARGIN, dd * 0.5 + _POI_MARGIN])
+	for zc in extraction_points:
+		_circles.append([zc.x, zc.y, _EXTRACT_KEEPOUT_R])
 
 ## True when (x,z) is inside any structure/zone/spawn keep-out OR off the playable
 ## field. `allow_berm` lets boulders sit a little closer to the perimeter wall (inset 5 vs 8).
@@ -76,23 +70,26 @@ static func _blocked(x: float, z: float, allow_berm: bool = false) -> bool:
 	if (x < WorldBounds.X_MIN + inset or x > WorldBounds.X_MAX - inset
 			or z < WorldBounds.Z_MIN + inset or z > WorldBounds.Z_MAX - inset):
 		return true
-	for r in _CIRCLES:
+	for r in _circles:
 		var dx: float = x - float(r[0])
 		var dz: float = z - float(r[1])
 		var rad: float = float(r[2])
 		if dx * dx + dz * dz < rad * rad:
 			return true
-	for b in _POI_RECTS:
+	for b in _poi_rects:
 		if absf(x - float(b[0])) < float(b[2]) and absf(z - float(b[1])) < float(b[3]):
 			return true
 	return false
 
 # ================================================================ entry point
-## Construct all flora, add a single root under `parent`, and return it.
-static func build(parent: Node3D) -> Node3D:
-	var ts: GDScript = load("res://scripts/visual/procedural_terrain.gd")
-	_terrain = ts
-	_has_terrain = ts != null
+## Construct all flora, add a single root under `parent`, and return it. `poi_defs` is
+## arena._POI_DEFS (the ONE POI source); `extraction_points` are the zone XZ centres
+## arena passes (today: the 3 original NW zones — the 9 new-biome zones never had flora
+## keep-outs; adding them would reshape the world, so that stays a deliberate decision,
+## see docs/AUDIT.md F2).
+static func build(parent: Node3D, poi_defs: Dictionary = {},
+		extraction_points: Array[Vector2] = []) -> Node3D:
+	_collect_keepouts(poi_defs, extraction_points)
 
 	var root := Node3D.new()
 	root.name = "Flora"

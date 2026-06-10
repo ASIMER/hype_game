@@ -110,23 +110,33 @@ func _on_enemy_replicated(node: Node) -> void:
 		node.name, multiplayer.get_unique_id()])
 
 # ------------------------------------------------- procedural terrain + flora hooks
-## Both builders are GUARDED (load-by-path, no class_name reference) so the arena
-## runs before/without those workstreams landing. CONTRACT with the lanes:
-##   ProceduralTerrain.build(parent, poi_defs) -> Node3D  (static; adds itself under
-##     parent; ALL pads — POI footprints / extraction zones / spawn cluster / plaza /
-##     scatter spots — blend to EXACTLY y=0 so markers, zones and buildings keep their
-##     authored heights; deterministic from Settings.TERRAIN_SEED only)
+## Direct class calls (every builder has a class_name) — the old guarded load-by-path
+## indirection dated from the parallel-lane era and made a file move a SILENT no-op
+## world (docs/AUDIT.md F6). CONTRACT:
+##   ProceduralTerrain.build(parent, poi_defs, extraction_points) -> Node3D  (static;
+##     adds itself under parent; ALL pads — POI footprints / extraction zones / spawn
+##     cluster / plaza / scatter spots — blend to EXACTLY y=0 so markers, zones and
+##     buildings keep their authored heights; deterministic from Settings.TERRAIN_SEED)
 ##   ProceduralTerrain.height_at(x, z) -> float           (static, pure)
-##   ProceduralFlora.build(parent) -> Node3D               (static; deterministic;
-##     reads height_at itself; collidable pieces on layer 1 so the bake parses them)
+##   ProceduralFlora.build(parent, poi_defs, extraction_points) -> Node3D  (static;
+##     deterministic; reads height_at itself; collidable pieces on layer 1)
+## Both receive the SAME _POI_DEFS + the ExtractionZone* positions read off THIS
+## scene's nodes — Arena.tscn is the one source for zone coordinates (AUDIT F2).
+
+## XZ centres of this arena's ExtractionZone* children, in scene order. `nw_only`
+## filters to the original NW-quadrant zones — the only ones flora ever kept out of.
+func _extraction_zone_points(nw_only: bool = false) -> Array[Vector2]:
+	var pts: Array[Vector2] = []
+	for c in get_children():
+		if c is Node3D and str(c.name).begins_with("ExtractionZone"):
+			var p: Vector3 = (c as Node3D).position
+			if nw_only and (p.x >= WorldBounds.CX or p.z >= WorldBounds.CZ):
+				continue
+			pts.append(Vector2(p.x, p.z))
+	return pts
+
 func _build_terrain() -> void:
-	var path := "res://scripts/visual/procedural_terrain.gd"
-	if not ResourceLoader.exists(path):
-		return
-	var script: GDScript = load(path)
-	if script == null:
-		return
-	var terrain: Node3D = script.build(nav_region, _POI_DEFS)
+	var terrain: Node3D = ProceduralTerrain.build(nav_region, _POI_DEFS, _extraction_zone_points())
 	if terrain == null:
 		return
 	# The terrain REPLACES the flat Ground plane (render + collision). Remove the old
@@ -137,43 +147,25 @@ func _build_terrain() -> void:
 		ground.queue_free()
 
 func _build_flora() -> void:
-	var path := "res://scripts/visual/procedural_flora.gd"
-	if not ResourceLoader.exists(path):
-		return
-	var script: GDScript = load(path)
-	if script == null:
-		return
-	script.build(nav_region)
+	# NW-only extraction keep-outs: the 9 new-biome zones never had flora keep-outs
+	# (pre-existing asymmetry, kept bit-exact — see docs/AUDIT.md F2).
+	ProceduralFlora.build(nav_region, _POI_DEFS, _extraction_zone_points(true))
 
 ## Ultra+RT tier: spawn baked ReflectionProbes at the POIs for off-screen reflections.
-## GUARDED (load-by-path) so the arena runs even without the file; the builder itself
-## early-returns on headless and when Settings.reflection_probes_enabled is off. Render-
-## only + deterministic (placement derives from POI markers), so it never touches the
-## navmesh/collision/netcode.
+## The builder early-returns on headless and when Settings.reflection_probes_enabled is
+## off. Render-only + deterministic (placement derives from POI markers), so it never
+## touches the navmesh/collision/netcode.
 func _build_reflection_probes() -> void:
-	var path := "res://scripts/visual/procedural_reflection_probes.gd"
-	if not ResourceLoader.exists(path):
-		return
-	var script: GDScript = load(path)
-	if script == null:
-		return
-	script.build(self, poi_markers)
+	ProceduralReflectionProbes.build(self, poi_markers)
 	# Experimental VoxelGI (off by default; gated inside on Settings.voxelgi_enabled).
-	if script.has_method("build_voxelgi"):
-		script.build_voxelgi(self, Vector3(80.0, 24.0, 80.0))
+	ProceduralReflectionProbes.build_voxelgi(self, Vector3(80.0, 24.0, 80.0))
 
-## Localized FogVolume mist pools at a few POIs + river-valley spots. GUARDED (load-by-path)
-## so the arena runs even without the file; the builder early-returns on headless and when
-## Settings.local_fog_enabled is off. Render-only + deterministic (placement from POI markers
-## + fixed river points), so it never touches the navmesh/collision/netcode. The zones only
-## render when the active Environment's volumetric fog is on (driven by the quality setting).
+## Localized FogVolume mist pools at a few POIs + river-valley spots. The builder
+## early-returns on headless and when Settings.local_fog_enabled is off. Render-only +
+## deterministic (placement from POI markers + fixed river points), so it never touches
+## the navmesh/collision/netcode. The zones only render when the active Environment's
+## volumetric fog is on (driven by the quality setting).
 func _build_fog_zones() -> void:
-	var path := "res://scripts/visual/procedural_fog_zones.gd"
-	if not ResourceLoader.exists(path):
-		return
-	var script: GDScript = load(path)
-	if script == null:
-		return
 	# Pass the player-spawn centroid so the fog zones keep the start corner clear.
 	var spawn_center := Vector3(58.0, 0.0, 62.0)
 	if player_spawn_markers != null and player_spawn_markers.get_child_count() > 0:
@@ -185,21 +177,14 @@ func _build_fog_zones() -> void:
 				n += 1
 		if n > 0:
 			spawn_center = acc / float(n)
-	script.build(self, poi_markers, spawn_center)
+	ProceduralFogZones.build(self, poi_markers, spawn_center)
 
-## Localized climate zones (rain over the Temple, snow over the Lodge, sand-haze over the
-## Ruins) at the 3 far-quadrant landmarks. GUARDED (load-by-path) so the arena runs even
-## without the file; the builder early-returns on headless and when Settings.climate_zones_enabled
-## is off. Render-only + deterministic (placement from the POI markers), so it never touches the
-## navmesh/collision/netcode.
+## Localized climate zones (rain over the Temple, snow over the Lodge, sand-haze over
+## the Ruins) at the 3 far-quadrant landmarks. The builder early-returns on headless and
+## when Settings.climate_zones_enabled is off. Render-only + deterministic (placement
+## from the POI markers), so it never touches the navmesh/collision/netcode.
 func _build_climate_zones() -> void:
-	var path := "res://scripts/visual/procedural_climate_zones.gd"
-	if not ResourceLoader.exists(path):
-		return
-	var script: GDScript = load(path)
-	if script == null:
-		return
-	script.build(self, poi_markers)
+	ProceduralClimateZones.build(self, poi_markers)
 
 ## POI center (world x,z), theme, and footprint (X×Z meters). Tower/warehouse/house/
 ## yard are placed at each POI; the three POIs that host an extraction zone use a

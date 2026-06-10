@@ -6,7 +6,9 @@ class_name ProceduralTerrain
 ## footbridge. Built before the navmesh bake so the relief is pathable.
 ##
 ## CONTRACT (arena.gd `_build_terrain()` depends on these EXACT signatures):
-##   static build(parent, poi_defs) -> Node3D   (adds itself under parent, returns root)
+##   static build(parent, poi_defs, extraction_points) -> Node3D  (adds itself under
+##     parent, returns root; extraction_points = the ExtractionZone* XZ centres read
+##     off Arena.tscn by arena.gd — the zone pads flatten there)
 ##   static height_at(x, z) -> float             (PURE; same math the mesh uses)
 ##
 ## DETERMINISM: ALL variation derives ONLY from Settings.TERRAIN_SEED via the shared
@@ -69,6 +71,10 @@ const RIVER_PTS: Array[Vector2] = [
 # Cached so height_at (called by other systems) reuses the SAME pad set the mesh used.
 static var _pads: Array[Dictionary] = []
 static var _pads_ready: bool = false
+# Extraction-zone XZ centres, passed by arena.build() from its OWN ExtractionZone*
+# nodes (single source — Arena.tscn; this list used to be hand-duplicated here).
+# Pre-build height_at fallbacks see an empty list (they already lacked POI pads).
+static var _zone_pts: Array[Vector2] = []
 
 # Seed hashing: ProcHash.h/hf (scripts/core/proc_hash.gd) — ONE copy shared with
 # flora/buildings so every procedural system stays determinism-synchronized.
@@ -113,8 +119,8 @@ static func _fbm(x: float, z: float) -> float:
 
 # ---------------------------------------------------------------- pad collection
 ## Builds the flat-pad list ONCE (idempotent). Reads poi_defs (footprint rects + plaza
-## radius), the 3 extraction zones, the spawn cluster, and the 20 scatter spots that
-## arena.gd `_rebuild_scatter()` places — flattening each so authored heights survive.
+## radius), the extraction zones (_zone_pts, from arena), the spawn cluster, and the 20
+## scatter spots arena.gd `_rebuild_scatter()` places — flattened so authored heights survive.
 static func _collect_pads(poi_defs: Dictionary) -> void:
 	if _pads_ready:
 		return
@@ -131,15 +137,10 @@ static func _collect_pads(poi_defs: Dictionary) -> void:
 		else:
 			_pads.append({"kind": "rect", "x": px, "z": pz,
 				"hw": w * 0.5 + 6.0, "hd": dd * 0.5 + 6.0, "fall": 8.0})
-	# Extraction zones (r=10) — flatten a pad under each so the evac beacon sits clean. The
-	# original 3 are in the NW quadrant; the 9 new ones (3 per new biome — NE/SW/SE) sit in
-	# open ground and MUST match the ExtractionZone* node positions in Arena.tscn.
-	for zc in [
-		Vector2(45.0, -28.0), Vector2(-30.0, 50.0), Vector2(-52.0, 30.0),  # NW (original)
-		Vector2(120.0, 30.0), Vector2(200.0, -30.0), Vector2(175.0, 60.0),  # NE snow
-		Vector2(-40.0, 130.0), Vector2(55.0, 130.0), Vector2(-20.0, 200.0), # SW desert
-		Vector2(120.0, 120.0), Vector2(200.0, 130.0), Vector2(130.0, 200.0),# SE rain
-	]:
+	# Extraction zones (r=10) — flatten a pad under each so the evac beacon sits clean.
+	# Positions come from arena via build() (_zone_pts) — read off the real
+	# ExtractionZone* nodes, so Arena.tscn is the ONE source (no hand-copied list).
+	for zc in _zone_pts:
 		_pads.append({"kind": "circle", "x": zc.x, "z": zc.y, "r": 10.0, "fall": 8.0})
 	# Player spawn cluster (r=16 at (59,60)).
 	_pads.append({"kind": "circle", "x": 59.0, "z": 60.0, "r": 16.0, "fall": 9.0})
@@ -383,7 +384,9 @@ static func _color_at(x: float, z: float, h: float, slope: float) -> Color:
 	return _color_srgb(x, z, h, slope).srgb_to_linear()
 
 # ================================================================ BUILD
-static func build(parent: Node3D, poi_defs: Dictionary) -> Node3D:
+static func build(parent: Node3D, poi_defs: Dictionary,
+		extraction_points: Array[Vector2] = []) -> Node3D:
+	_zone_pts = extraction_points
 	_pads_ready = false
 	_collect_pads(poi_defs)
 
