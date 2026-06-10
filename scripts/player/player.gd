@@ -323,6 +323,9 @@ func _physics_process(delta: float) -> void:
 				speed *= Settings.CARRY_SPEED_MULT
 			# Active power-cache buff (Swift / Frenzy).
 			speed *= buff_speed_mult()
+			# Enemy-applied chill/slow debuff (cryo-mortar hits), time-boxed.
+			if Time.get_ticks_msec() < _slow_until_ms:
+				speed *= _slow_mult
 			velocity.x = move_dir.x * speed
 			velocity.z = move_dir.z * speed
 
@@ -867,6 +870,21 @@ func begin_power_open() -> void:
 	t.timeout.connect(func() -> void:
 		if is_instance_valid(self):
 			apply_power(rolled))
+
+# --- Enemy-applied slow debuff (cryo-mortar) ----------------------------------
+# Movement is CLIENT-authoritative, so the server routes the slow to the owning
+# peer via rpc_id (same trust pattern as begin_power_open). Time-boxed via ticks —
+# no per-frame bookkeeping; re-hits simply extend/refresh the window.
+var _slow_until_ms: int = 0
+var _slow_mult: float = 1.0
+
+## Server → owner: apply a movement slow of `mult` (e.g. 0.6 = 40% slower) for `dur` s.
+@rpc("any_peer", "call_local", "reliable")
+func server_apply_slow(mult: float, dur: float) -> void:
+	if not is_multiplayer_authority():
+		return
+	_slow_mult = clampf(mult, 0.2, 1.0)
+	_slow_until_ms = Time.get_ticks_msec() + int(maxf(dur, 0.0) * 1000.0)
 
 ## Grant a timed buff (called on the owning authority after the cache reveal finishes).
 func apply_power(power_id: String) -> void:

@@ -410,13 +410,16 @@ const ENEMY_STATS := {
 	"robot_cryomortar": { "health": 120.0, "speed": 2.0, "damage": 9.0, "detect": 30.0, "attack_range": 22.0, "cooldown": 0.35, "score": 35, "ranged": true, "burst": true,
 		"slow_mult": 0.6, "slow_dur": 1.6 },
 	# Avalanche: tank brute with a telegraphed AoE ground SLAM.
-	"robot_avalanche": { "health": 190.0, "speed": 2.4, "damage": 12.0, "detect": 22.0, "attack_range": 3.2, "cooldown": 2.4, "score": 55,
-		"slam_radius": 3.6, "slam_windup": 0.9, "slam_damage": 20.0 },
+	# attack_range covers its FAT body (r0.7 + player + separation park it at ~3.3 m).
+	"robot_avalanche": { "health": 190.0, "speed": 2.4, "damage": 12.0, "detect": 22.0, "attack_range": 3.8, "cooldown": 2.4, "score": 55,
+		"slam_radius": 4.2, "slam_windup": 0.9, "slam_damage": 20.0 },
 	# RAIN (SE): oni = temple-guardian brute; its WeakPoint sits on its BACK (×3 — flank it).
-	"robot_oni":       { "health": 180.0, "speed": 3.4, "damage": 17.0, "detect": 24.0, "attack_range": 2.6, "cooldown": 1.4, "score": 55 },
+	# attack_range covers its big body (r0.6 parks it at ~3.1 m from a player).
+	"robot_oni":       { "health": 180.0, "speed": 3.4, "damage": 17.0, "detect": 24.0, "attack_range": 3.4, "cooldown": 1.4, "score": 55 },
 	# Kappa: HIGH-arc pouncer that leaps onto the player (shares robot_pouncer.gd with the hound).
+	# pounce_up tuned for the project's gravity=20 (apex = up²/40 ≈ 3 m — it leaps ONTO you).
 	"robot_kappa":     { "health": 70.0,  "speed": 4.6, "damage": 9.0,  "detect": 26.0, "attack_range": 2.2, "cooldown": 1.1, "score": 26,
-		"pounce_range": 9.0, "pounce_up": 8.0, "pounce_fwd": 7.0, "pounce_cooldown": 5.0, "pounce_damage": 14.0, "pounce_radius": 2.2 },
+		"pounce_range": 9.0, "pounce_up": 11.0, "pounce_fwd": 7.0, "pounce_cooldown": 5.0, "pounce_damage": 14.0, "pounce_radius": 2.2 },
 	# Raiju: storm-spirit skirmisher — electric hitscan + short sideways BLINK teleports.
 	"robot_raiju":     { "health": 50.0,  "speed": 5.0, "damage": 7.0,  "detect": 28.0, "attack_range": 15.0, "cooldown": 1.2, "score": 26, "ranged": true,
 		"blink_range": 5.0, "blink_cooldown": 3.0 },

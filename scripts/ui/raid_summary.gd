@@ -208,11 +208,32 @@ func _on_weapon_mastery_changed(weapon_id: String, _level: int) -> void:
 # ── Match-end display ─────────────────────────────────────────────────────────
 
 func _on_match_won() -> void:
+	if not _match_end_plausible():
+		return
 	_show_summary(true)
 
 
 func _on_match_lost() -> void:
+	if not _match_end_plausible():
+		return
 	_show_summary(false)
+
+
+## Guard against STALE/teardown re-fires of match_won/match_lost: during a restart/
+## redeploy the old arena's despawn can re-trigger a win/lose check while GameState is
+## already LOADING the next match — showing (and solo-PAUSING) a ghost summary over the
+## fresh raid. Only a match that is actually running/ending may open the summary.
+func _match_end_plausible() -> bool:
+	return GameState.phase == GameState.Phase.IN_MATCH or GameState.phase == GameState.Phase.RESULTS
+
+
+## SELF-HEALING pause: our solo pause is legitimate ONLY while the summary is on
+## screen. Any path that hides/bypasses us without the buttons (harness restarts,
+## server redeploys, race-y teardown event orders) auto-releases it here, so a stuck
+## frozen world is impossible. Runs while paused (PROCESS_MODE_ALWAYS).
+func _process(_delta: float) -> void:
+	if _did_pause and not visible:
+		_unpause_if_ours()
 
 
 ## Populates all sections and reveals the overlay.

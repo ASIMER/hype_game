@@ -17,7 +17,9 @@ class_name ProceduralModels
 # Builders registered here are chosen by AssetRegistry over the single-primitive
 # fallback. Attachment ids dispatch to family builders (optic/mag/barrel/grip).
 const ENEMY_BUILDERS := ["robot_tick", "robot_wasp", "robot_bastion", "robot_boss", "robot_caller",
-	"robot_sandworm", "robot_scarab", "robot_dustdevil"]
+	"robot_sandworm", "robot_scarab", "robot_dustdevil",
+	"robot_frosthound", "robot_cryomortar", "robot_avalanche",
+	"robot_oni", "robot_kappa", "robot_raiju"]
 const ITEM_BUILDERS := ["loot_medkit", "loot_cell", "loot_chemicals", "loot_stim",
 	"loot_circuit", "loot_circuit_pack", "loot_artifact", "loot_grenade",
 	"loot_grenade_mk2", "loot_ammo", "loot_scrap", "loot_plastic", "loot_data_chip"]
@@ -44,6 +46,12 @@ static func build(id: String) -> Node3D:
 		"robot_sandworm": return build_robot_sandworm()
 		"robot_scarab": return build_robot_scarab()
 		"robot_dustdevil": return build_robot_dustdevil()
+		"robot_frosthound": return build_robot_frosthound()
+		"robot_cryomortar": return build_robot_cryomortar()
+		"robot_avalanche": return build_robot_avalanche()
+		"robot_oni": return build_robot_oni()
+		"robot_kappa": return build_robot_kappa()
+		"robot_raiju": return build_robot_raiju()
 		"loot_medkit": return build_medkit()
 		"loot_cell": return build_battery(AssetRegistry.get_color(id))
 		"loot_chemicals": return build_canister(AssetRegistry.get_color(id))
@@ -713,4 +721,229 @@ static func build_robot_dustdevil() -> Node3D:
 	eye.name = "Eye"
 	_part(root, _box(Vector3(0.1, 0.18, 0.05)), dark, Vector3(0.14, 1.25, 0.24), Vector3(0, 15, 0))
 	_part(root, _box(Vector3(0.1, 0.18, 0.05)), dark, Vector3(-0.14, 1.25, 0.24), Vector3(0, -15, 0))
+	return root
+
+## SNOW — Frost-hound: a wolf-like quadruped. Low box body, wedge head with an
+## ice-blue "Core" visor, 4 strut legs under pivots "Leg0".."Leg3" (trot gait),
+## dorsal icicle fins, stub tail. ModelRoot at y=0 — paws at ground.
+static func build_robot_frosthound() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_frosthound")  # ice blue
+	var shell := ProcMaterials.weathered(Color(0.62, 0.7, 0.76), 0.55, 0.45, 0.5, 53, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.2, 0.23, 0.27), 0.5, 0.5)
+	var ice := _mat(Color(0.7, 0.88, 0.98), 0.1, 0.25)
+	var visor := _mat(accent_col, 0.0, 0.25, accent_col, 6.0)
+	var leg_mat := _mat(Color(0.32, 0.36, 0.42), 0.55, 0.45)
+
+	# Body + chest plate + wedge head (-Z) with the glowing visor.
+	_part(root, _box(Vector3(0.5, 0.42, 1.05)), shell, Vector3(0, 0.66, 0.05))
+	_part(root, _box(Vector3(0.42, 0.3, 0.4)), dark, Vector3(0, 0.6, -0.55))
+	_part(root, _box(Vector3(0.34, 0.26, 0.34)), shell, Vector3(0, 0.82, -0.72), Vector3(12, 0, 0))
+	var core := _part(root, _box(Vector3(0.26, 0.07, 0.06)), visor, Vector3(0, 0.86, -0.9))
+	core.name = "Core"
+	# Jaw + ear prongs.
+	_part(root, _box(Vector3(0.2, 0.08, 0.24)), dark, Vector3(0, 0.66, -0.84))
+	_part(root, _cone(0.05, 0.16, 6), dark, Vector3(0.12, 1.0, -0.62))
+	_part(root, _cone(0.05, 0.16, 6), dark, Vector3(-0.12, 1.0, -0.62))
+	# Dorsal icicle fins + tail stub.
+	for i in 3:
+		_part(root, _cone(0.07, 0.26 - float(i) * 0.05, 6), ice, Vector3(0, 0.92, -0.2 + float(i) * 0.3), Vector3(-12, 0, 0))
+	_part(root, _cone(0.06, 0.3, 6), shell, Vector3(0, 0.74, 0.68), Vector3(110, 0, 0))
+	# 4 legs under pivots at the body corners.
+	var li := 0
+	for side in [-1.0, 1.0]:
+		for z in [-0.38, 0.42]:
+			var zf := float(z)
+			var attach := Vector3(side * 0.24, 0.6, zf)
+			var pivot := Node3D.new()
+			pivot.name = "Leg%d" % li
+			pivot.position = attach
+			root.add_child(pivot)
+			_strut(pivot, Vector3.ZERO, Vector3(side * 0.06, -0.32, 0.06), 0.06, leg_mat)
+			_strut(pivot, Vector3(side * 0.06, -0.32, 0.06), Vector3(side * 0.08, -0.6, -0.02), 0.05, leg_mat)
+			_part(pivot, _sphere(0.06, false, 6, 8), dark, Vector3(side * 0.08, -0.6, -0.02))
+			li += 1
+	return root
+
+## SNOW — Cryo-mortar: a squat tripod artillery piece. Base disc on 3 splayed legs,
+## a fat 45°-angled mortar "Tube" pivot (player-yaw tracked), cyan frost-tank "Core".
+## ModelRoot at y=0.
+static func build_robot_cryomortar() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_cryomortar")  # frost blue
+	var shell := ProcMaterials.weathered(Color(0.45, 0.52, 0.6), 0.6, 0.45, 0.55, 59, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.18, 0.2, 0.24), 0.5, 0.55)
+	var frost := _mat(accent_col, 0.0, 0.3, accent_col, 5.0)
+	var leg_mat := _mat(Color(0.3, 0.34, 0.4), 0.55, 0.45)
+
+	# 3 splayed tripod legs + the base platform.
+	for i in 3:
+		var ang := TAU * float(i) / 3.0 + 0.5
+		var foot := Vector3(cos(ang) * 0.62, 0.0, sin(ang) * 0.62)
+		_strut(root, Vector3(0, 0.5, 0), foot, 0.07, leg_mat)
+		_part(root, _sphere(0.08, false, 6, 8), dark, foot)
+	_part(root, _cyl(0.42, 0.22, 12), shell, Vector3(0, 0.55, 0))
+	# The mortar tube under a yaw pivot, angled up 45° facing -Z.
+	var tube := Node3D.new()
+	tube.name = "Tube"
+	tube.position = Vector3(0, 0.72, 0)
+	root.add_child(tube)
+	_part(tube, _cyl(0.2, 1.1, 12), dark, Vector3(0, 0.32, -0.3), Vector3(-45, 0, 0))
+	_part(tube, _cyl(0.24, 0.18, 12), shell, Vector3(0, 0.66, -0.66), Vector3(-45, 0, 0))
+	# Frost tanks: one glowing "Core" + a dark twin.
+	var core := _part(root, _cyl(0.13, 0.4, 10), frost, Vector3(0.3, 0.9, 0.18))
+	core.name = "Core"
+	_part(root, _cyl(0.13, 0.4, 10), dark, Vector3(-0.3, 0.9, 0.18))
+	return root
+
+## SNOW — Avalanche: a hulking white-plated brute. Wide torso, huge "Fist0"/"Fist1"
+## boxes (raised during the slam windup), small sensor head, blue chest "Core"
+## (the weak point sits there in the scene). ModelRoot at y=0.
+static func build_robot_avalanche() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_avalanche")  # glacial white-blue
+	var plate := ProcMaterials.weathered(Color(0.78, 0.83, 0.88), 0.5, 0.5, 0.45, 61, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.22, 0.25, 0.3), 0.5, 0.55)
+	var core_mat := _mat(Color(0.35, 0.7, 1.0), 0.0, 0.3, Color(0.35, 0.7, 1.0), 6.0)
+	var ice := _mat(Color(0.7, 0.88, 0.98), 0.1, 0.25)
+
+	# Thick legs + pelvis.
+	_part(root, _box(Vector3(0.3, 0.7, 0.34)), dark, Vector3(0.26, 0.35, 0))
+	_part(root, _box(Vector3(0.3, 0.7, 0.34)), dark, Vector3(-0.26, 0.35, 0))
+	_part(root, _box(Vector3(0.84, 0.3, 0.5)), plate, Vector3(0, 0.82, 0))
+	# Wide armored torso + shoulder pads + the glowing chest core (-Z face).
+	_part(root, _box(Vector3(1.15, 0.95, 0.7)), plate, Vector3(0, 1.5, 0))
+	_part(root, _box(Vector3(0.4, 0.34, 0.5)), ice, Vector3(0.74, 1.92, 0))
+	_part(root, _box(Vector3(0.4, 0.34, 0.5)), ice, Vector3(-0.74, 1.92, 0))
+	var core := _part(root, _sphere(0.16, false, 8, 12), core_mat, Vector3(0, 1.55, -0.36))
+	core.name = "Core"
+	# Small sensor head between the shoulders.
+	_part(root, _box(Vector3(0.3, 0.24, 0.3)), dark, Vector3(0, 2.12, -0.05))
+	_part(root, _box(Vector3(0.2, 0.05, 0.05)), core_mat, Vector3(0, 2.12, -0.22))
+	# HUGE fists on arm struts, under pivots so the windup can RAISE them.
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var fist := Node3D.new()
+		fist.name = "Fist%d" % i
+		fist.position = Vector3(side * 0.95, 1.0, -0.1)
+		root.add_child(fist)
+		_strut(root, Vector3(side * 0.74, 1.85, 0), Vector3(side * 0.95, 1.25, -0.1), 0.1, dark)
+		_part(fist, _box(Vector3(0.42, 0.42, 0.46)), plate, Vector3(0, 0, 0))
+		_part(fist, _box(Vector3(0.44, 0.16, 0.2)), dark, Vector3(0, -0.16, -0.18))
+	return root
+
+## RAIN — Oni: a temple-guardian samurai mech. Broad torso, kabuto helmet with horn
+## cones, a glowing RED oni-mask face, a katana-arm blade, skirt plates. Its weak
+## point (scene) sits on the BACK — the model marks it with a glowing seal. ModelRoot at y=0.
+static func build_robot_oni() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_oni")  # oni red
+	var armor := ProcMaterials.weathered(Color(0.26, 0.22, 0.24), 0.55, 0.5, 0.55, 67, Vector3(0.6, 0.6, 0.6), false)
+	var lacquer := _mat(Color(0.5, 0.12, 0.12), 0.3, 0.4)
+	var dark := _mat(Color(0.15, 0.14, 0.16), 0.5, 0.55)
+	var mask := _mat(accent_col, 0.0, 0.3, accent_col, 6.0)
+	var gold := _mat(Color(0.85, 0.68, 0.25), 0.7, 0.35)
+
+	# Legs + skirt plates (kusazuri).
+	_part(root, _box(Vector3(0.28, 0.66, 0.3)), dark, Vector3(0.22, 0.33, 0))
+	_part(root, _box(Vector3(0.28, 0.66, 0.3)), dark, Vector3(-0.22, 0.33, 0))
+	for i in 4:
+		var a := -0.45 + float(i) * 0.3
+		_part(root, _box(Vector3(0.26, 0.34, 0.06)), lacquer, Vector3(a, 0.78, -0.26), Vector3(8, 0, 0))
+		_part(root, _box(Vector3(0.26, 0.34, 0.06)), lacquer, Vector3(a, 0.78, 0.26), Vector3(-8, 0, 0))
+	# Broad torso + chest cords + shoulder sode plates.
+	_part(root, _box(Vector3(0.95, 0.9, 0.55)), armor, Vector3(0, 1.4, 0))
+	_part(root, _box(Vector3(0.5, 0.5, 0.04)), gold, Vector3(0, 1.45, -0.29))
+	_part(root, _box(Vector3(0.42, 0.5, 0.3)), lacquer, Vector3(0.64, 1.7, 0), Vector3(0, 0, -10))
+	_part(root, _box(Vector3(0.42, 0.5, 0.3)), lacquer, Vector3(-0.64, 1.7, 0), Vector3(0, 0, 10))
+	# Kabuto head: helmet dome + horns + the glowing oni mask (-Z).
+	_part(root, _sphere(0.24, true, 8, 12), armor, Vector3(0, 2.05, 0))
+	_part(root, _cone(0.05, 0.34, 6), gold, Vector3(0.12, 2.28, -0.05), Vector3(0, 0, -22))
+	_part(root, _cone(0.05, 0.34, 6), gold, Vector3(-0.12, 2.28, -0.05), Vector3(0, 0, 22))
+	var face := _part(root, _box(Vector3(0.26, 0.22, 0.06)), mask, Vector3(0, 1.98, -0.24))
+	face.name = "Core"
+	# Katana arm (right): a long blade box angled down-forward.
+	_strut(root, Vector3(0.64, 1.45, 0), Vector3(0.86, 1.0, -0.2), 0.08, dark)
+	_part(root, _box(Vector3(0.05, 0.9, 0.14)), _mat(Color(0.75, 0.78, 0.85), 0.85, 0.2), Vector3(0.9, 0.65, -0.45), Vector3(30, 0, 0))
+	# Left fist.
+	_strut(root, Vector3(-0.64, 1.45, 0), Vector3(-0.8, 1.05, -0.1), 0.08, dark)
+	_part(root, _box(Vector3(0.24, 0.24, 0.26)), armor, Vector3(-0.8, 0.95, -0.12))
+	# BACK seal — a glowing plate marking the scene's ×3 weak point.
+	_part(root, _box(Vector3(0.3, 0.3, 0.05)), mask, Vector3(0, 1.55, 0.3))
+	return root
+
+## RAIN — Kappa: a hunched shell-backed pouncer. Forward-leaning body under a domed
+## shell, claw arms, glowing green eye "Core", legs under "Leg0".."Leg3" pivots
+## (shares the pouncer gait with the hound). ModelRoot at y=0.
+static func build_robot_kappa() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_kappa")  # kappa green
+	var shell := ProcMaterials.weathered(Color(0.24, 0.36, 0.28), 0.5, 0.5, 0.55, 71, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.16, 0.2, 0.18), 0.5, 0.55)
+	var eye_mat := _mat(accent_col, 0.0, 0.25, accent_col, 6.0)
+	var claw := _mat(Color(0.55, 0.58, 0.62), 0.7, 0.35)
+
+	# Hunched body (tilted capsule) + the domed back shell with ridge plates.
+	_part(root, _capsule(0.3, 0.9), shell, Vector3(0, 0.7, -0.05), Vector3(55, 0, 0))
+	_part(root, _sphere(0.46, true, 8, 14), dark, Vector3(0, 0.78, 0.18), Vector3(-18, 0, 0), Vector3(1.0, 0.7, 1.1))
+	for i in 3:
+		_part(root, _cone(0.06, 0.14, 6), shell, Vector3(0, 1.06 - float(i) * 0.1, 0.1 + float(i) * 0.22), Vector3(-20, 0, 0))
+	# Head: flat dish crown + the glowing eyes bar.
+	_part(root, _sphere(0.18, false, 8, 12), shell, Vector3(0, 1.06, -0.42))
+	_part(root, _cyl(0.16, 0.05, 12), dark, Vector3(0, 1.2, -0.42))
+	var eyes := _part(root, _box(Vector3(0.22, 0.06, 0.06)), eye_mat, Vector3(0, 1.06, -0.58))
+	eyes.name = "Core"
+	# Claw arms (-Z reach).
+	_strut(root, Vector3(0.3, 0.85, -0.15), Vector3(0.45, 0.5, -0.45), 0.06, dark)
+	_part(root, _cone(0.07, 0.22, 6), claw, Vector3(0.45, 0.42, -0.52), Vector3(-115, 0, 0))
+	_strut(root, Vector3(-0.3, 0.85, -0.15), Vector3(-0.45, 0.5, -0.45), 0.06, dark)
+	_part(root, _cone(0.07, 0.22, 6), claw, Vector3(-0.45, 0.42, -0.52), Vector3(-115, 0, 0))
+	# 4 squat legs under pouncer pivots.
+	var li := 0
+	for side in [-1.0, 1.0]:
+		for z in [-0.18, 0.26]:
+			var zf := float(z)
+			var pivot := Node3D.new()
+			pivot.name = "Leg%d" % li
+			pivot.position = Vector3(side * 0.28, 0.5, zf)
+			root.add_child(pivot)
+			_strut(pivot, Vector3.ZERO, Vector3(side * 0.1, -0.5, 0.04), 0.06, dark)
+			_part(pivot, _sphere(0.07, false, 6, 8), claw, Vector3(side * 0.1, -0.5, 0.04))
+			li += 1
+	return root
+
+## RAIN — Raiju: a sleek storm-spirit canine. Slim long body, thin legs, lightning-rod
+## "Antler0"/"Antler1" cones, electric-blue chest "Core" + arc fins. ModelRoot at y=0.
+static func build_robot_raiju() -> Node3D:
+	var root := Node3D.new()
+	var accent_col := AssetRegistry.get_color("robot_raiju")  # electric blue
+	var body := ProcMaterials.weathered(Color(0.3, 0.34, 0.45), 0.6, 0.4, 0.5, 73, Vector3(0.6, 0.6, 0.6), false)
+	var dark := _mat(Color(0.16, 0.18, 0.24), 0.5, 0.5)
+	var bolt := _mat(accent_col, 0.0, 0.2, accent_col, 7.0)
+	var leg_mat := _mat(Color(0.28, 0.32, 0.4), 0.55, 0.45)
+
+	# Slim body + neck + fox head (-Z).
+	_part(root, _box(Vector3(0.34, 0.3, 0.95)), body, Vector3(0, 0.62, 0.08))
+	_part(root, _box(Vector3(0.24, 0.22, 0.3)), body, Vector3(0, 0.78, -0.5), Vector3(20, 0, 0))
+	_part(root, _box(Vector3(0.22, 0.18, 0.3)), dark, Vector3(0, 0.92, -0.72))
+	_part(root, _cone(0.05, 0.16, 6), dark, Vector3(0, 0.9, -0.92), Vector3(-100, 0, 0))
+	# Electric core + dorsal arc fins.
+	var core := _part(root, _sphere(0.1, false, 8, 12), bolt, Vector3(0, 0.66, -0.32))
+	core.name = "Core"
+	for i in 2:
+		_part(root, _box(Vector3(0.04, 0.16, 0.2)), bolt, Vector3(0, 0.84, -0.05 + float(i) * 0.34), Vector3(-16, 0, 0))
+	# Lightning-rod antlers under quiver pivots.
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var ant := Node3D.new()
+		ant.name = "Antler%d" % i
+		ant.position = Vector3(side * 0.1, 1.0, -0.66)
+		root.add_child(ant)
+		_part(ant, _cone(0.03, 0.3, 5), bolt, Vector3(side * 0.04, 0.12, 0.02), Vector3(0, 0, -side * 18.0))
+	# Bushy segmented tail (+Z) + 4 thin legs.
+	_part(root, _cone(0.1, 0.5, 6), body, Vector3(0, 0.74, 0.72), Vector3(115, 0, 0))
+	for side in [-1.0, 1.0]:
+		for z in [-0.3, 0.38]:
+			var zf := float(z)
+			_strut(root, Vector3(side * 0.16, 0.55, zf), Vector3(side * 0.2, 0.0, zf + 0.04), 0.045, leg_mat)
 	return root
