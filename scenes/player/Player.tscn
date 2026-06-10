@@ -28,7 +28,7 @@ properties/3/replication_mode = 1
 properties/4/path = NodePath(".:_medkits")
 properties/4/spawn = true
 properties/4/replication_mode = 1
-properties/5/path = NodePath(".:_grenades")
+properties/5/path = NodePath(".:_grenade_counts")
 properties/5/spawn = true
 properties/5/replication_mode = 1
 properties/6/path = NodePath(".:downed")
@@ -43,6 +43,9 @@ properties/8/replication_mode = 1
 properties/9/path = NodePath(".:cosmetics")
 properties/9/spawn = true
 properties/9/replication_mode = 1
+properties/10/path = NodePath(".:_gadget_counts")
+properties/10/spawn = true
+properties/10/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2

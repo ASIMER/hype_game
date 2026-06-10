@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GadgetData" load_steps=2 format=3 uid="uid://citemgadgetdome01"]
+
+[ext_resource type="Script" path="res://scripts/items/gadget_data.gd" id="1_g"]
+
+[resource]
+script = ExtResource("1_g")
+id = "gadget_dome"
+display_name = "Shield Dome"
+kind = 2
+rarity = 2
+weight = 3.0
+max_stack = 2
+grid_w = 1
+grid_h = 1
+description = "Deployable energy bubble. Halves damage to allies standing inside it. Buys your squad a few seconds of cover."
+value = 180
+gadget_id = "gadget_dome"
+scene_path = "res://scenes/items/GadgetDome.tscn"

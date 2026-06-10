@@ -48,6 +48,12 @@ const LAND_DIP: float = 0.04
 const LAND_DECAY: float = 12.0
 ## Speed threshold (m/s) to consider the player "sprinting" for animation purposes.
 const SPRINT_SPEED_THRESHOLD: float = Settings.PLAYER_MOVE_SPEED + 0.5
+## Roll tumble: how much the body squashes vertically at the mid-point (scale.y).
+const ROLL_SQUASH: float = 0.85
+## Mantle vault: forward pitch dip at the peak of the accent (degrees).
+const MANTLE_PITCH_DEG: float = 12.0
+## Mantle vault: total duration of the one-shot accent (seconds).
+const MANTLE_ACCENT_TIME: float = 0.3
 
 # ── state ────────────────────────────────────────────────────────────────────
 
@@ -81,6 +87,18 @@ var _was_on_floor: bool = false  # for landing detection
 var _proc_offset: Vector3 = Vector3.ZERO  # accumulated procedural translation
 var _proc_rot_deg: Vector3 = Vector3.ZERO  # accumulated procedural rotation (degrees)
 
+# ── roll / mantle layer ────────────────────────────────────────────────────────
+# player.gd's Stance enum: STAND=0, CROUCH=1, SLIDE=2, ROLL=3. We watch the
+# replicated `stance` int (works for remote players too), so the value 3 is the
+# only thing this layer cares about; named here to keep the comparison readable.
+const _STANCE_ROLL: int = 3
+# Previous-frame stance, so we can detect the transition INTO ROLL.
+var _prev_stance: int = 0
+# Roll progress 0..1 over Settings.ROLL_TIME; -1 means "not rolling".
+var _roll_t: float = -1.0
+# Mantle accent progress 0..1 over MANTLE_ACCENT_TIME; -1 means "inactive".
+var _mantle_t: float = -1.0
+
 # ── lifecycle ────────────────────────────────────────────────────────────────
 
 
@@ -103,6 +121,11 @@ func _ready() -> void:
 		Events.reload_started.connect(_on_reload_started)
 	if Events.has_signal("reload_finished"):
 		Events.reload_finished.connect(_on_reload_finished)
+	# Mantle is LOCAL juice only (authority emits it); the roll tumble is driven
+	# off the replicated stance so it animates on every peer without a signal.
+	if Events.has_signal("player_mantled"):
+		if not Events.player_mantled.is_connected(_on_player_mantled):
+			Events.player_mantled.connect(_on_player_mantled)
 
 
 ## Re-bind to a freshly rebuilt model (player.gd swaps the body when cosmetics change).
@@ -226,6 +249,10 @@ func _update_procedural(delta: float) -> void:
 
 	_land_t = maxf(0.0, _land_t - delta * LAND_DECAY)
 
+	# ── roll / mantle transients ───────────────────────────────────────────────
+	# Driven before the bob write so their pitch/squash can be composed on top.
+	_update_roll_mantle(delta)
+
 	# ── walk-bob phase ────────────────────────────────────────────────────────
 	var horiz_speed: float = Vector2(_parent.velocity.x, _parent.velocity.z).length()
 	var moving: bool = horiz_speed > IDLE_SPEED_THRESHOLD
@@ -288,8 +315,72 @@ func _update_procedural(delta: float) -> void:
 	# start from identity and avoid accumulated drift. The AssetRegistry fit
 	# (scale, rot, offset) lives on the inner GLB child, not the wrapper root —
 	# so writing wrapper.position/rotation_degrees is safe and non-conflicting.
+	#
+	# The roll tumble + mantle vault are ADDED here as separate pitch terms
+	# (exactly how recoil is summed above), so the smoothed bob lean keeps working
+	# the instant they finish — we never lerp them, the bob keeps its own state.
+	var extra_pitch: float = _roll_pitch_rad() + _mantle_pitch_rad()
 	_visual_model.position = _proc_offset
-	_visual_model.rotation = Vector3(_proc_rot_deg.x, 0.0, _proc_rot_deg.z)
+	_visual_model.rotation = Vector3(_proc_rot_deg.x + extra_pitch, 0.0, _proc_rot_deg.z)
+	_visual_model.scale = Vector3(1.0, _roll_squash_scale(), 1.0)
+
+
+# ── roll / mantle layer ───────────────────────────────────────────────────────
+
+
+## Advances the roll + mantle one-shot timers. The roll is detected purely from
+## the replicated `stance` int (so REMOTE players tumble too); the mantle is
+## started by the local-only player_mantled signal (see _on_player_mantled).
+func _update_roll_mantle(delta: float) -> void:
+	var stance: int = int(_parent.stance)
+
+	# Transition INTO ROLL → (re)start the tumble timer.
+	if stance == _STANCE_ROLL and _prev_stance != _STANCE_ROLL:
+		_roll_t = 0.0
+	_prev_stance = stance
+
+	# Advance / finish the roll. Finishes when the timer completes OR the stance
+	# has already left ROLL — either way the helpers fall back to neutral, so
+	# rotation.x / scale.y restore EXACTLY (the bob keeps its own state).
+	if _roll_t >= 0.0:
+		if stance != _STANCE_ROLL:
+			_roll_t = -1.0
+		else:
+			_roll_t += delta / maxf(Settings.ROLL_TIME, 0.0001)
+			if _roll_t >= 1.0:
+				_roll_t = -1.0
+
+	# Advance / finish the mantle accent.
+	if _mantle_t >= 0.0:
+		_mantle_t += delta / maxf(MANTLE_ACCENT_TIME, 0.0001)
+		if _mantle_t >= 1.0:
+			_mantle_t = -1.0
+
+
+## Roll tumble pitch (radians) added onto rotation.x. Eased via smoothstep so the
+## angular velocity peaks mid-roll — slow-in, fast-middle, slow-out (reads snappy).
+## Returns 0 when not rolling, so the term cleanly drops out.
+func _roll_pitch_rad() -> float:
+	if _roll_t < 0.0:
+		return 0.0
+	var eased: float = smoothstep(0.0, 1.0, _roll_t)
+	return eased * -TAU
+
+
+## Vertical squash applied to scale.y during the roll (1.0 at the ends, ROLL_SQUASH
+## at the mid-point). Returns 1.0 when not rolling so the wrapper stays at identity.
+func _roll_squash_scale() -> float:
+	if _roll_t < 0.0:
+		return 1.0
+	return lerpf(1.0, ROLL_SQUASH, sin(_roll_t * PI))
+
+
+## Mantle vault pitch (radians): a quick forward dip that rises and eases back out
+## over MANTLE_ACCENT_TIME. Returns 0 when inactive.
+func _mantle_pitch_rad() -> float:
+	if _mantle_t < 0.0:
+		return 0.0
+	return sin(_mantle_t * PI) * deg_to_rad(MANTLE_PITCH_DEG)
 
 
 # ── Events callbacks ──────────────────────────────────────────────────────────
@@ -318,6 +409,14 @@ func _on_reload_started(_weapon_id: String) -> void:
 func _on_reload_finished(_weapon_id: String) -> void:
 	_reloading = false
 	_current_anim = ""  # force locomotion to re-evaluate next frame
+
+
+## player_mantled(player): only react when it's our player. Authority-only signal,
+## so this is purely LOCAL juice — kick the procedural vault accent.
+func _on_player_mantled(player: Node) -> void:
+	if player != _parent:
+		return
+	_mantle_t = 0.0
 
 
 # ── helpers (mirrored from robot_enemy.gd) ────────────────────────────────────

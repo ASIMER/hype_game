@@ -329,6 +329,80 @@ func _noise_rpc(world_pos: Vector3, loudness: float, kind: int) -> void:
 	Events.noise_emitted.emit(world_pos, loudness, kind)
 
 
+# ============================================== server-spawned throwables / gadgets
+## ALL grenade throws + gadget placements spawn on the SERVER under Arena/Net/Gadgets
+## (a MultiplayerSpawner with NetThrowables.spawn as its custom spawn_function), so
+## server-side effects (EMP stun, decoy noise, smoke AI, turret damage) exist exactly
+## once and every peer builds the same node from the replicated spawn data. The host
+## spawns directly; a client RPCs the server. Counts were already decremented on the
+## OWNING peer (replicated player properties — trusted like the rest of the
+## consumable economy).
+func request_throw_grenade(type: String, from: Vector3, dir: Vector3) -> void:
+	if GameState.is_local_authority_server():
+		_spawn_throwable(
+			{
+				"kind": "grenade",
+				"type": type,
+				"from": from,
+				"dir": dir,
+				"force": Settings.GRENADE_THROW_FORCE,
+			}
+		)
+	else:
+		_throw_grenade_rpc.rpc_id(1, type, from, dir)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _throw_grenade_rpc(type: String, from: Vector3, dir: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	_spawn_throwable(
+		{
+			"kind": "grenade",
+			"type": type,
+			"from": from,
+			"dir": dir,
+			"force": Settings.GRENADE_THROW_FORCE,
+		}
+	)
+
+
+func request_place_gadget(type: String, world_pos: Vector3, yaw: float) -> void:
+	if GameState.is_local_authority_server():
+		_spawn_throwable(
+			{
+				"kind": "gadget",
+				"type": type,
+				"pos": world_pos,
+				"yaw": yaw,
+				"owner_peer": GameState.local_peer_id(),
+			}
+		)
+	else:
+		_place_gadget_rpc.rpc_id(1, type, world_pos, yaw)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _place_gadget_rpc(type: String, world_pos: Vector3, yaw: float) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	_spawn_throwable(
+		{"kind": "gadget", "type": type, "pos": world_pos, "yaw": yaw, "owner_peer": sender}
+	)
+
+
+## Server-side: route the spawn through the arena's GadgetSpawner (replicates to all).
+func _spawn_throwable(data: Dictionary) -> void:
+	var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
+	if arena == null:
+		return
+	var spawner: MultiplayerSpawner = arena.get_node_or_null("Net/GadgetSpawner")
+	if spawner == null or not spawner.spawn_function.is_valid():
+		return
+	spawner.spawn(data)
+
+
 # =========================================================== kill leaderboard sync
 ## On the server, attribute each mob kill to the killer's peer and broadcast the
 ## full table so every client's TAB leaderboard is identical.

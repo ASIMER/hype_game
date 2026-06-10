@@ -21,6 +21,13 @@ const ITEM_PATHS := {
 	"loot_circuit": "res://resources/items/circuit.tres",
 	"loot_artifact": "res://resources/items/artifact.tres",
 	"loot_data_chip": "res://resources/items/data_chip.tres",
+	# Batch A utility grenades + deployable gadgets.
+	"loot_grenade_smoke": "res://resources/items/grenade_smoke.tres",
+	"loot_grenade_emp": "res://resources/items/grenade_emp.tres",
+	"loot_grenade_decoy": "res://resources/items/grenade_decoy.tres",
+	"gadget_turret": "res://resources/items/gadget_turret.tres",
+	"gadget_dome": "res://resources/items/gadget_dome.tres",
+	"gadget_sensor": "res://resources/items/gadget_sensor.tres",
 }
 
 const LAYER_LOOT := 1 << 3  # 3d_physics layer_4 "loot"

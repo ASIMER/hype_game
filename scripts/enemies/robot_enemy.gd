@@ -165,6 +165,13 @@ var _investigate_arrived: bool = false  # true once within INVESTIGATE_ARRIVE
 # Guards alert_to() from ping-ponging (each enemy fires once per ALERT_REFRACTORY s).
 var _last_alert_time: float = 0.0
 
+# --- EMP stun (server-side only, NOT replicated) ----------------------------
+# An EMP grenade calls apply_stun() on the SERVER; we freeze movement/AI until this
+# ms deadline. NOT in the sync config — movement + position are already server-driven
+# and replicate via the body transform, so a frozen authority replicates a frozen
+# body automatically (clients need no extra state). 0 = not stunned.
+var _stunned_until_ms: int = 0
+
 # Track whether we were chasing last tick so we detect the edge PATROL→CHASE
 # for cascading alerts.
 var _was_chasing: bool = false
@@ -298,6 +305,13 @@ func _physics_process(delta: float) -> void:
 	if _dying or _health.is_dead:
 		return
 
+	# EMP stun: frozen in place (grounded keep gravity, flyers hover — _apply_movement
+	# handles ZERO for both). Subclasses inheriting _physics_process get this for free;
+	# those that OVERRIDE it must replicate this gate (see robot_worm etc.).
+	if Time.get_ticks_msec() < _stunned_until_ms:
+		_apply_movement(Vector3.ZERO, delta)
+		return
+
 	if _attack_cooldown > 0.0:
 		_attack_cooldown -= delta
 
@@ -325,12 +339,26 @@ func _physics_process(delta: float) -> void:
 
 	# A non-hunter NOTICES a player who comes CLOSE even without clean LOS / loud steps —
 	# so a patrol you walk right up to engages instead of standing there. Long-range stealth
-	# is unchanged (beyond this radius it still needs hearing/LOS).
-	var near := _target != null and dist <= Settings.PROXIMITY_AGGRO_RADIUS
+	# is unchanged (beyond this radius it still needs hearing/LOS). Smoke MUFFLES: a target
+	# standing in a cloud must be twice as close before the proximity sense trips.
+	var proximity_radius := Settings.PROXIMITY_AGGRO_RADIUS
+	if _target != null and _in_smoke(_target.global_position):
+		proximity_radius *= 0.5
+	var near := _target != null and dist <= proximity_radius
+
+	# Smoke temporarily suppresses a hunter's wallhack: if the line to the target is
+	# smoked, the force-CHASE override is withheld THIS tick and we fall through to the
+	# normal perception evaluate (it resumes once the cloud fades or LOS re-confirms).
+	var hunter_smoked := false
+	if hunter and _target != null:
+		var eye := global_position + Vector3.UP * 1.2
+		var tpos := _target.global_position + Vector3.UP * 1.0
+		hunter_smoked = _segment_crosses_smoke(eye, tpos)
 
 	# Hunters always know where the player is (forced LOS + unlimited detect), so they
-	# leave their nest and close in; they still ATTACK only inside attack range.
-	if hunter and _target != null:
+	# leave their nest and close in; they still ATTACK only inside attack range. Without
+	# any smoke `hunter_smoked` is always false, so wave enemies rush exactly as before.
+	if hunter and _target != null and not hunter_smoked:
 		current_state = _fsm.evaluate(_target, dist, true, 1.0e9, _stat_attack_range)
 	elif current_state != State.INVESTIGATE:
 		current_state = _fsm.evaluate(
@@ -780,6 +808,19 @@ func _start_investigate(world_pos: Vector3) -> void:
 	_fsm.clear_patrol_target()
 
 
+## EMP stun entry point — the EMP grenade calls this duck-typed, SERVER-side only.
+## Freezes movement + AI for `duration` seconds (a boss shrugs most of it off via
+## EMP_BOSS_STUN_MULT). Server-gated because movement/AI are server-driven and the
+## frozen body replicates to clients on its own (no extra synced state). The grenade
+## emits Events.enemy_stunned itself; we just hold position until the deadline.
+func apply_stun(duration: float) -> void:
+	if not GameState.is_local_authority_server():
+		return
+	# Explicit typed local — an inferred `:=` on this ternary trips the Variant parse trap.
+	var d: float = duration * (Settings.EMP_BOSS_STUN_MULT if _is_boss() else 1.0)
+	_stunned_until_ms = Time.get_ticks_msec() + int(d * 1000.0)
+
+
 ## Public cascading-alert entry point. Another enemy (or the caller) tells this
 ## enemy to INVESTIGATE a position. Respects the refractory window and skips
 ## hunters / dead / already-chasing enemies. Called on the server only.
@@ -814,6 +855,9 @@ func _check_footstep_perception() -> void:
 		if not p.has_method("noise_radius"):
 			continue
 		var heard_radius: float = float(p.call("noise_radius"))
+		# Smoke MUFFLES footsteps: a target inside a cloud is half as audible.
+		if _in_smoke((p as Node3D).global_position):
+			heard_radius *= 0.5
 		if heard_radius <= 0.0:
 			continue
 		var d := global_position.distance_to((p as Node3D).global_position)
@@ -864,7 +908,7 @@ func _cascade_alert() -> void:
 
 ## Noise event handler (gunfire / grenades from Events.noise_emitted).
 ## Only runs on the authority (connected in _ready only when authority).
-func _on_noise_emitted(world_pos: Vector3, loudness: float, _kind: int) -> void:
+func _on_noise_emitted(world_pos: Vector3, loudness: float, kind: int) -> void:
 	if hunter:
 		return
 	if _dying or (_health != null and _health.is_dead):
@@ -874,6 +918,12 @@ func _on_noise_emitted(world_pos: Vector3, loudness: float, _kind: int) -> void:
 		return
 	# Already chasing something nearby? Don't downgrade.
 	if current_state == State.CHASE or current_state == State.ATTACK:
+		return
+	# A DECOY chirp (kind 3) lures to the SOUND, never to the player — the loud-close
+	# rule below would otherwise redirect a nearby robot at the nearest player, which
+	# defeats the point of throwing a decoy.
+	if kind == 3:
+		_start_investigate(world_pos)
 		return
 	if d <= loudness * Settings.NOISE_CHASE_FRACTION:
 		# Very loud up close — go to CHASE toward the noise origin and pick nearest player.
@@ -1120,6 +1170,10 @@ func _check_line_of_sight(target: Node3D) -> bool:
 	# Aim the ray from our "eyes" at the target's centre and test for blockers.
 	var from := global_position + Vector3.UP * 1.2
 	var to := target.global_position + Vector3.UP * 1.0
+	# Smoke is a SOFT counter to perception: a deployed cloud makes an otherwise-clear
+	# geometric ray report blocked, so a smoked target can break line of sight.
+	if _segment_crosses_smoke(from, to):
+		return false
 	_los_ray.global_position = from
 	_los_ray.target_position = _los_ray.to_local(to)
 	_los_ray.force_raycast_update()
@@ -1132,6 +1186,53 @@ func _check_line_of_sight(target: Node3D) -> bool:
 		if n == target:
 			return true
 		n = n.get_parent()
+	return false
+
+
+# --- Smoke (soft perception counter) ----------------------------------------
+
+
+## Segment-vs-sphere test against every active smoke cloud. A cloud is a Node3D in the
+## SMOKE group exposing `radius`; we test the eye→target segment against each sphere
+## (global_position, radius). Cheap — only ≤2-3 clouds are ever alive at once. Returns
+## false instantly when no smoke exists, so vision is byte-identical without clouds.
+func _segment_crosses_smoke(from: Vector3, to: Vector3) -> bool:
+	var clouds := get_tree().get_nodes_in_group(Groups.SMOKE)
+	if clouds.is_empty():
+		return false
+	var seg := to - from
+	var seg_len_sq := seg.length_squared()
+	for cloud in clouds:
+		if cloud == null or not is_instance_valid(cloud) or not (cloud is Node3D):
+			continue
+		var radius: float = float(cloud.get("radius"))
+		if radius <= 0.0:
+			continue
+		var center := (cloud as Node3D).global_position
+		# Closest point on the segment to the cloud centre, then compare to the radius.
+		var t := 0.0
+		if seg_len_sq > 0.0001:
+			t = clampf((center - from).dot(seg) / seg_len_sq, 0.0, 1.0)
+		var closest := from + seg * t
+		if closest.distance_squared_to(center) <= radius * radius:
+			return true
+	return false
+
+
+## True when `pos` sits inside ANY active smoke cloud — used to MUFFLE hearing/proximity
+## (a target standing in smoke is half as detectable). Cheap; false without clouds.
+func _in_smoke(pos: Vector3) -> bool:
+	var clouds := get_tree().get_nodes_in_group(Groups.SMOKE)
+	if clouds.is_empty():
+		return false
+	for cloud in clouds:
+		if cloud == null or not is_instance_valid(cloud) or not (cloud is Node3D):
+			continue
+		var radius: float = float(cloud.get("radius"))
+		if radius <= 0.0:
+			continue
+		if pos.distance_squared_to((cloud as Node3D).global_position) <= radius * radius:
+			return true
 	return false
 
 

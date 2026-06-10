@@ -12,14 +12,25 @@ class_name Grenade
 ##   g.throw(from_world_pos, dir_normalized, Settings.GRENADE_THROW_FORCE)
 ## throw() positions, launches, and arms with Settings.GRENADE_FUSE. Or call
 ## arm(thrower, fuse) directly if you place + push the body yourself.
+##
+## SUBCLASSING: the fuse/arming/bounce logic lives here; the detonation PAYLOAD
+## is the virtual `_detonate_effect(pos)` (frag = radial damage + FX + noise).
+## Smoke/EMP/decoy override it. By default the grenade frees itself after the
+## effect runs; an override that keeps the body alive (decoy beacon) sets
+## `_keep_after_detonate = true`.
 
 const _EXPLOSION_SCENE := "res://scenes/fx/Explosion.tscn"
+
+var grenade_type: String = "frag"
 
 var _thrower: Node = null
 var _fuse := 1.6
 var _armed := false
 var _t := 0.0
 var _exploded := false
+# Subclasses that turn the grenade into a persistent node (decoy) set this so
+# _explode skips the trailing queue_free and leaves it running.
+var _keep_after_detonate := false
 
 
 func _ready() -> void:
@@ -69,6 +80,19 @@ func _explode() -> void:
 		return
 	_exploded = true
 	var pos := global_position
+	_detonate_effect(pos)
+	# Most grenades are spent on detonation; a persistent beacon (decoy) keeps
+	# itself alive by setting _keep_after_detonate inside _detonate_effect.
+	if not _keep_after_detonate:
+		queue_free()
+
+
+## The detonation PAYLOAD — overridden per grenade type. Runs on EVERY peer (the
+## grenade is spawned everywhere); split your server-only work behind
+## GameState.is_local_authority_server() exactly like the frag default below.
+## Frag default: local explosion FX + a broadcast event + server-only radial
+## damage and an AI-audible noise report.
+func _detonate_effect(pos: Vector3) -> void:
 	var host := _fx_host()
 
 	# Visual explosion (local on every peer).
@@ -85,11 +109,9 @@ func _explode() -> void:
 	# Authoritative radial damage — server only, so clients don't double-apply.
 	if GameState.is_local_authority_server():
 		_apply_radial_damage(pos, Settings.GRENADE_DAMAGE, Settings.GRENADE_RADIUS)
-		# Grenade explosion is AI-audible; _explode is already server-auth so
-		# report_noise emits Events.noise_emitted directly (no RPC needed).
+		# Grenade explosion is AI-audible; _detonate_effect runs under the
+		# server-auth gate here so report_noise emits directly (no RPC needed).
 		NetworkManager.report_noise(pos, Settings.NOISE_GRENADE, 2)
-
-	queue_free()
 
 
 ## Damage every "enemies" node within `radius`, scaled by distance falloff

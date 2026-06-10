@@ -74,6 +74,7 @@ func _ready() -> void:
 var _crosshair: Control
 var _minimap: Control
 var _ammo_label: Label
+var _grenade_label: Label  # selected grenade chip (batch A; Events.grenade_selection_changed)
 var _weapon_label: Label
 var _reloading: bool = false
 var _current_weapon_name: String = "RIFLE"
@@ -201,6 +202,14 @@ func _build_hud_widgets() -> void:
 	_ammo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_ammo_label.text = "-- / --"
 	ammo_box.add_child(_ammo_label)
+	# Selected grenade type + count (B cycles; hidden until something is brought).
+	_grenade_label = Label.new()
+	_grenade_label.add_theme_font_size_override("font_size", 13)
+	_grenade_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_grenade_label.add_theme_color_override("font_color", UIStyle.AMBER)
+	_grenade_label.visible = false
+	ammo_box.add_child(_grenade_label)
+	Events.grenade_selection_changed.connect(_on_grenade_selection_changed)
 
 	# Key hints (bottom-right, above the ammo box, dim, right-aligned, grow up-left).
 	var hints := Label.new()
@@ -309,6 +318,23 @@ func _set_ammo(ammo: int, reserve: int) -> void:
 func _set_reload(active: bool) -> void:
 	_reloading = active
 	_refresh_weapon_label()
+
+
+## Selected-grenade chip: "[B] EMP GRENADE x2". Hidden when nothing is carried.
+func _on_grenade_selection_changed(type: String, count: int) -> void:
+	if _grenade_label == null:
+		return
+	if count <= 0:
+		_grenade_label.visible = false
+		return
+	var names := {
+		"frag": tr("Frag Grenade"),
+		"smoke": tr("Smoke Grenade"),
+		"emp": tr("EMP Grenade"),
+		"decoy": tr("Noise Decoy"),
+	}
+	_grenade_label.text = "[B] %s x%d" % [String(names.get(type, type)).to_upper(), count]
+	_grenade_label.visible = true
 
 
 # --- Feedback overlays (built in code so HUD.tscn stays simple) -------------

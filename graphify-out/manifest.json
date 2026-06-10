@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1781094275.342706,
-    "ast_hash": "eeafdef544d82e0fe9f1d97938fcc068",
+    "mtime": 1781107741.1654162,
+    "ast_hash": "5114e983fdd0c3757ae588312d5110e1",
     "semantic_hash": ""
   },
   "README.md": {
@@ -55,14 +55,14 @@
     "semantic_hash": "7dcb4ce116abefc70cffdae2fef548d9"
   },
   "docs/ARCHITECTURE.md": {
-    "mtime": 1780706325.13449,
-    "ast_hash": "03eb97904ddc77b0adef5272b0f36e56",
+    "mtime": 1781107787.0043275,
+    "ast_hash": "e4ab2b0327971949d6ac7624398d7cd5",
     "semantic_hash": ""
   },
   "docs/TESTING.md": {
-    "mtime": 1780706297.1888256,
-    "ast_hash": "6e7af64f77e4f4b0cf7fc9017a62a55e",
-    "semantic_hash": "6e7af64f77e4f4b0cf7fc9017a62a55e"
+    "mtime": 1781122336.4831812,
+    "ast_hash": "1565bca2ac2c8e02e645c20e5e002f80",
+    "semantic_hash": ""
   },
   "tools/agent/README.md": {
     "mtime": 1780791585.314601,
@@ -970,13 +970,13 @@
     "semantic_hash": ""
   },
   "tools/lint/posttool_lint.py": {
-    "mtime": 1781101947.1893225,
-    "ast_hash": "e23922a6fb10d69076ecfefa04c8ce62",
+    "mtime": 1781107632.4047287,
+    "ast_hash": "1a50ab38cb8528b10966eb92f8255a70",
     "semantic_hash": ""
   },
   "tools/lint/pre-commit": {
-    "mtime": 1781102338.678552,
-    "ast_hash": "cf8f1000afc8d49cc2effd56e7ffa9e8",
+    "mtime": 1781107643.9370897,
+    "ast_hash": "ff816b5d0c74f2dda61109f4f73cc841",
     "semantic_hash": ""
   },
   "tools/lint/check_golden.py": {
@@ -985,13 +985,13 @@
     "semantic_hash": ""
   },
   "tools/lint/golden_world.json": {
-    "mtime": 1781103106.948804,
-    "ast_hash": "a0a0ae7a617f0945e274c0a16cbe7767",
+    "mtime": 1781122196.2581494,
+    "ast_hash": "d9124ac36c48bdd09462dbfbddedbaaf",
     "semantic_hash": ""
   },
   "docs/AUDIT.md": {
-    "mtime": 1781107222.3093483,
-    "ast_hash": "2d6360d7e7d75b5e0b389e57a89bcdd3",
+    "mtime": 1781107801.116356,
+    "ast_hash": "e9e1a7f7b453d2ee2b15195a924a8790",
     "semantic_hash": ""
   }
 }

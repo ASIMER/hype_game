@@ -279,7 +279,7 @@ func _handle_line(line: String) -> void:
 		"golden":
 			# QA: deterministic-world snapshot (terrain heights, water, extraction zones,
 			# placement checksums) for refactor verification — tools/lint/check_golden.py.
-			_send(_golden_snapshot())
+			_send(GoldenSnapshot.capture(get_tree()))
 		"clock":
 			# Debug: drive the match timer for QA. {action:set, left:<sec>} sets the
 			# remaining time; {action:skip} jumps to ~2s left to trigger the final wave.
@@ -500,6 +500,25 @@ func _handle_line(line: String) -> void:
 				_:
 					_held[hact] = hon
 			_send({"ok": true})
+		"noise":
+			# QA: inject an AI-audible noise at the player ({loudness, kind}) — isolates
+			# the noise->INVESTIGATE plumbing from weapon/grenade emission paths.
+			var npl: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+			if npl is Node3D:
+				NetworkManager.report_noise(
+					(npl as Node3D).global_position,
+					float(json.get("loudness", Settings.NOISE_GRENADE)),
+					int(json.get("kind", 2))
+				)
+			_send({"ok": npl != null})
+		"grenade":
+			# QA: select a grenade type and throw it ({type:"frag|smoke|emp|decoy"}).
+			# Grants 1 if the player carries none (so recipes don't need stash setup).
+			_send(_debug_grenade(str(json.get("type", "frag"))))
+		"gadget":
+			# QA: force-place a deployable ({type:"gadget_turret|gadget_dome|gadget_sensor"})
+			# at the player's feet-forward point, bypassing the carried count.
+			_send(_debug_gadget(str(json.get("type", "gadget_turret"))))
 		"down":
 			# Debug: force the local player DOWNED (on:true) or revive it (on:false).
 			_send(_debug_down(bool(json.get("on", true))))
@@ -930,9 +949,15 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 		enemy.hunter = as_hunter
 	container.add_child(enemy, true)
 	var fwd := -(p as Node3D).global_transform.basis.z
-	(enemy as Node3D).global_position = (
-		(p as Node3D).global_position + fwd * dist + Vector3.UP * 0.5
-	)
+	fwd.y = 0.0
+	if fwd.length_squared() < 0.0001:
+		fwd = Vector3.FORWARD
+	var spot: Vector3 = (p as Node3D).global_position + fwd.normalized() * dist
+	# Snap Y to the TERRAIN at the target XZ — the player's own Y is wrong on slopes
+	# (an offset spawn ended inside a dune / in the air and fell through the world,
+	# leaving 'ghost' enemies kilometres below that polluted every QA state dump).
+	spot.y = ProceduralTerrain.height_at(spot.x, spot.z) + 0.5
+	(enemy as Node3D).global_position = spot
 	return true
 
 
@@ -1271,7 +1296,17 @@ func _snapshot() -> Dictionary:
 		"ads": bool(p.get("_ads")),
 		"shoulder": float(p.get("_shoulder_sign")),
 		"medkits": int(p.get("_medkits")),
-		"grenades": int(p.get("_grenades")),
+		"grenade_counts": p.get("_grenade_counts") if p.get("_grenade_counts") != null else {},
+		"grenade_sel": str(p.get("_grenade_sel")) if p.get("_grenade_sel") != null else "",
+		"gadget_counts": p.get("_gadget_counts") if p.get("_gadget_counts") != null else {},
+		"iframes":
+		(
+			int(p.get("_iframes_until_ms")) > Time.get_ticks_msec()
+			if p.get("_iframes_until_ms") != null
+			else false
+		),
+		"zipline": p.get("_zipline") != null,
+		"mantling": bool(p.get("_mantling")) if p.get("_mantling") != null else false,
 		"stance": int(p.get("stance")) if p.get("stance") != null else 0,
 		"water": int(p.get("_water_state")) if p.get("_water_state") != null else 0,
 		"noise_radius": p.noise_radius() if p.has_method("noise_radius") else 0.0,
@@ -1348,8 +1383,26 @@ func _snapshot() -> Dictionary:
 		# Worm burrow cycle (0 BURROWED / 1 EMERGE / 2 SURFACE / 3 SUBMERGE) for QA.
 		if "phase" in e:
 			erec["phase"] = int(e.get("phase"))
+		# EMP stun (server-side window; duck-typed so this works pre-feature too).
+		var stun_ms: Variant = e.get("_stunned_until_ms")
+		erec["stunned"] = stun_ms != null and int(stun_ms) > Time.get_ticks_msec()
 		enemies.append(erec)
 	d["enemies"] = enemies
+
+	# Active deployables + smoke clouds (batch A QA).
+	var gadgets: Array = []
+	var arena_node: Node = get_tree().get_first_node_in_group(Groups.ARENA)
+	var gadget_root: Node = arena_node.get_node_or_null("Net/Gadgets") if arena_node else null
+	if gadget_root:
+		for g in gadget_root.get_children():
+			if g is Node3D:
+				gadgets.append({"name": str(g.name), "pos": _v3((g as Node3D).global_position)})
+	d["gadgets"] = gadgets
+	var smoke: Array = []
+	for sc in get_tree().get_nodes_in_group(Groups.SMOKE):
+		if sc is Node3D:
+			smoke.append(_v3((sc as Node3D).global_position))
+	d["smoke"] = smoke
 
 	# All players (incl. remotes) with their REPLICATED cosmetics — proves co-op appearance
 	# sync: each peer's copy of another player carries that player's chosen look.
@@ -1415,83 +1468,39 @@ func _snapshot() -> Dictionary:
 	return d
 
 
-## Deterministic-world snapshot for refactor verification (docs/AUDIT.md "golden
-## snapshot"): pure terrain height/water probes on a fixed 9x9 grid, extraction-zone
-## positions + their pad heights, and a placement checksum per procedural container
-## under the arena's NavigationRegion3D. Two runs of the same build MUST byte-match
-## (tools/lint/check_golden.py canonicalizes + compares). Deliberately EXCLUDED:
-## loot (field/world rolls use unseeded RNG) and Grass_* tiles (stream with the player).
-func _golden_snapshot() -> Dictionary:
-	var heights: Array = []
-	var water: Array = []
-	for iz in range(9):
-		for ix in range(9):
-			var x := -80.0 + 40.0 * float(ix)
-			var z := -80.0 + 40.0 * float(iz)
-			heights.append([x, z, snappedf(ProceduralTerrain.height_at(x, z), 0.0001)])
-			var w := ProceduralTerrain.water_surface_at(x, z)
-			water.append([x, z, null if is_nan(w) else snappedf(w, 0.0001)])
-	var zones: Array = []
-	for zn in get_tree().get_nodes_in_group(Groups.EXTRACTION):
-		if not (zn is Node3D):
-			continue
-		var zp: Vector3 = (zn as Node3D).global_position
-		(
-			zones
-			. append(
-				{
-					"name": str(zn.name),
-					"pos": [snappedf(zp.x, 0.001), snappedf(zp.y, 0.001), snappedf(zp.z, 0.001)],
-					"pad_h": snappedf(ProceduralTerrain.height_at(zp.x, zp.z), 0.0001),
-				}
-			)
-		)
-	zones.sort_custom(func(a, b): return str(a["name"]) < str(b["name"]))
-	var containers: Dictionary = {}
-	var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
-	var nav: Node = arena.get_node_or_null("NavigationRegion3D") if arena else null
-	if nav:
-		for child in nav.get_children():
-			var acc: Array = []
-			var cnt := _fold_node(child, acc)
-			containers[str(child.name)] = {"nodes": cnt, "hash": hash(acc)}
-	return {
-		"ok": nav != null,
-		"version": Settings.GAME_VERSION,
-		"heights": heights,
-		"water": water,
-		"zones": zones,
-		"containers": containers,
-	}
+## QA: select + throw a grenade type via the REAL PlayerGear path (server routing
+## included). Grants one if the player carries none, so recipes need no stash setup.
+func _debug_grenade(type: String) -> Dictionary:
+	var pl: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+	if pl == null:
+		return {"ok": false, "reason": "no local player"}
+	if not Settings.GRENADE_TYPES.has(type):
+		return {"ok": false, "reason": "unknown type"}
+	if int(pl._grenade_counts.get(type, 0)) <= 0:
+		pl._grenade_counts[type] = 1
+	pl._grenade_sel = type
+	var gear: Node = pl.get_node_or_null("Gear")
+	if gear == null:
+		return {"ok": false, "reason": "no gear component"}
+	gear.throw_selected()
+	return {"ok": true, "type": type, "left": int(pl._grenade_counts.get(type, 0))}
 
 
-## Folds a node subtree into acc for the golden checksum: name, class, quantized
-## global transform (mm origin / 1e-3 basis), and MultiMesh instance buffers (full
-## per-instance transforms). Returns the folded node count. Grass_* subtrees are
-## skipped — their tiles rebuild around the player, so they are not run-deterministic.
-func _fold_node(n: Node, acc: Array) -> int:
-	var nm := str(n.name)
-	if nm.begins_with("Grass_"):
-		return 0
-	# Auto-generated names (@Class@N) carry a process-global counter that changes on
-	# every arena rebuild — fold them as "@anon" so only EXPLICIT names are load-bearing.
-	acc.append("@anon" if nm.begins_with("@") else nm)
-	acc.append(n.get_class())
-	if n is Node3D:
-		var t: Transform3D = (n as Node3D).global_transform
-		for v: Vector3 in [t.origin, t.basis.x, t.basis.y, t.basis.z]:
-			acc.append(int(round(v.x * 1000.0)))
-			acc.append(int(round(v.y * 1000.0)))
-			acc.append(int(round(v.z * 1000.0)))
-	if n is MultiMeshInstance3D:
-		var mm: MultiMesh = (n as MultiMeshInstance3D).multimesh
-		if mm:
-			acc.append(mm.instance_count)
-			acc.append(hash(mm.buffer))
-	var cnt := 1
-	for c in n.get_children():
-		cnt += _fold_node(c, acc)
-	return cnt
+## QA: force-place a deployable gadget at the player's feet-forward point. Bypasses
+## the carried count (grants one) but uses the real placement/server-spawn path.
+func _debug_gadget(type: String) -> Dictionary:
+	var pl: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+	if pl == null:
+		return {"ok": false, "reason": "no local player"}
+	if not Settings.GADGET_TYPES.has(type):
+		return {"ok": false, "reason": "unknown type"}
+	if int(pl._gadget_counts.get(type, 0)) <= 0:
+		pl._gadget_counts[type] = 1
+	var gear: Node = pl.get_node_or_null("Gear")
+	if gear == null:
+		return {"ok": false, "reason": "no gear component"}
+	gear.place(Settings.GADGET_TYPES.find(type))
+	return {"ok": true, "type": type, "left": int(pl._gadget_counts.get(type, 0))}
 
 
 ## Drives the local player's nearest in-range loot pickup through the real

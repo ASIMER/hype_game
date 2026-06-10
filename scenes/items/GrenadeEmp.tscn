@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/grenade_emp.gd" id="1_grenade_emp"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_gren"]
+radius = 0.12
+height = 0.24
+radial_segments = 12
+rings = 6
+
+[sub_resource type="StandardMaterial3D" id="Mat_gren"]
+albedo_color = Color(0.16, 0.34, 0.62, 1)
+metallic = 0.5
+roughness = 0.5
+
+[sub_resource type="SphereShape3D" id="Shape_gren"]
+radius = 0.12
+
+[node name="GrenadeEmp" type="RigidBody3D"]
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("1_grenade_emp")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("SphereMesh_gren")
+surface_material_override/0 = SubResource("Mat_gren")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_gren")

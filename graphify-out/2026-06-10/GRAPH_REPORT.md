@@ -1,7 +1,7 @@
 # Graph Report - hype game  (2026-06-10)
 
 ## Corpus Check
-- 30 files · ~2,018,553 words
+- 30 files · ~2,018,757 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `281c7fad`
+- Built from commit: `cb551d39`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -139,8 +139,8 @@ Cohesion: 0.09
 Nodes (66): _add_tracks(), _adsr(), _concat(), _fade(), gen_ambient(), gen_explosion(), gen_extract_beep(), gen_extract_cancel() (+58 more)
 
 ### Community 1 - "AgentBridge QA Commands"
-Cohesion: 0.40
-Nodes (5): Events (global signal bus), RemoteShotFX, NetworkManager.begin_match, NetworkManager.broadcast_shot, NetworkManager.notify_loaded (load gate)
+Cohesion: 0.25
+Nodes (8): AgentBridge._debug_spawn, Events (global signal bus), ExtractionDirector (timed evac windows), RemoteShotFX, GameState.is_local_authority_server, NetworkManager.begin_match, NetworkManager.broadcast_shot, NetworkManager.notify_loaded (load gate)
 
 ### Community 2 - "Core Autoload Singletons"
 Cohesion: 0.11
@@ -263,12 +263,12 @@ Cohesion: 0.67
 Nodes (3): main(), trim(), str
 
 ### Community 71 - "Community 71"
-Cohesion: 0.33
-Nodes (6): Crafting.craft, MetaProgression (persistent profile), MetaProgression.stash_capacity, Quests._advance / event hooks, Quests.get_daily_quests (daily rotation), RaidManager.deploy (commit bring-list + attachments)
+Cohesion: 0.22
+Nodes (10): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._ui_action (menu open/close), Crafting.craft, MetaProgression (persistent profile), MetaProgression.stash_capacity, Quests._advance / event hooks, Quests.get_daily_quests (daily rotation) (+2 more)
 
 ### Community 72 - "Community 72"
-Cohesion: 0.20
-Nodes (10): AgentBridge._aim_at (converging camera aim), AgentBridge._debug_spawn, AgentBridge._handle_line (command dispatch), AgentBridge._ui_action (menu open/close), ExtractionDirector._apply_windows, ExtractionDirector (timed evac windows), GameState.is_local_authority_server, ServerBrowser.add_favorite / record_connect (+2 more)
+Cohesion: 0.67
+Nodes (3): ExtractionDirector._apply_windows, ServerBrowser.scan_lan, Settings (tunable constants)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.50
@@ -304,7 +304,7 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
 - **What is the exact relationship between `WeaponController._load_weapons` and `Version-safe ConfigFile saves`?**
   _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 72` to `Community 67`, `Asset Registry & Fallbacks`, `Community 69`, `Community 68`, `Community 71`, `Server-Auth Co-op Netcode`?**
+- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `AgentBridge QA Commands`, `Community 67`, `Asset Registry & Fallbacks`, `Community 69`, `Community 68`, `Community 72`, `Server-Auth Co-op Netcode`?**
   _High betweenness centrality (0.019) - this node is a cross-community bridge._
 - **Why does `ItemCatalog (id to ItemData)` connect `Core Autoload Singletons` to `Server-Auth Co-op Netcode`, `Community 68`?**
   _High betweenness centrality (0.016) - this node is a cross-community bridge._

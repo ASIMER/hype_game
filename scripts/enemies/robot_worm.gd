@@ -73,6 +73,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if _dying or _health.is_dead:
 		return
+	# EMP stun: this override bypasses the base stun gate, so guard explicitly — the
+	# whole phase machine pauses (a burrowed worm just waits underground).
+	if Time.get_ticks_msec() < _stunned_until_ms:
+		return
 	if _attack_cooldown > 0.0:
 		_attack_cooldown -= delta
 	_retarget_timer -= delta

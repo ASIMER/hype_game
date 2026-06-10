@@ -50,7 +50,12 @@ var _ads: bool = false  # aim-down-sights active
 var _ads_toggled: bool = false  # latched ADS when Settings.ads_toggle
 var _shoulder_sign: float = 1.0  # over-the-shoulder side; flipped by shoulder_swap
 var _medkits: int = 0  # set at spawn from the bring-list; heal consumes
-var _grenades: int = 0  # set at spawn from the bring-list; grenade consumes
+## Per-type grenade counts {frag/smoke/emp/decoy → n} (replicated — see Player.tscn;
+## the server reads it at extraction). Set at spawn from the bring-list.
+var _grenade_counts: Dictionary = {}
+var _grenade_sel: String = "frag"  # locally selected type (authority-local; B cycles)
+## Per-type deployable-gadget counts (replicated, same reasons as grenades).
+var _gadget_counts: Dictionary = {}
 var _stamina: float = Settings.MAX_STAMINA
 var _max_stamina: float = Settings.MAX_STAMINA  # base * meta stamina upgrade (set in _ready)
 var _sprint_locked: bool = false  # true after exhausting stamina, until it regens
@@ -71,6 +76,22 @@ var cosmetics: Dictionary = {}
 var _built_cos_str: String = ""  # signature of the cosmetics the body was last built from
 var _slide_timer: float = 0.0  # counts down during a SLIDE
 var _slide_dir: Vector3 = Vector3.ZERO  # locked horizontal entry direction of the slide
+# Dodge-roll (Stance.ROLL) — authority-local except the replicated stance int itself.
+var _roll_timer: float = 0.0  # counts down during a ROLL
+var _roll_dir: Vector3 = Vector3.ZERO  # locked horizontal roll direction
+var _roll_cooldown_until_ms: int = 0  # next roll allowed at this tick (anti-spam)
+## Enemy-damage immunity window (roll i-frames). Deliberately NOT Health.invulnerable —
+## godmode owns that flag; this one auto-expires and only blocks ENEMY sources.
+var _iframes_until_ms: int = 0
+var _agent_dodge_prev: bool = false  # harness edge-detect (mirrors _agent_jump_prev)
+# Mantle (climb-over) — authority-local; the replicated :position carries the motion.
+var _mantling: bool = false
+var _mantle_from: Vector3 = Vector3.ZERO
+var _mantle_to: Vector3 = Vector3.ZERO
+var _mantle_t: float = 0.0  # 0→1 over Settings.MANTLE_TIME
+## While riding a zipline the zipline node drives our position (see begin_zipline).
+var _zipline: Node = null
+var _gear: PlayerGear = null  # grenade/gadget verbs component (created in _ready)
 var _cam_base_y: float = 1.5  # CameraPivot's base local Y (cached once in _ready)
 
 # --- View toggle + camera-from-settings (authority only) ---
@@ -96,8 +117,6 @@ var _ripple: GPUParticles3D = null  # feet ripple while wading (lazy)
 var _noise_last_pos: Vector3 = Vector3.ZERO
 var _noise_speed: float = 0.0
 var _noise_inited: bool = false
-
-const GRENADE_SCENE := "res://scenes/items/Grenade.tscn"
 
 # --- Active power-cache buffs (timed; authority-local) -----------------------
 # id -> time_left (seconds). Effects read live via the buff_*_mult() getters + _tick_buffs.
@@ -126,6 +145,11 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	add_to_group(Groups.PLAYERS)
+
+	# Grenade/gadget verbs live in a child component (player.gd size discipline).
+	_gear = PlayerGear.new()
+	_gear.name = "Gear"
+	add_child(_gear)
 
 	# Health is tuned from the central Settings and wired to the global bus so HUD
 	# and match-flow workstreams react without referencing the Player directly.
@@ -243,6 +267,19 @@ func _physics_process(delta: float) -> void:
 		_check_water(delta)
 		return
 
+	# Riding a zipline: the zipline node drives our position/velocity (authority-local;
+	# the replicated :position carries it to other peers). It releases us via end_zipline.
+	if _zipline != null:
+		if not is_instance_valid(_zipline):
+			_zipline = null
+		else:
+			return
+
+	# Mid-mantle: scripted up-and-over motion owns the body until it completes.
+	if _mantling:
+		_update_mantle(delta)
+		return
+
 	# Gravity (uses the project's configured gravity vector).
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -254,8 +291,13 @@ func _physics_process(delta: float) -> void:
 		_agent_jump_prev = jn
 	else:
 		jump_edge = Input.is_action_just_pressed("jump")
-	if _input_enabled and is_on_floor() and jump_edge:
-		velocity.y = Settings.PLAYER_JUMP_VELOCITY
+	if _input_enabled and jump_edge:
+		# Jump near a low wall/crate becomes a MANTLE (climb over); otherwise a normal jump.
+		if _try_mantle():
+			_update_mantle(delta)
+			return
+		if is_on_floor():
+			velocity.y = Settings.PLAYER_JUMP_VELOCITY
 
 	# Agent self-play: when the control server is driving, consume its look delta
 	# (applied to the camera directly so it works even off-screen/unfocused).
@@ -298,16 +340,37 @@ func _physics_process(delta: float) -> void:
 	)
 	var moving := move_dir.length_squared() > 0.01
 
-	# --- Stance: crouch / slide vs stand --------------------------------------
-	# A slide locks steering and decays its own velocity, so resolve it first.
+	# --- Stance: roll / crouch / slide vs stand --------------------------------
+	# A roll/slide locks steering and decays its own velocity, so resolve those first.
 	var crouch_held := _input_enabled and _act_held("crouch")
+	var dodge_edge := false
+	if _input_enabled:
+		if AgentBridge.active:
+			var dn := AgentBridge.held("dodge")
+			dodge_edge = dn and not _agent_dodge_prev
+			_agent_dodge_prev = dn
+		else:
+			dodge_edge = Input.is_action_just_pressed("dodge")
 	var sprinting := false
-	if stance == Stance.SLIDE:
+	if stance == Stance.ROLL:
+		sprinting = false
+		_update_roll(delta, crouch_held)
+	elif stance == Stance.SLIDE:
 		sprinting = false
 		_update_slide(delta, move_dir, crouch_held)
 	else:
-		# Enter a slide: TAP crouch while sprint-moving on the floor.
+		# Enter a dodge-roll: committed burst with brief enemy-damage i-frames.
 		if (
+			dodge_edge
+			and is_on_floor()
+			and not is_carrying()
+			and _stamina >= Settings.ROLL_STAMINA_COST
+			and Time.get_ticks_msec() >= _roll_cooldown_until_ms
+		):
+			_begin_roll(move_dir)
+			_update_roll(delta, crouch_held)
+		# Enter a slide: TAP crouch while sprint-moving on the floor.
+		elif (
 			_input_enabled
 			and is_on_floor()
 			and moving
@@ -425,6 +488,8 @@ func _update_camera(delta: float) -> void:
 	var target_y := _cam_base_y + (0.18 if _ads else 0.0)
 	if stance == Stance.SLIDE:
 		target_y -= Settings.SLIDE_CAMERA_DROP
+	elif stance == Stance.ROLL:
+		target_y -= Settings.ROLL_CAMERA_DROP
 	elif stance == Stance.CROUCH:
 		target_y -= Settings.CROUCH_CAMERA_DROP
 
@@ -474,7 +539,8 @@ func _compute_peek() -> float:
 ## STANCE API (FROZEN — read by the combat lane). Returns the spread multiplier for
 ## the current stance/motion. ADS is NOT applied here (the weapon applies it).
 func stance_spread_mult() -> float:
-	if stance == Stance.SLIDE:
+	if stance == Stance.SLIDE or stance == Stance.ROLL:
+		# A roll is even less stable than a slide; reuse the widest cone.
 		return Settings.SPREAD_MULT_SLIDE
 	if stance == Stance.CROUCH:
 		return Settings.SPREAD_MULT_CROUCH
@@ -528,6 +594,137 @@ func _update_slide(delta: float, move_dir: Vector3, crouch_held: bool) -> void:
 	# floor → resolve to CROUCH (if still held) or STAND.
 	if _slide_timer <= 0.0 or not is_on_floor():
 		stance = Stance.CROUCH if (crouch_held and is_on_floor()) else Stance.STAND
+
+
+## Begin a dodge-roll: lock the direction, burst velocity, arm i-frames + cooldown,
+## drain stamina. Mirrors _begin_slide; the replicated stance int carries it to peers.
+func _begin_roll(move_dir: Vector3) -> void:
+	stance = Stance.ROLL
+	_roll_timer = Settings.ROLL_TIME
+	var d := move_dir
+	d.y = 0.0
+	if d.length_squared() < 0.0001:
+		# Roll straight ahead when there is no input vector.
+		d = -global_transform.basis.z
+		d.y = 0.0
+	_roll_dir = d.normalized()
+	velocity.x = _roll_dir.x * Settings.ROLL_SPEED
+	velocity.z = _roll_dir.z * Settings.ROLL_SPEED
+	_stamina = maxf(0.0, _stamina - Settings.ROLL_STAMINA_COST)
+	var now := Time.get_ticks_msec()
+	_iframes_until_ms = now + int(Settings.ROLL_IFRAME_TIME * 1000.0)
+	_roll_cooldown_until_ms = now + int(Settings.ROLL_COOLDOWN * 1000.0)
+	Events.player_rolled.emit(self)
+
+
+## Advance an in-progress roll: fully locked steering (a roll is committed), speed
+## eases from the burst down to walk speed, then resolve to CROUCH/STAND.
+func _update_roll(delta: float, crouch_held: bool) -> void:
+	_roll_timer -= delta
+	var frac := clampf(1.0 - (_roll_timer / Settings.ROLL_TIME), 0.0, 1.0)
+	var spd := lerpf(Settings.ROLL_SPEED, Settings.PLAYER_MOVE_SPEED, frac)
+	if _water_state != Water.DRY:
+		spd *= WATER_SLOW
+	velocity.x = _roll_dir.x * spd
+	velocity.z = _roll_dir.z * spd
+	if _roll_timer <= 0.0:
+		stance = Stance.CROUCH if (crouch_held and is_on_floor()) else Stance.STAND
+
+
+## Ledge-detect for a mantle: wall ahead at chest height, climbable top within the
+## height window, headroom clear. Pure space-state probes (the _compute_peek pattern).
+func _try_mantle() -> bool:
+	if _mantling or stance == Stance.ROLL or stance == Stance.SLIDE:
+		return false
+	if is_carrying() or _zipline != null:
+		return false
+	var facing := -global_transform.basis.z
+	facing.y = 0.0
+	if facing.length_squared() < 0.0001:
+		return false
+	facing = facing.normalized()
+	var space := get_world_3d().direct_space_state
+	# 1) A wall within MANTLE_PROBE ahead at chest height.
+	var from := global_position + Vector3.UP * 0.9
+	var q := PhysicsRayQueryParameters3D.create(from, from + facing * Settings.MANTLE_PROBE)
+	q.collision_mask = 1
+	q.exclude = [get_rid()]
+	if space.intersect_ray(q).is_empty():
+		return false
+	# 2) The ledge top: probe down just past the wall face.
+	var probe_h := Settings.MANTLE_MAX_HEIGHT + 0.4
+	var top_from := global_position + facing * 0.85 + Vector3.UP * probe_h
+	var q2 := PhysicsRayQueryParameters3D.create(top_from, top_from + Vector3.DOWN * probe_h)
+	q2.collision_mask = 1
+	q2.exclude = [get_rid()]
+	var hit := space.intersect_ray(q2)
+	if hit.is_empty():
+		return false
+	var land: Vector3 = hit["position"]
+	var h := land.y - global_position.y
+	if h < Settings.MANTLE_MIN_HEIGHT or h > Settings.MANTLE_MAX_HEIGHT:
+		return false
+	# 3) Headroom above the landing point.
+	var q3 := PhysicsRayQueryParameters3D.create(land + Vector3.UP * 0.1, land + Vector3.UP * 1.1)
+	q3.collision_mask = 1
+	q3.exclude = [get_rid()]
+	if not space.intersect_ray(q3).is_empty():
+		return false
+	_mantling = true
+	_mantle_from = global_position
+	_mantle_to = land + facing * 0.15
+	_mantle_t = 0.0
+	velocity = Vector3.ZERO
+	Events.player_mantled.emit(self)
+	return true
+
+
+## Drive the mantle along a quadratic bezier (up then over) — clearance was verified by
+## the probes, so we move the body directly (no move_and_slide; :position replicates).
+func _update_mantle(delta: float) -> void:
+	_mantle_t = minf(_mantle_t + delta / Settings.MANTLE_TIME, 1.0)
+	var rise := maxf(_mantle_to.y - _mantle_from.y, 0.0)
+	var mid := _mantle_from.lerp(_mantle_to, 0.5) + Vector3.UP * (rise * 0.4 + 0.25)
+	var a := _mantle_from.lerp(mid, _mantle_t)
+	var b := mid.lerp(_mantle_to, _mantle_t)
+	global_position = a.lerp(b, _mantle_t)
+	velocity = Vector3.ZERO
+	if _mantle_t >= 1.0:
+		_mantling = false
+		# Small forward carry so the vault flows into a step instead of a dead stop.
+		var fwd := -global_transform.basis.z
+		fwd.y = 0.0
+		velocity = fwd.normalized() * 1.5
+
+
+## ZIPLINE CONTRACT (called by scripts/world/zipline.gd). Returns false when busy —
+## the zipline only drives us after a true. While riding, _physics_process early-outs
+## and the zipline writes our global_position/velocity each physics frame.
+func begin_zipline(zipline: Node, _from_pos: Vector3, _to_pos: Vector3) -> bool:
+	if downed or is_carrying() or _mantling or _zipline != null:
+		return false
+	if stance == Stance.ROLL or stance == Stance.SLIDE:
+		return false
+	_zipline = zipline
+	stance = Stance.STAND
+	return true
+
+
+## Release zipline control (ride finished or jump-dismount). Keeps half the cable
+## momentum; a jump adds a hop so dismounts feel deliberate.
+func end_zipline(jump: bool) -> void:
+	if _zipline == null:
+		return
+	_zipline = null
+	var dir := velocity
+	dir.y = 0.0
+	if dir.length_squared() > 0.01:
+		dir = dir.normalized()
+	else:
+		dir = -global_transform.basis.z
+	velocity = dir * Settings.ZIPLINE_SPEED * 0.5
+	if jump:
+		velocity.y = Settings.PLAYER_JUMP_VELOCITY * 0.6
 
 
 ## Third-person spring length, scaled by the player's camera-distance setting.
@@ -589,7 +786,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_try_heal()
 	elif event.is_action_pressed("grenade"):
 		if not downed:
-			_throw_grenade()
+			_gear.throw_selected()
+	elif event.is_action_pressed("grenade_cycle"):
+		if not downed:
+			_gear.cycle()
+	elif event.is_action_pressed("gadget_1"):
+		_gear.place(0)
+	elif event.is_action_pressed("gadget_2"):
+		_gear.place(1)
+	elif event.is_action_pressed("gadget_3"):
+		_gear.place(2)
 
 
 ## Consume a medkit to restore HP (instant). Authority-gated by the caller.
@@ -601,27 +807,8 @@ func _try_heal() -> void:
 	Events.player_healed.emit(self, Settings.HEAL_AMOUNT)
 
 
-## Throw a grenade from the chest along the aim direction. Works once fx-dev's
-## Grenade.tscn exists (guarded); decrements the carried count.
-func _throw_grenade() -> void:
-	if _grenades <= 0 or not ResourceLoader.exists(GRENADE_SCENE):
-		return
-	var packed := load(GRENADE_SCENE) as PackedScene
-	if packed == null:
-		return
-	var nade: Node = packed.instantiate()
-	var world := get_tree().current_scene
-	if world == null:
-		return
-	world.add_child(nade)
-	var from := global_position + Vector3.UP * 1.4
-	var dir := -camera.global_transform.basis.z
-	if nade.has_method("throw"):
-		nade.throw(from, dir, Settings.GRENADE_THROW_FORCE)
-	elif nade is Node3D:
-		(nade as Node3D).global_position = from
-	_grenades -= 1
-	Events.grenade_thrown.emit(self, from, dir)
+# Grenade selection/throw + gadget placement live in the PlayerGear child component
+# (scripts/player/player_gear.gd) — size discipline; the replicated counts stay here.
 
 
 ## Cosmetic water immersion. Reads the water surface Y at the player's XZ (Lane A's
@@ -878,7 +1065,17 @@ func _on_item_use(item_id: String) -> void:
 		"loot_medkit", "medkit":
 			_try_heal()
 		"loot_grenade", "grenade":
-			_throw_grenade()
+			# Inventory-Use throws a FRAG specifically (the G key throws the selection).
+			_grenade_sel = "frag"
+			if int(_grenade_counts.get("frag", 0)) <= 0:
+				_grenade_counts["frag"] = 1
+			_gear.throw_selected()
+		"loot_grenade_smoke", "loot_grenade_emp", "loot_grenade_decoy":
+			var gtype := item_id.trim_prefix("loot_grenade_")
+			_grenade_sel = gtype
+			if int(_grenade_counts.get(gtype, 0)) <= 0:
+				_grenade_counts[gtype] = 1
+			_gear.throw_selected()
 		Settings.SELF_REVIVE_ITEM, "self_revive":
 			if downed:
 				_self_revive()
@@ -977,8 +1174,26 @@ func buff_lifesteal_frac() -> float:
 	return _buff_sum("lifesteal")
 
 
-## Damage filter set on Health: Juggernaut armor reduces, then Overshield absorbs the rest.
-func _filter_incoming_damage(amount: float, _source: Node) -> float:
+## Damage filter set on Health: roll i-frames → shield-dome reduction → Juggernaut
+## armor → Overshield absorb. Runs authority-local (the Hurtbox forwards hits here).
+func _filter_incoming_damage(amount: float, source: Node) -> float:
+	# Dodge-roll i-frames: brief immunity vs ENEMY damage only. Self-damage and the
+	# harness `hurt` QA path carry a non-enemy source, so they still land.
+	if (
+		Time.get_ticks_msec() < _iframes_until_ms
+		and source != null
+		and is_instance_valid(source)
+		and source.is_in_group(Groups.ENEMIES)
+	):
+		return 0.0
+	# Shield-dome gadget: standing inside any active dome halves incoming damage.
+	for dome in get_tree().get_nodes_in_group(Groups.DOMES):
+		if not (dome is Node3D):
+			continue
+		var r := float(dome.get("radius")) if dome.get("radius") != null else 0.0
+		if r > 0.0 and global_position.distance_to((dome as Node3D).global_position) <= r:
+			amount *= Settings.DOME_DAMAGE_MULT
+			break
 	var armor: float = clampf(_buff_sum("armor"), 0.0, 0.9)
 	amount *= (1.0 - armor)
 	if _overshield > 0.0:
@@ -1045,19 +1260,41 @@ func active_buffs() -> Array:
 func apply_loadout() -> void:
 	var brought := MetaProgression.get_bring()
 	_medkits = int(brought.get("loot_medkit", 0))
-	_grenades = int(brought.get("loot_grenade", 0))
 	_self_revives = int(brought.get(Settings.SELF_REVIVE_ITEM, 0))
 	_shields = int(brought.get(Settings.KNOCKDOWN_SHIELD_ITEM, 0))
+	# Per-type grenade counts from the bring-list (GRENADE_ITEM_IDS maps type → item id);
+	# select the first type with ammo so G works immediately.
+	_grenade_counts = {}
+	for t in Settings.GRENADE_TYPES:
+		var iid := String(Settings.GRENADE_ITEM_IDS[t])
+		var c := int(brought.get(iid, 0))
+		if c > 0:
+			_grenade_counts[String(t)] = c
+	_grenade_sel = "frag"
+	if int(_grenade_counts.get("frag", 0)) <= 0 and _gear != null:
+		_gear.cycle()
+	# Deployable gadgets (item id == type id).
+	_gadget_counts = {}
+	for t in Settings.GADGET_TYPES:
+		var c2 := int(brought.get(String(t), 0))
+		if c2 > 0:
+			_gadget_counts[String(t)] = c2
 
 
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
-## unused medkits/grenades come back out with you (and are lost if you die).
+## unused medkits/grenades/gadgets come back out with you (and are lost if you die).
 func extracted_consumables() -> Array:
 	var out: Array = []
 	if _medkits > 0:
 		out.append({"id": "loot_medkit", "count": _medkits})
-	if _grenades > 0:
-		out.append({"id": "loot_grenade", "count": _grenades})
+	for t in _grenade_counts:
+		var c := int(_grenade_counts[t])
+		if c > 0:
+			out.append({"id": String(Settings.GRENADE_ITEM_IDS[t]), "count": c})
+	for t in _gadget_counts:
+		var c2 := int(_gadget_counts[t])
+		if c2 > 0:
+			out.append({"id": String(t), "count": c2})
 	return out
 
 
@@ -1525,8 +1762,8 @@ func noise_radius() -> float:
 		loud = Settings.NOISE_WALK  # walking
 	if stance == Stance.CROUCH:
 		loud *= Settings.NOISE_CROUCH_MULT
-	elif stance == Stance.SLIDE:
-		loud = Settings.NOISE_WALK  # a slide scrapes — moderately loud
+	elif stance == Stance.SLIDE or stance == Stance.ROLL:
+		loud = Settings.NOISE_WALK  # a slide/roll scrapes — moderately loud
 	return loud
 
 

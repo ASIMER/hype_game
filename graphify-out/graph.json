@@ -1581,7 +1581,7 @@
       "label": "main()",
       "file_type": "code",
       "source_file": "tools/lint/posttool_lint.py",
-      "source_location": "L26",
+      "source_location": "L28",
       "id": "lint_posttool_lint_main",
       "community": 76,
       "norm_label": "main()"
@@ -1590,7 +1590,7 @@
       "label": "int",
       "file_type": "code",
       "source_file": "tools/lint/posttool_lint.py",
-      "source_location": "L26",
+      "source_location": "L28",
       "id": "tools_lint_posttool_lint_py_int",
       "community": 76,
       "norm_label": "int"
@@ -1632,10 +1632,19 @@
       "norm_label": "run / test / validate (most important for a new session)"
     },
     {
-      "label": "Release / packaging (portable Windows + macOS builds)",
+      "label": "Quality gates (linters, hooks, golden snapshot \u2014 docs/AUDIT.md is the full audit)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
       "source_location": "L38",
+      "id": "claude_quality_gates_linters_hooks_golden_snapshot_docs_audit_md_is_the_full_audit",
+      "community": 59,
+      "norm_label": "quality gates (linters, hooks, golden snapshot \u2014 docs/audit.md is the full audit)"
+    },
+    {
+      "label": "Release / packaging (portable Windows + macOS builds)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L44",
       "id": "claude_release_packaging_portable_windows_macos_builds",
       "community": 59,
       "norm_label": "release / packaging (portable windows + macos builds)"
@@ -1644,7 +1653,7 @@
       "label": "Self-play harness in 6 lines (how to actually test gameplay)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L41",
+      "source_location": "L47",
       "id": "claude_self_play_harness_in_6_lines_how_to_actually_test_gameplay",
       "community": 59,
       "norm_label": "self-play harness in 6 lines (how to actually test gameplay)"
@@ -1653,7 +1662,7 @@
       "label": "Architecture at a glance",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L51",
+      "source_location": "L57",
       "id": "claude_architecture_at_a_glance",
       "community": 59,
       "norm_label": "architecture at a glance"
@@ -1662,7 +1671,7 @@
       "label": "Localization (en base + ru; scalable)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L86",
+      "source_location": "L92",
       "id": "claude_localization_en_base_ru_scalable",
       "community": 59,
       "norm_label": "localization (en base + ru; scalable)"
@@ -1671,7 +1680,7 @@
       "label": "UI look (\"military glass\" \u2014 theme-first)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L89",
+      "source_location": "L95",
       "id": "claude_ui_look_military_glass_theme_first",
       "community": 59,
       "norm_label": "ui look (\"military glass\" \u2014 theme-first)"
@@ -1680,7 +1689,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L95",
+      "source_location": "L101",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1689,7 +1698,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L109",
+      "source_location": "L115",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1698,7 +1707,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L112",
+      "source_location": "L118",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -2037,6 +2046,15 @@
       "norm_label": "10. server browser & lan discovery (`autoload/serverbrowser.gd`)"
     },
     {
+      "label": "11. Quality gates & `scripts/core/` (the audit pass \u2014 full report: `docs/AUDIT.md`)",
+      "file_type": "document",
+      "source_file": "docs/ARCHITECTURE.md",
+      "source_location": "L154",
+      "id": "docs_architecture_11_quality_gates_scripts_core_the_audit_pass_full_report_docs_audit_md",
+      "community": 13,
+      "norm_label": "11. quality gates & `scripts/core/` (the audit pass \u2014 full report: `docs/audit.md`)"
+    },
+    {
       "label": "ASSETS.md",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
@@ -2175,7 +2193,7 @@
       "label": "6. Golden determinism snapshot (the refactoring safety net)",
       "file_type": "document",
       "source_file": "docs/AUDIT.md",
-      "source_location": "L86",
+      "source_location": "L89",
       "id": "docs_audit_6_golden_determinism_snapshot_the_refactoring_safety_net",
       "community": 80,
       "norm_label": "6. golden determinism snapshot (the refactoring safety net)"
@@ -2184,7 +2202,7 @@
       "label": "7. Deferred (recorded so they aren't re-litigated)",
       "file_type": "document",
       "source_file": "docs/AUDIT.md",
-      "source_location": "L108",
+      "source_location": "L111",
       "id": "docs_audit_7_deferred_recorded_so_they_aren_t_re_litigated",
       "community": 80,
       "norm_label": "7. deferred (recorded so they aren't re-litigated)"
@@ -2229,7 +2247,7 @@
       "label": "3. `state` JSON schema",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L72",
+      "source_location": "L75",
       "id": "docs_testing_3_state_json_schema",
       "community": 9,
       "norm_label": "3. `state` json schema"
@@ -2238,7 +2256,7 @@
       "label": "4. Driving it",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L119",
+      "source_location": "L122",
       "id": "docs_testing_4_driving_it",
       "community": 9,
       "norm_label": "4. driving it"
@@ -2247,7 +2265,7 @@
       "label": "5. Validation commands (run after every change)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L124",
+      "source_location": "L127",
       "id": "docs_testing_5_validation_commands_run_after_every_change",
       "community": 9,
       "norm_label": "5. validation commands (run after every change)"
@@ -2256,7 +2274,7 @@
       "label": "6. QA workflow (test matrix)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L134",
+      "source_location": "L137",
       "id": "docs_testing_6_qa_workflow_test_matrix",
       "community": 9,
       "norm_label": "6. qa workflow (test matrix)"
@@ -2265,7 +2283,7 @@
       "label": "7. Co-op multi-instance testing (instances playing together)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L148",
+      "source_location": "L151",
       "id": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
       "community": 9,
       "norm_label": "7. co-op multi-instance testing (instances playing together)"
@@ -2274,7 +2292,7 @@
       "label": "Host \u2192 join \u2192 ready \u2192 deploy sequence",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L163",
+      "source_location": "L166",
       "id": "docs_testing_host_join_ready_deploy_sequence",
       "community": 9,
       "norm_label": "host \u2192 join \u2192 ready \u2192 deploy sequence"
@@ -2283,7 +2301,7 @@
       "label": "Co-op checks worth running",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L177",
+      "source_location": "L180",
       "id": "docs_testing_co_op_checks_worth_running",
       "community": 9,
       "norm_label": "co-op checks worth running"
@@ -2292,7 +2310,7 @@
       "label": "LAN discovery test",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L185",
+      "source_location": "L188",
       "id": "docs_testing_lan_discovery_test",
       "community": 9,
       "norm_label": "lan discovery test"
@@ -2301,7 +2319,7 @@
       "label": "WAN / hairpin test",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L194",
+      "source_location": "L197",
       "id": "docs_testing_wan_hairpin_test",
       "community": 9,
       "norm_label": "wan / hairpin test"
@@ -2310,7 +2328,7 @@
       "label": "Per-instance save isolation",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L201",
+      "source_location": "L204",
       "id": "docs_testing_per_instance_save_isolation",
       "community": 9,
       "norm_label": "per-instance save isolation"
@@ -2319,7 +2337,7 @@
       "label": "8. Parallel testing (2\u20134 instances at once)",
       "file_type": "document",
       "source_file": "docs/TESTING.md",
-      "source_location": "L205",
+      "source_location": "L208",
       "id": "docs_testing_8_parallel_testing_2_4_instances_at_once",
       "community": 9,
       "norm_label": "8. parallel testing (2\u20134 instances at once)"
@@ -2791,7 +2809,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -3285,7 +3303,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -3389,7 +3407,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -3519,7 +3537,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -3688,7 +3706,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "settingsmanager.load_config",
       "id": "settingsmanager_load_config"
     },
@@ -3701,7 +3719,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "settingsmanager._cmp_version",
       "id": "settingsmanager_cmp_version"
     },
@@ -3727,7 +3745,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "stash.total_weight",
       "id": "stash_total_weight"
     },
@@ -3766,7 +3784,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "stash.load_stash",
       "id": "stash_load_stash"
     },
@@ -3779,7 +3797,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main.gd entry point",
       "id": "main_main"
     },
@@ -3792,7 +3810,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main.load_arena",
       "id": "main_load_arena"
     },
@@ -3805,7 +3823,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main._do_deploy",
       "id": "main_do_deploy"
     },
@@ -3818,7 +3836,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main._on_hub_deploy",
       "id": "main_on_hub_deploy"
     },
@@ -3831,7 +3849,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main.open_hub",
       "id": "main_open_hub"
     },
@@ -3844,7 +3862,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main._start_agent",
       "id": "main_start_agent"
     },
@@ -3870,7 +3888,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main_menu._join",
       "id": "main_menu_join"
     },
@@ -3883,7 +3901,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "main_menu._on_single_player",
       "id": "main_menu_on_single_player"
     },
@@ -3948,7 +3966,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "weaponcontroller._load_weapons",
       "id": "combat_weapon_controller_load_weapons"
     },
@@ -3974,7 +3992,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "weaponcontroller._apply_attachments",
       "id": "combat_weapon_controller_apply_attachments"
     },
@@ -4052,7 +4070,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "attachmentdata.apply_to",
       "id": "combat_attachment_data_apply_to"
     },
@@ -4065,7 +4083,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "weapondata resource",
       "id": "combat_weapon_data_weapondata"
     },
@@ -4078,7 +4096,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "craftrecipe resource",
       "id": "crafting_craft_recipe_craftrecipe"
     },
@@ -4208,7 +4226,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "resourceindex (generated paths)",
       "id": "resource_index_resourceindex"
     },
@@ -4260,7 +4278,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "co-op netcode model",
       "id": "docs_architecture_coop_netcode"
     },
@@ -4286,7 +4304,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "inventory server-to-owner mirror",
       "id": "docs_architecture_inventory_mirror"
     },
@@ -4299,7 +4317,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "lobby/deploy synchronized handshake",
       "id": "docs_architecture_lobby_handshake"
     },
@@ -4312,7 +4330,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 79,
       "norm_label": "version-safe configfile saves",
       "id": "docs_architecture_persistence_versioning"
     },
@@ -4338,7 +4356,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "self-play harness (--agent)",
       "id": "docs_testing_self_play_harness"
     },
@@ -4351,7 +4369,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "agentbridge command protocol",
       "id": "docs_testing_command_protocol"
     },
@@ -4442,7 +4460,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -4455,7 +4473,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -4533,7 +4551,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "camerafx._on_hit_stop",
       "id": "fx_camera_fx_on_hit_stop"
     },
@@ -4585,7 +4603,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "explosion",
       "id": "fx_explosion_explosion"
     },
@@ -4832,7 +4850,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "grenade._explode",
       "id": "items_grenade_explode"
     },
@@ -9253,6 +9271,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "claude_hype_raiders_project_guide_read_me_first",
+      "target": "claude_quality_gates_linters_hooks_golden_snapshot_docs_audit_md_is_the_full_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
       "source_location": "L36",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9508,6 +9536,16 @@
       "confidence_score": 1.0,
       "source": "docs_architecture_architecture_reference_hype_raiders",
       "target": "docs_architecture_10_server_browser_lan_discovery_autoload_serverbrowser_gd"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ARCHITECTURE.md",
+      "source_location": "L154",
+      "weight": 1.0,
+      "source": "docs_architecture_architecture_reference_hype_raiders",
+      "target": "docs_architecture_11_quality_gates_scripts_core_the_audit_pass_full_report_docs_audit_md",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -13214,5 +13252,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "cb551d399e0d3f9fc89ba944601ece4cdd11ffd5"
+  "built_at_commit": "a4d450665c01a447454dc24e48d5b16ce19bbca7"
 }

@@ -51,10 +51,13 @@ const ATT_OPTIC := ["att_scope_4x", "att_holo_sight", "att_red_dot"]
 const ATT_MAG := ["att_ext_mag", "att_drum_mag", "att_light_mag"]
 const ATT_BARREL := ["att_long_barrel", "att_suppressor", "att_compensator"]
 const ATT_GRIP := ["att_heavy_grip", "att_quickdraw_grip"]
+# Deployable gadgets — each has a named tracking part the gadget script rotates
+# ("Barrel" on the turret, "Head" on the sensor).
+const GADGET_BUILDERS := ["gadget_turret", "gadget_dome", "gadget_sensor"]
 
 
 static func has_builder(id: String) -> bool:
-	if id in ENEMY_BUILDERS or id in ITEM_BUILDERS:
+	if id in ENEMY_BUILDERS or id in ITEM_BUILDERS or id in GADGET_BUILDERS:
 		return true
 	if id in ATT_OPTIC or id in ATT_MAG or id in ATT_BARREL or id in ATT_GRIP:
 		return true
@@ -118,6 +121,12 @@ static func build(id: String) -> Node3D:
 			return build_plastic()
 		"loot_data_chip":
 			return build_data_chip()
+		"gadget_turret":
+			return build_gadget_turret()
+		"gadget_dome":
+			return build_gadget_dome_emitter()
+		"gadget_sensor":
+			return build_gadget_sensor()
 	if id in ATT_OPTIC:
 		return build_att_optic(id)
 	if id in ATT_MAG:
@@ -1252,4 +1261,119 @@ static func build_robot_raiju() -> Node3D:
 				0.045,
 				leg_mat
 			)
+	return root
+
+
+# ================================================================= DEPLOYABLE GADGETS (v0.3)
+# Friendly placed gadgets — same StandardMaterial3D discipline + authored facing -Z as the
+# enemies. Each exposes a NAMED tracking part the gadget script rotates per frame on every
+# peer: the turret's "Barrel" yaws+pitches toward its target, the sensor's "Head" spins.
+
+
+## Auto-Turret: a boxy body on a wide tripod with a forward twin-barrel gun. The barrel
+## assembly is a distinct Node3D child named "Barrel" (origin at the gun pivot ~y0.6,
+## facing -Z) so gadget_turret.gd can rotate it toward the nearest enemy. Built around
+## local y0 = ground (feet on the floor); the spawner places the root at the ground point.
+static func build_gadget_turret() -> Node3D:
+	var root := Node3D.new()
+	var shell := ProcMaterials.weathered(
+		Color(0.24, 0.42, 0.32), 0.5, 0.5, 0.5, 79, Vector3(0.6, 0.6, 0.6), false
+	)
+	var dark := _mat(Color(0.14, 0.18, 0.16), 0.5, 0.55)
+	var steel := _mat(Color(0.3, 0.34, 0.32), 0.7, 0.35)
+	var lamp := _mat(Color(0.4, 0.95, 0.6), 0.0, 0.3, Color(0.4, 0.95, 0.6), 5.0)
+
+	# Wide tripod: 3 splayed legs down to footpads + a base disc (the deploy footprint).
+	for i in 3:
+		var ang := TAU * float(i) / 3.0 + 0.5
+		var foot := Vector3(cos(ang) * 0.42, 0.0, sin(ang) * 0.42)
+		_strut(root, Vector3(0, 0.34, 0), foot, 0.045, steel)
+		_part(root, _cyl(0.07, 0.04, 8), dark, foot)
+	_part(root, _cyl(0.26, 0.1, 14), dark, Vector3(0, 0.36, 0))
+	# Rotating body block + a small status lamp on the back.
+	_part(root, _box(Vector3(0.4, 0.3, 0.42)), shell, Vector3(0, 0.56, 0))
+	_part(root, _box(Vector3(0.44, 0.08, 0.46)), steel, Vector3(0, 0.42, 0))
+	_part(root, _sphere(0.05, false, 8, 10), lamp, Vector3(0, 0.66, 0.22))
+
+	# Barrel assembly under its own named pivot at the gun height, facing -Z.
+	var barrel := Node3D.new()
+	barrel.name = "Barrel"
+	barrel.position = Vector3(0, 0.6, 0)
+	root.add_child(barrel)
+	_part(barrel, _box(Vector3(0.22, 0.16, 0.22)), dark, Vector3(0, 0, -0.04))  # mantlet
+	for sx in [-0.07, 0.07]:
+		_part(
+			barrel, _cyl(0.035, 0.5, 10), steel, Vector3(float(sx), 0.02, -0.34), Vector3(90, 0, 0)
+		)
+		_part(
+			barrel, _cyl(0.05, 0.08, 10), dark, Vector3(float(sx), 0.02, -0.12), Vector3(90, 0, 0)
+		)
+	# A small forward muzzle eye so the gun reads as "aimed".
+	var eye := _part(barrel, _sphere(0.04, false, 8, 10), lamp, Vector3(0, 0.08, -0.16))
+	eye.name = "MuzzleGlow"
+	return root
+
+
+## Shield-Dome emitter: a low pod with a glowing top ring — the actual translucent dome
+## hemisphere is built in gadget_dome.gd (it needs the runtime DOME_RADIUS). Built around
+## local y0 = ground. Small + unobtrusive so it sits under the dome shell.
+static func build_gadget_dome_emitter() -> Node3D:
+	var root := Node3D.new()
+	var shell := ProcMaterials.weathered(
+		Color(0.22, 0.3, 0.42), 0.5, 0.5, 0.5, 83, Vector3(0.6, 0.6, 0.6), false
+	)
+	var dark := _mat(Color(0.13, 0.16, 0.2), 0.5, 0.55)
+	var glow := _mat(Color(0.35, 0.7, 1.0), 0.0, 0.3, Color(0.35, 0.7, 1.0), 6.0)
+
+	# Stubby base + body cylinder.
+	_part(root, _cyl(0.22, 0.06, 14), dark, Vector3(0, 0.04, 0))
+	_part(root, _cyl(0.16, 0.22, 14), shell, Vector3(0, 0.18, 0))
+	# Three vent slats around the body.
+	for i in 3:
+		var ang := TAU * float(i) / 3.0
+		_part(
+			root,
+			_box(Vector3(0.05, 0.12, 0.06)),
+			dark,
+			Vector3(cos(ang) * 0.16, 0.18, sin(ang) * 0.16),
+			Vector3(0, rad_to_deg(-ang), 0)
+		)
+	# Glowing emitter ring + finial on top (the dome springs from here).
+	_part(root, _cyl(0.13, 0.04, 16), glow, Vector3(0, 0.32, 0))
+	_part(root, _sphere(0.06, false, 8, 12), glow, Vector3(0, 0.4, 0))
+	return root
+
+
+## Motion-Sensor: a tripod pole topped with a rotating sweep head (a distinct Node3D
+## named "Head" that gadget_sensor.gd spins) — a flat dish + an amber sweep blade + a
+## glowing core. Built around local y0 = ground.
+static func build_gadget_sensor() -> Node3D:
+	var root := Node3D.new()
+	var shell := ProcMaterials.weathered(
+		Color(0.4, 0.38, 0.22), 0.5, 0.5, 0.5, 89, Vector3(0.6, 0.6, 0.6), false
+	)
+	var dark := _mat(Color(0.16, 0.16, 0.13), 0.5, 0.55)
+	var steel := _mat(Color(0.32, 0.32, 0.28), 0.7, 0.35)
+	var amber := _mat(Color(0.98, 0.72, 0.25), 0.0, 0.3, Color(0.98, 0.72, 0.25), 6.0)
+
+	# Tripod legs + a center pole up to the head.
+	for i in 3:
+		var ang := TAU * float(i) / 3.0 + 0.5
+		var foot := Vector3(cos(ang) * 0.34, 0.0, sin(ang) * 0.34)
+		_strut(root, Vector3(0, 0.3, 0), foot, 0.035, steel)
+		_part(root, _cyl(0.055, 0.03, 8), dark, foot)
+	_part(root, _cyl(0.05, 0.62, 10), dark, Vector3(0, 0.6, 0))
+
+	# Rotating sweep head under a named pivot near the pole top.
+	var head := Node3D.new()
+	head.name = "Head"
+	head.position = Vector3(0, 0.94, 0)
+	root.add_child(head)
+	_part(head, _cyl(0.16, 0.05, 16), shell, Vector3.ZERO)  # dish base
+	_part(head, _box(Vector3(0.05, 0.04, 0.3)), amber, Vector3(0, 0.05, -0.12))  # sweep blade
+	var core := _part(head, _sphere(0.06, false, 8, 12), amber, Vector3(0, 0.08, 0))
+	core.name = "Core"
+	# A couple of fixed antenna whips off the pole for the "sensor" read.
+	_part(root, _cyl(0.012, 0.24, 6), amber, Vector3(0.06, 0.78, 0.04), Vector3(0, 0, 24))
+	_part(root, _cyl(0.012, 0.24, 6), amber, Vector3(-0.06, 0.78, 0.04), Vector3(0, 0, -24))
 	return root

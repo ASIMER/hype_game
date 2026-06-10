@@ -31,6 +31,11 @@ func _ready() -> void:
 	var loot_spawner: MultiplayerSpawner = $Net/LootSpawner
 	if loot_spawner != null:
 		loot_spawner.spawn_function = Callable(LootPickup, "_spawn_loot")
+	# Thrown grenades + placed gadgets replicate the same way (id/pos travel as spawn
+	# data); NetThrowables dispatches grenade vs gadget. Set on EVERY peer.
+	var gadget_spawner: MultiplayerSpawner = $Net/GadgetSpawner
+	if gadget_spawner != null:
+		gadget_spawner.spawn_function = Callable(NetThrowables, "spawn")
 	# The build below is synchronous + heavy (it used to freeze the window). We now
 	# PHASE it: each step emits arena_build_progress (the LoadingScreen advances its bar)
 	# and yields a frame so the bar actually repaints between phases. Making _ready a

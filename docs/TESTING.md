@@ -30,6 +30,9 @@ Launch the game with `--agent`:
 | `screenshot` | `name` | no (async reply) | render a frame, save PNG, return `{ok,path}` |
 | `render` | `id`, `name`=id | no (async reply) | **debug**: render a logical id's model in isolation → clean 3/4 hero-shot PNG (procedural-model + icon QA). Returns `{ok,path,debug}`; PNG → `agent\[<port>\]<name>.png` |
 | `refill` | — | no | **debug**: top all of the local player's weapons back to full ammo |
+| `grenade` | `type`=frag\|smoke\|emp\|decoy | no | **debug**: select + throw a grenade type via the REAL PlayerGear/server path (grants 1 if none carried). Returns `{ok,type,left}` |
+| `gadget` | `type`=gadget_turret\|gadget_dome\|gadget_sensor | no | **debug**: force-place a deployable at the feet-forward ground point (grants 1 if none). Returns `{ok,type,left}` |
+| `noise` | `loudness`=NOISE_GRENADE, `kind`=2 | no | **debug**: inject an AI-audible noise at the player — isolates noise→INVESTIGATE plumbing from weapon/grenade emission (kind 3 = decoy semantics: always investigate the point) |
 | `clock` | `action`=set\|skip, `left` (sec, for set) | no | **debug**: drive the match timer. `set` → `match_time_left=left`; `skip` (default) → clamp to ≤2s (triggers the final storm wave). Returns `{ok,left,total}` |
 | `stash` | `action`=…, `id`, `count`, `price`, `weapon`, `slot`, `perk` | no | **debug**: raid-economy / stash QA — see sub-action table below. Returns `{ok,stash,bring,blueprints}` |
 | `net` | `action`=host\|join, `ip`="127.0.0.1" | no | **debug** (needs `--agent --menu`): host or join a co-op match; opens this peer's Hub. `host`→`NetworkManager.host_game()`; `join`→`join_game(ip)` then opens the client Hub on connect |

@@ -1,4 +1,4 @@
-[gd_scene load_steps=86 format=3 uid="uid://c0arcarena01"]
+[gd_scene load_steps=87 format=3 uid="uid://c0arcarena01"]
 
 [ext_resource type="Script" path="res://scripts/world/arena.gd" id="1_arena"]
 [ext_resource type="Environment" path="res://default_env.tres" id="2_env"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://addons/sky_3d/src/Sky3D.gd" id="4_sky3d"]
 [ext_resource type="Script" path="res://addons/sky_3d/src/SkyDome.gd" id="5_skydome"]
 [ext_resource type="Script" path="res://addons/sky_3d/src/TimeOfDay.gd" id="6_tod"]
+[ext_resource type="PackedScene" path="res://scenes/world/Ziplines.tscn" id="7_ziplines"]
 
 [sub_resource type="CameraAttributesPractical" id="CamAttr_sky3d"]
 
@@ -1631,3 +1632,10 @@ spawn_path = NodePath("../Enemies")
 [node name="LootSpawner" type="MultiplayerSpawner" parent="Net"]
 _spawnable_scenes = PackedStringArray("res://scenes/items/LootPickup.tscn")
 spawn_path = NodePath("../Loot")
+
+[node name="Gadgets" type="Node3D" parent="Net"]
+
+[node name="GadgetSpawner" type="MultiplayerSpawner" parent="Net"]
+spawn_path = NodePath("../Gadgets")
+
+[node name="Ziplines" parent="." instance=ExtResource("7_ziplines")]
