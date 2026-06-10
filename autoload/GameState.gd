@@ -21,6 +21,11 @@ var match_duration: float = 0.0
 var match_time_left: float = 0.0
 var final_wave: bool = false
 
+## This match's raid mutator ("" = none) — rolled by the server in _begin_deploy
+## BEFORE load_arena (double_loot is read at build time) and synced to clients via
+## NetworkManager.sync_mutator. Read-only everywhere else.
+var raid_mutator: String = ""
+
 
 func match_timer_ratio() -> float:
 	if match_duration <= 0.0:
@@ -92,6 +97,7 @@ func reset_match() -> void:
 	current_wave = 0
 	match_time_left = match_duration
 	final_wave = false
+	raid_mutator = ""
 	kills.clear()
 	deaths.clear()
 	mobs_killed = 0

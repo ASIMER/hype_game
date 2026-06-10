@@ -185,6 +185,11 @@ func _init_deferred() -> void:
 func _process(delta: float) -> void:
 	if _parent == null or _visual_model == null:
 		return
+	# Flashlight beam follows the player's replicated `flashlight_on` on every peer
+	# (visual-state sync lives here with the other replicated-value-driven visuals).
+	var flash := _parent.get_node_or_null("CameraPivot/Flashlight") as SpotLight3D
+	if flash != null and "flashlight_on" in _parent and flash.visible != _parent.flashlight_on:
+		flash.visible = _parent.flashlight_on
 	_update_skeletal()
 	_update_procedural(delta)
 

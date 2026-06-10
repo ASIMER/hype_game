@@ -64,6 +64,18 @@ func set_wave_manager(wm) -> void:
 	_wave_mgr = wm
 
 
+## Direct server-side reinforcement request (batch C: the signal-flare extraction
+## rings the dinner bell). Bypasses the alarm cooldowns — the caller IS the cost —
+## but still respects the wave manager's concurrent cap inside spawn_reinforcements.
+func request_reinforcements(count: int, world_pos: Vector3) -> void:
+	if not GameState.is_local_authority_server():
+		return
+	if not is_instance_valid(_wave_mgr):
+		return
+	_wave_mgr.spawn_reinforcements(maxi(1, count), world_pos, true)
+	Events.notify.emit(tr("Reinforcements inbound!"), 2)
+
+
 # ---------------------------------------------------------------------------
 # Event handlers
 # ---------------------------------------------------------------------------

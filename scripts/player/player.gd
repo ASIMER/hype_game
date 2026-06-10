@@ -56,6 +56,12 @@ var _grenade_counts: Dictionary = {}
 var _grenade_sel: String = "frag"  # locally selected type (authority-local; B cycles)
 ## Per-type deployable-gadget counts (replicated, same reasons as grenades).
 var _gadget_counts: Dictionary = {}
+## Batch C: flashlight beam state (replicated so every peer lights the beam on this
+## player's model), annex-key counts {key_id → n} and signal-flare count (replicated —
+## the server consumes keys at doors / flares at signal zones; both bring-able).
+var flashlight_on: bool = false
+var _keys: Dictionary = {}
+var _flares: int = 0
 var _stamina: float = Settings.MAX_STAMINA
 var _max_stamina: float = Settings.MAX_STAMINA  # base * meta stamina upgrade (set in _ready)
 var _sprint_locked: bool = false  # true after exhausting stamina, until it regens
@@ -796,6 +802,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_gear.place(1)
 	elif event.is_action_pressed("gadget_3"):
 		_gear.place(2)
+	elif event.is_action_pressed("flashlight"):
+		# Allowed even while downed (signal your position to the squad at night).
+		flashlight_on = not flashlight_on
 
 
 ## Consume a medkit to restore HP (instant). Authority-gated by the caller.
@@ -1258,44 +1267,13 @@ func active_buffs() -> Array:
 ## WeaponController from the same local profile. Authority-only — the counts replicate
 ## to other peers via the MultiplayerSynchronizer so the server can read them on extract.
 func apply_loadout() -> void:
-	var brought := MetaProgression.get_bring()
-	_medkits = int(brought.get("loot_medkit", 0))
-	_self_revives = int(brought.get(Settings.SELF_REVIVE_ITEM, 0))
-	_shields = int(brought.get(Settings.KNOCKDOWN_SHIELD_ITEM, 0))
-	# Per-type grenade counts from the bring-list (GRENADE_ITEM_IDS maps type → item id);
-	# select the first type with ammo so G works immediately.
-	_grenade_counts = {}
-	for t in Settings.GRENADE_TYPES:
-		var iid := String(Settings.GRENADE_ITEM_IDS[t])
-		var c := int(brought.get(iid, 0))
-		if c > 0:
-			_grenade_counts[String(t)] = c
-	_grenade_sel = "frag"
-	if int(_grenade_counts.get("frag", 0)) <= 0 and _gear != null:
-		_gear.cycle()
-	# Deployable gadgets (item id == type id).
-	_gadget_counts = {}
-	for t in Settings.GADGET_TYPES:
-		var c2 := int(brought.get(String(t), 0))
-		if c2 > 0:
-			_gadget_counts[String(t)] = c2
+	_gear.apply_loadout()
 
 
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
-## unused medkits/grenades/gadgets come back out with you (and are lost if you die).
+## unused medkits/grenades/gadgets/keys/flares come back out with you (lost on death).
 func extracted_consumables() -> Array:
-	var out: Array = []
-	if _medkits > 0:
-		out.append({"id": "loot_medkit", "count": _medkits})
-	for t in _grenade_counts:
-		var c := int(_grenade_counts[t])
-		if c > 0:
-			out.append({"id": String(Settings.GRENADE_ITEM_IDS[t]), "count": c})
-	for t in _gadget_counts:
-		var c2 := int(_gadget_counts[t])
-		if c2 > 0:
-			out.append({"id": String(t), "count": c2})
-	return out
+	return _gear.extracted_consumables()
 
 
 var _last_hp: float = -1.0

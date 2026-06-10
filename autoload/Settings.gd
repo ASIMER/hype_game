@@ -899,6 +899,53 @@ const SIEGE_LOOT_COUNT: int = 6  # tier-3 loot rolls on success
 const SIEGE_MAX_LIFETIME: float = 150.0  # director failsafe timeout
 const SIEGE_RADIUS: float = 10.0  # defend-zone radius (m)
 
+# --- Day-night cycle (batch C) ---------------------------------------------------
+# In-raid time is a PURE function of the synced match timer (DayNight.hour_for —
+# scripts/core/day_night.gd): zero new netcode, headless-server identical.
+const DAY_NIGHT_START_HOUR: float = 10.0  # matches Sky3D's authored morning look
+const DAY_NIGHT_HOURS_PER_MATCH: float = 12.0  # full timer spans 10:00 → 22:00
+const NIGHT_FROM_HOUR: float = 19.5  # is_night window [FROM .. 24) ∪ [0 .. TO)
+const NIGHT_TO_HOUR: float = 5.5
+const NIGHT_DETECT_MULT: float = 0.75  # enemy sight range × this at night
+const NIGHT_RAID_START_HOUR: float = 18.5  # clock start under the night_raid mutator
+
+# --- Locked annexes + keys (batch C) ----------------------------------------------
+# Key-gated loot rooms attached to the 3 tier-3 landmarks. Keys are biome-matched
+# consumable items (Kind.KEY): 6% drop from elites/minibosses dying in that biome,
+# shop-buyable, bring-able (replicated `_keys` counts on the player).
+const LOCKED_ROOM_POIS := {
+	"POI_NorthTower": {"key": "key_tower", "theme": "tower"},
+	"POI_SnowLodge": {"key": "key_lodge", "theme": "snow_lodge"},
+	"POI_Temple": {"key": "key_temple", "theme": "temple"},
+}
+const KEY_DROP_CHANCE: float = 0.06  # per elite/miniboss death, biome-matched key
+const KEY_SHOP_PRICE: int = 700
+const LOCKED_DOOR_HOLD_TIME: float = 2.5  # hold-E seconds at the keypad
+const LOCKED_LOOT_ROLLS: int = 3  # EPIC rolls per opened annex
+
+# --- Extraction zone types (batch C) ----------------------------------------------
+# Typed zones read their OWN node name here (zero Arena.tscn edits). "paid" stays
+# closed until a 300-cr charge force-opens it; "signal" opens via a flare but rings
+# the dinner bell. Default (absent) = the classic rotating-window zone.
+const EXTRACTION_ZONE_TYPES := {
+	"ExtractionZone4": "paid",
+	"ExtractionZone9": "paid",
+	"ExtractionZone7": "signal",
+}
+const PAID_EXTRACT_COST: int = 300
+const PAID_EXTRACT_WINDOW: float = 30.0  # s the bought window stays open
+const SIGNAL_EXTRACT_WINDOW: float = 45.0
+const SIGNAL_FLARE_NOISE: float = 60.0  # report_noise radius — the whole area hears
+const SIGNAL_REINFORCEMENTS: int = 4  # guaranteed wave on flare
+
+# --- Raid mutators (batch C) -------------------------------------------------------
+# Rolled ONCE on the server in _begin_deploy (BEFORE load_arena — double_loot is
+# read at build), synced via NetworkManager.sync_mutator; "" = no mutator.
+const RAID_MUTATOR_CHANCE: float = 0.35
+const RAID_MUTATORS := ["fog", "double_loot", "elite_patrols", "night_raid"]
+const MUTATOR_FOG_DENSITY: float = 0.0175  # half the storm's whole-map murk
+const MUTATOR_ELITE_PATROL_BONUS: float = 0.25  # added elite-mod chance in patrols
+
 # Biomes: WorldBounds.biome_at(x,z) (scripts/core/world_bounds.gd) classifies the 4×
 # map quadrants (NW urban / NE snow / SW desert / SE rain) for biome-EXCLUSIVE spawning.
 

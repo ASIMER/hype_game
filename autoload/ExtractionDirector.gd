@@ -123,6 +123,15 @@ func _apply_windows(force: bool) -> void:
 		var z: Node = _zones[i]
 		if not is_instance_valid(z) or not z.has_method("set_window"):
 			continue
+		# Typed zones (paid/signal, batch C) own their open state: base = CLOSED,
+		# opened only by their override (purchase / flare) — the rotation must not
+		# open them for free NOR close a bought window. Duck-typed so the director
+		# predates extraction_zone's batch-C additions. Storm force-open (above)
+		# still includes them as the last-chance escape.
+		if z.has_method("rotation_exempt") and z.rotation_exempt():
+			continue
+		if z.has_method("override_active") and z.override_active():
+			continue
 		var phase: float = _elapsed + float(i) * Settings.EXTRACT_WINDOW_STAGGER
 		# Position within this zone's cycle.
 		var t: float = fmod(phase, cycle)

@@ -46,6 +46,15 @@ properties/9/replication_mode = 1
 properties/10/path = NodePath(".:_gadget_counts")
 properties/10/spawn = true
 properties/10/replication_mode = 1
+properties/11/path = NodePath(".:flashlight_on")
+properties/11/spawn = true
+properties/11/replication_mode = 1
+properties/12/path = NodePath(".:_keys")
+properties/12/spawn = true
+properties/12/replication_mode = 1
+properties/13/path = NodePath(".:_flares")
+properties/13/spawn = true
+properties/13/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2
@@ -66,6 +75,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.1, -0.35)
 
 [node name="CameraPivot" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="Flashlight" type="SpotLight3D" parent="CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, -0.4)
+visible = false
+light_color = Color(1, 0.96, 0.88, 1)
+light_energy = 2.6
+spot_range = 26.0
+spot_angle = 32.0
 
 [node name="SpringArm3D" type="SpringArm3D" parent="CameraPivot"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, 0)

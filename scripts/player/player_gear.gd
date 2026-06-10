@@ -14,6 +14,63 @@ func _ready() -> void:
 	_p = get_parent() as Node3D
 
 
+## Fill the player's consumable counts from the committed bring-list (moved here from
+## player.gd verbatim for size discipline — state stays ON the player; see header).
+func apply_loadout() -> void:
+	var brought := MetaProgression.get_bring()
+	_p._medkits = int(brought.get("loot_medkit", 0))
+	_p._self_revives = int(brought.get(Settings.SELF_REVIVE_ITEM, 0))
+	_p._shields = int(brought.get(Settings.KNOCKDOWN_SHIELD_ITEM, 0))
+	# Per-type grenade counts from the bring-list (GRENADE_ITEM_IDS maps type → item id);
+	# select the first type with ammo so G works immediately.
+	_p._grenade_counts = {}
+	for t in Settings.GRENADE_TYPES:
+		var iid := String(Settings.GRENADE_ITEM_IDS[t])
+		var c := int(brought.get(iid, 0))
+		if c > 0:
+			_p._grenade_counts[String(t)] = c
+	_p._grenade_sel = "frag"
+	if int(_p._grenade_counts.get("frag", 0)) <= 0:
+		cycle()
+	# Deployable gadgets (item id == type id).
+	_p._gadget_counts = {}
+	for t in Settings.GADGET_TYPES:
+		var c2 := int(brought.get(String(t), 0))
+		if c2 > 0:
+			_p._gadget_counts[String(t)] = c2
+	# Batch C: annex keys (ids frozen in Settings.LOCKED_ROOM_POIS) + signal flares.
+	_p._keys = {}
+	for poi in Settings.LOCKED_ROOM_POIS:
+		var kid := String(Settings.LOCKED_ROOM_POIS[poi]["key"])
+		var kc := int(brought.get(kid, 0))
+		if kc > 0:
+			_p._keys[kid] = kc
+	_p._flares = int(brought.get("loot_flare", 0))
+
+
+## Surviving brought consumables as stash stacks — added to the extraction deposit so
+## unused medkits/grenades/gadgets/keys/flares come back out with you (lost on death).
+func extracted_consumables() -> Array:
+	var out: Array = []
+	if int(_p._medkits) > 0:
+		out.append({"id": "loot_medkit", "count": int(_p._medkits)})
+	for t in _p._grenade_counts:
+		var c := int(_p._grenade_counts[t])
+		if c > 0:
+			out.append({"id": String(Settings.GRENADE_ITEM_IDS[t]), "count": c})
+	for t in _p._gadget_counts:
+		var c2 := int(_p._gadget_counts[t])
+		if c2 > 0:
+			out.append({"id": String(t), "count": c2})
+	for kid in _p._keys:
+		var kc := int(_p._keys[kid])
+		if kc > 0:
+			out.append({"id": String(kid), "count": kc})
+	if int(_p._flares) > 0:
+		out.append({"id": "loot_flare", "count": int(_p._flares)})
+	return out
+
+
 ## Throw the SELECTED grenade type from the chest along the aim direction. All throws
 ## route through the server (NetworkManager.request_throw_grenade → the Net/Gadgets
 ## spawner) so server-side effects (EMP stun / decoy noise / smoke AI) exist exactly

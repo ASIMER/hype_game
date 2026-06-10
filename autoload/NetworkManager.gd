@@ -112,6 +112,7 @@ func request_start() -> bool:
 	if not GameState.squad_all_ready():
 		return false
 	GameState.reset_match()
+	_roll_raid_mutator()
 	_loaded.clear()
 	_begin_deploy.rpc()
 	return true
@@ -126,9 +127,46 @@ func request_redeploy() -> bool:
 	if not multiplayer.is_server():
 		return false
 	GameState.reset_match()
+	_roll_raid_mutator()
 	_loaded.clear()
 	_begin_deploy.rpc()
 	return true
+
+
+## Debug (AgentBridge `mutator` verb): when non-null, the next deploys use this exact
+## mutator ("" = force none) instead of rolling — build-time mutators (double_loot /
+## night_raid) can only be QA'd through a real deploy.
+var forced_mutator: Variant = null
+
+
+## SERVER: roll this match's raid mutator ONCE per deploy, BEFORE any peer loads its
+## arena (double_loot is read at build time). 35% chance of exactly one mutator; the
+## result is synced now AND re-synced in begin_match (covers a peer that was still
+## connecting when the roll happened). Debug-forceable via set_raid_mutator.
+func _roll_raid_mutator() -> void:
+	if forced_mutator != null:
+		set_raid_mutator(String(forced_mutator))
+		return
+	var mutator := ""
+	if randf() < Settings.RAID_MUTATOR_CHANCE:
+		mutator = Settings.RAID_MUTATORS[randi() % Settings.RAID_MUTATORS.size()]
+	set_raid_mutator(mutator)
+
+
+## SERVER: apply + broadcast a mutator (also the AgentBridge debug-force entry point).
+func set_raid_mutator(mutator: String) -> void:
+	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+		return
+	GameState.raid_mutator = mutator
+	Events.raid_mutator_changed.emit(mutator)
+	if _is_remote_server():
+		_rpc_mutator.rpc(mutator)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_mutator(mutator: String) -> void:
+	GameState.raid_mutator = mutator
+	Events.raid_mutator_changed.emit(mutator)
 
 
 ## Runs on EVERY peer: kick off the local deploy (commit bring-list + load arena).
@@ -175,6 +213,11 @@ func begin_match() -> void:
 	if Settings.NET_DEBUG:
 		print("[net] begin_match on peer %d" % multiplayer.get_unique_id())
 	GameState.set_phase(GameState.Phase.IN_MATCH)
+	# Re-sync the mutator at match start: a peer that joined mid-deploy missed the
+	# roll-time broadcast; re-emitting locally also refreshes late HUD instances.
+	if _is_remote_server():
+		_rpc_mutator.rpc(GameState.raid_mutator)
+	Events.raid_mutator_changed.emit(GameState.raid_mutator)
 	Events.match_started.emit()
 
 

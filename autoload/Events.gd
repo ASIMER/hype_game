@@ -33,6 +33,16 @@ signal player_rolled(player: Node)
 signal player_mantled(player: Node)
 signal zipline_ride_started(player: Node, zipline: Node)
 
+# --- World & raid (batch C) ---
+## A locked annex door was opened (fires on EVERY peer via the door's call_local RPC —
+## UI/SFX hook; the door panel itself animates locally).
+signal door_opened(door: Node)
+## The raid mutator for THIS match ("" = none). Re-emitted on every sync so late HUD
+## instances catch it; drives the HUD banner + map label.
+signal raid_mutator_changed(mutator: String)
+## An extraction zone was force-opened (paid charge / signal flare) for `seconds`.
+signal extraction_force_opened(zone: Node, seconds: float)
+
 # --- Power caches / timed buffs (Vampire-Survivors-style) ---
 ## A power cache was opened by `player`. The opener's HUD plays the non-blocking side reveal.
 signal power_cache_opened(player: Node, cache: Node)
