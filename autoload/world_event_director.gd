@@ -28,30 +28,31 @@ extends Node
 
 # ─── internal state ──────────────────────────────────────────────────────────
 
-var _active: bool = false            # true once match_started fires
-var _active_kind: int = -1           # -1 = idle, 0-3 = busy
-var _timer: float = 0.0              # counts up toward _next_fire
-var _next_fire: float = 0.0          # seconds until next event attempt
+var _active: bool = false  # true once match_started fires
+var _active_kind: int = -1  # -1 = idle, 0-3 = busy
+var _timer: float = 0.0  # counts up toward _next_fire
+var _next_fire: float = 0.0  # seconds until next event attempt
 
 # Lazy-cached scene references (re-located if freed).
 var _wave_manager: Node = null
 var _arena: Node = null
 
 # Cached references set during an active event.
-var _active_cache: Node = null       # kind 0: the SupplyCache Area3D
-var _active_miniboss: Node = null    # kind 1: the tracked Elite node
-var _active_marker: Node3D = null    # kind 2/3: the simple Node3D map marker
-var _event_elapsed: float = 0.0     # time since current event started (for timeouts)
+var _active_cache: Node = null  # kind 0: the SupplyCache Area3D
+var _active_miniboss: Node = null  # kind 1: the tracked Elite node
+var _active_marker: Node3D = null  # kind 2/3: the simple Node3D map marker
+var _event_elapsed: float = 0.0  # time since current event started (for timeouts)
 
 # Max lifetime for events that don't self-complete (keeps the scheduler unblocked).
 const CACHE_MAX_LIFETIME: float = 120.0
 const MINIBOSS_MAX_LIFETIME: float = 120.0
-const CONTESTED_LIFETIME_PAD: float = 5.0   # extra slop over CONTESTED_POI_DURATION
+const CONTESTED_LIFETIME_PAD: float = 5.0  # extra slop over CONTESTED_POI_DURATION
 
 # The SupplyCache scene path (written by THIS workstream).
 const SUPPLY_CACHE_SCENE := "res://scenes/world/SupplyCache.tscn"
 
 # ─── lifecycle ───────────────────────────────────────────────────────────────
+
 
 func _ready() -> void:
 	Events.match_started.connect(_on_match_started)
@@ -64,6 +65,7 @@ func _ready() -> void:
 	# when reloading mid-session), arm immediately.
 	if GameState.phase == GameState.Phase.IN_MATCH:
 		_on_match_started.call_deferred()
+
 
 func _on_match_started() -> void:
 	if not GameState.is_local_authority_server():
@@ -79,10 +81,12 @@ func _on_match_started() -> void:
 	_active_miniboss = null
 	_active_marker = null
 
+
 func _on_match_over() -> void:
 	_active = false
 	_active_kind = -1
 	_clear_active_event_nodes()
+
 
 func _clear_active_event_nodes() -> void:
 	if is_instance_valid(_active_cache):
@@ -93,7 +97,9 @@ func _clear_active_event_nodes() -> void:
 	_active_marker = null
 	_active_miniboss = null
 
+
 # ─── main scheduler tick ─────────────────────────────────────────────────────
+
 
 func _process(delta: float) -> void:
 	if not _active or not GameState.is_local_authority_server():
@@ -115,12 +121,15 @@ func _process(delta: float) -> void:
 		_fire_random_event()
 		_arm_next(_rearm_interval())
 
+
 func _rearm_interval() -> float:
 	var jitter: float = randf_range(-Settings.WORLD_EVENT_JITTER, Settings.WORLD_EVENT_JITTER)
 	return Settings.WORLD_EVENT_INTERVAL + jitter
 
+
 func _arm_next(delay: float) -> void:
-	_next_fire = maxf(delay, 15.0)   # never less than 15 s between events
+	_next_fire = maxf(delay, 15.0)  # never less than 15 s between events
+
 
 func _fire_random_event() -> void:
 	# Weighted pick (supply_cache and miniboss more interesting than surge).
@@ -131,10 +140,15 @@ func _fire_random_event() -> void:
 	if kind != 3 and _guards_capacity() <= 0:
 		kind = 3
 	match kind:
-		0: _start_supply_cache()
-		1: _start_miniboss()
-		2: _start_contested_poi()
-		3: _start_surge()
+		0:
+			_start_supply_cache()
+		1:
+			_start_miniboss()
+		2:
+			_start_contested_poi()
+		3:
+			_start_surge()
+
 
 ## Remaining enemy-spawn headroom (via the WaveManager); 99 if the manager isn't found yet.
 func _guards_capacity() -> int:
@@ -143,9 +157,11 @@ func _guards_capacity() -> int:
 		return int(wm.call("reinforcement_capacity"))
 	return 99
 
+
 # ─── event lifetime tick (timeout fallbacks) ─────────────────────────────────
 
-func _tick_active_event(delta: float) -> void:
+
+func _tick_active_event(_delta: float) -> void:
 	match _active_kind:
 		0:  # supply cache — the cache itself drives completion; guard max lifetime.
 			if _event_elapsed >= CACHE_MAX_LIFETIME:
@@ -160,7 +176,9 @@ func _tick_active_event(delta: float) -> void:
 			if _event_elapsed >= Settings.SURGE_DURATION + 1.0:
 				_end_surge(true)
 
+
 # ─── helpers: scene tree lookups ────────────────────────────────────────────
+
 
 func _get_wave_manager() -> Node:
 	if is_instance_valid(_wave_manager):
@@ -168,7 +186,7 @@ func _get_wave_manager() -> Node:
 	# Search the whole scene for the WaveManager (child of Arena).
 	if get_tree() == null:
 		return null
-	for node in get_tree().get_nodes_in_group("arena"):
+	for node in get_tree().get_nodes_in_group(Groups.ARENA):
 		if is_instance_valid(node) and node.has_method("get_poi_points"):
 			# Found the arena; look for the WaveManager child.
 			var wm: Node = node.get_node_or_null("WaveManager")
@@ -185,16 +203,18 @@ func _get_wave_manager() -> Node:
 	_wave_manager = _find_by_method(get_tree().root, "spawn_reinforcements")
 	return _wave_manager
 
+
 func _get_arena() -> Node:
 	if is_instance_valid(_arena):
 		return _arena
 	if get_tree() == null:
 		return null
-	for node in get_tree().get_nodes_in_group("arena"):
+	for node in get_tree().get_nodes_in_group(Groups.ARENA):
 		if is_instance_valid(node) and node.has_method("get_poi_points"):
 			_arena = node
 			return _arena
 	return null
+
 
 func _find_by_method(from: Node, method: String) -> Node:
 	if from.has_method(method):
@@ -205,17 +225,19 @@ func _find_by_method(from: Node, method: String) -> Node:
 			return found
 	return null
 
+
 ## Returns a random squad-member position for near-squad spawning, or (0,5,0) fallback.
 func _squad_pos() -> Vector3:
 	if get_tree() == null:
 		return Vector3(0.0, 5.0, 0.0)
-	var players: Array = get_tree().get_nodes_in_group("players")
+	var players: Array = get_tree().get_nodes_in_group(Groups.PLAYERS)
 	if players.is_empty():
 		return Vector3(0.0, 5.0, 0.0)
 	var p: Node = players[randi() % players.size()]
 	if p is Node3D:
 		return (p as Node3D).global_position
 	return Vector3(0.0, 5.0, 0.0)
+
 
 ## Returns a list of (index, tier) pairs sorted descending by tier.
 func _poi_by_tier(arena: Node) -> Array:
@@ -229,6 +251,7 @@ func _poi_by_tier(arena: Node) -> Array:
 	result.sort_custom(func(a, b): return a[1] > b[1])
 	return result
 
+
 ## Returns world position of the highest-tier POI (or squad pos if no arena).
 func _high_tier_poi_pos(arena: Node) -> Vector3:
 	var by_tier: Array = _poi_by_tier(arena)
@@ -236,10 +259,12 @@ func _high_tier_poi_pos(arena: Node) -> Vector3:
 		return _squad_pos()
 	return by_tier[0][2] as Vector3
 
+
 func _net_loot_container(arena: Node) -> Node:
 	if arena == null:
 		return null
 	return arena.get_node_or_null("Net/Loot")
+
 
 ## Creates a plain Node3D map marker in the "world_events" group at `world_pos`.
 func _make_marker(world_pos: Vector3, kind: int, label: String, until_elapsed: float) -> Node3D:
@@ -249,7 +274,7 @@ func _make_marker(world_pos: Vector3, kind: int, label: String, until_elapsed: f
 	marker.set_meta("event_label", label)
 	marker.set_meta("event_pos", world_pos)
 	marker.set_meta("_until_elapsed", until_elapsed)
-	marker.add_to_group("world_events")
+	marker.add_to_group(Groups.WORLD_EVENTS)
 	# Attach a script-method so Lane C can call event_ratio() without a cast.
 	# We store the director ref so the method can compute from _event_elapsed.
 	marker.set_meta("_director_ref", self)
@@ -258,6 +283,7 @@ func _make_marker(world_pos: Vector3, kind: int, label: String, until_elapsed: f
 	# Lane C should call: marker.get_meta("_director_ref").marker_event_ratio(marker)
 	# OR use the helper below via marker.get_meta("event_kind") + event_ratio().
 	return marker
+
 
 ## Lane C helper: returns the countdown ratio (1→0) for a marker node. Call as:
 ##   director.marker_event_ratio(marker_node)  where director = get_meta("_director_ref")
@@ -269,7 +295,9 @@ func marker_event_ratio(marker: Node) -> float:
 		return 0.0
 	return clampf(1.0 - (_event_elapsed / duration), 0.0, 1.0)
 
+
 # ─── EVENT 0: Supply Cache ────────────────────────────────────────────────────
+
 
 func _start_supply_cache() -> void:
 	var arena: Node = _get_arena()
@@ -283,7 +311,10 @@ func _start_supply_cache() -> void:
 		if not by_tier.is_empty():
 			var chosen: Array = by_tier[0]
 			tier = chosen[1]
-			cache_pos = (chosen[2] as Vector3) + Vector3(randf_range(-3.0, 3.0), 0.5, randf_range(-3.0, 3.0))
+			cache_pos = (
+				(chosen[2] as Vector3)
+				+ Vector3(randf_range(-3.0, 3.0), 0.5, randf_range(-3.0, 3.0))
+			)
 
 	# Instance the cache scene.
 	var cache_scene: Resource = load(SUPPLY_CACHE_SCENE)
@@ -325,11 +356,13 @@ func _start_supply_cache() -> void:
 	Events.world_event_started.emit(0, cache_pos, tr("Supply Cache"))
 	Events.notify.emit(tr("Supply cache detected — hold to crack it open"), 1)
 
+
 func _on_cache_cracked() -> void:
 	# Called back from the SupplyCache on successful crack.
 	_active_kind = -1
 	_active_cache = null
 	# world_event_ended(0, true) is emitted by the cache itself.
+
 
 func _end_supply_cache_timeout() -> void:
 	if is_instance_valid(_active_cache):
@@ -339,7 +372,9 @@ func _end_supply_cache_timeout() -> void:
 	Events.notify.emit(tr("Supply cache lost"), 2)
 	_active_kind = -1
 
+
 # ─── EVENT 1: Mini-boss ───────────────────────────────────────────────────────
+
 
 func _start_miniboss() -> void:
 	var wm: Node = _get_wave_manager()
@@ -381,10 +416,12 @@ func _start_miniboss() -> void:
 	Events.world_event_started.emit(1, spawn_pos, tr("Mini-boss"))
 	Events.notify.emit(tr("Hostile Elite detected — eliminate the target"), 2)
 
+
 func _is_elite_node(node: Node) -> bool:
 	# Check the scene file path as a reliable identifier.
 	var sc: String = node.get_scene_file_path() if node.has_method("get_scene_file_path") else ""
 	return sc.contains("RobotElite")
+
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
 	if not GameState.is_local_authority_server():
@@ -395,6 +432,7 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 		return
 	_end_miniboss(true)
 
+
 func _end_miniboss(success: bool) -> void:
 	if success:
 		# MVP: credit host's profile. Co-op caveat: full per-peer reward needs RPC
@@ -404,7 +442,9 @@ func _end_miniboss(success: bool) -> void:
 		# future co-op pass).
 		MetaProgression.earn(Settings.MINIBOSS_REWARD_CURRENCY)
 		Events.world_event_ended.emit(1, true)
-		Events.notify.emit(tr("Mini-boss eliminated! +%d credits") % Settings.MINIBOSS_REWARD_CURRENCY, 1)
+		Events.notify.emit(
+			tr("Mini-boss eliminated! +%d credits") % Settings.MINIBOSS_REWARD_CURRENCY, 1
+		)
 	else:
 		Events.world_event_ended.emit(1, false)
 		Events.notify.emit(tr("Hostile Elite escaped"), 2)
@@ -415,7 +455,9 @@ func _end_miniboss(success: bool) -> void:
 	_active_miniboss = null
 	_active_kind = -1
 
+
 # ─── EVENT 2: Contested POI ───────────────────────────────────────────────────
+
 
 func _start_contested_poi() -> void:
 	var arena: Node = _get_arena()
@@ -453,11 +495,20 @@ func _start_contested_poi() -> void:
 	Events.world_event_started.emit(2, poi_pos, event_label)
 	Events.notify.emit(tr("Hot zone — %s is contested!") % poi_label, 3)
 
+
 func _poi_label_for_index(idx: int) -> String:
-	var labels: Array[String] = [tr("North Tower"), tr("East Warehouse"), tr("Plaza"), tr("SW House"), tr("South Yard"), tr("East Yard")]
+	var labels: Array[String] = [
+		tr("North Tower"),
+		tr("East Warehouse"),
+		tr("Plaza"),
+		tr("SW House"),
+		tr("South Yard"),
+		tr("East Yard")
+	]
 	if idx >= 0 and idx < labels.size():
 		return labels[idx]
 	return tr("POI")
+
 
 func _end_contested_poi(success: bool) -> void:
 	if is_instance_valid(_active_marker):
@@ -467,14 +518,16 @@ func _end_contested_poi(success: bool) -> void:
 	Events.notify.emit(tr("Hot zone cleared"), 1)
 	_active_kind = -1
 
+
 # ─── EVENT 3: Surge ──────────────────────────────────────────────────────────
+
 
 func _start_surge() -> void:
 	var wm: Node = _get_wave_manager()
 	var squad_pos: Vector3 = _squad_pos()
 
 	# Surge kind 0 = enemy-surge (more spawns).
-	var surge_count: int = 4 + randi() % 4   # 4–7 extra enemies
+	var surge_count: int = 4 + randi() % 4  # 4–7 extra enemies
 
 	if wm != null:
 		wm.spawn_reinforcements(surge_count, squad_pos, true)
@@ -492,6 +545,7 @@ func _start_surge() -> void:
 	Events.environmental_surge_changed.emit(true, 0)
 	Events.world_event_started.emit(3, squad_pos, tr("Surge"))
 	Events.notify.emit(tr("Enemy surge incoming!"), 2)
+
 
 func _end_surge(success: bool) -> void:
 	Events.environmental_surge_changed.emit(false, 0)

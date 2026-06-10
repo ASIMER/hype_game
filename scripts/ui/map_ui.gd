@@ -67,7 +67,7 @@ func _ready() -> void:
 	_bind_existing_player()
 
 func _bind_existing_player() -> void:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p is Node3D and _is_local(p):
 			_player = p as Node3D
 			return
@@ -168,7 +168,7 @@ func _find_arena() -> Node:
 	if scene != null and scene.has_method("get_poi_points"):
 		return scene
 	# Fallback: a node in the tree that exposes the POI accessor.
-	for n in get_tree().get_nodes_in_group("arena"):
+	for n in get_tree().get_nodes_in_group(Groups.ARENA):
 		if n.has_method("get_poi_points"):
 			return n
 	return null
@@ -277,7 +277,7 @@ class MapDraw extends Control:
 		# --- World events (supply cache / miniboss / contested POI / surge).
 		_draw_world_events(font, panel)
 		# --- Enemies.
-		for e in owner_ui.get_tree().get_nodes_in_group("enemies"):
+		for e in owner_ui.get_tree().get_nodes_in_group(Groups.ENEMIES):
 			if e is Node3D:
 				var ep := owner_ui.world_to_panel((e as Node3D).global_position, panel)
 				draw_circle(ep, 3.0, Color(1.0, 0.32, 0.32, 0.95))
@@ -336,7 +336,7 @@ class MapDraw extends Control:
 				Color(tier_col.r, tier_col.g, tier_col.b, 0.95))
 
 	func _draw_extractions(font: Font, panel: Rect2) -> void:
-		for z in owner_ui.get_tree().get_nodes_in_group("extraction"):
+		for z in owner_ui.get_tree().get_nodes_in_group(Groups.EXTRACTION):
 			if not (z is Node3D):
 				continue
 			var zp := owner_ui.world_to_panel((z as Node3D).global_position, panel)
@@ -376,7 +376,7 @@ class MapDraw extends Control:
 		# present as a node yet (or while the node is mid-spawn).
 		var drawn_kinds: Dictionary = {}   # kind(int) -> true
 
-		for node in owner_ui.get_tree().get_nodes_in_group("world_events"):
+		for node in owner_ui.get_tree().get_nodes_in_group(Groups.WORLD_EVENTS):
 			if not node.has_meta("event_kind"):
 				continue
 			var kind: int = int(node.get_meta("event_kind"))

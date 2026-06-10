@@ -50,7 +50,7 @@ const _CRACK_TINT := Color(1.0, 0.9, 0.3)   # bright gold on crack
 # ─── lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	add_to_group("world_events")
+	add_to_group(Groups.WORLD_EVENTS)
 	# Expose Lane C metadata.
 	set_meta("event_kind", 0)
 	set_meta("event_label", tr("Supply Cache"))
@@ -78,12 +78,12 @@ var _nearby_players: int = 0
 func _on_body_entered(body: Node) -> void:
 	if _cracked:
 		return
-	if body != null and body.is_in_group("players"):
+	if body != null and body.is_in_group(Groups.PLAYERS):
 		_nearby_players += 1
 		Events.interaction_available.emit(tr("[Hold] Crack supply cache"), self)
 
 func _on_body_exited(body: Node) -> void:
-	if body != null and body.is_in_group("players"):
+	if body != null and body.is_in_group(Groups.PLAYERS):
 		_nearby_players = maxi(0, _nearby_players - 1)
 	if _nearby_players == 0 and not _cracked:
 		Events.interaction_cleared.emit()
@@ -150,7 +150,7 @@ func _spawn_loot() -> void:
 	if loot_parent == null or not is_instance_valid(loot_parent):
 		# Fallback: walk up to the arena (group "arena") and find Net/Loot.
 		if get_tree() != null:
-			for arena in get_tree().get_nodes_in_group("arena"):
+			for arena in get_tree().get_nodes_in_group(Groups.ARENA):
 				var nl: Node = arena.get_node_or_null("Net/Loot")
 				if nl != null:
 					loot_parent = nl

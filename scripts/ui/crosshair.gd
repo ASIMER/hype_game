@@ -44,7 +44,7 @@ func _bind_player(p: Node) -> void:
 
 
 func _find_local_player() -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p.has_method("is_multiplayer_authority") and p.is_multiplayer_authority():
 			return p
 	return null
@@ -86,7 +86,7 @@ func _update_on_enemy() -> void:
 	if hit:
 		var c: Node = hit["collider"]
 		while c != null:
-			if c.is_in_group("enemies"):
+			if c.is_in_group(Groups.ENEMIES):
 				_on_enemy = true
 				return
 			c = c.get_parent()

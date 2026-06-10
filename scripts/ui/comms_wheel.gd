@@ -20,17 +20,17 @@ class_name CommsWheel
 # at_player → the marker sits on the local player (Help / Regroup / Need Ammo);
 # otherwise it sits ~6 m in front along the camera aim.
 const OPTIONS := [
-	{ "label": "Going Here", "kind": 0, "at_player": false, "color": Color(1, 1, 1) },
-	{ "label": "Enemy",      "kind": 1, "at_player": false, "color": Color(1.0, 0.28, 0.28) },
-	{ "label": "Need Ammo",  "kind": 4, "at_player": true,  "color": Color(1.0, 0.78, 0.3) },
-	{ "label": "Help!",      "kind": 4, "at_player": true,  "color": Color(1.0, 0.55, 0.15) },
-	{ "label": "Regroup",    "kind": 6, "at_player": true,  "color": Color(0.55, 0.75, 1.0) },
-	{ "label": "Thanks",     "kind": 5, "at_player": false, "color": Color(0.7, 0.9, 1.0) },
+	{"label": "Going Here", "kind": 0, "at_player": false, "color": Color(1, 1, 1)},
+	{"label": "Enemy", "kind": 1, "at_player": false, "color": Color(1.0, 0.28, 0.28)},
+	{"label": "Need Ammo", "kind": 4, "at_player": true, "color": Color(1.0, 0.78, 0.3)},
+	{"label": "Help!", "kind": 4, "at_player": true, "color": Color(1.0, 0.55, 0.15)},
+	{"label": "Regroup", "kind": 6, "at_player": true, "color": Color(0.55, 0.75, 1.0)},
+	{"label": "Thanks", "kind": 5, "at_player": false, "color": Color(0.7, 0.9, 1.0)},
 ]
 
-const RADIUS := 150.0          # wheel radius (px)
-const INNER := 52.0            # dead-zone radius (no selection inside)
-const FRONT_DIST := 6.0        # how far ahead "Going Here"/"Enemy" markers land (m)
+const RADIUS := 150.0  # wheel radius (px)
+const INNER := 52.0  # dead-zone radius (no selection inside)
+const FRONT_DIST := 6.0  # how far ahead "Going Here"/"Enemy" markers land (m)
 
 var _player: Node3D = null
 var _camera: Camera3D = null
@@ -38,13 +38,14 @@ var _open := false
 var _selected := -1
 var _wheel: Control = null
 
+
 func _ready() -> void:
-	layer = 7   # above the ping markers (6), below the map/pause
+	layer = 7  # above the ping markers (6), below the map/pause
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 	_wheel = Control.new()
 	_wheel.name = "Wheel"
-	_wheel.mouse_filter = Control.MOUSE_FILTER_IGNORE   # IGNORE while hidden
+	_wheel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # IGNORE while hidden
 	_wheel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_wheel.draw.connect(_on_draw)
 	add_child(_wheel)
@@ -54,10 +55,13 @@ func _ready() -> void:
 		Events.local_player_spawned.connect(_on_local_player_spawned)
 	_bind_existing_player()
 
+
 # --- local-player binding ---------------------------------------------------
+
 
 func _on_local_player_spawned(player: Node) -> void:
 	set_local_player(player)
+
 
 func set_local_player(p: Node) -> void:
 	_player = p as Node3D
@@ -65,11 +69,13 @@ func set_local_player(p: Node) -> void:
 	if _player != null:
 		_camera = _player.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") as Camera3D
 
+
 func _bind_existing_player() -> void:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p is Node3D and _is_local(p):
 			set_local_player(p)
 			return
+
 
 func _is_local(player: Node) -> bool:
 	if not multiplayer.has_multiplayer_peer():
@@ -77,6 +83,7 @@ func _is_local(player: Node) -> bool:
 	if not player.has_method("get_multiplayer_authority"):
 		return true
 	return player.get_multiplayer_authority() == multiplayer.get_unique_id()
+
 
 func _resolve_camera() -> Camera3D:
 	if is_instance_valid(_camera):
@@ -92,7 +99,9 @@ func _resolve_camera() -> Camera3D:
 		return vp.get_camera_3d()
 	return null
 
+
 # --- open/close on hold -----------------------------------------------------
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("comms_wheel"):
@@ -101,6 +110,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_released("comms_wheel"):
 		_close_wheel(true)
 		get_viewport().set_input_as_handled()
+
 
 func _open_wheel() -> void:
 	if _open:
@@ -111,6 +121,7 @@ func _open_wheel() -> void:
 	_wheel.mouse_filter = Control.MOUSE_FILTER_STOP
 	if _wheel:
 		_wheel.queue_redraw()
+
 
 ## close + (optionally) fire the selected option's ping.
 func _close_wheel(fire: bool) -> void:
@@ -123,7 +134,9 @@ func _close_wheel(fire: bool) -> void:
 		_fire_option(_selected)
 	_selected = -1
 
+
 # --- selection (per-frame from the mouse) -----------------------------------
+
 
 func _process(_delta: float) -> void:
 	if not _open or _wheel == null:
@@ -144,7 +157,9 @@ func _process(_delta: float) -> void:
 	if _selected != prev:
 		_wheel.queue_redraw()
 
+
 # --- fire the chosen comm ---------------------------------------------------
+
 
 func _fire_option(idx: int) -> void:
 	var opt: Dictionary = OPTIONS[idx]
@@ -152,6 +167,7 @@ func _fire_option(idx: int) -> void:
 	var at_player := bool(opt.get("at_player", false))
 	var world_pos := _comm_world_pos(at_player)
 	NetworkManager.broadcast_ping(kind, world_pos, NodePath())
+
 
 ## Where the comm's marker lands: on the local player (Help/Regroup/Ammo) or ~FRONT_DIST
 ## metres ahead along the camera aim (Going Here / Enemy). Falls back to the player
@@ -168,7 +184,9 @@ func _comm_world_pos(at_player: bool) -> Vector3:
 		return cam.global_position + dir * FRONT_DIST
 	return base
 
+
 # --- drawing ---------------------------------------------------------------
+
 
 func _on_draw() -> void:
 	if _wheel == null or not _open:
@@ -190,12 +208,16 @@ func _on_draw() -> void:
 	for i in range(n):
 		var opt: Dictionary = OPTIONS[i]
 		var col: Color = opt.get("color", Color.WHITE)
-		var ang := float(i) / float(n) * TAU            # 0 = up, clockwise
+		var ang := float(i) / float(n) * TAU  # 0 = up, clockwise
 		var d := Vector2(sin(ang), -cos(ang))
 		var slot := center + d * (RADIUS * 0.66)
-		var picked := (i == _selected)
+		var picked := i == _selected
 		var r: float = 26.0 if picked else 20.0
-		var bg: Color = Color(col.r, col.g, col.b, 0.95) if picked else Color(col.r * 0.5, col.g * 0.5, col.b * 0.5, 0.7)
+		var bg: Color = (
+			Color(col.r, col.g, col.b, 0.95)
+			if picked
+			else Color(col.r * 0.5, col.g * 0.5, col.b * 0.5, 0.7)
+		)
 		_wheel.draw_circle(slot, r, bg)
 		_wheel.draw_arc(slot, r, 0.0, TAU, 24, Color(col.r, col.g, col.b, 0.95), 2.0, true)
 		# Label centered under the slot.
@@ -204,10 +226,20 @@ func _on_draw() -> void:
 		var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var lp := slot + Vector2(-tw * 0.5, r + 14.0)
 		var tcol: Color = Color(1, 1, 1, 1.0) if picked else Color(0.85, 0.9, 0.95, 0.85)
-		_wheel.draw_string(font, lp + Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.6))
+		_wheel.draw_string(
+			font, lp + Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.6)
+		)
 		_wheel.draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tcol)
 
 	# Center hint.
 	var hint := tr("COMMS")
 	var hw := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-	_wheel.draw_string(font, center + Vector2(-hw * 0.5, 4.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.82, 0.92, 0.8))
+	_wheel.draw_string(
+		font,
+		center + Vector2(-hw * 0.5, 4.0),
+		hint,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		12,
+		Color(0.7, 0.82, 0.92, 0.8)
+	)

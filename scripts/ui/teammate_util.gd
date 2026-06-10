@@ -17,7 +17,7 @@ static func list(tree: SceneTree) -> Array:
 	if tree == null:
 		return out
 	var local: int = GameState.local_peer_id()
-	for p in tree.get_nodes_in_group("players"):
+	for p in tree.get_nodes_in_group(Groups.PLAYERS):
 		if not (p is Node3D) or not is_instance_valid(p):
 			continue
 		var pid: int = str((p as Node).name).to_int()

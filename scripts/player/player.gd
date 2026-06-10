@@ -20,7 +20,7 @@ class_name Player
 @onready var _weapon_controller: Node = $CameraPivot/SpringArm3D/Camera3D/WeaponController
 
 var _input_enabled: bool = true
-var _agent_jump_prev: bool = false   # edge-detect a HELD agent jump so it fires once
+var _agent_jump_prev: bool = false  # edge-detect a HELD agent jump so it fires once
 
 # --- Co-op DOWNED / REVIVE / CARRY (server-authoritative; authority drives its own) ---
 ## Synced (Player.tscn MultiplayerSynchronizer): every peer renders a teammate as downed.
@@ -28,32 +28,33 @@ var downed: bool = false
 ## The peer id currently carrying THIS downed player (0 = not carried). Synced so all peers
 ## see the body follow its carrier.
 var _carried_by_peer: int = 0
-var _bleedout: float = 0.0            # seconds left before true death while downed (authority)
-var _giveup_held: float = 0.0         # seconds the give_up key has been held while downed (authority)
-var _downed_resolved: bool = false    # guards true-death from firing twice
-var _shield_charges: float = 0.0      # remaining knockdown-shield absorb while downed
-var _self_revives: int = 0            # SELF_REVIVE_ITEM count from the bring-list
-var _shields: int = 0                 # KNOCKDOWN_SHIELD_ITEM count from the bring-list
-const DOWNED_HEALTH: float = 30.0     # nominal HP pool while downed (drained by finish damage)
+var _bleedout: float = 0.0  # seconds left before true death while downed (authority)
+var _giveup_held: float = 0.0  # seconds the give_up key has been held while downed (authority)
+var _downed_resolved: bool = false  # guards true-death from firing twice
+var _shield_charges: float = 0.0  # remaining knockdown-shield absorb while downed
+var _self_revives: int = 0  # SELF_REVIVE_ITEM count from the bring-list
+var _shields: int = 0  # KNOCKDOWN_SHIELD_ITEM count from the bring-list
+const DOWNED_HEALTH: float = 30.0  # nominal HP pool while downed (drained by finish damage)
 # Reviver side (authority): the downed teammate we're channeling a revive on + progress.
 var _revive_target: Node = null
 var _revive_progress: float = 0.0
-var _revive_guard_hp: float = -1.0   # reviver HP snapshot at channel start; a drop cancels the revive
-var _revive_ui_shown: bool = false   # whether the revive progress HUD is currently active (anti-spam)
-var _coop_prompt_active: bool = false # whether the shared "[E]" prompt is currently showing a coop (revive/carry) hint, so we clear it on leave
+var _revive_guard_hp: float = -1.0  # reviver HP snapshot at channel start; a drop cancels the revive
+var _revive_ui_shown: bool = false  # whether the revive progress HUD is currently active (anti-spam)
+# Whether the shared "[E]" prompt currently shows a coop (revive/carry) hint — cleared on leave.
+var _coop_prompt_active: bool = false
 # Carry side (authority): the downed teammate we are carrying.
 var _carry_target: Node = null
 
 # Camera / aim state (authority only).
-var _ads: bool = false                # aim-down-sights active
-var _ads_toggled: bool = false        # latched ADS when Settings.ads_toggle
-var _shoulder_sign: float = 1.0       # over-the-shoulder side; flipped by shoulder_swap
-var _medkits: int = 0                 # set at spawn from the bring-list; heal consumes
-var _grenades: int = 0                # set at spawn from the bring-list; grenade consumes
+var _ads: bool = false  # aim-down-sights active
+var _ads_toggled: bool = false  # latched ADS when Settings.ads_toggle
+var _shoulder_sign: float = 1.0  # over-the-shoulder side; flipped by shoulder_swap
+var _medkits: int = 0  # set at spawn from the bring-list; heal consumes
+var _grenades: int = 0  # set at spawn from the bring-list; grenade consumes
 var _stamina: float = Settings.MAX_STAMINA
 var _max_stamina: float = Settings.MAX_STAMINA  # base * meta stamina upgrade (set in _ready)
-var _sprint_locked: bool = false      # true after exhausting stamina, until it regens
-var _interact_target: Node = null     # nearest interactable (for the "[E]" prompt)
+var _sprint_locked: bool = false  # true after exhausting stamina, until it regens
+var _interact_target: Node = null  # nearest interactable (for the "[E]" prompt)
 var _interact_timer: float = 0.0
 
 # --- Stance state machine (authority only) ---
@@ -66,26 +67,26 @@ var stance: int = Stance.STAND
 ## sets it from its OWN MetaProgression at spawn; replication_mode=1 syncs it to every peer
 ## so remotes render this player's chosen look. The body is (re)built whenever it changes.
 var cosmetics: Dictionary = {}
-var _built_cos_str: String = ""        # signature of the cosmetics the body was last built from
-var _slide_timer: float = 0.0          # counts down during a SLIDE
-var _slide_dir: Vector3 = Vector3.ZERO # locked horizontal entry direction of the slide
-var _cam_base_y: float = 1.5           # CameraPivot's base local Y (cached once in _ready)
+var _built_cos_str: String = ""  # signature of the cosmetics the body was last built from
+var _slide_timer: float = 0.0  # counts down during a SLIDE
+var _slide_dir: Vector3 = Vector3.ZERO  # locked horizontal entry direction of the slide
+var _cam_base_y: float = 1.5  # CameraPivot's base local Y (cached once in _ready)
 
 # --- View toggle + camera-from-settings (authority only) ---
-var _first_person: bool = false        # init from Settings.default_first_person in _ready
-var _cam_distance_scale: float = 1.0   # cached Settings.camera_distance_scale
-var _cam_shoulder_scale: float = 1.0   # cached Settings.camera_shoulder_scale
+var _first_person: bool = false  # init from Settings.default_first_person in _ready
+var _cam_distance_scale: float = 1.0  # cached Settings.camera_distance_scale
+var _cam_shoulder_scale: float = 1.0  # cached Settings.camera_shoulder_scale
 
 # --- Water immersion (LOCAL/cosmetic, authority-only) ---
 enum Water { DRY, WADING, SUBMERGED }
 var _water_state: int = Water.DRY
-const CAM_HEIGHT: float = 1.5         # camera Y above the player root (= feet)
-const WATER_SLOW: float = 0.65        # speed multiplier while wading/submerged (~35% slow)
+const CAM_HEIGHT: float = 1.5  # camera Y above the player root (= feet)
+const WATER_SLOW: float = 0.65  # speed multiplier while wading/submerged (~35% slow)
 const _TERRAIN_SCRIPT := "res://scripts/visual/procedural_terrain.gd"
-var _terrain_gd: GDScript = null      # cached terrain script (for water_surface_at)
+var _terrain_gd: GDScript = null  # cached terrain script (for water_surface_at)
 var _terrain_checked: bool = false
-var _bubbles: GPUParticles3D = null   # rising bubbles while submerged (lazy)
-var _ripple: GPUParticles3D = null    # feet ripple while wading (lazy)
+var _bubbles: GPUParticles3D = null  # rising bubbles while submerged (lazy)
+var _ripple: GPUParticles3D = null  # feet ripple while wading (lazy)
 
 # --- Audible movement noise (sound stealth; read by the server-side enemy AI) ---
 # Planar speed observed from the SYNCED position on EVERY peer, so the server can
@@ -100,7 +101,7 @@ const GRENADE_SCENE := "res://scenes/items/Grenade.tscn"
 # --- Active power-cache buffs (timed; authority-local) -----------------------
 # id -> time_left (seconds). Effects read live via the buff_*_mult() getters + _tick_buffs.
 var _buffs: Dictionary = {}
-var _overshield: float = 0.0   # remaining absorb pool from the Overshield power
+var _overshield: float = 0.0  # remaining absorb pool from the Overshield power
 
 
 func _enter_tree() -> void:
@@ -123,19 +124,19 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-	add_to_group("players")
+	add_to_group(Groups.PLAYERS)
 
 	# Health is tuned from the central Settings and wired to the global bus so HUD
 	# and match-flow workstreams react without referencing the Player directly.
 	# Permanent meta-progression upgrades scale starting health + stamina.
-	var _mods: Dictionary = MetaProgression.player_mods()
-	health.max_health = Settings.PLAYER_MAX_HEALTH * float(_mods.get("health_mult", 1.0))
+	var mods: Dictionary = MetaProgression.player_mods()
+	health.max_health = Settings.PLAYER_MAX_HEALTH * float(mods.get("health_mult", 1.0))
 	health.current = health.max_health
 	health.health_changed.connect(_on_health_changed)
 	health.died.connect(_on_died)
 	# Power-cache buffs intercept incoming damage (Overshield absorb + Juggernaut armor).
 	health.damage_filter = _filter_incoming_damage
-	_max_stamina = Settings.MAX_STAMINA * float(_mods.get("stamina_mult", 1.0))
+	_max_stamina = Settings.MAX_STAMINA * float(mods.get("stamina_mult", 1.0))
 	_stamina = _max_stamina
 
 	# Character look: the AUTHORITY takes its OWN equipped cosmetics from its profile (this
@@ -201,6 +202,7 @@ func _ensure_camera_current() -> void:
 	if is_instance_valid(self) and is_multiplayer_authority() and camera:
 		camera.make_current()
 
+
 ## Server → owning client: place this player at its spawn marker. A client owns its
 ## own transform, so it ignores the server's spawn-state position (would start at world
 ## origin); the server calls this to set it authoritatively on the owner.
@@ -221,6 +223,7 @@ func _build_player_model() -> void:
 	var anim := get_node_or_null("PlayerAnimator")
 	if anim != null and anim.has_method("reinit"):
 		anim.reinit()
+
 
 func _physics_process(delta: float) -> void:
 	# Remote peers: rebuild the body when the synced `cosmetics` arrives/changes so this
@@ -243,14 +246,14 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	var _jump_edge: bool
+	var jump_edge: bool
 	if AgentBridge.active:
-		var _jn := AgentBridge.held("jump")
-		_jump_edge = _jn and not _agent_jump_prev
-		_agent_jump_prev = _jn
+		var jn := AgentBridge.held("jump")
+		jump_edge = jn and not _agent_jump_prev
+		_agent_jump_prev = jn
 	else:
-		_jump_edge = Input.is_action_just_pressed("jump")
-	if _input_enabled and is_on_floor() and _jump_edge:
+		jump_edge = Input.is_action_just_pressed("jump")
+	if _input_enabled and is_on_floor() and jump_edge:
 		velocity.y = Settings.PLAYER_JUMP_VELOCITY
 
 	# Agent self-play: when the control server is driving, consume its look delta
@@ -259,8 +262,9 @@ func _physics_process(delta: float) -> void:
 		var lk := AgentBridge.consume_look()
 		if lk != Vector2.ZERO:
 			rotation.y -= lk.x
-			spring_arm.rotation.x = clampf(spring_arm.rotation.x - lk.y,
-				Settings.CAMERA_PITCH_MIN, Settings.CAMERA_PITCH_MAX)
+			spring_arm.rotation.x = clampf(
+				spring_arm.rotation.x - lk.y, Settings.CAMERA_PITCH_MIN, Settings.CAMERA_PITCH_MAX
+			)
 
 	# Camera-relative movement on the horizontal plane, as explicit forward/strafe
 	# amounts (+forward = toward the camera's facing, +strafe = right). Agent input
@@ -273,8 +277,12 @@ func _physics_process(delta: float) -> void:
 			strafe = AgentBridge.move.x
 			fwd_amt = AgentBridge.move.y
 		else:
-			strafe = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-			fwd_amt = Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+			strafe = (
+				Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+			)
+			fwd_amt = (
+				Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+			)
 		var basis := camera_pivot.global_transform.basis
 		var forward := -basis.z
 		var right := basis.x
@@ -284,7 +292,9 @@ func _physics_process(delta: float) -> void:
 		if move_dir.length_squared() > 0.0:
 			move_dir = move_dir.normalized()
 
-	var wants_sprint := AgentBridge.sprint if AgentBridge.active else Input.is_action_pressed("sprint")
+	var wants_sprint := (
+		AgentBridge.sprint if AgentBridge.active else Input.is_action_pressed("sprint")
+	)
 	var moving := move_dir.length_squared() > 0.01
 
 	# --- Stance: crouch / slide vs stand --------------------------------------
@@ -296,9 +306,15 @@ func _physics_process(delta: float) -> void:
 		_update_slide(delta, move_dir, crouch_held)
 	else:
 		# Enter a slide: TAP crouch while sprint-moving on the floor.
-		if _input_enabled and is_on_floor() and moving and wants_sprint \
-				and not _sprint_locked and _stamina > 0.0 \
-				and Input.is_action_just_pressed("crouch"):
+		if (
+			_input_enabled
+			and is_on_floor()
+			and moving
+			and wants_sprint
+			and not _sprint_locked
+			and _stamina > 0.0
+			and Input.is_action_just_pressed("crouch")
+		):
 			_begin_slide(move_dir)
 			_update_slide(delta, move_dir, crouch_held)
 		else:
@@ -311,8 +327,13 @@ func _physics_process(delta: float) -> void:
 			if stance == Stance.CROUCH:
 				speed = Settings.PLAYER_CROUCH_SPEED
 			else:
-				sprinting = _input_enabled and wants_sprint and moving \
-					and not _sprint_locked and _stamina > 0.0
+				sprinting = (
+					_input_enabled
+					and wants_sprint
+					and moving
+					and not _sprint_locked
+					and _stamina > 0.0
+				)
 				if sprinting:
 					speed = Settings.PLAYER_SPRINT_SPEED
 			# Wading/swimming slows movement (sluggish in water).
@@ -374,7 +395,7 @@ func _fire_current() -> void:
 func _update_camera(delta: float) -> void:
 	var want_ads: bool
 	if is_carrying():
-		want_ads = false   # carrying a buddy can't ADS
+		want_ads = false  # carrying a buddy can't ADS
 	elif AgentBridge.active:
 		want_ads = AgentBridge.ads
 	elif Settings.ads_toggle:
@@ -385,7 +406,7 @@ func _update_camera(delta: float) -> void:
 		_ads = want_ads
 		Events.ads_changed.emit(self, _ads)
 
-	var target_fov := (_ads_fov() if _ads else Settings.fov)
+	var target_fov := _ads_fov() if _ads else Settings.fov
 	# Spring length: ADS overrides everything; else first-person vs settings-scaled
 	# third-person distance.
 	var target_len: float
@@ -395,7 +416,9 @@ func _update_camera(delta: float) -> void:
 		target_len = Settings.FP_SPRING_LENGTH
 	else:
 		target_len = _third_person_len()
-	var base_off := _shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale * (0.65 if _ads else 1.0)
+	var base_off := (
+		_shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale * (0.65 if _ads else 1.0)
+	)
 	var target_off := base_off + _compute_peek()
 	# Base camera height (+ small ADS raise), then drop for crouch / slide.
 	var target_y := _cam_base_y + (0.18 if _ads else 0.0)
@@ -408,9 +431,9 @@ func _update_camera(delta: float) -> void:
 	camera.fov = lerpf(camera.fov, target_fov, t)
 	# Transient FOV punch from CameraFX (explosions / heavy hits) — additive so the
 	# ADS lerp above stays the baseline. CameraFX never writes camera.fov itself.
-	var _camfx := camera.get_node_or_null("CameraFX")
-	if _camfx and _camfx.has_method("fov_offset"):
-		camera.fov += _camfx.fov_offset()
+	var camfx := camera.get_node_or_null("CameraFX")
+	if camfx and camfx.has_method("fov_offset"):
+		camera.fov += camfx.fov_offset()
 	spring_arm.spring_length = lerpf(spring_arm.spring_length, target_len, t)
 	spring_arm.position.x = lerpf(spring_arm.position.x, target_off, t)
 	# Camera height eases at the dedicated crouch lerp speed (snappier stance feel).
@@ -433,14 +456,16 @@ func _ads_fov() -> float:
 func _compute_peek() -> float:
 	var space := get_world_3d().direct_space_state
 	var origin := camera_pivot.global_position
-	var right := global_transform.basis.x   # body right == camera right (yaw coupled)
+	var right := global_transform.basis.x  # body right == camera right (yaw coupled)
 	var to := origin + right * _shoulder_sign * Settings.PEEK_PROBE
 	var q := PhysicsRayQueryParameters3D.create(origin, to)
-	q.collision_mask = 1   # world only
+	q.collision_mask = 1  # world only
 	q.exclude = [get_rid()]
 	var hit := space.intersect_ray(q)
 	if hit:
-		var closeness := 1.0 - clampf(origin.distance_to(hit["position"]) / Settings.PEEK_PROBE, 0.0, 1.0)
+		var closeness := (
+			1.0 - clampf(origin.distance_to(hit["position"]) / Settings.PEEK_PROBE, 0.0, 1.0)
+		)
 		return -_shoulder_sign * Settings.PEEK_SHIFT * closeness
 	return 0.0
 
@@ -454,7 +479,7 @@ func stance_spread_mult() -> float:
 		return Settings.SPREAD_MULT_CROUCH
 	var hspeed := Vector2(velocity.x, velocity.z).length()
 	# Sprinting is only meaningful while actually moving; gate on horizontal speed too.
-	var sprinting := (AgentBridge.sprint if AgentBridge.active else Input.is_action_pressed("sprint"))
+	var sprinting := AgentBridge.sprint if AgentBridge.active else Input.is_action_pressed("sprint")
 	if sprinting and not _sprint_locked and hspeed > 0.3:
 		return Settings.SPREAD_MULT_SPRINT
 	if hspeed > 0.3:
@@ -574,6 +599,7 @@ func _try_heal() -> void:
 	health.heal(Settings.HEAL_AMOUNT)
 	Events.player_healed.emit(self, Settings.HEAL_AMOUNT)
 
+
 ## Throw a grenade from the chest along the aim direction. Works once fx-dev's
 ## Grenade.tscn exists (guarded); decrements the carried count.
 func _throw_grenade() -> void:
@@ -649,7 +675,7 @@ func _water_surface_at(x: float, z: float) -> float:
 				_terrain_gd = res
 	if _terrain_gd != null and _terrain_gd.has_method("water_surface_at"):
 		var s: float = _terrain_gd.water_surface_at(x, z)
-		return s   # NAN when not over water (contract); used as-is.
+		return s  # NAN when not over water (contract); used as-is.
 	return _fallback_surface_at(x, z)
 
 
@@ -714,9 +740,11 @@ func _spawn_splash(at: Vector3) -> void:
 	ps.restart()
 	ps.emitting = true
 	# Self-free after the burst finishes.
-	get_tree().create_timer(1.2).timeout.connect(func() -> void:
-		if is_instance_valid(ps):
-			ps.queue_free())
+	get_tree().create_timer(1.2).timeout.connect(
+		func() -> void:
+			if is_instance_valid(ps):
+				ps.queue_free()
+	)
 
 
 ## Continuous feet-ripple particles while WADING (small, cheap).
@@ -758,7 +786,7 @@ func _set_bubbles(on: bool) -> void:
 			var m := ParticleProcessMaterial.new()
 			m.direction = Vector3(0, 1, 0)
 			m.spread = 20.0
-			m.gravity = Vector3(0, 1.2, 0)   # bubbles rise
+			m.gravity = Vector3(0, 1.2, 0)  # bubbles rise
 			m.initial_velocity_min = 0.4
 			m.initial_velocity_max = 1.1
 			m.scale_min = 0.15
@@ -808,6 +836,7 @@ func _update_stamina(delta: float, sprinting: bool) -> void:
 			_sprint_locked = false
 	Events.stamina_changed.emit(_stamina, _max_stamina)
 
+
 ## Finds the nearest loot pickup within INTERACT_RANGE and emits the "[E]" prompt
 ## (or clears it). Loot is picked up with E by loot_pickup; this just informs.
 func _update_interaction() -> void:
@@ -820,7 +849,7 @@ func _update_interaction() -> void:
 		Events.interaction_cleared.emit()
 	var best: Node = null
 	var best_d := Settings.INTERACT_RANGE
-	for n in get_tree().get_nodes_in_group("pickups"):
+	for n in get_tree().get_nodes_in_group(Groups.PICKUPS):
 		if n is Node3D and is_instance_valid(n):
 			var d := global_position.distance_to((n as Node3D).global_position)
 			if d < best_d:
@@ -839,6 +868,7 @@ func _update_interaction() -> void:
 	else:
 		Events.interaction_cleared.emit()
 
+
 ## Inventory UI -> player: use a carried item by id.
 func _on_item_use(item_id: String) -> void:
 	if not is_multiplayer_authority():
@@ -851,6 +881,7 @@ func _on_item_use(item_id: String) -> void:
 		Settings.SELF_REVIVE_ITEM, "self_revive":
 			if downed:
 				_self_revive()
+
 
 # --- Active power-cache buffs ------------------------------------------------
 ## Server → opener: roll a power, play the NON-BLOCKING reveal, then apply it AFTER the reveal.
@@ -867,9 +898,12 @@ func begin_power_open() -> void:
 	Events.power_reveal_started.emit(rolled)
 	# Apply ONLY once the reveal reel has finished (never before the animation).
 	var t := get_tree().create_timer(Settings.POWER_REVEAL_TIME)
-	t.timeout.connect(func() -> void:
-		if is_instance_valid(self):
-			apply_power(rolled))
+	t.timeout.connect(
+		func() -> void:
+			if is_instance_valid(self):
+				apply_power(rolled)
+	)
+
 
 # --- Enemy-applied slow debuff (cryo-mortar) ----------------------------------
 # Movement is CLIENT-authoritative, so the server routes the slow to the owning
@@ -886,6 +920,7 @@ func server_apply_slow(mult: float, dur: float) -> void:
 	_slow_mult = clampf(mult, 0.2, 1.0)
 	_slow_until_ms = Time.get_ticks_msec() + int(maxf(dur, 0.0) * 1000.0)
 
+
 ## Grant a timed buff (called on the owning authority after the cache reveal finishes).
 func apply_power(power_id: String) -> void:
 	if not is_multiplayer_authority():
@@ -899,8 +934,10 @@ func apply_power(power_id: String) -> void:
 		_overshield = maxf(_overshield, float(def.get("mag", 0.0)))
 	Events.buff_applied.emit(self, power_id, dur)
 
+
 func _has_buff(power_id: String) -> bool:
 	return _buffs.has(power_id)
+
 
 ## Sum of magnitudes for every active buff whose POWERS.field matches `field` (+ Frenzy, which
 ## boosts damage/fire/speed together). Returns the additive bonus (e.g. 0.6 = +60%).
@@ -915,23 +952,29 @@ func _buff_sum(field: String) -> float:
 			total += float(def.get("mag", 0.0))
 	return total
 
+
 func buff_damage_mult() -> float:
 	return 1.0 + _buff_sum("damage")
+
 
 func buff_fire_rate_mult() -> float:
 	return 1.0 + _buff_sum("fire_rate")
 
+
 func buff_speed_mult() -> float:
 	return 1.0 + _buff_sum("speed")
+
 
 ## Reload-time multiplier (<1 = faster). Adrenaline speeds reloads.
 func buff_reload_mult() -> float:
 	var a: float = _buff_sum("adrenaline")
 	return 1.0 / (1.0 + a) if a > 0.0 else 1.0
 
+
 ## Fraction of dealt damage returned as healing (Lifesteal).
 func buff_lifesteal_frac() -> float:
 	return _buff_sum("lifesteal")
+
 
 ## Damage filter set on Health: Juggernaut armor reduces, then Overshield absorbs the rest.
 func _filter_incoming_damage(amount: float, _source: Node) -> float:
@@ -943,6 +986,7 @@ func _filter_incoming_damage(amount: float, _source: Node) -> float:
 		amount -= absorbed
 	return amount
 
+
 ## Heal a fraction of damage just dealt to an enemy (Lifesteal). Called from the local weapon.
 func on_dealt_damage(amount: float) -> void:
 	if not is_multiplayer_authority() or downed or health == null or health.is_dead:
@@ -951,13 +995,19 @@ func on_dealt_damage(amount: float) -> void:
 	if frac > 0.0 and amount > 0.0:
 		health.heal(amount * frac)
 
+
 ## Per-frame: count buffs down, apply regen, expire + revert. Authority-only.
 func _tick_buffs(delta: float) -> void:
 	if _buffs.is_empty():
 		return
 	var regen: float = _buff_sum("regen")
-	if regen > 0.0 and not downed and health != null and not health.is_dead \
-			and health.current < health.max_health:
+	if (
+		regen > 0.0
+		and not downed
+		and health != null
+		and not health.is_dead
+		and health.current < health.max_health
+	):
 		health.heal(regen * delta)
 	var expired: Array = []
 	for id in _buffs:
@@ -970,13 +1020,20 @@ func _tick_buffs(delta: float) -> void:
 			_overshield = 0.0
 		Events.buff_expired.emit(self, String(id))
 
+
 ## Snapshot of active buffs for the HUD / harness: [{ id, name, time_left, color }].
 func active_buffs() -> Array:
 	var out: Array = []
 	for id in _buffs:
 		var def: Dictionary = Settings.POWERS.get(id, {})
-		out.append({ "id": String(id), "name": String(def.get("name", id)),
-			"time_left": float(_buffs[id]), "color": def.get("color", Color.WHITE) })
+		out.append(
+			{
+				"id": String(id),
+				"name": String(def.get("name", id)),
+				"time_left": float(_buffs[id]),
+				"color": def.get("color", Color.WHITE)
+			}
+		)
 	return out
 
 
@@ -991,18 +1048,21 @@ func apply_loadout() -> void:
 	_self_revives = int(brought.get(Settings.SELF_REVIVE_ITEM, 0))
 	_shields = int(brought.get(Settings.KNOCKDOWN_SHIELD_ITEM, 0))
 
+
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
 ## unused medkits/grenades come back out with you (and are lost if you die).
 func extracted_consumables() -> Array:
 	var out: Array = []
 	if _medkits > 0:
-		out.append({ "id": "loot_medkit", "count": _medkits })
+		out.append({"id": "loot_medkit", "count": _medkits})
 	if _grenades > 0:
-		out.append({ "id": "loot_grenade", "count": _grenades })
+		out.append({"id": "loot_grenade", "count": _grenades})
 	return out
 
 
 var _last_hp: float = -1.0
+
+
 func _on_health_changed(current: float, max_health: float) -> void:
 	# Finish-damage while downed: a drop in HP drains the downed pool / bleedout faster
 	# (authority only; the synced `downed` flag is set on the authority).
@@ -1024,6 +1084,7 @@ func _on_died(killer: Node) -> void:
 		_true_death()
 		return
 	_enter_downed(killer)
+
 
 ## Begin the DOWNED state on the authority: crawl-only, camera dropped, bleedout running.
 ## Clears Health.is_dead so heal/revive work, and tells the server to own GameState.downed.
@@ -1054,12 +1115,14 @@ func _enter_downed(killer: Node) -> void:
 	else:
 		_report_downed.rpc_id(1, pid, true)
 
+
 ## Authority → server: my player entered (true) / left downed. The SERVER owns
 ## GameState.downed + broadcasts it to everyone (drives the loss check + remote HUD/AI).
 @rpc("any_peer", "call_remote", "reliable")
 func _report_downed(pid: int, value: bool) -> void:
 	if GameState.is_local_authority_server():
 		NetworkManager.broadcast_downed(pid, value)
+
 
 ## Per-frame bleedout countdown while downed (authority only). At 0 → true death.
 func _tick_downed(delta: float) -> void:
@@ -1069,6 +1132,7 @@ func _tick_downed(delta: float) -> void:
 	if _bleedout <= 0.0:
 		_bleedout = 0.0
 		_true_death()
+
 
 ## Resolve a downed player to TRUE death: emit bleedout, then the original death
 ## resolution (mark_dead + loss check), and clear the synced downed flag.
@@ -1088,6 +1152,7 @@ func _true_death() -> void:
 	else:
 		_report_death.rpc_id(1, pid)
 
+
 ## SERVER: revive this downed player (called by NetworkManager.request_revive after it
 ## validates the reviver). Clears downed, heals to a fraction, restores control + camera.
 func server_revive(by: Node) -> void:
@@ -1105,6 +1170,7 @@ func server_revive(by: Node) -> void:
 		if owner != 1:
 			_revived_owner.rpc_id(owner, _peer_of(by))
 
+
 ## Owner-side notification that the SERVER revived this player (the owner restores its
 ## own local input/camera/Health, which the server can't drive remotely).
 @rpc("any_peer", "call_remote", "reliable")
@@ -1114,6 +1180,7 @@ func _revived_owner(by_peer: int) -> void:
 	var by: Node = _player_for_peer(by_peer) if by_peer > 0 else self
 	_apply_revive()
 	Events.player_revived.emit(self, by)
+
 
 ## Shared revive effect (runs on whoever owns the relevant state): clear downed,
 ## un-flag Health, heal to the configured fraction, restore input.
@@ -1130,17 +1197,20 @@ func _apply_revive() -> void:
 		if AgentBridge.active or Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
+
 func _peer_of(n: Node) -> int:
 	if n == null:
 		return 0
 	return str(n.name).to_int()
 
+
 ## Local lookup of the player node owned by `peer_id` (the NetworkManager one is private).
 func _player_for_peer(peer_id: int) -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if str(p.name).to_int() == peer_id:
 			return p
 	return null
+
 
 # =========================================================== DOWNED finish-damage / movement
 ## Damage taken WHILE downed drains the downed HP pool faster (and shortens bleedout). A
@@ -1156,13 +1226,14 @@ func _on_downed_damage(prev: float, now: float) -> void:
 		dmg -= soaked
 		# Refund the soaked portion back into the downed pool so the shield truly absorbs it.
 		health.current = minf(DOWNED_HEALTH, health.current + soaked)
-	_last_hp = health.current   # re-baseline after any shield refund
+	_last_hp = health.current  # re-baseline after any shield refund
 	if dmg <= 0.0:
 		return
 	# Finish damage also bleeds the clock down faster.
 	_bleedout = maxf(0.0, _bleedout - dmg * 0.15)
 	if health.current <= 0.0 or _bleedout <= 0.0:
 		_true_death()
+
 
 ## Crawl movement while downed (authority): slow, no jump/sprint/slide/ADS/fire. Still
 ## allows the look/yaw from _unhandled_input + ping. Drives the camera down by the drop.
@@ -1177,8 +1248,12 @@ func _downed_physics(delta: float) -> void:
 			strafe = AgentBridge.move.x
 			fwd_amt = AgentBridge.move.y
 		else:
-			strafe = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-			fwd_amt = Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+			strafe = (
+				Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+			)
+			fwd_amt = (
+				Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+			)
 		var basis := camera_pivot.global_transform.basis
 		var forward := -basis.z
 		var right := basis.x
@@ -1217,11 +1292,13 @@ func _downed_physics(delta: float) -> void:
 		_giveup_held = 0.0
 	_tick_downed(delta)
 
+
 ## 0..1 progress of the give-up hold (for the HUD ring/bar). 0 when not holding.
 func give_up_ratio() -> float:
 	if not downed:
 		return 0.0
 	return clampf(_giveup_held / maxf(Settings.GIVE_UP_HOLD_TIME, 0.001), 0.0, 1.0)
+
 
 ## Extraction saved this downed player: clear the downed state so the bleedout can't
 ## true-kill them after they reach the evac. Called server-side by ExtractionZone on
@@ -1229,6 +1306,7 @@ func give_up_ratio() -> float:
 func cancel_downed_for_extract() -> void:
 	if downed:
 		server_revive(self)
+
 
 ## Consume a SELF_REVIVE_ITEM to revive yourself (solo lifeline). Routes through the server
 ## so GameState.downed is cleared authoritatively; offline/host applies it directly.
@@ -1244,6 +1322,7 @@ func _self_revive() -> void:
 		Events.player_revived.emit(self, self)
 		_report_downed.rpc_id(1, str(name).to_int(), false)
 
+
 # =========================================================== REVIVER side (channel) + CARRY
 ## Authority per-frame: find the nearest DOWNED teammate in range, surface the revive
 ## prompt, run the hold-E channel, and handle carry (hold F). Loot/extraction prompts
@@ -1251,8 +1330,14 @@ func _self_revive() -> void:
 func _update_coop_interaction(delta: float) -> void:
 	var target := _nearest_downed_teammate()
 	# --- Carry (hold F) ---
-	if _carry_target != null and (not is_instance_valid(_carry_target) \
-			or not _carry_target.get("downed") or not _act_held("carry")):
+	if (
+		_carry_target != null
+		and (
+			not is_instance_valid(_carry_target)
+			or not _carry_target.get("downed")
+			or not _act_held("carry")
+		)
+	):
 		_drop_carry()
 	if _carry_target == null and target != null and _act_held("carry"):
 		_begin_carry(target)
@@ -1308,6 +1393,7 @@ func _update_coop_interaction(delta: float) -> void:
 		_revive_progress = 0.0
 		_set_revive_ui(-1.0)
 
+
 ## Emits the reviver-side revive progress to the HUD. frac 0..1 = channeling (fires every
 ## frame so the bar fills); frac < 0 = clear (emitted once, then suppressed until active again).
 func _set_revive_ui(frac: float) -> void:
@@ -1318,11 +1404,12 @@ func _set_revive_ui(frac: float) -> void:
 		_revive_ui_shown = false
 		Events.revive_channel.emit(-1.0, null)
 
+
 ## Nearest downed-and-not-yet-revived teammate within INTERACT_RANGE (excludes self).
 func _nearest_downed_teammate() -> Node:
 	var best: Node = null
 	var best_d := Settings.INTERACT_RANGE
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p == self or not (p is Node3D):
 			continue
 		if not GameState.is_downed(str(p.name).to_int()):
@@ -1333,9 +1420,11 @@ func _nearest_downed_teammate() -> Node:
 			best = p
 	return best
 
+
 func _begin_carry(target: Node) -> void:
 	_carry_target = target
 	_tell_carried(target, str(name).to_int())
+
 
 func _update_carry_follow() -> void:
 	if _carry_target == null or not (_carry_target is Node3D):
@@ -1348,22 +1437,30 @@ func _update_carry_follow() -> void:
 	if _carry_target.has_method("set_carry_anchor"):
 		_carry_target.set_carry_anchor(ahead)
 
+
 func _drop_carry() -> void:
 	if _carry_target != null and is_instance_valid(_carry_target):
 		_tell_carried(_carry_target, 0)
 	_carry_target = null
 
+
 ## Tell `target`'s OWNER who is carrying it (so its authority drives the synced follow).
 func _tell_carried(target: Node, carrier_peer: int) -> void:
 	var owner := str(target.name).to_int()
-	if not multiplayer.has_multiplayer_peer() or NetworkManager.is_offline or owner == GameState.local_peer_id():
+	if (
+		not multiplayer.has_multiplayer_peer()
+		or NetworkManager.is_offline
+		or owner == GameState.local_peer_id()
+	):
 		target.set_carried_by(carrier_peer)
 	else:
 		target._set_carried_rpc.rpc_id(owner, carrier_peer)
 
+
 @rpc("any_peer", "call_remote", "reliable")
 func _set_carried_rpc(peer_id: int) -> void:
 	set_carried_by(peer_id)
+
 
 ## Set/clear who is carrying THIS player (runs on the carried player's OWNER → the synced
 ## flag replicates from here).
@@ -1372,20 +1469,26 @@ func set_carried_by(peer_id: int) -> void:
 	if peer_id == 0:
 		_carry_anchor = Vector3.INF
 
+
 var _carry_anchor: Vector3 = Vector3.INF
+
+
 ## The carrier feeds a target world point; THIS player's authority eases its body toward it.
 func set_carry_anchor(p: Vector3) -> void:
 	_carry_anchor = p
 
+
 ## PUBLIC: HUD / other lanes query downed state.
 func is_downed() -> bool:
 	return downed
+
 
 ## Agent-or-input HELD read: when the harness drives this player, consult
 ## AgentBridge.held(action); otherwise the real Input. Lets the harness HOLD
 ## crouch/interact/carry (revive/carry/crouch testing).
 func _act_held(action: String) -> bool:
 	return AgentBridge.held(action) if AgentBridge.active else Input.is_action_pressed(action)
+
 
 # --- Audible movement noise (sound stealth) ---------------------------------
 ## Observe planar speed from the SYNCED position on every peer (runs on server AND
@@ -1404,6 +1507,7 @@ func _process(delta: float) -> void:
 	_noise_last_pos = global_position
 	_noise_speed = lerpf(_noise_speed, inst, clampf(delta * 10.0, 0.0, 1.0))
 
+
 ## Audible radius (metres) of this player's movement, for the server-side enemy AI.
 ## Crouch-walking is quiet, sprinting is loud, standing still is a faint hum; a downed
 ## (crawling) player is nearly silent. Pure read — safe on any peer.
@@ -1415,24 +1519,27 @@ func noise_radius() -> float:
 		return Settings.NOISE_IDLE
 	var loud: float
 	if spd >= Settings.PLAYER_MOVE_SPEED + 0.4:
-		loud = Settings.NOISE_SPRINT     # running
+		loud = Settings.NOISE_SPRINT  # running
 	else:
-		loud = Settings.NOISE_WALK       # walking
+		loud = Settings.NOISE_WALK  # walking
 	if stance == Stance.CROUCH:
 		loud *= Settings.NOISE_CROUCH_MULT
 	elif stance == Stance.SLIDE:
-		loud = Settings.NOISE_WALK       # a slide scrapes — moderately loud
+		loud = Settings.NOISE_WALK  # a slide scrapes — moderately loud
 	return loud
+
 
 ## True if the local player can only use a sidearm / can't ADS (carrying a buddy).
 func is_carrying() -> bool:
 	return _carry_target != null
+
 
 ## Client -> server: "my player died". Server-only resolution below.
 @rpc("any_peer", "call_remote", "reliable")
 func _report_death(pid: int) -> void:
 	if GameState.is_local_authority_server():
 		_server_handle_death(pid)
+
 
 func _server_handle_death(pid: int) -> void:
 	GameState.mark_dead(pid)

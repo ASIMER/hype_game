@@ -92,13 +92,13 @@ func _apply_radial_damage(center: Vector3, damage: float, radius: float) -> void
 	var tree := get_tree()
 	if tree == null:
 		return
-	for e in tree.get_nodes_in_group("enemies"):
+	for e in tree.get_nodes_in_group(Groups.ENEMIES):
 		if e == null or not (e is Node3D):
 			continue
 		var dist := (e as Node3D).global_position.distance_to(center)
 		if dist > radius:
 			continue
-		var health := e.get_node_or_null("Health")
+		var health := e.get_node_or_null(Groups.NODE_HEALTH)
 		if health == null or not health.has_method("take_damage"):
 			continue
 		# Linear falloff from 1.0 at centre to 0.25 at the rim.

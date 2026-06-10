@@ -54,7 +54,7 @@ func _ready() -> void:
 	collision_layer = LAYER_LOOT
 	collision_mask = LAYER_PLAYER
 	monitoring = true
-	add_to_group("pickups")
+	add_to_group(Groups.PICKUPS)
 
 	var model := AssetRegistry.get_model(item_id)
 	model.name = "ModelRoot"
@@ -166,13 +166,13 @@ func _pickup_requested_rpc(requester_peer_id: int) -> void:
 
 ## Finds the spawned Player node owned by `peer_id` (its multiplayer authority).
 func _find_player_for_peer(peer_id: int) -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if is_instance_valid(p) and p.get_multiplayer_authority() == peer_id:
 			return p
 	return null
 
 func _on_body_entered(body: Node) -> void:
-	if body.is_in_group("players") and not _players_in_range.has(body):
+	if body.is_in_group(Groups.PLAYERS) and not _players_in_range.has(body):
 		_players_in_range.append(body)
 
 func _on_body_exited(body: Node) -> void:
@@ -264,10 +264,7 @@ static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> 
 		var data := { "id": id, "count": count, "pos": pos }
 		return spawner.spawn(data) as LootPickup
 	# Fallback (no spawner / function unset, e.g. unit tests): direct add_child.
-	var packed := load("res://scenes/items/LootPickup.tscn") as PackedScene
-	if packed == null:
-		return null
-	var pickup := packed.instantiate() as LootPickup
+	var pickup := _instantiate_self()
 	if pickup == null:
 		return null
 	pickup.item_id = id
@@ -278,14 +275,25 @@ static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> 
 	pickup.global_position = pos
 	return pickup
 
+## Lazily-cached self scene. Deliberately load(), NOT preload: this script is attached
+## to LootPickup.tscn itself, and a class-level preload of your own scene is a
+## script<->scene dependency cycle.
+static var _packed_self: PackedScene = null
+
+
+static func _instantiate_self() -> LootPickup:
+	if _packed_self == null:
+		_packed_self = load("res://scenes/items/LootPickup.tscn") as PackedScene
+	if _packed_self == null:
+		return null
+	return _packed_self.instantiate() as LootPickup
+
+
 ## The MultiplayerSpawner.spawn_function: runs on EVERY peer with the replicated
 ## `data` ({id,count,pos}), so each builds an identical pickup. Returns the node; the
 ## spawner parents it under its spawn_path (Net/Loot).
 static func _spawn_loot(data: Dictionary) -> Node:
-	var packed := load("res://scenes/items/LootPickup.tscn") as PackedScene
-	if packed == null:
-		return null
-	var pickup := packed.instantiate() as LootPickup
+	var pickup := _instantiate_self()
 	if pickup == null:
 		return null
 	pickup.item_id = String(data.get("id", "loot_scrap"))

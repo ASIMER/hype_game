@@ -132,7 +132,7 @@ func _on_local_player_spawned(player: Node) -> void:
 	_bind(player)
 
 func _bind_to_existing_player() -> void:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if _is_local(p):
 			_bind(p)
 			return
@@ -344,7 +344,7 @@ func _give_item(item: ItemData, count: int) -> void:
 ## Where dropped pickups live. Prefer the same parent existing pickups use
 ## (their group is "pickups"); fall back to the current scene root.
 func _drop_parent() -> Node:
-	for p in get_tree().get_nodes_in_group("pickups"):
+	for p in get_tree().get_nodes_in_group(Groups.PICKUPS):
 		if is_instance_valid(p) and p.get_parent() != null:
 			return p.get_parent()
 	return get_tree().current_scene

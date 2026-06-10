@@ -210,19 +210,9 @@ func _set_phase(p: int) -> void:
 	phase = p
 	_phase_t = 0.0
 
-## AoE bite around the body (the emerge-leap landing).
+## AoE bite around the body (the emerge-leap landing). Flat damage, downed skipped.
 func _bite_area(damage: float, radius: float) -> void:
-	for p in get_tree().get_nodes_in_group("players"):
-		if p == null or not is_instance_valid(p) or not (p is Node3D):
-			continue
-		var pn := p as Node3D
-		if pn.has_method("is_downed") and pn.is_downed():
-			continue
-		if global_position.distance_to(pn.global_position) > radius:
-			continue
-		var hb := pn.get_node_or_null("Hurtbox")
-		if hb and hb.has_method("apply_hit"):
-			hb.apply_hit(damage, self)
+	CombatAoe.damage_players(global_position, radius, damage, self)
 
 ## OVERRIDE the wave-watchdog hook: a "stuck" worm just re-burrows next to a player
 ## (teleporting it onto open navmesh like the base would break the underground fiction).

@@ -16,11 +16,11 @@ class_name PingSystem
 ## Events.local_player_spawned (and a fallback scan of the "players" group).
 
 # --- ping kinds (frozen contract — see Events.ping_placed / NetworkManager.broadcast_ping)
-const KIND_GENERIC := 0      # go here
+const KIND_GENERIC := 0  # go here
 const KIND_ENEMY := 1
 const KIND_LOOT := 2
 const KIND_EXTRACTION := 3
-const KIND_HELP := 4         # help / danger
+const KIND_HELP := 4  # help / danger
 const KIND_THANKS := 5
 const KIND_REGROUP := 6
 
@@ -34,23 +34,26 @@ const PING_RANGE := 120.0
 # Camera collision_mask: world(layer1=1) | enemy(layer3=4) | loot(layer4=8) | extraction(layer5=16).
 const PING_MASK := 1 | 4 | 8 | 16
 
+
 # One live marker.
 class Marker:
 	var peer_id: int = 0
 	var kind: int = 0
 	var world_pos: Vector3 = Vector3.ZERO
-	var target: Node3D = null       # resolved from target_path if it pointed at a live node
-	var t: float = 0.0              # remaining lifetime
+	var target: Node3D = null  # resolved from target_path if it pointed at a live node
+	var t: float = 0.0  # remaining lifetime
 	var ttl: float = TTL_DEFAULT
 	var label: String = ""
+
 
 var _player: Node3D = null
 var _camera: Camera3D = null
 var _markers: Array[Marker] = []
 var _draw_ctrl: Control = null
 
+
 func _ready() -> void:
-	layer = 6   # above the hit-marker (5), below the map (80) / pause menus
+	layer = 6  # above the hit-marker (5), below the map (80) / pause menus
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 	_draw_ctrl = Control.new()
@@ -67,10 +70,13 @@ func _ready() -> void:
 
 	_bind_existing_player()
 
+
 # --- local-player binding ---------------------------------------------------
+
 
 func _on_local_player_spawned(player: Node) -> void:
 	set_local_player(player)
+
 
 func set_local_player(p: Node) -> void:
 	_player = p as Node3D
@@ -78,11 +84,13 @@ func set_local_player(p: Node) -> void:
 	if _player != null:
 		_camera = _player.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") as Camera3D
 
+
 func _bind_existing_player() -> void:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p is Node3D and _is_local(p):
 			set_local_player(p)
 			return
+
 
 func _is_local(player: Node) -> bool:
 	if not multiplayer.has_multiplayer_peer():
@@ -90,6 +98,7 @@ func _is_local(player: Node) -> bool:
 	if not player.has_method("get_multiplayer_authority"):
 		return true
 	return player.get_multiplayer_authority() == multiplayer.get_unique_id()
+
 
 func _resolve_camera() -> Camera3D:
 	# Re-resolve lazily — the player may have spawned before we cached, or the cached
@@ -108,12 +117,15 @@ func _resolve_camera() -> Camera3D:
 		return vp.get_camera_3d()
 	return null
 
+
 # --- input: place a ping ----------------------------------------------------
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ping"):
 		_place_ping_from_camera()
 		# Don't consume — a middle-click might be wanted elsewhere; harmless either way.
+
 
 ## Raycast from the camera, classify the hit, and broadcast it to the squad.
 func _place_ping_from_camera() -> void:
@@ -154,22 +166,25 @@ func _place_ping_from_camera() -> void:
 
 	NetworkManager.broadcast_ping(kind, world_pos, target_path)
 
+
 ## Walk up from the hit node to find an enemy / pickup / extraction owner.
 ## Returns [kind:int, anchor_node:Node|null]. anchor_node is the owning gameplay node
 ## (so the marker can follow a moving enemy); null for a static world point.
 func _classify(node: Node) -> Array:
 	var n := node
 	while n != null:
-		if n.is_in_group("enemies"):
+		if n.is_in_group(Groups.ENEMIES):
 			return [KIND_ENEMY, n]
-		if n.is_in_group("pickups") or n.is_in_group("loot"):
+		if n.is_in_group(Groups.PICKUPS) or n.is_in_group("loot"):
 			return [KIND_LOOT, n]
-		if n.is_in_group("extraction"):
+		if n.is_in_group(Groups.EXTRACTION):
 			return [KIND_EXTRACTION, n]
 		n = n.get_parent()
 	return [KIND_GENERIC, null]
 
+
 # --- receive a (networked or local) ping ------------------------------------
+
 
 func _on_ping_placed(peer_id: int, kind: int, world_pos: Vector3, target_path: NodePath) -> void:
 	var m := Marker.new()
@@ -193,6 +208,7 @@ func _on_ping_placed(peer_id: int, kind: int, world_pos: Vector3, target_path: N
 	if _draw_ctrl:
 		_draw_ctrl.queue_redraw()
 
+
 func _label_for(peer_id: int, kind: int) -> String:
 	var who := _peer_name(peer_id)
 	var what := _kind_text(kind)
@@ -200,33 +216,52 @@ func _label_for(peer_id: int, kind: int) -> String:
 		return what
 	return "%s: %s" % [who, what]
 
+
 func _peer_name(peer_id: int) -> String:
 	var p: Variant = GameState.peers.get(peer_id, null)
 	if p is Dictionary:
 		return str((p as Dictionary).get("name", ""))
 	return ""
 
+
 func _kind_text(kind: int) -> String:
 	match kind:
-		KIND_ENEMY: return tr("Enemy")
-		KIND_LOOT: return tr("Loot — dibs!")
-		KIND_EXTRACTION: return tr("Extraction")
-		KIND_HELP: return tr("Help!")
-		KIND_THANKS: return tr("Thanks")
-		KIND_REGROUP: return tr("Regroup")
-		_: return tr("Going here")
+		KIND_ENEMY:
+			return tr("Enemy")
+		KIND_LOOT:
+			return tr("Loot — dibs!")
+		KIND_EXTRACTION:
+			return tr("Extraction")
+		KIND_HELP:
+			return tr("Help!")
+		KIND_THANKS:
+			return tr("Thanks")
+		KIND_REGROUP:
+			return tr("Regroup")
+		_:
+			return tr("Going here")
+
 
 func _color_for(kind: int) -> Color:
 	match kind:
-		KIND_ENEMY: return Color(1.0, 0.28, 0.28)
-		KIND_LOOT: return Color(1.0, 0.82, 0.25)
-		KIND_EXTRACTION: return Color(0.3, 1.0, 0.5)
-		KIND_HELP: return Color(1.0, 0.55, 0.15)
-		KIND_REGROUP: return Color(0.55, 0.75, 1.0)
-		KIND_THANKS: return Color(0.7, 0.9, 1.0)
-		_: return Color(1.0, 1.0, 1.0)
+		KIND_ENEMY:
+			return Color(1.0, 0.28, 0.28)
+		KIND_LOOT:
+			return Color(1.0, 0.82, 0.25)
+		KIND_EXTRACTION:
+			return Color(0.3, 1.0, 0.5)
+		KIND_HELP:
+			return Color(1.0, 0.55, 0.15)
+		KIND_REGROUP:
+			return Color(0.55, 0.75, 1.0)
+		KIND_THANKS:
+			return Color(0.7, 0.9, 1.0)
+		_:
+			return Color(1.0, 1.0, 1.0)
+
 
 # --- per-frame -------------------------------------------------------------
+
 
 func _process(delta: float) -> void:
 	if _markers.is_empty():
@@ -246,7 +281,9 @@ func _process(delta: float) -> void:
 	if changed and _draw_ctrl:
 		_draw_ctrl.queue_redraw()
 
+
 # --- drawing ---------------------------------------------------------------
+
 
 func _on_draw() -> void:
 	if _draw_ctrl == null or _markers.is_empty():
@@ -286,14 +323,22 @@ func _on_draw() -> void:
 			var edge := _edge_point(center, dir.normalized(), rect)
 			_draw_edge_arrow(edge, dir.normalized(), col)
 
+
 ## A diamond + ring + label at the projected screen point.
 func _draw_marker(font: Font, p: Vector2, col: Color, label: String, _kind: int) -> void:
 	var d := 9.0
-	var pts := PackedVector2Array([
-		p + Vector2(0, -d), p + Vector2(d, 0), p + Vector2(0, d), p + Vector2(-d, 0),
-	])
+	var pts := PackedVector2Array(
+		[
+			p + Vector2(0, -d),
+			p + Vector2(d, 0),
+			p + Vector2(0, d),
+			p + Vector2(-d, 0),
+		]
+	)
 	# Soft halo ring.
-	_draw_ctrl.draw_arc(p, d + 5.0, 0.0, TAU, 20, Color(col.r, col.g, col.b, col.a * 0.5), 2.0, true)
+	_draw_ctrl.draw_arc(
+		p, d + 5.0, 0.0, TAU, 20, Color(col.r, col.g, col.b, col.a * 0.5), 2.0, true
+	)
 	_draw_ctrl.draw_colored_polygon(pts, Color(col.r, col.g, col.b, col.a * 0.9))
 	# Outline for contrast on bright backgrounds.
 	pts.append(pts[0])
@@ -303,8 +348,19 @@ func _draw_marker(font: Font, p: Vector2, col: Color, label: String, _kind: int)
 		var fs := 13
 		var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var lp := p + Vector2(-tw * 0.5, -d - 8.0)
-		_draw_ctrl.draw_string(font, lp + Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, col.a * 0.7))
-		_draw_ctrl.draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(col.r, col.g, col.b, col.a))
+		_draw_ctrl.draw_string(
+			font,
+			lp + Vector2(1, 1),
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			fs,
+			Color(0, 0, 0, col.a * 0.7)
+		)
+		_draw_ctrl.draw_string(
+			font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(col.r, col.g, col.b, col.a)
+		)
+
 
 ## A triangle arrow pinned to the screen edge, pointing toward the off-screen ping.
 func _draw_edge_arrow(p: Vector2, dir: Vector2, col: Color) -> void:
@@ -312,8 +368,13 @@ func _draw_edge_arrow(p: Vector2, dir: Vector2, col: Color) -> void:
 	var tip := p + dir * 12.0
 	var a := p - dir * 6.0 + side * 8.0
 	var b := p - dir * 6.0 - side * 8.0
-	_draw_ctrl.draw_colored_polygon(PackedVector2Array([tip, a, b]), Color(col.r, col.g, col.b, col.a))
-	_draw_ctrl.draw_polyline(PackedVector2Array([tip, a, b, tip]), Color(0, 0, 0, col.a * 0.6), 1.5, true)
+	_draw_ctrl.draw_colored_polygon(
+		PackedVector2Array([tip, a, b]), Color(col.r, col.g, col.b, col.a)
+	)
+	_draw_ctrl.draw_polyline(
+		PackedVector2Array([tip, a, b, tip]), Color(0, 0, 0, col.a * 0.6), 1.5, true
+	)
+
 
 ## Where a ray from `center` in `dir` first crosses the clamp rect — used to pin the
 ## off-screen arrow to the nearest screen edge.

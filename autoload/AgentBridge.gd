@@ -171,21 +171,21 @@ func _handle_line(line: String) -> void:
 			_send({ "ok": ok_ev })
 		"tp":
 			# Debug: teleport the local player to a world XZ (for reaching far test spots).
-			var pl2: Node = _local_player(get_tree().get_nodes_in_group("players"))
+			var pl2: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 			if pl2 is Node3D:
 				(pl2 as Node3D).global_position = Vector3(
 					float(json.get("x", 0.0)), float(json.get("y", 1.5)), float(json.get("z", 0.0)))
 			_send({ "ok": pl2 != null })
 		"godmode":
 			# Debug: toggle local-player invulnerability (for safe verification).
-			var pl: Node = _local_player(get_tree().get_nodes_in_group("players"))
-			var hp: Health = pl.get_node_or_null("Health") if pl else null
+			var pl: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+			var hp: Health = pl.get_node_or_null(Groups.NODE_HEALTH) if pl else null
 			if hp:
 				hp.invulnerable = bool(json.get("on", true))
 			_send({ "ok": hp != null })
 		"refill":
 			# Debug: top the local player's weapons back to full ammo (sustained playtests).
-			var plr: Node = _local_player(get_tree().get_nodes_in_group("players"))
+			var plr: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 			var wc2: Node = plr.get_node_or_null("CameraPivot/SpringArm3D/Camera3D/WeaponController") if plr else null
 			if wc2 and wc2.has_method("refill_ammo"):
 				wc2.refill_ammo()
@@ -254,7 +254,7 @@ func _handle_line(line: String) -> void:
 				"claim": Quests.claim(sid)
 				"give":
 					# Add an item to the local player's MATCH inventory (simulate found loot).
-					var gpl: Node = _local_player(get_tree().get_nodes_in_group("players"))
+					var gpl: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 					var ginv: Node = gpl.get_node_or_null("Inventory") if gpl else null
 					var git: ItemData = ItemCatalog.get_item(sid)
 					if ginv and git and ginv.has_method("add_item"):
@@ -406,13 +406,13 @@ func _handle_line(line: String) -> void:
 		"kill":
 			_send(_debug_hurt(str(json.get("target", "nearest")), 1.0e9, false))
 		"heal":
-			var hpl := _local_player(get_tree().get_nodes_in_group("players"))
-			var hhp: Health = hpl.get_node_or_null("Health") if hpl else null
+			var hpl := _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+			var hhp: Health = hpl.get_node_or_null(Groups.NODE_HEALTH) if hpl else null
 			if hhp: hhp.heal(float(json.get("amount", 9999.0)))
 			_send({ "ok": hhp != null, "health": hhp.current if hhp else 0.0 })
 		"sethp":
-			var spl := _local_player(get_tree().get_nodes_in_group("players"))
-			var shp: Health = spl.get_node_or_null("Health") if spl else null
+			var spl := _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+			var shp: Health = spl.get_node_or_null(Groups.NODE_HEALTH) if spl else null
 			if shp:
 				shp.current = clampf(float(json.get("value", shp.current)), 0.0, shp.max_health)
 				shp.health_changed.emit(shp.current, shp.max_health)
@@ -491,7 +491,7 @@ func _hold(duration: float, clears: String) -> void:
 ## position), so position and aim direction must converge together. After this the
 ## screen-center crosshair is on the target, so Weapon.try_fire connects.
 func _aim_at(target_name: String) -> bool:
-	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var enemy: Node3D = _pick_enemy(p, target_name)
 	if enemy == null:
 		return false
@@ -501,7 +501,7 @@ func _aim_at(target_name: String) -> bool:
 
 ## Aim at the nearest enemy's WeakPoint sphere (headshot line-up for weak-point QA).
 func _aim_weakpoint() -> bool:
-	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var enemy: Node3D = _pick_enemy(p, "nearest")
 	if enemy == null:
 		return false
@@ -514,7 +514,7 @@ func _aim_weakpoint() -> bool:
 ## shot then sends bullets to that crosshair point). Iterates because the camera orbits
 ## the pivot — moving the yaw moves the camera, so position + aim must converge together.
 func _aim_at_point(aimp: Vector3) -> bool:
-	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if p == null:
 		return false
 	var pivot: Node3D = p.get_node_or_null("CameraPivot")
@@ -541,7 +541,7 @@ func _aim_at_point(aimp: Vector3) -> bool:
 ## Faces the player body (and camera) toward a world XZ point — used by `goto` so
 ## forward movement heads straight at loot / the extraction zone.
 func _face_point(target_xz: Vector2) -> void:
-	var players := get_tree().get_nodes_in_group("players")
+	var players := get_tree().get_nodes_in_group(Groups.PLAYERS)
 	var p: Node = _local_player(players)
 	if p == null or not (p is Node3D):
 		return
@@ -558,7 +558,7 @@ func _face_point(target_xz: Vector2) -> void:
 
 
 func _pick_enemy(p: Node, target_name: String) -> Node3D:
-	var enemies := get_tree().get_nodes_in_group("enemies")
+	var enemies := get_tree().get_nodes_in_group(Groups.ENEMIES)
 	if enemies.is_empty():
 		return null
 	if target_name != "" and target_name != "nearest":
@@ -580,7 +580,7 @@ func _pick_enemy(p: Node, target_name: String) -> Node3D:
 func _debug_down(on: bool) -> Dictionary:
 	if not GameState.is_local_authority_server():
 		return { "ok": false, "error": "server-auth only" }
-	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if p == null:
 		return { "ok": false, "error": "no player" }
 	if on:
@@ -599,17 +599,17 @@ func _debug_down(on: bool) -> Dictionary:
 func _debug_hurt(target: String, amount: float, weak: bool) -> Dictionary:
 	if not GameState.is_local_authority_server():
 		return { "ok": false, "error": "server-auth only" }
-	var me: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var me: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var node: Node = me if target == "self" else _pick_enemy(me, target)
 	if node == null:
 		return { "ok": false, "error": "no target" }
 	if weak and target != "self":
-		var wp := node.get_node_or_null("WeakPoint")
+		var wp := node.get_node_or_null(Groups.NODE_WEAKPOINT)
 		if wp and wp.has_method("apply_hit"):
 			wp.apply_hit(amount, me)
-			var whp: Health = node.get_node_or_null("Health")
+			var whp: Health = node.get_node_or_null(Groups.NODE_HEALTH)
 			return { "ok": true, "target": str(node.name), "weak": true, "health": whp.current if whp else 0.0 }
-	var hp: Health = node.get_node_or_null("Health")
+	var hp: Health = node.get_node_or_null(Groups.NODE_HEALTH)
 	if hp == null:
 		return { "ok": false, "error": "no Health on target" }
 	hp.take_damage(amount, me)
@@ -661,7 +661,7 @@ func _debug_power(json: Dictionary) -> Dictionary:
 	if action == "unlock":
 		var ok := MetaProgression.unlock_power(str(json.get("id", "")))
 		return { "ok": ok, "available": MetaProgression.available_powers() }
-	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if p == null:
 		return { "ok": false, "error": "no player" }
 	match action:
@@ -684,7 +684,7 @@ func _debug_power(json: Dictionary) -> Dictionary:
 	return { "ok": false, "error": "unknown action" }
 
 func _debug_crosshair() -> Dictionary:
-	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") if p else null
 	if cam == null:
 		return { "ok": false, "error": "no camera" }
@@ -710,12 +710,12 @@ func _debug_crosshair() -> Dictionary:
 	var enemy_node: Node = null
 	var n: Node = col as Node
 	while n != null:
-		if n.is_in_group("enemies"):
+		if n.is_in_group(Groups.ENEMIES):
 			enemy_node = n
 			entity = str(n.name)
 			eid = str(n.get("enemy_id")) if "enemy_id" in n else ""
 			break
-		if n.is_in_group("players"):
+		if n.is_in_group(Groups.PLAYERS):
 			entity = str(n.name)
 			break
 		n = n.get_parent()
@@ -761,11 +761,11 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true) -> bool:
 	if path == "" or not ResourceLoader.exists(path):
 		return false
 	var container: Node = null
-	for e in get_tree().get_nodes_in_group("enemies"):
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if is_instance_valid(e):
 			container = e.get_parent()
 			break
-	var p: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if container == null or p == null or not (p is Node3D):
 		return false
 	var enemy: Node = (load(path) as PackedScene).instantiate()
@@ -960,7 +960,7 @@ func _send(obj: Dictionary) -> void:
 ## exposes it; defensive so it works before/after the ExtractionDirector lane lands).
 func _extraction_zone_states() -> Array:
 	var out: Array = []
-	for z in get_tree().get_nodes_in_group("extraction"):
+	for z in get_tree().get_nodes_in_group(Groups.EXTRACTION):
 		if not (z is Node3D):
 			continue
 		var zp: Vector3 = (z as Node3D).global_position
@@ -977,6 +977,9 @@ func _snapshot() -> Dictionary:
 		"phase": GameState.phase,
 		"wave": GameState.current_wave,
 		"fps": Engine.get_frames_per_second(),
+		# Pause-leak debugging (a recurring bug class — see raid_summary.gd): a frozen
+		# world with paused=true names the culprit instantly vs chasing AI "bugs".
+		"paused": get_tree().paused,
 		"result": _result,
 		"extraction": { "active": _extraction_active, "ratio": _extraction_ratio },
 		"match_timer": { "left": GameState.match_time_left, "total": GameState.match_duration,
@@ -1013,7 +1016,7 @@ func _snapshot() -> Dictionary:
 		"stash_weight": Stash.total_weight(),
 		"stash_cap": Stash.capacity(),
 	}
-	var players := get_tree().get_nodes_in_group("players")
+	var players := get_tree().get_nodes_in_group(Groups.PLAYERS)
 	d["players_count"] = players.size()
 	d["peer_id"] = GameState.local_peer_id()
 	d["peers"] = GameState.peers.keys()
@@ -1034,7 +1037,7 @@ func _snapshot() -> Dictionary:
 		d["enemies"] = []
 		return d
 
-	var hp: Health = p.get_node_or_null("Health")
+	var hp: Health = p.get_node_or_null(Groups.NODE_HEALTH)
 	var inv: Inventory = p.get_node_or_null("Inventory")
 	var cam_pivot: Node3D = p.get_node_or_null("CameraPivot")
 	var spring: Node3D = p.get_node_or_null("CameraPivot/SpringArm3D")
@@ -1109,8 +1112,8 @@ func _snapshot() -> Dictionary:
 	d["inventory"] = stacks
 
 	var enemies: Array = []
-	for e in get_tree().get_nodes_in_group("enemies"):
-		var ehp: Health = e.get_node_or_null("Health")
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		var ehp: Health = e.get_node_or_null(Groups.NODE_HEALTH)
 		var st := -1
 		if "current_state" in e:
 			st = int(e.current_state)
@@ -1134,7 +1137,7 @@ func _snapshot() -> Dictionary:
 	# All players (incl. remotes) with their REPLICATED cosmetics — proves co-op appearance
 	# sync: each peer's copy of another player carries that player's chosen look.
 	var players_arr: Array = []
-	for pl in get_tree().get_nodes_in_group("players"):
+	for pl in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		players_arr.append({
 			"name": str(pl.name),
 			"authority": pl.is_multiplayer_authority() if pl.has_method("is_multiplayer_authority") else false,
@@ -1144,7 +1147,7 @@ func _snapshot() -> Dictionary:
 	d["players"] = players_arr
 
 	var loot: Array = []
-	for l in get_tree().get_nodes_in_group("pickups"):
+	for l in get_tree().get_nodes_in_group(Groups.PICKUPS):
 		loot.append({
 			"id": str(l.get("item_id")) if "item_id" in l else "?",
 			"count": int(l.get("count")) if "count" in l else 1,
@@ -1156,7 +1159,7 @@ func _snapshot() -> Dictionary:
 	# Dynamic world events (markers + the active supply cache) for QA introspection.
 	var wevents: Array = []
 	var director: Node = get_node_or_null("/root/WorldEventDirector")
-	for w in get_tree().get_nodes_in_group("world_events"):
+	for w in get_tree().get_nodes_in_group(Groups.WORLD_EVENTS):
 		var wr := -1.0
 		if w.has_method("event_ratio"):
 			wr = float(w.call("event_ratio"))
@@ -1190,7 +1193,7 @@ func _golden_snapshot() -> Dictionary:
 			var w := ProceduralTerrain.water_surface_at(x, z)
 			water.append([x, z, null if is_nan(w) else snappedf(w, 0.0001)])
 	var zones: Array = []
-	for zn in get_tree().get_nodes_in_group("extraction"):
+	for zn in get_tree().get_nodes_in_group(Groups.EXTRACTION):
 		if not (zn is Node3D):
 			continue
 		var zp: Vector3 = (zn as Node3D).global_position
@@ -1201,7 +1204,7 @@ func _golden_snapshot() -> Dictionary:
 		})
 	zones.sort_custom(func(a, b): return str(a["name"]) < str(b["name"]))
 	var containers: Dictionary = {}
-	var arena: Node = get_tree().get_first_node_in_group("arena")
+	var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
 	var nav: Node = arena.get_node_or_null("NavigationRegion3D") if arena else null
 	if nav:
 		for child in nav.get_children():
@@ -1251,13 +1254,13 @@ func _fold_node(n: Node, acc: Array) -> int:
 ## loot_pickup._request_pickup path (so a client exercises the server-validated RPC).
 ## Returns the chosen pickup's id + distance, or ok:false if none in range.
 func _debug_pickup() -> Dictionary:
-	var plr: Node = _local_player(get_tree().get_nodes_in_group("players"))
+	var plr: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	if plr == null or not (plr is Node3D):
 		return { "ok": false, "reason": "no local player" }
 	var ppos: Vector3 = (plr as Node3D).global_position
 	var best: Node = null
 	var best_d: float = INF
-	for n in get_tree().get_nodes_in_group("pickups"):
+	for n in get_tree().get_nodes_in_group(Groups.PICKUPS):
 		if not (n is Node3D) or not is_instance_valid(n):
 			continue
 		var d: float = (n as Node3D).global_position.distance_to(ppos)
@@ -1361,7 +1364,7 @@ func _debug_quest(json: Dictionary) -> Dictionary:
 				"wave":
 					Events.wave_cleared.emit(n)
 				"pickup":
-					Events.item_picked_up.emit(_local_player(get_tree().get_nodes_in_group("players")), sid2, n)
+					Events.item_picked_up.emit(_local_player(get_tree().get_nodes_in_group(Groups.PLAYERS)), sid2, n)
 			return { "ok": true, "kind": kind }
 		"reset":
 			# QA: wipe quest lifecycle + decision stats + giver rep for a clean fixture.

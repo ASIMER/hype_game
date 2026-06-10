@@ -83,11 +83,11 @@ func _fire_hitscan(target: Node3D) -> void:
 	# Reuse the LOS check we already ran this frame conceptually; re-test to be safe.
 	if not _check_line_of_sight(target):
 		return
-	var hb := target.get_node_or_null("Hurtbox")
+	var hb := target.get_node_or_null(Groups.NODE_HURTBOX)
 	if hb and hb.has_method("apply_hit"):
 		hb.apply_hit(_stat_damage, self)
 	else:
-		var hp := target.get_node_or_null("Health")
+		var hp := target.get_node_or_null(Groups.NODE_HEALTH)
 		if hp and hp.has_method("take_damage"):
 			hp.take_damage(_stat_damage, self)
 	_spawn_tracer(muzzle, aim)

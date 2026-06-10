@@ -78,11 +78,11 @@ func _strike(target: Node) -> void:
 		super._strike(target)
 
 func _melee_slam(target: Node) -> void:
-	var hb := target.get_node_or_null("Hurtbox")
+	var hb := target.get_node_or_null(Groups.NODE_HURTBOX)
 	if hb and hb.has_method("apply_hit"):
 		hb.apply_hit(_stat_damage * MELEE_MULT, self)
 		return
-	var hp := target.get_node_or_null("Health")
+	var hp := target.get_node_or_null(Groups.NODE_HEALTH)
 	if hp and hp.has_method("take_damage"):
 		hp.take_damage(_stat_damage * MELEE_MULT, self)
 

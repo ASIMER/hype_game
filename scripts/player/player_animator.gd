@@ -112,7 +112,7 @@ func reinit() -> void:
 
 ## Called one frame after _ready so the model is present under ModelRoot.
 func _init_deferred() -> void:
-	var model_root: Node3D = _parent.get_node_or_null("ModelRoot") as Node3D
+	var model_root: Node3D = _parent.get_node_or_null(Groups.NODE_MODEL_ROOT) as Node3D
 	if model_root == null:
 		push_warning("[PlayerAnimator] ModelRoot not found on parent — no animation.")
 		return

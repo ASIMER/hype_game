@@ -150,7 +150,7 @@ func _draw() -> void:
 		"N", HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color(0.7, 0.8, 0.9, 0.8))
 	# Extraction zones — OPEN ones pulse green, CLOSED ones are dim grey, each with a
 	# thin countdown ring when a window timer is known.
-	for z in get_tree().get_nodes_in_group("extraction"):
+	for z in get_tree().get_nodes_in_group(Groups.EXTRACTION):
 		if z is Node3D:
 			var pos := _to_radar((z as Node3D).global_position, _player.global_position, yaw)
 			var w: Dictionary = _window_for(z)
@@ -171,7 +171,7 @@ func _draw() -> void:
 				var frac: float = clampf(remaining / 30.0, 0.0, 1.0)
 				draw_arc(c + pos, r + 2.5, -PI * 0.5, -PI * 0.5 + TAU * frac, 16, col, 1.5)
 	# Enemies.
-	for e in get_tree().get_nodes_in_group("enemies"):
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if e is Node3D:
 			_blip(c, _to_radar((e as Node3D).global_position, _player.global_position, yaw),
 				Color(1.0, 0.3, 0.3), 3.0)
@@ -245,7 +245,7 @@ func _draw_event_blips(c: Vector2, yaw: float) -> void:
 	var ppos: Vector3 = _player.global_position
 	var drawn_kinds: Dictionary = {}
 
-	for node in get_tree().get_nodes_in_group("world_events"):
+	for node in get_tree().get_nodes_in_group(Groups.WORLD_EVENTS):
 		if not node.has_meta("event_kind"):
 			continue
 		var kind: int = int(node.get_meta("event_kind"))

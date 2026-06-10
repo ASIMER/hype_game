@@ -24,10 +24,10 @@ const _MAX_BALLISTIC_SEGMENTS := 40
 
 @export var weapon_id: String = "rifle"
 @export var damage: float = 12.0
-@export var fire_rate: float = 8.0          # shots per second
+@export var fire_rate: float = 8.0  # shots per second
 @export var max_range: float = 80.0
-@export var auto: bool = true               # held-to-fire
-@export var hurtbox_mask: int = 0b1000101   # layers: world(1) + enemy(3) + hurtbox(7)
+@export var auto: bool = true  # held-to-fire
+@export var hurtbox_mask: int = 0b1000101  # layers: world(1) + enemy(3) + hurtbox(7)
 
 var _cooldown: float = 0.0
 # Surface normal of the most recent resolved hit (Vector3.ZERO = none). Set in
@@ -52,6 +52,7 @@ var _shell_script: GDScript
 ## Last WeaponData fired through fire_with — drives the per-class muzzle FX scale / shell count.
 var _last_data: WeaponData = null
 
+
 func _ready() -> void:
 	if ResourceLoader.exists(_MUZZLE_FLASH_SCENE):
 		_muzzle_flash_ps = load(_MUZZLE_FLASH_SCENE)
@@ -68,9 +69,11 @@ func _ready() -> void:
 	if not fired_arc.is_connected(_on_fired_arc):
 		fired_arc.connect(_on_fired_arc)
 
+
 func _process(delta: float) -> void:
 	if _cooldown > 0.0:
 		_cooldown -= delta
+
 
 ## Legacy single-weapon fire using this node's exported damage/fire_rate/range.
 ## from_node supplies the muzzle ray (usually the Camera3D). Returns true if it fired.
@@ -80,6 +83,7 @@ func try_fire(from_node: Node3D) -> bool:
 	_cooldown = 1.0 / maxf(0.1, fire_rate)
 	_shoot(from_node, weapon_id, damage, max_range, 0.0, 1.0, false, 0.0)
 	return true
+
 
 ## Data-driven fire used by WeaponController. Fires `data.pellets` converged rays
 ## (with per-ray spread), each emitting fired/hit/Events.weapon_fired so VFX and
@@ -112,10 +116,20 @@ func fire_with(from_node: Node3D, data: WeaponData, eff_spread: float = -1.0) ->
 	NetworkManager.report_noise(_muzzle_position(), Settings.NOISE_GUNFIRE * nm, 1)
 	return true
 
+
 ## One converged hitscan ray (chest-origin toward the crosshair aim point) with
 ## optional spread. Applies damage to any Hurtbox hit and emits the per-shot
 ## signals. `emit_numbers` gates the floating damage number (legacy path off).
-func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: float, crit_mult: float, emit_numbers: bool, data_muzzle_velocity: float) -> void:
+func _shoot(
+	from_node: Node3D,
+	wid: String,
+	dmg: float,
+	rng: float,
+	spread_deg: float,
+	crit_mult: float,
+	emit_numbers: bool,
+	data_muzzle_velocity: float
+) -> void:
 	var space := from_node.get_world_3d().direct_space_state
 	var shooter := _find_owner_body()
 
@@ -124,7 +138,7 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 	var exclude: Array[RID] = []
 	if shooter:
 		exclude.append(shooter.get_rid())
-		var own_hb := shooter.get_node_or_null("Hurtbox")
+		var own_hb := shooter.get_node_or_null(Groups.NODE_HURTBOX)
 		if own_hb is CollisionObject3D:
 			exclude.append((own_hb as CollisionObject3D).get_rid())
 
@@ -165,8 +179,10 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 	arc.append(origin)
 
 	# Cap the number of segments for performance; the arc length is bounded by rng.
-	var seg_count: int = clampi(int(ceil(rng / maxf(0.1, Settings.BULLET_STEP))), 1, _MAX_BALLISTIC_SEGMENTS)
-	var dt: float = Settings.BULLET_STEP / maxf(0.1, v)   # time per segment at muzzle speed
+	var seg_count: int = clampi(
+		int(ceil(rng / maxf(0.1, Settings.BULLET_STEP))), 1, _MAX_BALLISTIC_SEGMENTS
+	)
+	var dt: float = Settings.BULLET_STEP / maxf(0.1, v)  # time per segment at muzzle speed
 
 	var hit_point := origin
 	var hit_node: Node = null
@@ -250,7 +266,10 @@ func _shoot(from_node: Node3D, wid: String, dmg: float, rng: float, spread_deg: 
 	Events.weapon_fired.emit(shooter, wid)
 	# Co-op: let teammates SEE this shot. Our own FX already spawned via the `fired`
 	# signal above; broadcast the shot so the OTHER peers spawn the tracer/impact too.
-	NetworkManager.broadcast_shot(_muzzle_position(), hit_point, arc, _is_enemy(hit_node), _last_hit_normal)
+	NetworkManager.broadcast_shot(
+		_muzzle_position(), hit_point, arc, _is_enemy(hit_node), _last_hit_normal
+	)
+
 
 ## Muzzle velocity for the ballistic march: a weapon may override the Settings
 ## default by exposing a positive `muzzle_velocity` on its WeaponData.
@@ -258,6 +277,7 @@ func _muzzle_velocity(override_v: float) -> float:
 	if override_v > 0.0:
 		return override_v
 	return Settings.BULLET_MUZZLE_VELOCITY
+
 
 ## Rotates `dir` by a random offset within a cone of half-angle `spread_deg`.
 func _apply_spread(dir: Vector3, spread_deg: float) -> Vector3:
@@ -271,7 +291,9 @@ func _apply_spread(dir: Vector3, spread_deg: float) -> Vector3:
 	var pitch := randf_range(-ang, ang)
 	return (dir + right * tan(yaw) + up * tan(pitch)).normalized()
 
+
 # --- VFX spawning -----------------------------------------------------------
+
 
 ## Reacts to our own `fired` signal: muzzle flash at the barrel, a tracer from the
 ## muzzle to the hit point, and an impact burst at the hit point (sparks for
@@ -321,6 +343,7 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 		if im is Node3D:
 			(im as Node3D).global_position = hit_point
 
+
 ## Draws the tracer as a chain of short straight Tracer segments through the arc
 ## points so the visible streak follows the ballistic curve. Reuses the existing
 ## Tracer scene (one per segment) — kept cheap by the capped segment count. The
@@ -341,6 +364,7 @@ func _on_fired_arc(arc_points: PackedVector3Array, _hit_node: Node) -> void:
 			(tr as Tracer).setup(a, b)
 		host.add_child(tr)
 
+
 ## World-space muzzle point. PREFER the held view-model's "Muzzle" marker (so flash/smoke/
 ## tracer leave the actual gun barrel in 3rd person), then the camera-anchored "Muzzle"
 ## Marker3D, then the weapon node itself.
@@ -353,6 +377,7 @@ func _muzzle_position() -> Vector3:
 		return (marker as Node3D).global_position
 	return global_position
 
+
 ## World transform of the shell ejection port (view-model "Eject" marker), else a muzzle-
 ## offset fallback. Used to orient the brass casings flying out the side.
 func _eject_transform() -> Transform3D:
@@ -360,6 +385,7 @@ func _eject_transform() -> Transform3D:
 	if ej != null and ej.is_inside_tree():
 		return ej.global_transform
 	return Transform3D(Basis.IDENTITY, _muzzle_position())
+
 
 ## The held view-model's "Muzzle"/"Eject" marker, via the owning WeaponController (which holds
 ## the authoritative model-holder reference, surviving the reparent to WeaponMount). Null →
@@ -374,6 +400,7 @@ func _view_marker(mark_name: String) -> Node3D:
 		return ctrl.eject_node()
 	return null
 
+
 ## Where to parent FX so they live in the world, not under the moving camera.
 func _fx_host() -> Node:
 	var tree := get_tree()
@@ -381,13 +408,15 @@ func _fx_host() -> Node:
 		return tree.current_scene
 	return get_parent()
 
+
 func _is_enemy(node: Node) -> bool:
 	var n := node
 	while n != null:
-		if n.is_in_group("enemies"):
+		if n.is_in_group(Groups.ENEMIES):
 			return true
 		n = n.get_parent()
 	return false
+
 
 func _resolve_hurtbox(node: Node) -> Hurtbox:
 	# The collider may BE the hurtbox (area hit) or the body that OWNS it (the
@@ -399,10 +428,11 @@ func _resolve_hurtbox(node: Node) -> Hurtbox:
 			return n
 		n = n.get_parent()
 	if node:
-		var child := node.get_node_or_null("Hurtbox")
+		var child := node.get_node_or_null(Groups.NODE_HURTBOX)
 		if child is Hurtbox:
 			return child
 	return null
+
 
 ## Peer id that owns the shooter body (the player node is named str(peer_id)).
 func _shooter_peer(shooter: Node) -> int:
@@ -410,6 +440,7 @@ func _shooter_peer(shooter: Node) -> int:
 		return 1
 	var pid := str(shooter.name).to_int()
 	return pid if pid > 0 else 1
+
 
 func _find_owner_body() -> Node3D:
 	var n := get_parent()

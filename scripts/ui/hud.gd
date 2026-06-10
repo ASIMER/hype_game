@@ -17,6 +17,7 @@ class_name HUD
 
 var _local_player: Node = null
 
+
 func _ready() -> void:
 	Events.local_player_spawned.connect(_on_local_player_spawned)
 	Events.player_health_changed.connect(_on_player_health_changed)
@@ -67,6 +68,7 @@ func _ready() -> void:
 	_build_feedback_overlays()
 	_build_hud_widgets()
 
+
 # --- Crosshair / minimap / key-hints / ammo (built in code) ----------------
 
 var _crosshair: Control
@@ -90,6 +92,7 @@ var _surge_pulse: float = 0.0
 # with its cached AUTHORED offsets so the inset is idempotent (recomputed from base,
 # never accumulated). { node: Control, edge: String("rb"|"lb"), l/t/r/b: float }
 var _inset_widgets: Array = []
+
 
 func _build_hud_widgets() -> void:
 	# Replace the static dot with the dynamic spread crosshair.
@@ -209,14 +212,20 @@ func _build_hud_widgets() -> void:
 	hints.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hints.add_theme_font_size_override("font_size", 12)
-	hints.add_theme_color_override("font_color", Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.7))
-	hints.text = tr("WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map")
+	hints.add_theme_color_override(
+		"font_color", Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.7)
+	)
+	# This long string is a LOCALIZATION KEY (locale/ui.csv) — splitting it would break
+	# the translation lookup, so it stays one line.
+	hints.text = tr(
+		"WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"  # gdlint: ignore=max-line-length
+	)
 	$Root.add_child(hints)
 
 	# --- Ultrawide-comfort inset: pull edge-anchored widgets toward center -----
 	# ammo box + key hints are RIGHT+BOTTOM ("rb"); the health bar (HUD.tscn) is
 	# LEFT+BOTTOM ("lb"). Cache each node's authored offsets ONCE.
-	var health: Control = $Root.get_node_or_null("Health")
+	var health: Control = $Root.get_node_or_null(Groups.NODE_HEALTH)
 	_register_inset(ammo_box, "rb")
 	_register_inset(hints, "rb")
 	if health != null:
@@ -228,15 +237,25 @@ func _build_hud_widgets() -> void:
 	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
 		vp.size_changed.connect(_apply_hud_inset)
 
+
 ## Cache a widget's authored offsets + its edge classification for the inset pass.
 func _register_inset(node: Control, edge: String) -> void:
 	if node == null:
 		return
-	_inset_widgets.append({
-		"node": node, "edge": edge,
-		"l": node.offset_left, "t": node.offset_top,
-		"r": node.offset_right, "b": node.offset_bottom,
-	})
+	(
+		_inset_widgets
+		. append(
+			{
+				"node": node,
+				"edge": edge,
+				"l": node.offset_left,
+				"t": node.offset_top,
+				"r": node.offset_right,
+				"b": node.offset_bottom,
+			}
+		)
+	)
+
 
 ## Re-inset every registered edge widget from its cached BASE offsets (idempotent;
 ## at margin 0 → ex=ty=0 → offsets unchanged). Whole box shifts on each inset axis so
@@ -263,18 +282,22 @@ func _apply_hud_inset() -> void:
 		node.offset_top = bt + dy
 		node.offset_bottom = bb + dy
 
+
 func _on_weapon_switched(weapon_id: String, ammo: int, reserve: int) -> void:
 	_current_weapon_name = weapon_id.to_upper()
 	_reloading = false
 	_refresh_weapon_label()
 	_set_ammo(ammo, reserve)
 
+
 func _refresh_weapon_label() -> void:
 	if _weapon_label:
 		_weapon_label.text = _current_weapon_name + (tr("  (RELOADING)") if _reloading else "")
 
+
 func _on_ammo_changed(ammo: int, reserve: int) -> void:
 	_set_ammo(ammo, reserve)
+
 
 func _set_ammo(ammo: int, reserve: int) -> void:
 	if _ammo_label:
@@ -282,9 +305,11 @@ func _set_ammo(ammo: int, reserve: int) -> void:
 		_ammo_label.text = "%d / %s" % [ammo, res]
 		_ammo_label.modulate = Color(1, 0.5, 0.4) if ammo <= 0 else Color(1, 1, 1)
 
+
 func _set_reload(active: bool) -> void:
 	_reloading = active
 	_refresh_weapon_label()
+
 
 # --- Feedback overlays (built in code so HUD.tscn stays simple) -------------
 
@@ -297,21 +322,22 @@ var _last_health: float = -1.0
 # Local-player downed: a red pulsing fullscreen vignette + centred label + bleedout
 # countdown ring, plus a directional arrow toward any downed TEAMMATE. Everything is
 # drawn by a single full-rect overlay Control whose `draw` signal we drive.
-const DOWN_RED   := UIStyle.RED               # downed vignette / ring danger red
-const TEAM_AMBER := UIStyle.AMBER             # teammate-down arrow
-const REVIVE_BADGE_THRESHOLD := 3               # (mirrored note; badge lives in scoreboard.gd)
+const DOWN_RED := UIStyle.RED  # downed vignette / ring danger red
+const TEAM_AMBER := UIStyle.AMBER  # teammate-down arrow
+const REVIVE_BADGE_THRESHOLD := 3  # (mirrored note; badge lives in scoreboard.gd)
 
-var _down_overlay: Control            # full-rect Control that paints the downed feedback
-var _down_label: Label                # "DOWNED — bleeding out" + hint
-var _team_label: Label                # small "Teammate down" caption
-var _down_active: bool = false        # is the LOCAL player downed?
-var _bleed_left: float = 0.0          # local countdown (s), driven from player_downed
+var _down_overlay: Control  # full-rect Control that paints the downed feedback
+var _down_label: Label  # "DOWNED — bleeding out" + hint
+var _team_label: Label  # small "Teammate down" caption
+var _down_active: bool = false  # is the LOCAL player downed?
+var _bleed_left: float = 0.0  # local countdown (s), driven from player_downed
 var _bleed_total: float = Settings.BLEEDOUT_TIME
-var _down_pulse: float = 0.0          # vignette pulse phase
+var _down_pulse: float = 0.0  # vignette pulse phase
 # Teammate-down directional state, refreshed (throttled) in _process.
-var _team_down_angle: float = 0.0     # screen radians toward the nearest downed teammate (0 = up)
+var _team_down_angle: float = 0.0  # screen radians toward the nearest downed teammate (0 = up)
 var _team_down_shown: bool = false
 var _team_poll_t: float = 0.0
+
 
 func _build_feedback_overlays() -> void:
 	# Full-screen red vignette pulse when the local player takes damage.
@@ -330,6 +356,7 @@ func _build_feedback_overlays() -> void:
 	_hit_marker.visible = false
 	add_child(_hit_marker)
 	_build_downed_overlay()
+
 
 ## Full-rect overlay that paints (a) the local-player downed vignette + bleedout ring and
 ## (b) the teammate-down directional arrow. We drive its `draw` signal so all the custom
@@ -373,6 +400,7 @@ func _build_downed_overlay() -> void:
 	_team_label.visible = false
 	$Root.add_child(_team_label)
 
+
 func _process(delta: float) -> void:
 	if _hurt_flash and _hurt_flash.color.a > 0.0:
 		_hurt_flash.color.a = maxf(0.0, _hurt_flash.color.a - delta * 2.4)
@@ -403,23 +431,29 @@ func _process(delta: float) -> void:
 	# Fade the storm banner out after its flash.
 	if _storm_banner and _storm_banner.visible:
 		_storm_banner_t -= delta
-		_storm_banner.modulate.a = clampf(_storm_banner_t / 1.0, 0.0, 1.0) if _storm_banner_t < 1.0 else 1.0
+		_storm_banner.modulate.a = (
+			clampf(_storm_banner_t / 1.0, 0.0, 1.0) if _storm_banner_t < 1.0 else 1.0
+		)
 		# Keep a steady pulse while it lingers, then hide.
 		if _storm_banner_t <= 0.0:
 			_storm_banner.visible = false
 	# Fade the world-event banner.
 	if _event_banner and _event_banner.visible:
 		_event_banner_t -= delta
-		_event_banner.modulate.a = clampf(_event_banner_t / 1.0, 0.0, 1.0) if _event_banner_t < 1.0 else 1.0
+		_event_banner.modulate.a = (
+			clampf(_event_banner_t / 1.0, 0.0, 1.0) if _event_banner_t < 1.0 else 1.0
+		)
 		if _event_banner_t <= 0.0:
 			_event_banner.visible = false
 	# Pulse the surge vignette while active.
 	if _surge_active and _surge_vignette != null:
 		_surge_pulse += delta
 		var p: float = 0.5 + 0.5 * sin(_surge_pulse * 2.0)
-		_surge_vignette.color.a = 0.04 + 0.08 * p   # 0.04..0.12 — subtle
+		_surge_vignette.color.a = 0.04 + 0.08 * p  # 0.04..0.12 — subtle
+
 
 # --- World events + environmental surge ------------------------------------
+
 
 func _on_world_event_started(kind: int, _pos: Vector3, label: String) -> void:
 	if _event_banner == null:
@@ -427,16 +461,22 @@ func _on_world_event_started(kind: int, _pos: Vector3, label: String) -> void:
 	# Pick a colour per event kind matching the map accent colours.
 	var col: Color
 	match kind:
-		0: col = UIStyle.AMBER                  # supply_cache — amber
-		1: col = Color(0.95, 0.30, 0.95)        # miniboss — magenta
-		2: col = UIStyle.TEAL                   # contested_poi — teal/cyan
-		3: col = Color(1.00, 0.55, 0.15)        # surge — orange
-		_: col = UIStyle.WHITE
+		0:
+			col = UIStyle.AMBER  # supply_cache — amber
+		1:
+			col = Color(0.95, 0.30, 0.95)  # miniboss — magenta
+		2:
+			col = UIStyle.TEAL  # contested_poi — teal/cyan
+		3:
+			col = Color(1.00, 0.55, 0.15)  # surge — orange
+		_:
+			col = UIStyle.WHITE
 	_event_banner.text = tr("⚠ %s") % label.to_upper()
 	_event_banner.add_theme_color_override("font_color", col)
 	_event_banner.visible = true
 	_event_banner.modulate.a = 1.0
 	_event_banner_t = 4.0
+
 
 func _on_surge_changed(active: bool, kind: int) -> void:
 	# Only the sensor-blackout surge (kind 1) triggers the vignette.
@@ -452,6 +492,7 @@ func _on_surge_changed(active: bool, kind: int) -> void:
 		_surge_vignette.visible = false
 		_surge_vignette.color.a = 0.0
 
+
 func _exit_tree() -> void:
 	# Disconnect signals connected in _ready that are NOT connected via lambda (lambdas
 	# are auto-freed with the node). Named callbacks need explicit disconnection to avoid
@@ -461,10 +502,13 @@ func _exit_tree() -> void:
 	if Events.environmental_surge_changed.is_connected(_on_surge_changed):
 		Events.environmental_surge_changed.disconnect(_on_surge_changed)
 
+
 # --- Match timer / storm warning -------------------------------------------
+
 
 func _on_match_timer_changed(left: float, total: float) -> void:
 	_refresh_match_timer(left, total)
+
 
 func _refresh_match_timer(left: float, total: float) -> void:
 	if _timer_label == null:
@@ -485,14 +529,16 @@ func _refresh_match_timer(left: float, total: float) -> void:
 	else:
 		_timer_label.add_theme_color_override("font_color", UIStyle.TEXT)
 
+
 func _on_final_wave_started() -> void:
 	if _storm_banner:
 		_storm_banner.visible = true
 		_storm_banner.modulate.a = 1.0
-		_storm_banner_t = 4.0   # lingers ~4s, then fades in the final second
+		_storm_banner_t = 4.0  # lingers ~4s, then fades in the final second
 	if _timer_label:
 		_timer_label.text = tr("⚠ FINAL WAVE")
 		_timer_label.add_theme_color_override("font_color", UIStyle.RED)
+
 
 ## Tints the screen on local-player damage and pops a hit marker when the local
 ## player damages an enemy. damage_dealt(target, amount, source).
@@ -502,12 +548,19 @@ func _on_damage_dealt(target: Node, _amount: float, source: Node) -> void:
 		# primary "where am I being hit from" cue, so keep this from drowning it in red.
 		if _hurt_flash:
 			_hurt_flash.color.a = maxf(_hurt_flash.color.a, 0.22)
-	elif source != null and source == _local_player and target != null and target.is_in_group("enemies"):
+	elif (
+		source != null
+		and source == _local_player
+		and target != null
+		and target.is_in_group(Groups.ENEMIES)
+	):
 		if _hit_marker:
 			_hit_marker.visible = true
 			_hit_marker_t = 0.12
 
+
 # --- Co-op DOWNED / REVIVE -------------------------------------------------
+
 
 func _on_player_downed(player: Node, _by: Node) -> void:
 	if _is_local(player) and player == _local_player:
@@ -523,13 +576,16 @@ func _on_player_downed(player: Node, _by: Node) -> void:
 			_down_overlay.visible = true
 			_down_overlay.queue_redraw()
 
+
 func _on_player_revived(player: Node, _by: Node) -> void:
 	if _is_local(player) and player == _local_player:
 		_hide_downed()
 
+
 func _on_player_bleedout(player: Node) -> void:
 	if _is_local(player) and player == _local_player:
 		_hide_downed()
+
 
 func _hide_downed() -> void:
 	_down_active = false
@@ -540,17 +596,27 @@ func _hide_downed() -> void:
 		_down_overlay.visible = false
 		_down_overlay.queue_redraw()
 
+
 ## Builds the centred downed prompt, including a self-revive hint when the local player
 ## actually carries a Self-Revive Kit.
 func _refresh_downed_label() -> void:
 	if _down_label == null:
 		return
 	var opts := tr("teammate can revive you") + "   ·   " + tr("hold [X] to give up")
-	if _local_player != null and "_self_revives" in _local_player \
-			and int(_local_player._self_revives) > 0:
+	if (
+		_local_player != null
+		and "_self_revives" in _local_player
+		and int(_local_player._self_revives) > 0
+	):
 		opts = tr("[H] Self-Revive") + "   ·   " + opts
-	_down_label.text = tr("DOWNED — bleeding out") + "\n" \
-		+ tr("Crawl (WASD) to cover or an OPEN evac to escape") + "\n" + opts
+	_down_label.text = (
+		tr("DOWNED — bleeding out")
+		+ "\n"
+		+ tr("Crawl (WASD) to cover or an OPEN evac to escape")
+		+ "\n"
+		+ opts
+	)
+
 
 ## Throttled poll for the nearest DOWNED teammate (not the local player). Computes the
 ## on-screen bearing the same way damage_indicator.gd does (world→camera-relative yaw).
@@ -582,7 +648,7 @@ func _update_teammate_down() -> void:
 	var changed: bool = want != _team_down_shown
 	if want and have_origin:
 		var to_t: Vector3 = nearest.global_position - origin
-		var world_bearing := atan2(to_t.x, -to_t.z)   # 0 = -Z (forward), CW
+		var world_bearing := atan2(to_t.x, -to_t.z)  # 0 = -Z (forward), CW
 		var cam_yaw: float = (_local_player as Node3D).rotation.y
 		var cam: Camera3D = _local_player.get_node_or_null("CameraPivot/SpringArm3D/Camera3D")
 		if is_instance_valid(cam):
@@ -599,12 +665,14 @@ func _update_teammate_down() -> void:
 		_down_overlay.visible = _down_active or want
 		_down_overlay.queue_redraw()
 
+
 ## Locate the spawned player node for a peer id (named str(peer_id), in group "players").
 func _find_player_node(pid: int) -> Node3D:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p is Node3D and p.name == str(pid):
 			return p
 	return null
+
 
 ## Paints the local-player downed vignette + bleedout ring, and the teammate-down arrow.
 func _draw_downed_overlay() -> void:
@@ -633,7 +701,7 @@ func _draw_downed_overlay() -> void:
 		var ring_c: Vector2 = c + Vector2(0, 6.0)
 		# Track (dim full circle) then the live remaining arc on top.
 		_down_overlay.draw_arc(ring_c, ring_r, 0.0, TAU, 48, Color(0, 0, 0, 0.55), 6.0, true)
-		var start_a: float = -PI * 0.5                      # 12 o'clock
+		var start_a: float = -PI * 0.5  # 12 o'clock
 		var end_a: float = start_a + TAU * ratio
 		var ring_col := DOWN_RED if ratio > 0.33 else Color(1.0, 0.85, 0.2)
 		_down_overlay.draw_arc(ring_c, ring_r, start_a, end_a, 48, ring_col, 6.0, true)
@@ -644,23 +712,45 @@ func _draw_downed_overlay() -> void:
 			var txt: String = str(secs)
 			var fs := 28
 			var tw: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-			_down_overlay.draw_string(font, ring_c + Vector2(-tw * 0.5, fs * 0.35), txt,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))
+			_down_overlay.draw_string(
+				font,
+				ring_c + Vector2(-tw * 0.5, fs * 0.35),
+				txt,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				fs,
+				Color(1, 1, 1, 0.95)
+			)
 		# Give-up hold progress — an amber arc fills inside the ring while you hold [X].
 		var gu: float = 0.0
 		if _local_player != null and _local_player.has_method("give_up_ratio"):
 			gu = float(_local_player.give_up_ratio())
 		if gu > 0.001:
-			_down_overlay.draw_arc(ring_c, ring_r - 12.0, start_a, start_a + TAU * gu, 40,
-				Color(0.95, 0.7, 0.2, 0.95), 4.0, true)
+			_down_overlay.draw_arc(
+				ring_c,
+				ring_r - 12.0,
+				start_a,
+				start_a + TAU * gu,
+				40,
+				Color(0.95, 0.7, 0.2, 0.95),
+				4.0,
+				true
+			)
 			if font != null:
 				var glbl := tr("GIVING UP…")
 				var gw: float = font.get_string_size(glbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-				_down_overlay.draw_string(font, ring_c + Vector2(-gw * 0.5, ring_r + 26.0), glbl,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.95, 0.7, 0.2, 0.95))
+				_down_overlay.draw_string(
+					font,
+					ring_c + Vector2(-gw * 0.5, ring_r + 26.0),
+					glbl,
+					HORIZONTAL_ALIGNMENT_LEFT,
+					-1,
+					16,
+					Color(0.95, 0.7, 0.2, 0.95)
+				)
 	# (b) TEAMMATE down arrow — points (camera-relative) toward the nearest downed mate.
 	if _team_down_shown:
-		var screen_ang: float = _team_down_angle - PI * 0.5   # 0 rad = up; draw measures from +X
+		var screen_ang: float = _team_down_angle - PI * 0.5  # 0 rad = up; draw measures from +X
 		var rad: float = 120.0
 		var tip: Vector2 = c + Vector2(cos(screen_ang), sin(screen_ang)) * rad
 		var dir: Vector2 = Vector2(cos(screen_ang), sin(screen_ang))
@@ -672,14 +762,17 @@ func _draw_downed_overlay() -> void:
 		var acol := Color(TEAM_AMBER.r, TEAM_AMBER.g, TEAM_AMBER.b, apulse)
 		_down_overlay.draw_colored_polygon(PackedVector2Array([p_tip, p_a, p_b]), acol)
 
+
 # --- Player / health -------------------------------------------------------
+
 
 func _on_local_player_spawned(player: Node) -> void:
 	_local_player = player
 	# Seed the bar from the player's current health if it exposes one.
-	var hp: Node = player.get_node_or_null("Health")
+	var hp: Node = player.get_node_or_null(Groups.NODE_HEALTH)
 	if hp and "current" in hp and "max_health" in hp:
 		_set_health(hp.current, hp.max_health)
+
 
 func _on_player_health_changed(player: Node, current: float, max_health: float) -> void:
 	# Only reflect the local player's health. Before binding, accept any update.
@@ -687,18 +780,23 @@ func _on_player_health_changed(player: Node, current: float, max_health: float) 
 		return
 	_set_health(current, max_health)
 
+
 func _set_health(current: float, max_health: float) -> void:
 	health_bar.max_value = max_health
 	health_bar.value = current
 	health_label.text = "%d / %d" % [int(round(current)), int(round(max_health))]
 
+
 # --- Waves -----------------------------------------------------------------
+
 
 func _on_wave_started(wave_number: int, _enemy_count: int) -> void:
 	_update_wave_label(wave_number)
 
+
 func _on_wave_cleared(wave_number: int) -> void:
 	wave_label.text = tr("WAVE %d CLEARED") % wave_number
+
 
 func _update_wave_label(wave_number: int) -> void:
 	if wave_number <= 0:
@@ -706,7 +804,9 @@ func _update_wave_label(wave_number: int) -> void:
 	else:
 		wave_label.text = tr("WAVE %d") % wave_number
 
+
 # --- Extraction ------------------------------------------------------------
+
 
 func _on_extraction_started(player: Node, _zone: Node) -> void:
 	if not _is_local(player):
@@ -714,11 +814,13 @@ func _on_extraction_started(player: Node, _zone: Node) -> void:
 	extract_panel.visible = true
 	extract_bar.value = 0.0
 
+
 func _on_extraction_progress(player: Node, ratio: float) -> void:
 	if not _is_local(player):
 		return
 	extract_panel.visible = true
 	extract_bar.value = clampf(ratio, 0.0, 1.0) * 100.0
+
 
 func _on_extraction_completed(player: Node) -> void:
 	if not _is_local(player):
@@ -726,11 +828,13 @@ func _on_extraction_completed(player: Node) -> void:
 	extract_bar.value = 100.0
 	extract_panel.visible = false
 
+
 func _on_extraction_cancelled(player: Node) -> void:
 	if not _is_local(player):
 		return
 	extract_panel.visible = false
 	extract_bar.value = 0.0
+
 
 # --- Match end -------------------------------------------------------------
 
@@ -738,10 +842,12 @@ func _on_extraction_cancelled(player: Node) -> void:
 ## the victory banner can show the currency hauled out this run.
 var _reward_line: String = ""
 
+
 func _on_run_rewards(currency: int, breakdown: Dictionary) -> void:
 	var loot: int = int(breakdown.get("loot", 0))
 	var survival: int = int(breakdown.get("survival", 0))
 	_reward_line = tr("+%d SCRAP  (loot %d · survival %d)") % [currency, loot, survival]
+
 
 func _on_match_won() -> void:
 	var msg := tr("EXTRACTED — YOU WIN")
@@ -749,8 +855,10 @@ func _on_match_won() -> void:
 		msg += "\n" + _reward_line
 	_show_banner(msg, Color(0.4, 1.0, 0.6))
 
+
 func _on_match_lost() -> void:
 	_show_banner(tr("KIA — gear lost"), Color(1.0, 0.35, 0.35))
+
 
 func _show_banner(text: String, color: Color) -> void:
 	# The RaidSummary screen owns the post-raid UI when present; only fall back to this
@@ -761,7 +869,9 @@ func _show_banner(text: String, color: Color) -> void:
 	banner.add_theme_color_override("font_color", color)
 	banner.visible = true
 
+
 # --- Helpers ---------------------------------------------------------------
+
 
 ## A nil local player means we haven't bound yet — treat events as local so the
 ## single-player HUD still works before local_player_spawned fires.

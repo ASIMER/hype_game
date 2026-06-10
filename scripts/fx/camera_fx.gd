@@ -224,7 +224,7 @@ func _on_screen_shake(amount: float) -> void:
 func _find_player() -> Node:
 	var n: Node = self
 	while n != null:
-		if n.is_in_group("players"):
+		if n.is_in_group(Groups.PLAYERS):
 			return n
 		n = n.get_parent()
 	return null

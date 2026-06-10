@@ -57,25 +57,12 @@ func _tick_windup(delta: float) -> void:
 		_slam()
 		_attack_cooldown = _next_cooldown()
 
-## IMPACT: AoE damage (linear falloff) + a burst + a shake for anyone close.
+## IMPACT: AoE damage (half-at-rim falloff, floor 0.4) + a burst + a shake on a hit.
 func _slam() -> void:
-	var hit_close := false
-	for p in get_tree().get_nodes_in_group("players"):
-		if p == null or not is_instance_valid(p) or not (p is Node3D):
-			continue
-		var pn := p as Node3D
-		if pn.has_method("is_downed") and pn.is_downed():
-			continue
-		var d := global_position.distance_to(pn.global_position)
-		if d > _slam_radius:
-			continue
-		hit_close = true
-		var dmg := _slam_damage * clampf(1.0 - 0.5 * d / _slam_radius, 0.4, 1.0)
-		var hb := pn.get_node_or_null("Hurtbox")
-		if hb and hb.has_method("apply_hit"):
-			hb.apply_hit(dmg, self)
+	var hit := CombatAoe.damage_players(global_position, _slam_radius, _slam_damage, self,
+		0.5, 0.4)
 	_spawn_death_burst()   # ground-impact flash/sparks at the body
-	if hit_close:
+	if hit > 0:
 		Events.screen_shake.emit(0.35)
 
 ## OVERRIDE: cache the fists + chest core.

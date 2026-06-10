@@ -59,7 +59,7 @@ func _gather_zones() -> void:
 	if not GameState.is_local_authority_server():
 		return
 	_zones.clear()
-	for z in get_tree().get_nodes_in_group("extraction"):
+	for z in get_tree().get_nodes_in_group(Groups.EXTRACTION):
 		if is_instance_valid(z) and z.has_method("set_window"):
 			_zones.append(z)
 	if _zones.is_empty():

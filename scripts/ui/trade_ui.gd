@@ -464,7 +464,7 @@ func _on_peer_unregistered(peer_id: int) -> void:
 
 func _bind_local_inventory() -> void:
 	var me_name := str(GameState.local_peer_id())
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if str(p.name) == me_name:
 			_player = p
 			var inv := p.get_node_or_null("Inventory")

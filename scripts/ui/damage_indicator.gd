@@ -47,7 +47,7 @@ func _bind_player(p: Node) -> void:
 
 
 func _find_local_player() -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p.has_method("is_multiplayer_authority") and p.is_multiplayer_authority():
 			return p
 	return null

@@ -65,7 +65,7 @@ func credit_kill(enemy_id: String = "") -> void:
 
 ## The local-authority player node (this peer's own player), or null if not spawned yet.
 func _local_player() -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p != null and is_instance_valid(p) and (p as Node).is_multiplayer_authority():
 			return p
 	return null

@@ -92,7 +92,7 @@ static func tier_at(world_pos: Vector3) -> int:
 	var scene_tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if scene_tree == null:
 		return 1
-	var arenas: Array = scene_tree.get_nodes_in_group("arena")
+	var arenas: Array = scene_tree.get_nodes_in_group(Groups.ARENA)
 	if arenas.is_empty():
 		return 1
 	var arena: Node = arenas[0]

@@ -5,7 +5,8 @@ extends Node
 ## connection, peer registry, and the load->ready->start handshake.
 
 var local_player_name: String = "Raider"
-var is_offline: bool = false   # true when running single-player (no peer)
+var is_offline: bool = false  # true when running single-player (no peer)
+
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -14,6 +15,7 @@ func _ready() -> void:
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 	Events.entity_died.connect(_on_entity_died)
+
 
 # ---------------------------------------------------------------- host / join
 func host_game(port: int = Settings.net_port) -> Error:
@@ -28,6 +30,7 @@ func host_game(port: int = Settings.net_port) -> Error:
 	GameState.register_peer(1, local_player_name)
 	return OK
 
+
 func join_game(ip: String = Settings.DEFAULT_IP, port: int = Settings.net_port) -> Error:
 	var peer := ENetMultiplayerPeer.new()
 	var err := peer.create_client(ip, port)
@@ -38,6 +41,7 @@ func join_game(ip: String = Settings.DEFAULT_IP, port: int = Settings.net_port) 
 	is_offline = false
 	GameState.set_phase(GameState.Phase.LOBBY)
 	return OK
+
 
 func start_offline() -> void:
 	# Single-player: use an OfflineMultiplayerPeer (NOT null). With a null peer,
@@ -50,12 +54,14 @@ func start_offline() -> void:
 	GameState.set_phase(GameState.Phase.IN_MATCH)
 	GameState.register_peer(1, local_player_name)
 
+
 func disconnect_game() -> void:
 	if multiplayer.has_multiplayer_peer():
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = null
 	GameState.peers.clear()
 	GameState.set_phase(GameState.Phase.MENU)
+
 
 # ------------------------------------------------------- peer registry (RPCs)
 ## Client tells the server its info; server records and broadcasts the full roster.
@@ -67,16 +73,21 @@ func _register_self(pname: String) -> void:
 	GameState.register_peer(sender, pname)
 	_broadcast_roster.rpc(_serialize_roster())
 
+
 @rpc("authority", "call_remote", "reliable")
 func _broadcast_roster(roster: Dictionary) -> void:
 	GameState.peers = roster
 	for id in roster:
 		Events.peer_registered.emit(id, roster[id])
 	if Settings.NET_DEBUG:
-		print("[net] roster synced on peer %d: %s" % [multiplayer.get_unique_id(), str(roster.keys())])
+		print(
+			"[net] roster synced on peer %d: %s" % [multiplayer.get_unique_id(), str(roster.keys())]
+		)
+
 
 func _serialize_roster() -> Dictionary:
 	return GameState.peers.duplicate(true)
+
 
 # --------------------------------------------------------- squad ready-up
 ## A client toggles its lobby ready state; the server records it and re-broadcasts
@@ -92,6 +103,7 @@ func set_ready(ready: bool) -> void:
 	_broadcast_roster.rpc(_serialize_roster())
 	Events.squad_changed.emit()
 
+
 ## LEADER (host) presses START RAID. Server-only: gate on LOBBY + all members ready,
 ## then reset the match and tell EVERY peer to deploy on the same tick.
 func request_start() -> bool:
@@ -103,6 +115,7 @@ func request_start() -> bool:
 	_loaded.clear()
 	_begin_deploy.rpc()
 	return true
+
 
 ## Host-driven RESTART / re-deploy of an ALREADY-formed squad (post-raid "Restart", or a
 ## re-deploy that shouldn't wait on the lobby ready toggles). Same synchronized path as
@@ -117,14 +130,16 @@ func request_redeploy() -> bool:
 	_begin_deploy.rpc()
 	return true
 
+
 ## Runs on EVERY peer: kick off the local deploy (commit bring-list + load arena).
 @rpc("authority", "call_local", "reliable")
 func _begin_deploy() -> void:
 	GameState.set_phase(GameState.Phase.LOADING)
 	Events.begin_deploy.emit()
 
+
 # --------------------------------------------------------- load gate -> start
-var _loaded: Dictionary = {}   # peer_id -> true (reset each deploy in request_start)
+var _loaded: Dictionary = {}  # peer_id -> true (reset each deploy in request_start)
 
 ## Each peer calls this once its arena scene has finished loading. The match (and the
 ## player spawns) only begins once EVERY peer has loaded — so no peer's spawner is
@@ -135,7 +150,7 @@ func notify_loaded() -> void:
 		return
 	var sender := multiplayer.get_remote_sender_id()
 	if sender == 0:
-		sender = 1   # the host's own call_local invocation has no remote sender
+		sender = 1  # the host's own call_local invocation has no remote sender
 	_loaded[sender] = true
 	if _all_loaded():
 		# Don't clear _loaded here — keeping peers marked lets a LATER joiner's load
@@ -145,6 +160,7 @@ func notify_loaded() -> void:
 		Events.all_players_ready.emit()
 		begin_match.rpc()
 
+
 func _all_loaded() -> bool:
 	if GameState.peers.is_empty():
 		return false
@@ -153,12 +169,14 @@ func _all_loaded() -> bool:
 			return false
 	return true
 
+
 @rpc("authority", "call_local", "reliable")
 func begin_match() -> void:
 	if Settings.NET_DEBUG:
 		print("[net] begin_match on peer %d" % multiplayer.get_unique_id())
 	GameState.set_phase(GameState.Phase.IN_MATCH)
 	Events.match_started.emit()
+
 
 # -------------------------------------------------- gameplay state sync (HUD parity)
 ## The wave system + match timer run server-only, so clients' HUDs would show stale
@@ -167,26 +185,32 @@ func begin_match() -> void:
 func _is_remote_server() -> bool:
 	return multiplayer.has_multiplayer_peer() and not is_offline and multiplayer.is_server()
 
+
 func sync_wave(wave: int, count: int) -> void:
 	if _is_remote_server():
 		_rpc_wave.rpc(wave, count)
+
 
 func sync_wave_cleared(wave: int) -> void:
 	if _is_remote_server():
 		_rpc_wave_cleared.rpc(wave)
 
+
 func sync_match_timer(left: float, total: float, final_wave: bool) -> void:
 	if _is_remote_server():
 		_rpc_match_timer.rpc(left, total, final_wave)
+
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_wave(wave: int, count: int) -> void:
 	GameState.current_wave = wave
 	Events.wave_started.emit(wave, count)
 
+
 @rpc("authority", "call_remote", "reliable")
 func _rpc_wave_cleared(wave: int) -> void:
 	Events.wave_cleared.emit(wave)
+
 
 @rpc("authority", "call_remote", "unreliable_ordered")
 func _rpc_match_timer(left: float, total: float, final_wave: bool) -> void:
@@ -196,6 +220,7 @@ func _rpc_match_timer(left: float, total: float, final_wave: bool) -> void:
 		Events.final_wave_started.emit()
 	GameState.final_wave = final_wave
 	Events.match_timer_changed.emit(left, total)
+
 
 # ----------------------------------------------------- match-end broadcast
 ## Server calls these to end the match on EVERY peer. Offline (incl. the offline
@@ -207,11 +232,13 @@ func broadcast_match_won() -> void:
 	else:
 		_rpc_match_won()
 
+
 func broadcast_match_lost() -> void:
 	if multiplayer.has_multiplayer_peer() and not is_offline:
 		_rpc_match_lost.rpc()
 	else:
 		_rpc_match_lost()
+
 
 @rpc("authority", "call_local", "reliable")
 func _rpc_match_won() -> void:
@@ -222,6 +249,7 @@ func _rpc_match_won() -> void:
 	GameState.set_phase(GameState.Phase.RESULTS)
 	Events.match_won.emit()
 
+
 @rpc("authority", "call_local", "reliable")
 func _rpc_match_lost() -> void:
 	if GameState.phase == GameState.Phase.RESULTS:
@@ -229,10 +257,12 @@ func _rpc_match_lost() -> void:
 	GameState.set_phase(GameState.Phase.RESULTS)
 	Events.match_lost.emit()
 
+
 # ============================================================ co-op combat sync
 # A CLIENT's weapon resolves the hit locally but must NOT apply damage to its own
 # copy of the enemy (the server owns the enemy). It routes the hit here; the server
 # applies it authoritatively so the enemy actually takes damage / dies for everyone.
+
 
 ## Called by weapon.gd on a CLIENT after it resolves a hurtbox hit. The host applies
 ## directly (it IS the server); a client RPCs the server.
@@ -242,32 +272,42 @@ func request_hit(target_path: NodePath, amount: float, attacker_peer: int) -> vo
 	else:
 		_hit_rpc.rpc_id(1, target_path, amount, attacker_peer)
 
+
 @rpc("any_peer", "call_remote", "reliable")
 func _hit_rpc(target_path: NodePath, amount: float, attacker_peer: int) -> void:
 	if not multiplayer.is_server():
 		return
 	_do_hit(target_path, amount, attacker_peer)
 
+
 func _do_hit(target_path: NodePath, amount: float, attacker_peer: int) -> void:
 	var hb := get_node_or_null(target_path)
 	if hb != null and hb.has_method("apply_hit"):
 		hb.apply_hit(amount, _player_for_peer(attacker_peer))
 
+
 func _player_for_peer(peer_id: int) -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if str(p.name).to_int() == peer_id:
 			return p
 	return null
 
+
 ## Broadcast a fired shot to OTHER peers so teammates see the tracer/muzzle/impact
 ## (the shooter already spawned its own FX locally). Unreliable — purely cosmetic.
-func broadcast_shot(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3) -> void:
+func broadcast_shot(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+) -> void:
 	if multiplayer.has_multiplayer_peer() and not is_offline:
 		_shot_rpc.rpc(muzzle, hit_point, arc, enemy_hit, normal)
 
+
 @rpc("any_peer", "call_remote", "unreliable")
-func _shot_rpc(muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3) -> void:
+func _shot_rpc(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+) -> void:
 	Events.remote_shot.emit(muzzle, hit_point, arc, enemy_hit, normal)
+
 
 # =========================================================== noise -> server AI
 ## A loud event (gunfire / grenade) was made — route it to the SERVER so the
@@ -281,11 +321,13 @@ func report_noise(world_pos: Vector3, loudness: float, kind: int) -> void:
 	else:
 		_noise_rpc.rpc_id(1, world_pos, loudness, kind)
 
+
 @rpc("any_peer", "call_remote", "reliable")
 func _noise_rpc(world_pos: Vector3, loudness: float, kind: int) -> void:
 	if not multiplayer.is_server():
 		return
 	Events.noise_emitted.emit(world_pos, loudness, kind)
+
 
 # =========================================================== kill leaderboard sync
 ## On the server, attribute each mob kill to the killer's peer and broadcast the
@@ -295,12 +337,14 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 		return
 	if entity == null:
 		return
-	if entity.is_in_group("players"):
+	if entity.is_in_group(Groups.PLAYERS):
 		GameState.record_death(_peer_of(entity))
-		_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
+		_sync_scores.rpc(
+			GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives
+		)
 		Events.scoreboard_changed.emit()
 		return
-	if not entity.is_in_group("enemies"):
+	if not entity.is_in_group(Groups.ENEMIES):
 		return
 	var peer := _peer_of(killer)
 	# Enemy archetype (robot_grunt/heavy/elite/…) — threaded to the killer so its PERSONAL
@@ -318,9 +362,10 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 		else:
 			_credit_kill_rpc.rpc_id(peer, eid)
 	else:
-		GameState.mobs_killed += 1   # unattributed (environment/explosion) still counts to the team
+		GameState.mobs_killed += 1  # unattributed (environment/explosion) still counts to the team
 	_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
 	Events.scoreboard_changed.emit()
+
 
 ## Server → the killer peer: credit your own kill locally (XP + this machine's active
 ## weapon's mastery). Runs on the killer's machine so it reads that peer's own profile + gun.
@@ -328,16 +373,18 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 func _credit_kill_rpc(enemy_id: String = "") -> void:
 	Progression.credit_kill(enemy_id)
 
+
 ## Walk up from a node (hurtbox/weapon/player) to the owning player and return its
 ## peer id (the player node is named str(peer_id)). 0 = no player owner.
 func _peer_of(node: Node) -> int:
 	var n := node
 	while n != null:
-		if n.is_in_group("players"):
+		if n.is_in_group(Groups.PLAYERS):
 			var pid := str(n.name).to_int()
 			return pid if pid > 0 else 1
 		n = n.get_parent()
 	return 0
+
 
 @rpc("authority", "call_remote", "reliable")
 func _sync_scores(k: Dictionary, d: Dictionary, total: int, r: Dictionary = {}) -> void:
@@ -346,6 +393,7 @@ func _sync_scores(k: Dictionary, d: Dictionary, total: int, r: Dictionary = {}) 
 	GameState.mobs_killed = total
 	GameState.revives = r
 	Events.scoreboard_changed.emit()
+
 
 # =========================================================== co-op revive / downed / ping
 ## A CLIENT (or host) asks the server to revive a downed teammate. Server validates the
@@ -357,11 +405,13 @@ func request_revive(target_peer: int) -> void:
 	else:
 		_revive_rpc.rpc_id(1, target_peer, multiplayer.get_unique_id())
 
+
 @rpc("any_peer", "call_remote", "reliable")
 func _revive_rpc(target_peer: int, reviver_peer: int) -> void:
 	if not multiplayer.is_server():
 		return
 	_do_revive(target_peer, reviver_peer)
+
 
 func _do_revive(target_peer: int, reviver_peer: int) -> void:
 	if not GameState.is_downed(target_peer):
@@ -376,13 +426,19 @@ func _do_revive(target_peer: int, reviver_peer: int) -> void:
 	var reviver := _player_for_peer(reviver_peer)
 	if reviver == null or reviver_peer == target_peer or GameState.is_downed(reviver_peer):
 		return
-	if (reviver as Node3D).global_position.distance_to((target as Node3D).global_position) > Settings.INTERACT_RANGE * 1.5:
+	if (
+		(reviver as Node3D).global_position.distance_to((target as Node3D).global_position)
+		> Settings.INTERACT_RANGE * 1.5
+	):
 		return
-	target.server_revive(reviver)   # player clears downed + heals (synced)
+	target.server_revive(reviver)  # player clears downed + heals (synced)
 	if reviver_peer > 0 and reviver_peer != target_peer:
 		GameState.record_revive(reviver_peer)
-		_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)
+		_sync_scores.rpc(
+			GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives
+		)
 		Events.scoreboard_changed.emit()
+
 
 ## Server broadcasts a peer's DOWNED state to everyone (drives the loss check + HUD + AI).
 func broadcast_downed(pid: int, value: bool) -> void:
@@ -391,9 +447,11 @@ func broadcast_downed(pid: int, value: bool) -> void:
 		if multiplayer.has_multiplayer_peer() and not is_offline:
 			_downed_rpc.rpc(pid, value)
 
+
 @rpc("authority", "call_remote", "reliable")
 func _downed_rpc(pid: int, value: bool) -> void:
 	GameState.set_downed(pid, value)
+
 
 ## Any peer places a ping → server relays to all (incl. sender via call_local) so the whole
 ## squad sees the world marker + HUD arrow. Cosmetic/comms; cheap + reliable.
@@ -404,13 +462,16 @@ func broadcast_ping(kind: int, world_pos: Vector3, target_path: NodePath) -> voi
 		return
 	_ping_rpc.rpc(me, kind, world_pos, target_path)
 
+
 @rpc("any_peer", "call_local", "reliable")
 func _ping_rpc(peer_id: int, kind: int, world_pos: Vector3, target_path: NodePath) -> void:
 	Events.ping_placed.emit(peer_id, kind, world_pos, target_path)
 
+
 ## The local player's peer id (1 for host/offline).
 func _peer_of_local() -> int:
 	return multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
+
 
 # ============================================================ item transfer (give/trade)
 ## Server-authoritative atomic move of `count` of `item_id` from one player's
@@ -448,6 +509,7 @@ func transfer_item(from_peer: int, to_peer: int, item_id: String, count: int) ->
 		_notify_received.rpc_id(to_peer, from_peer, item_id, moved)
 	return moved
 
+
 @rpc("any_peer", "call_remote", "reliable")
 func _transfer_rpc(from_peer: int, to_peer: int, item_id: String, count: int) -> void:
 	if not multiplayer.is_server():
@@ -458,9 +520,11 @@ func _transfer_rpc(from_peer: int, to_peer: int, item_id: String, count: int) ->
 		return
 	transfer_item(from_peer, to_peer, item_id, count)
 
+
 @rpc("authority", "call_remote", "reliable")
 func _notify_received(from_peer: int, item_id: String, count: int) -> void:
 	Events.item_received.emit(from_peer, item_id, count)
+
 
 ## Server-authoritative stack split. A client asks the server to split `amount` off
 ## its own stack of `item_id` into a new stack; the owner-mirror then reflects it.
@@ -472,13 +536,15 @@ func request_split(peer_id: int, item_id: String, amount: int) -> void:
 	if inv != null and inv.has_method("split_stack"):
 		inv.split_stack(item_id, amount)
 
+
 @rpc("any_peer", "call_remote", "reliable")
 func _split_rpc(peer_id: int, item_id: String, amount: int) -> void:
 	if not multiplayer.is_server():
 		return
 	if multiplayer.get_remote_sender_id() != peer_id:
-		return   # only split your OWN inventory
+		return  # only split your OWN inventory
 	request_split(peer_id, item_id, amount)
+
 
 ## Nearest OTHER player's peer id to the given peer (by world distance). 0 if alone.
 ## Used by GIVE + TRADE proximity. Works locally on any peer (positions are synced).
@@ -489,7 +555,7 @@ func nearest_teammate(peer_id: int) -> int:
 	var my_pos: Vector3 = (me as Node3D).global_position
 	var best := 0
 	var best_d := INF
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		var pid := str(p.name).to_int()
 		if pid == peer_id or not (p is Node3D):
 			continue
@@ -499,12 +565,14 @@ func nearest_teammate(peer_id: int) -> int:
 			best = pid
 	return best
 
+
 ## Resolve a peer's Inventory node (child of its player). Server-side only.
 func _inventory_for_peer(peer_id: int) -> Node:
 	var p := _player_for_peer(peer_id)
 	if p == null:
 		return null
 	return p.get_node_or_null("Inventory")
+
 
 # ------------------------------------------------------------- net callbacks
 func _on_peer_connected(id: int) -> void:
@@ -515,12 +583,13 @@ func _on_peer_connected(id: int) -> void:
 			print("[net] peer %d connected to server" % id)
 		_broadcast_roster.rpc_id(id, _serialize_roster())
 
+
 func _on_peer_disconnected(id: int) -> void:
 	GameState.unregister_peer(id)
 	# Server: despawn the disconnected player's body so it doesn't linger frozen in the
 	# arena (freeing it on the authority replicates the removal to the other clients).
 	if multiplayer.is_server():
-		for p in get_tree().get_nodes_in_group("players"):
+		for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 			if str(p.name).to_int() == id:
 				p.queue_free()
 		# A disconnect could have been the last unresolved player — re-check win/lose.
@@ -529,13 +598,16 @@ func _on_peer_disconnected(id: int) -> void:
 		elif GameState.all_players_resolved():
 			broadcast_match_won()
 
+
 func _on_connected_to_server() -> void:
 	_register_self.rpc_id(1, local_player_name)
+
 
 func _on_connection_failed() -> void:
 	push_warning("Connection failed")
 	multiplayer.multiplayer_peer = null
 	GameState.set_phase(GameState.Phase.MENU)
+
 
 func _on_server_disconnected() -> void:
 	push_warning("Server disconnected")

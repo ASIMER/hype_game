@@ -305,7 +305,7 @@ func _process(delta: float) -> void:
 		# wave a real chaser would have closed in, so a >55 m enemy is marooned (covers
 		# stuck ranged archetypes that the per-enemy melee stuck-check intentionally skips).
 		# Legit ranged enemies sit at their 15–22 m stand-off, well inside 55 m — untouched.
-		var players := get_tree().get_nodes_in_group("players")
+		var players := get_tree().get_nodes_in_group(Groups.PLAYERS)
 		if not players.is_empty():
 			for e in _alive_enemies:
 				if not is_instance_valid(e) or not (e is Node3D):
@@ -426,14 +426,14 @@ func _scene_for_spawn(biome: String = "urban") -> String:
 func _player_positions() -> Array[Vector3]:
 	var up: Array[Vector3] = []
 	var all: Array[Vector3] = []
-	for pl in get_tree().get_nodes_in_group("players"):
+	for pl in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if not (pl is Node3D) or not is_instance_valid(pl):
 			continue
 		var pos: Vector3 = (pl as Node3D).global_position
 		all.append(pos)
 		var downed: bool = pl.has_method("is_downed") and pl.is_downed()
 		var dead: bool = false
-		var h: Node = pl.get_node_or_null("Health")
+		var h: Node = pl.get_node_or_null(Groups.NODE_HEALTH)
 		if h != null and "is_dead" in h:
 			dead = bool(h.is_dead)
 		if not downed and not dead:
@@ -537,8 +537,8 @@ func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -
 		return
 	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
 	# Ensure it's discoverable as an enemy even if the scene forgot the group.
-	if not enemy.is_in_group("enemies"):
-		enemy.add_to_group("enemies")
+	if not enemy.is_in_group(Groups.ENEMIES):
+		enemy.add_to_group(Groups.ENEMIES)
 	# Apply hunter flag only when the property exists (guard against scene variants
 	# that may not have it — prevents "Invalid set index" at runtime).
 	if "hunter" in enemy:
@@ -558,7 +558,7 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 
 	if not _wave_active:
 		return
-	if entity == null or not entity.is_in_group("enemies"):
+	if entity == null or not entity.is_in_group(Groups.ENEMIES):
 		return
 	_alive_enemies.erase(entity)
 	# Cleared only once the whole wave has spawned AND every enemy is dead.
@@ -667,8 +667,8 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 		push_warning("WaveManager: reinforcement scene %s missing — skipping" % scene_path)
 		return
 	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
-	if not enemy.is_in_group("enemies"):
-		enemy.add_to_group("enemies")
+	if not enemy.is_in_group(Groups.ENEMIES):
+		enemy.add_to_group(Groups.ENEMIES)
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
 	_enemies_container.add_child(enemy, true)
@@ -692,7 +692,7 @@ func _tick_camp_detection(delta: float) -> void:
 	if _camp_cooldown > 0.0:
 		_camp_cooldown = maxf(_camp_cooldown - delta, 0.0)
 
-	var players := get_tree().get_nodes_in_group("players")
+	var players := get_tree().get_nodes_in_group(Groups.PLAYERS)
 	if players.is_empty():
 		_camp_timer = 0.0
 		return
@@ -774,8 +774,8 @@ func _spawn_patrol_enemy(index: int) -> void:
 	if not ResourceLoader.exists(scene_path):
 		return
 	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
-	if not enemy.is_in_group("enemies"):
-		enemy.add_to_group("enemies")
+	if not enemy.is_in_group(Groups.ENEMIES):
+		enemy.add_to_group(Groups.ENEMIES)
 	# Patrols are NOT hunters — they roam/sense normally so the player can avoid them.
 	if "hunter" in enemy:
 		enemy.hunter = false
@@ -824,7 +824,7 @@ func _tick_boss_adds(delta: float) -> void:
 		return
 
 	# Read Health node (standard pattern: boss has a child named Health with current/max).
-	var health_node: Node = boss.get_node_or_null("Health")
+	var health_node: Node = boss.get_node_or_null(Groups.NODE_HEALTH)
 	if health_node == null:
 		return
 	var hp_current: float = float(health_node.get("current") if "current" in health_node else 0.0)

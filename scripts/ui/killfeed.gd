@@ -120,7 +120,7 @@ func _on_pickup(_player: Node, item_id: String, count: int) -> void:
 
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
-	if entity != null and entity.is_in_group("enemies"):
+	if entity != null and entity.is_in_group(Groups.ENEMIES):
 		var label := tr("Enemy")
 		if entity is Node and entity.name != "":
 			label = String(entity.name)

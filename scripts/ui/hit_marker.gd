@@ -73,7 +73,7 @@ func _is_local_source(node: Node) -> bool:
 func _is_enemy(node: Node) -> bool:
 	var n := node
 	while n != null:
-		if n.is_in_group("enemies"):
+		if n.is_in_group(Groups.ENEMIES):
 			return true
 		n = n.get_parent()
 	return false

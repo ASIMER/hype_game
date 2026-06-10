@@ -22,7 +22,7 @@ const PLAYER_SCENE := "res://scenes/player/Player.tscn"
 func _ready() -> void:
 	# Discoverable by the map UI (which is nested elsewhere and can't reach us via
 	# current_scene) for POI/zone-of-interest labels.
-	add_to_group("arena")
+	add_to_group(Groups.ARENA)
 	# Loot replicates via a CUSTOM spawn_function so each pickup's id/count/pos travel as
 	# spawn data — auto-spawn would re-instantiate LootPickup.tscn with its scene defaults
 	# on clients (every pickup showed up as "loot_scrap"). Set on EVERY peer (host+client)

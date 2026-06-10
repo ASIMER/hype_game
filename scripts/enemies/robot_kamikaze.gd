@@ -60,17 +60,9 @@ func _tick_fuse(delta: float) -> void:
 func _detonate() -> void:
 	if _dying or (_health != null and _health.is_dead):
 		return
-	for p in get_tree().get_nodes_in_group("players"):
-		if p == null or not is_instance_valid(p) or not (p is Node3D):
-			continue
-		var pn := p as Node3D
-		var d := global_position.distance_to(pn.global_position)
-		if d > _blast_radius:
-			continue
-		var dmg := _blast_damage * clampf(1.0 - d / _blast_radius, 0.25, 1.0)
-		var hb := pn.get_node_or_null("Hurtbox")
-		if hb and hb.has_method("apply_hit"):
-			hb.apply_hit(dmg, self)
+	# Full linear falloff (floor 0.25); the blast hits DOWNED players too.
+	CombatAoe.damage_players(global_position, _blast_radius, _blast_damage, self,
+		1.0, 0.25, true)
 	_health.take_damage(1.0e6, self)
 
 ## OVERRIDE: cache the 4 skitter-leg pivots + the red arming Core.

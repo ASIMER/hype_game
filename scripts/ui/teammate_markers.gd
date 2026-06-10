@@ -12,8 +12,9 @@ var _player: Node3D = null
 var _camera: Camera3D = null
 var _draw_ctrl: Control = null
 
+
 func _ready() -> void:
-	layer = 6   # same band as PingSystem (above hit-marker, below the map)
+	layer = 6  # same band as PingSystem (above hit-marker, below the map)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_draw_ctrl = Control.new()
 	_draw_ctrl.name = "Draw"
@@ -25,19 +26,23 @@ func _ready() -> void:
 		Events.local_player_spawned.connect(_on_local_player_spawned)
 	_bind_existing_player()
 
+
 func _process(_delta: float) -> void:
 	_draw_ctrl.queue_redraw()
+
 
 # --- local-player binding (mirrors PingSystem) ------------------------------
 func _on_local_player_spawned(player: Node) -> void:
 	_player = player as Node3D
 	_camera = null
 
+
 func _bind_existing_player() -> void:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p is Node3D and _is_local(p):
 			_player = p as Node3D
 			return
+
 
 func _is_local(player: Node) -> bool:
 	if not multiplayer.has_multiplayer_peer():
@@ -45,6 +50,7 @@ func _is_local(player: Node) -> bool:
 	if not player.has_method("get_multiplayer_authority"):
 		return true
 	return player.get_multiplayer_authority() == multiplayer.get_unique_id()
+
 
 func _resolve_camera() -> Camera3D:
 	if is_instance_valid(_camera):
@@ -54,6 +60,7 @@ func _resolve_camera() -> Camera3D:
 	if is_instance_valid(_player):
 		_camera = _player.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") as Camera3D
 	return _camera
+
 
 # --- draw -------------------------------------------------------------------
 func _on_draw() -> void:
@@ -82,7 +89,9 @@ func _on_draw() -> void:
 			# Distance-faded so a nearby squad doesn't clutter the view (near≈0.85 → far≈0.35).
 			var dist: float = ppos.distance_to(tnode.global_position)
 			var a: float = clampf(0.9 - dist / 90.0, 0.35, 0.85)
-			_draw_nameplate(font, sp, String(t["name"]), Color(col.r, col.g, col.b, a), bool(t["downed"]))
+			_draw_nameplate(
+				font, sp, String(t["name"]), Color(col.r, col.g, col.b, a), bool(t["downed"])
+			)
 		else:
 			var dir := sp - center
 			if behind:
@@ -92,22 +101,38 @@ func _on_draw() -> void:
 			var edge := _edge_point(center, dir.normalized(), rect)
 			_draw_edge_arrow(edge, dir.normalized(), Color(col.r, col.g, col.b, 0.85))
 
+
 ## A small downward chevron + the nickname above the teammate's head (subtle, outlined).
 func _draw_nameplate(font: Font, p: Vector2, label: String, col: Color, downed: bool) -> void:
 	# Chevron ▽ pointing down at the head.
-	_draw_ctrl.draw_colored_polygon(PackedVector2Array([
-		p + Vector2(-5, -10), p + Vector2(5, -10), p + Vector2(0, -3)]), col)
-	_draw_ctrl.draw_polyline(PackedVector2Array([
-		p + Vector2(-5, -10), p + Vector2(5, -10), p + Vector2(0, -3), p + Vector2(-5, -10)]),
-		Color(0, 0, 0, col.a * 0.6), 1.0, true)
+	_draw_ctrl.draw_colored_polygon(
+		PackedVector2Array([p + Vector2(-5, -10), p + Vector2(5, -10), p + Vector2(0, -3)]), col
+	)
+	_draw_ctrl.draw_polyline(
+		PackedVector2Array(
+			[p + Vector2(-5, -10), p + Vector2(5, -10), p + Vector2(0, -3), p + Vector2(-5, -10)]
+		),
+		Color(0, 0, 0, col.a * 0.6),
+		1.0,
+		true
+	)
 	var name_text := label
 	if downed:
-		name_text = label + "  ⚑"   # downed flag
+		name_text = label + "  ⚑"  # downed flag
 	var fs := 12
 	var tw := font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var lp := p + Vector2(-tw * 0.5, -14.0)
-	_draw_ctrl.draw_string(font, lp + Vector2(1, 1), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, col.a * 0.7))
+	_draw_ctrl.draw_string(
+		font,
+		lp + Vector2(1, 1),
+		name_text,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		fs,
+		Color(0, 0, 0, col.a * 0.7)
+	)
 	_draw_ctrl.draw_string(font, lp, name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+
 
 func _draw_edge_arrow(p: Vector2, dir: Vector2, col: Color) -> void:
 	var side := Vector2(-dir.y, dir.x)
@@ -115,7 +140,10 @@ func _draw_edge_arrow(p: Vector2, dir: Vector2, col: Color) -> void:
 	var a := p - dir * 6.0 + side * 8.0
 	var b := p - dir * 6.0 - side * 8.0
 	_draw_ctrl.draw_colored_polygon(PackedVector2Array([tip, a, b]), col)
-	_draw_ctrl.draw_polyline(PackedVector2Array([tip, a, b, tip]), Color(0, 0, 0, col.a * 0.6), 1.5, true)
+	_draw_ctrl.draw_polyline(
+		PackedVector2Array([tip, a, b, tip]), Color(0, 0, 0, col.a * 0.6), 1.5, true
+	)
+
 
 func _edge_point(center: Vector2, dir: Vector2, rect: Rect2) -> Vector2:
 	var tmin := INF

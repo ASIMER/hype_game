@@ -45,7 +45,7 @@ func _bind_player(p: Node) -> void:
 
 
 func _find_local_player() -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p.has_method("is_multiplayer_authority") and p.is_multiplayer_authority():
 			return p
 	return null
@@ -103,7 +103,7 @@ func _draw() -> void:
 				card["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, CARD_COL)
 
 	# Extraction zone markers.
-	for z in get_tree().get_nodes_in_group("extraction"):
+	for z in get_tree().get_nodes_in_group(Groups.EXTRACTION):
 		if not (z is Node3D):
 			continue
 		var pos := (z as Node3D).global_position

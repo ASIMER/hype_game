@@ -39,31 +39,11 @@ func _do_attack(delta: float) -> void:
 		_strike(_target)
 		_attack_cooldown = _next_cooldown()
 
-## Horizontal steering toward the orbit ring + a tangential strafe (flips every few s).
+## Horizontal steering toward the orbit ring + a tangential strafe (flips every few s)
+## (shared Steering.orbit_dir — it reads/writes our _strafe_dir/_strafe_flip_t).
 func _orbit_dir(delta: float) -> Vector3:
-	if _target == null or not is_instance_valid(_target):
-		return Vector3.ZERO
-	_strafe_flip_t -= delta
-	if _strafe_flip_t <= 0.0:
-		_strafe_flip_t = randf_range(2.0, 4.0)
-		if randf() < 0.5:
-			_strafe_dir = -_strafe_dir
-	var to_target := _target.global_position - global_position
-	to_target.y = 0.0
-	var d := to_target.length()
-	if d < 0.001:
-		return Vector3.ZERO
-	var radial := to_target / d
-	var move := Vector3.ZERO
-	if d > _orbit_distance + ORBIT_BAND:
-		move += radial
-	elif d < _orbit_distance - ORBIT_BAND:
-		move -= radial
-	var tangent := Vector3(-radial.z, 0.0, radial.x) * _strafe_dir
-	move += tangent * STRAFE_SPEED_SCALE
-	if move.length() > 0.001:
-		move = move.normalized()
-	return move
+	return Steering.orbit_dir(self, _target, delta,
+		_orbit_distance, ORBIT_BAND, STRAFE_SPEED_SCALE)
 
 ## OVERRIDE: cache the spinning skirt + the amber eye.
 func _cache_proc_parts() -> void:

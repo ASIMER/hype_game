@@ -73,7 +73,7 @@ func set_window(open: bool, remaining: float) -> void:
 	Events.extraction_window_changed.emit(self, _open, _window_remaining)
 
 func _ready() -> void:
-	add_to_group("extraction")   # so the minimap/compass can mark zones
+	add_to_group(Groups.EXTRACTION)   # so the minimap/compass can mark zones
 	# Visual beacon (clients build it too so the landmark shows on every machine).
 	_build_beacon()
 	_is_server = GameState.is_local_authority_server()
@@ -177,7 +177,7 @@ func _peer_id_for(body: Node) -> int:
 	return 0
 
 func _is_player(body: Node) -> bool:
-	return body != null and body.is_in_group("players")
+	return body != null and body.is_in_group(Groups.PLAYERS)
 
 # ============================================================ PROCEDURAL BEACON
 # Visual landmark only — none of this touches the server-auth window/progress logic.

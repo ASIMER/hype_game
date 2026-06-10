@@ -154,9 +154,9 @@ func _ready() -> void:
 	_heartbeat_player.volume_db = -80.0   # start silent
 	_heartbeat_player.playing = false
 
-	var _is_headless := DisplayServer.get_name() == "headless"
+	var is_headless := DisplayServer.get_name() == "headless"
 
-	if not _is_headless:
+	if not is_headless:
 		_ambient_player = _make_looping_player("ambient", AMBIENT_BASE_DB)
 		_ambient_player.volume_db = -80.0
 
@@ -272,7 +272,7 @@ func _on_damage_dealt(target: Node, _amount: float, _source: Node) -> void:
 	_play_at("hit", target)
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
-	if entity != null and entity.is_in_group("players"):
+	if entity != null and entity.is_in_group(Groups.PLAYERS):
 		_play_at("player_death", entity)
 	else:
 		_play_at("explosion", entity)

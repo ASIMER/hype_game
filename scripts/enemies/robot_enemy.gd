@@ -170,7 +170,7 @@ var _last_alert_time: float = 0.0
 var _was_chasing: bool = false
 
 func _ready() -> void:
-	add_to_group("enemies")
+	add_to_group(Groups.ENEMIES)
 	_home = global_position
 	_load_stats()
 
@@ -226,7 +226,7 @@ func _ready() -> void:
 func _setup_weakpoint_marker() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	var wp := get_node_or_null("WeakPoint")
+	var wp := get_node_or_null(Groups.NODE_WEAKPOINT)
 	if wp == null:
 		return
 	var shape := wp.get_node_or_null("CollisionShape3D")
@@ -550,7 +550,7 @@ func _track_player_yaw(pivot: Node3D, delta: float, speed: float = 4.0) -> void:
 func _nearest_player_visual() -> Node3D:
 	var nearest: Node3D = null
 	var best := INF
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p == null or not is_instance_valid(p) or not (p is Node3D):
 			continue
 		var pn := p as Node3D
@@ -757,11 +757,11 @@ func _check_footstep_perception() -> void:
 	var loudest_player: Node3D = null
 	var loudest_radius: float = 0.0
 
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p == null or not is_instance_valid(p) or not (p is Node3D):
 			continue
 		# Skip dead players.
-		var ph := (p as Node3D).get_node_or_null("Health")
+		var ph := (p as Node3D).get_node_or_null(Groups.NODE_HEALTH)
 		if ph and ph is Health and (ph as Health).is_dead:
 			continue
 		# Guard: only call noise_radius if the method exists.
@@ -798,7 +798,7 @@ func _cascade_alert() -> void:
 	if _target == null or not is_instance_valid(_target):
 		return
 	var target_pos := _target.global_position
-	for e in get_tree().get_nodes_in_group("enemies"):
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if e == self or e == null or not is_instance_valid(e):
 			continue
 		if not e.has_method("alert_to"):
@@ -971,7 +971,7 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 func _separation_steer() -> Vector3:
 	var push := Vector3.ZERO
 	var count := 0
-	for other in get_tree().get_nodes_in_group("enemies"):
+	for other in get_tree().get_nodes_in_group(Groups.ENEMIES):
 		if other == self or not is_instance_valid(other) or not (other is Node3D):
 			continue
 		var on := other as Node3D
@@ -1003,11 +1003,11 @@ func _strike(target: Node) -> void:
 		return
 	# Prefer the target's Hurtbox.apply_hit (handles authority forwarding); fall
 	# back to a direct Health.take_damage if it has no hurtbox.
-	var hb := target.get_node_or_null("Hurtbox")
+	var hb := target.get_node_or_null(Groups.NODE_HURTBOX)
 	if hb and hb.has_method("apply_hit"):
 		hb.apply_hit(_stat_damage, self)
 		return
-	var hp := target.get_node_or_null("Health")
+	var hp := target.get_node_or_null(Groups.NODE_HEALTH)
 	if hp and hp.has_method("take_damage"):
 		hp.take_damage(_stat_damage, self)
 
@@ -1016,12 +1016,12 @@ func _strike(target: Node) -> void:
 func _find_nearest_player() -> Node3D:
 	var nearest: Node3D = null
 	var best := INF
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p == null or not is_instance_valid(p) or not (p is Node3D):
 			continue
 		var pn := p as Node3D
 		# Skip dead players if they expose a Health child.
-		var ph := pn.get_node_or_null("Health")
+		var ph := pn.get_node_or_null(Groups.NODE_HEALTH)
 		if ph and ph is Health and (ph as Health).is_dead:
 			continue
 		# Skip DOWNED players — AI fully ignores a downed player (it's threatened only by
@@ -1069,7 +1069,7 @@ func _on_died(_killer: Node) -> void:
 	set_physics_process(false)
 	collision_layer = 0
 	collision_mask = 0
-	var hb := get_node_or_null("Hurtbox")
+	var hb := get_node_or_null(Groups.NODE_HURTBOX)
 	if hb and hb is CollisionObject3D:
 		(hb as CollisionObject3D).set_deferred("monitorable", false)
 	if _agent:
