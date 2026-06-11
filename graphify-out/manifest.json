@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1781172116.9856038,
-    "ast_hash": "9c4e009bba302008d03d547081b38a57",
+    "mtime": 1781206342.3735023,
+    "ast_hash": "45f288de8e5d0de8ed7303c35538147e",
     "semantic_hash": ""
   },
   "README.md": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "docs/ASSETS.md": {
-    "mtime": 1781172117.388078,
-    "ast_hash": "e0a2248b90ee9a1360527176a2f03aff",
+    "mtime": 1781200396.8791072,
+    "ast_hash": "f8392a2b9f14db14b09ab5ea7a3a6ed1",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/SkyIcon.png": {
@@ -630,48 +630,48 @@
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground003_Color.jpg": {
-    "mtime": 1781172117.2746096,
-    "ast_hash": "121e40b999f9917f998f4818d34ec191",
+    "mtime": 1760255750.0,
+    "ast_hash": "1f697175e67654ecfdec2427edbe01f7",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground003_NormalGL.jpg": {
-    "mtime": 1781172117.285118,
-    "ast_hash": "20d0181994db4e533d993dd1beb11e75",
+    "mtime": 1760255710.0,
+    "ast_hash": "bcf95a258ff9134d5b9fd7753aea80dd",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground003_Roughness.jpg": {
-    "mtime": 1781172117.2901187,
-    "ast_hash": "97899e7fc90817a5c67fcb7ea77d0d97",
+    "mtime": 1760255536.0,
+    "ast_hash": "5a815c96c639ef8fc3603a08152972de",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground054_Color.jpg": {
-    "mtime": 1781172117.2986424,
-    "ast_hash": "462824c9bb532043e7ee8cb47f425a30",
+    "mtime": 1760536666.0,
+    "ast_hash": "1f6a3967a5d4980ab554faec7ab5b4c1",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground054_NormalGL.jpg": {
-    "mtime": 1781172117.3071597,
-    "ast_hash": "36c696b4974d7acb623aec173d518802",
+    "mtime": 1760536826.0,
+    "ast_hash": "78c8ec4e7a65fcb256b8a414a6cc924f",
     "semantic_hash": ""
   },
   "assets/textures/ground/Ground054_Roughness.jpg": {
-    "mtime": 1781172117.3112037,
-    "ast_hash": "c333d7efc5ab99b551b5d37897bb229d",
+    "mtime": 1760536800.0,
+    "ast_hash": "9daeecac4742c466e7f257253dab93ad",
     "semantic_hash": ""
   },
   "assets/textures/ground/Rock029_Color.jpg": {
-    "mtime": 1781172117.3172035,
-    "ast_hash": "1885a98cf5de79aa17b404263353acc4",
+    "mtime": 1760423840.0,
+    "ast_hash": "68bf11e462ab73c596aef7d074db2fc8",
     "semantic_hash": ""
   },
   "assets/textures/ground/Rock029_NormalGL.jpg": {
-    "mtime": 1781172117.3272407,
-    "ast_hash": "040fbe7de2c01b39431451c98296cd84",
+    "mtime": 1760423532.0,
+    "ast_hash": "cf7d199cb6d1a868351afdd64092ee44",
     "semantic_hash": ""
   },
   "assets/textures/ground/Rock029_Roughness.jpg": {
-    "mtime": 1781172117.3317513,
-    "ast_hash": "10be876b0fdae547b91f87a405b85fd9",
+    "mtime": 1760423852.0,
+    "ast_hash": "056656cd8b888f1d3c3e4882aa14dc33",
     "semantic_hash": ""
   },
   "assets/ui/icons/ammo.png": {
@@ -985,8 +985,8 @@
     "semantic_hash": ""
   },
   "tools/lint/golden_world.json": {
-    "mtime": 1781172117.7987752,
-    "ast_hash": "c129c4ec92f69c324f5a5797ac3682d9",
+    "mtime": 1781205999.4801319,
+    "ast_hash": "5c7d4dcfedbfe403c0f0de53ced1c6ab",
     "semantic_hash": ""
   },
   "docs/AUDIT.md": {
@@ -995,13 +995,58 @@
     "semantic_hash": ""
   },
   "tools/agent/perf_shootout.py": {
-    "mtime": 1781177607.3823962,
-    "ast_hash": "e33e676cc7eed8f0238bbb0747592b7e",
+    "mtime": 1781186802.0686598,
+    "ast_hash": "623c82b32ea1aab8153cd9557ba41f68",
     "semantic_hash": ""
   },
   "tools/agent/perf_spots.py": {
-    "mtime": 1781175455.2032022,
-    "ast_hash": "bc946315f02e147028fe4e1fe5bdc12b",
+    "mtime": 1781185957.7405508,
+    "ast_hash": "aba1ef322f44a9a42453a270f875ede5",
+    "semantic_hash": ""
+  },
+  "tools/agent/lighting_qa.py": {
+    "mtime": 1781198128.4880161,
+    "ast_hash": "2ae3dfe3be476aa3b7cfa28f2c120990",
+    "semantic_hash": ""
+  },
+  "tools/art/fetch_ground_textures.ps1": {
+    "mtime": 1781199199.1674585,
+    "ast_hash": "d39d36efeb168a1147dc3f37cc860e70",
+    "semantic_hash": ""
+  },
+  "assets/models/flora/Grass.png": {
+    "mtime": 1781198535.261792,
+    "ast_hash": "3a25be4d18b7199a1671f825fbf01104",
+    "semantic_hash": ""
+  },
+  "assets/models/flora/Leaves.png": {
+    "mtime": 1781198535.2297256,
+    "ast_hash": "3003dbc8643e5d4a7d51d9d7fd9d1477",
+    "semantic_hash": ""
+  },
+  "assets/models/flora/Mushrooms.png": {
+    "mtime": 1781198535.290017,
+    "ast_hash": "59cdd01fe19fb0ebd2430b85b5c0c6ea",
+    "semantic_hash": ""
+  },
+  "assets/models/flora/PathRocks_Diffuse.png": {
+    "mtime": 1781198535.3228984,
+    "ast_hash": "deaeff6ad7246807601cab8221183aad",
+    "semantic_hash": ""
+  },
+  "assets/textures/ground/Gravel022_Color.jpg": {
+    "mtime": 1759953382.0,
+    "ast_hash": "1433cfa174d86d37cfaf708d3d9b2cc5",
+    "semantic_hash": ""
+  },
+  "assets/textures/ground/Gravel022_NormalGL.jpg": {
+    "mtime": 1759953398.0,
+    "ast_hash": "f980463b20f17c4c3250b4db6762a8e1",
+    "semantic_hash": ""
+  },
+  "assets/textures/ground/Gravel022_Roughness.jpg": {
+    "mtime": 1759953632.0,
+    "ast_hash": "297321f65ece4742cfb5e333b1e17a3a",
     "semantic_hash": ""
   }
 }

@@ -1,16 +1,16 @@
 # Graph Report - hype game  (2026-06-11)
 
 ## Corpus Check
-- 32 files · ~2,020,861 words
+- 34 files · ~4,198,734 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 553 nodes · 704 edges · 84 communities (50 shown, 34 thin omitted)
+- 558 nodes · 708 edges · 82 communities (48 shown, 34 thin omitted)
 - Extraction: 89% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e4c104cc`
+- Built from commit: `0b0a2a4f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,12 +82,9 @@
 - [[_COMMUNITY_Community 69|Community 69]]
 - [[_COMMUNITY_Community 70|Community 70]]
 - [[_COMMUNITY_Community 71|Community 71]]
-- [[_COMMUNITY_Community 72|Community 72]]
 - [[_COMMUNITY_Community 76|Community 76]]
 - [[_COMMUNITY_Community 78|Community 78]]
-- [[_COMMUNITY_Community 79|Community 79]]
 - [[_COMMUNITY_Community 80|Community 80]]
-- [[_COMMUNITY_Community 81|Community 81]]
 - [[_COMMUNITY_Community 82|Community 82]]
 - [[_COMMUNITY_Community 83|Community 83]]
 
@@ -112,8 +109,8 @@
   .mcp.json → CLAUDE.md
 - `Stash.total_weight` --shares_data_with--> `WeaponData resource`  [AMBIGUOUS]
   autoload/Stash.gd → scripts/combat/weapon_data.gd
-- `AssetRegistry` --calls--> `ProceduralModels.build`  [INFERRED]
-  autoload/AssetRegistry.gd → scripts/visual/procedural_models.gd
+- `Decoupled-autoloads-via-Events-bus pattern` --references--> `Events (global signal bus)`  [EXTRACTED]
+  CLAUDE.md → autoload/Events.gd
 
 ## Import Cycles
 - None detected.
@@ -135,27 +132,27 @@
 - **Hub economy tabs over shared autoloads** — ui_workshop_tab_workshoptab, tabs_gunsmith_tab_gunsmithtab, tabs_shop_tab_shoptab, tabs_stash_tab_stashtab, tabs_quests_tab_queststab [INFERRED 0.80]
 - **Self-play control harness** — agent_play_play, agent_raw_raw, agent_mcp_server_mcpserver, concept_wire_protocol [INFERRED 0.80]
 
-## Communities (84 total, 34 thin omitted)
+## Communities (82 total, 34 thin omitted)
 
 ### Community 0 - "SFX Audio Synthesizer"
 Cohesion: 0.09
 Nodes (66): _add_tracks(), _adsr(), _concat(), _fade(), gen_ambient(), gen_explosion(), gen_extract_beep(), gen_extract_cancel() (+58 more)
 
 ### Community 1 - "AgentBridge QA Commands"
-Cohesion: 0.25
-Nodes (8): AgentBridge._debug_spawn, Events (global signal bus), ExtractionDirector (timed evac windows), RemoteShotFX, GameState.is_local_authority_server, NetworkManager.begin_match, NetworkManager.broadcast_shot, NetworkManager.notify_loaded (load gate)
+Cohesion: 0.18
+Nodes (11): AgentBridge._debug_spawn, Guarded-fallback resolution (glb to procedural to primitive), AudioManager (Events-driven SFX), AudioManager._play / _play_at, Events (global signal bus), ExtractionDirector (timed evac windows), RemoteShotFX, GameState.is_local_authority_server (+3 more)
 
 ### Community 2 - "Core Autoload Singletons"
-Cohesion: 0.11
-Nodes (33): AssetRegistry, Events bus, GameState, MetaProgression, NetworkManager, Settings, Stash, Export PCK DirAccess fallback to ResourceIndex (+25 more)
+Cohesion: 0.08
+Nodes (41): AssetRegistry, Events bus, GameState, MetaProgression, NetworkManager, Settings, Stash, Export PCK DirAccess fallback to ResourceIndex (+33 more)
 
 ### Community 3 - "Combat & Damage Pipeline"
-Cohesion: 0.07
-Nodes (31): Health component, Health.take_damage, Hurtbox.apply_hit, Hurtbox, WeaponController.try_fire, Weapon.fire_with, Weapon._shoot, Stepped ballistic bullet drop (+23 more)
+Cohesion: 0.05
+Nodes (42): AttachmentData.apply_to, Health component, Health.take_damage, Hurtbox.apply_hit, Hurtbox, WeaponController._apply_attachments, WeaponController._load_weapons, WeaponController.try_fire (+34 more)
 
 ### Community 4 - "Asset Registry & Fallbacks"
-Cohesion: 0.22
-Nodes (10): AssetRegistry.CATALOG (logical id table), Guarded-fallback resolution (glb to procedural to primitive), AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), AudioManager (Events-driven SFX), AudioManager._play / _play_at, IconRenderer._prewarm, IconRenderer.render_icon (sync cache) (+2 more)
+Cohesion: 0.67
+Nodes (3): Lighting QA suite: screenshots at fixed spots x fixed in-game hours (+ storm)., send(), wait_drivable()
 
 ### Community 5 - "HUD Widgets"
 Cohesion: 0.19
@@ -178,8 +175,8 @@ Cohesion: 0.13
 Nodes (14): 1. How `--agent` mode works, 2. Command protocol, 3. `state` JSON schema, 4. Driving it, 5. Validation commands (run after every change), 6. QA workflow (test matrix), 7. Co-op multi-instance testing (instances playing together), 8. Parallel testing (2–4 instances at once) (+6 more)
 
 ### Community 10 - "MCP Server Bridge"
-Cohesion: 0.25
-Nodes (8): ProceduralBuildings.build_container_yard, ProceduralBuildings.build_house, ProceduralBuildings.build_tower, ProceduralBuildings.build_warehouse, ProceduralBuildings._solid, ProceduralModels.build, ProceduralModels._part, Arena._build_poi_structures
+Cohesion: 0.67
+Nodes (3): ExtractionDirector._apply_windows, ServerBrowser.scan_lan, Settings (tunable constants)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.20
@@ -222,8 +219,8 @@ Cohesion: 0.67
 Nodes (3): ProcMaterials.grime_texture, ProcMaterials.streaked, ProcMaterials.weathered
 
 ### Community 56 - "Community 56"
-Cohesion: 0.20
-Nodes (12): Local Visual-Only FX, RobotGunner._fire_hitscan, RobotGunner._spawn_tracer, RobotGunner._strike, CameraFX._on_hit_stop, Explosion, Impact, MuzzleFlash (+4 more)
+Cohesion: 0.07
+Nodes (34): AssetRegistry.CATALOG (logical id table), AssetRegistry.get_icon, AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), Events Bus, Server-Authoritative Inventory Owner-Mirror, Local Visual-Only FX, RobotGunner._fire_hitscan (+26 more)
 
 ### Community 57 - "Community 57"
 Cohesion: 0.12
@@ -266,12 +263,8 @@ Cohesion: 0.67
 Nodes (3): main(), trim(), str
 
 ### Community 71 - "Community 71"
-Cohesion: 0.14
-Nodes (16): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._snapshot (state JSON), AgentBridge._ui_action (menu open/close), Crafting.craft, ExtractionDirector._apply_windows, MetaProgression (persistent profile), MetaProgression.player_mods (+8 more)
-
-### Community 72 - "Community 72"
-Cohesion: 0.32
-Nodes (8): Events Bus, ExtractionZone, CameraFX, DamageNumber, DamageNumbersLayer, WorldAtmosphere._on_final_wave, PlayerAnimator, Player
+Cohesion: 0.20
+Nodes (12): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._snapshot (state JSON), AgentBridge._ui_action (menu open/close), Crafting.craft, MetaProgression (persistent profile), MetaProgression.stash_capacity, Quests._advance / event hooks (+4 more)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.50
@@ -281,17 +274,9 @@ Nodes (3): main(), Claude Code PostToolUse hook: auto-lint the file just edited 
 Cohesion: 0.12
 Nodes (15): containers, Flora, Geometry, ProceduralTerrain, hash, nodes, hash, nodes (+7 more)
 
-### Community 79 - "Community 79"
-Cohesion: 0.20
-Nodes (11): AttachmentData.apply_to, WeaponController._apply_attachments, WeaponController._load_weapons, WeaponData resource, CraftRecipe resource, Version-safe ConfigFile saves, ResourceIndex (generated paths), SettingsManager._cmp_version (+3 more)
-
 ### Community 80 - "Community 80"
 Cohesion: 0.22
 Nodes (8): 1. God files (size inventory), 2. Fragility findings (the "change A, B breaks" list), 3. Duplication (non-fragile, quality), 4. Dead code, 5. Lint baseline (gdlint, `gdlintrc` at repo root), 6. Golden determinism snapshot (the refactoring safety net), 7. Deferred (recorded so they aren't re-litigated), Hype Raiders — Architecture Audit (v0.3)
-
-### Community 81 - "Community 81"
-Cohesion: 0.40
-Nodes (6): AssetRegistry.get_icon, Server-Authoritative Inventory Owner-Mirror, Inventory, InventoryUI, ItemData, LootPickup._on_pickup_requested
 
 ### Community 82 - "Community 82"
 Cohesion: 0.67
@@ -319,13 +304,13 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
 - **What is the exact relationship between `WeaponController._load_weapons` and `Version-safe ConfigFile saves`?**
   _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `AgentBridge QA Commands`, `Asset Registry & Fallbacks`, `Community 69`, `Community 68`, `Server-Auth Co-op Netcode`?**
+- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `AgentBridge QA Commands`, `Community 68`, `Community 69`, `MCP Server Bridge`, `Server-Auth Co-op Netcode`, `Community 56`?**
   _High betweenness centrality (0.018) - this node is a cross-community bridge._
 - **Why does `ItemCatalog (id to ItemData)` connect `Core Autoload Singletons` to `Server-Auth Co-op Netcode`, `Community 68`?**
   _High betweenness centrality (0.016) - this node is a cross-community bridge._
-- **Why does `Events Bus` connect `Community 72` to `Community 81`, `AgentBridge QA Commands`, `Community 56`, `Asset Registry & Fallbacks`?**
+- **Why does `Events Bus` connect `Community 56` to `AgentBridge QA Commands`?**
   _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **What connects `PreToolUse`, `PostToolUse`, `allow` to the rest of the system?**
-  _273 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _274 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `SFX Audio Synthesizer` be split into smaller, more focused modules?**
   _Cohesion score 0.08864767073722297 - nodes in this community are weakly interconnected._

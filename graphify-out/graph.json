@@ -372,6 +372,42 @@
       "norm_label": "launch_agents.ps1"
     },
     {
+      "label": "lighting_qa.py",
+      "file_type": "code",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L1",
+      "id": "agent_lighting_qa",
+      "community": 4,
+      "norm_label": "lighting_qa.py"
+    },
+    {
+      "label": "send()",
+      "file_type": "code",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L28",
+      "id": "agent_lighting_qa_send",
+      "community": 4,
+      "norm_label": "send()"
+    },
+    {
+      "label": "wait_drivable()",
+      "file_type": "code",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L41",
+      "id": "agent_lighting_qa_wait_drivable",
+      "community": 4,
+      "norm_label": "wait_drivable()"
+    },
+    {
+      "label": "Lighting QA suite: screenshots at fixed spots x fixed in-game hours (+ storm).",
+      "file_type": "rationale",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L1",
+      "id": "agent_lighting_qa_rationale_1",
+      "community": 4,
+      "norm_label": "lighting qa suite: screenshots at fixed spots x fixed in-game hours (+ storm)."
+    },
+    {
       "label": "mcp_server.py",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
@@ -739,6 +775,15 @@
       "id": "agent_raw_main",
       "community": 21,
       "norm_label": "main()"
+    },
+    {
+      "label": "fetch_ground_textures.ps1",
+      "file_type": "code",
+      "source_file": "tools/art/fetch_ground_textures.ps1",
+      "source_location": "L1",
+      "id": "art_fetch_ground_textures",
+      "community": 72,
+      "norm_label": "fetch_ground_textures.ps1"
     },
     {
       "label": "fetch_power_icons.ps1",
@@ -1743,7 +1788,7 @@
       "label": "Localization (en base + ru; scalable)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L93",
+      "source_location": "L95",
       "id": "claude_localization_en_base_ru_scalable",
       "community": 59,
       "norm_label": "localization (en base + ru; scalable)"
@@ -1752,7 +1797,7 @@
       "label": "UI look (\"military glass\" \u2014 theme-first)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L96",
+      "source_location": "L98",
       "id": "claude_ui_look_military_glass_theme_first",
       "community": 59,
       "norm_label": "ui look (\"military glass\" \u2014 theme-first)"
@@ -1761,7 +1806,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L102",
+      "source_location": "L104",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1770,7 +1815,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L116",
+      "source_location": "L118",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1779,7 +1824,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L119",
+      "source_location": "L121",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -2166,7 +2211,7 @@
       "label": "Deferred (planned, not this batch)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L37",
+      "source_location": "L38",
       "id": "docs_assets_deferred_planned_not_this_batch",
       "community": 60,
       "norm_label": "deferred (planned, not this batch)"
@@ -2175,7 +2220,7 @@
       "label": "Rejected",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L48",
+      "source_location": "L49",
       "id": "docs_assets_rejected",
       "community": 60,
       "norm_label": "rejected"
@@ -2184,7 +2229,7 @@
       "label": "Other vetted sources (for future searches)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L60",
+      "source_location": "L61",
       "id": "docs_assets_other_vetted_sources_for_future_searches",
       "community": 60,
       "norm_label": "other vetted sources (for future searches)"
@@ -2193,7 +2238,7 @@
       "label": "Credits",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L76",
+      "source_location": "L77",
       "id": "docs_assets_credits",
       "community": 60,
       "norm_label": "credits"
@@ -2959,7 +3004,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "assetregistry.catalog (logical id table)",
       "id": "assetregistry_catalog"
     },
@@ -2972,7 +3017,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "assetregistry.get_model",
       "id": "assetregistry_get_model"
     },
@@ -2985,7 +3030,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 56,
       "norm_label": "assetregistry.get_icon",
       "id": "assetregistry_get_icon"
     },
@@ -2998,7 +3043,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "assetregistry._make_primitive (tinted fallback)",
       "id": "assetregistry_make_primitive"
     },
@@ -3011,7 +3056,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 1,
       "norm_label": "guarded-fallback resolution (glb to procedural to primitive)",
       "id": "assetregistry_fallback_chain"
     },
@@ -3024,7 +3069,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 1,
       "norm_label": "audiomanager (events-driven sfx)",
       "id": "audiomanager_audiomanager"
     },
@@ -3037,7 +3082,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 1,
       "norm_label": "audiomanager._play / _play_at",
       "id": "audiomanager_play"
     },
@@ -3141,7 +3186,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 10,
       "norm_label": "extractiondirector._apply_windows",
       "id": "extractiondirector_apply_windows"
     },
@@ -3232,7 +3277,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "iconrenderer.render_now",
       "id": "iconrenderer_render_now"
     },
@@ -3245,7 +3290,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "iconrenderer.render_icon (sync cache)",
       "id": "iconrenderer_render_icon"
     },
@@ -3258,7 +3303,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "iconrenderer._prewarm",
       "id": "iconrenderer_prewarm"
     },
@@ -3414,7 +3459,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 56,
       "norm_label": "metaprogression.player_mods",
       "id": "metaprogression_player_mods"
     },
@@ -3622,7 +3667,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 10,
       "norm_label": "serverbrowser.scan_lan",
       "id": "serverbrowser_scan_lan"
     },
@@ -3674,7 +3719,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 10,
       "norm_label": "settings (tunable constants)",
       "id": "settings_settings"
     },
@@ -3778,7 +3823,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "settingsmanager.load_config",
       "id": "settingsmanager_load_config"
     },
@@ -3791,7 +3836,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "settingsmanager._cmp_version",
       "id": "settingsmanager_cmp_version"
     },
@@ -3817,7 +3862,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "stash.total_weight",
       "id": "stash_total_weight"
     },
@@ -3856,7 +3901,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "stash.load_stash",
       "id": "stash_load_stash"
     },
@@ -4038,7 +4083,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "weaponcontroller._load_weapons",
       "id": "combat_weapon_controller_load_weapons"
     },
@@ -4064,7 +4109,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "weaponcontroller._apply_attachments",
       "id": "combat_weapon_controller_apply_attachments"
     },
@@ -4142,7 +4187,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "attachmentdata.apply_to",
       "id": "combat_attachment_data_apply_to"
     },
@@ -4155,7 +4200,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "weapondata resource",
       "id": "combat_weapon_data_weapondata"
     },
@@ -4168,7 +4213,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "craftrecipe resource",
       "id": "crafting_craft_recipe_craftrecipe"
     },
@@ -4298,7 +4343,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "resourceindex (generated paths)",
       "id": "resource_index_resourceindex"
     },
@@ -4402,7 +4447,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 3,
       "norm_label": "version-safe configfile saves",
       "id": "docs_architecture_persistence_versioning"
     },
@@ -4519,7 +4564,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "extractionzone",
       "id": "extraction_extraction_zone_extractionzone"
     },
@@ -4597,7 +4642,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "camerafx",
       "id": "fx_camera_fx_camerafx"
     },
@@ -4649,7 +4694,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "damagenumber",
       "id": "fx_damage_number_damagenumber"
     },
@@ -4662,7 +4707,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "damagenumberslayer",
       "id": "fx_damage_numbers_layer_damagenumberslayer"
     },
@@ -4779,7 +4824,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "worldatmosphere._on_final_wave",
       "id": "fx_world_atmosphere_on_final_wave"
     },
@@ -4792,7 +4837,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 56,
       "norm_label": "inventory",
       "id": "inventory_inventory_inventory"
     },
@@ -4844,7 +4889,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 56,
       "norm_label": "inventoryui",
       "id": "inventory_inventory_ui_inventoryui"
     },
@@ -4896,7 +4941,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 56,
       "norm_label": "itemdata",
       "id": "inventory_item_data_itemdata"
     },
@@ -4935,7 +4980,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 4,
+      "community": 56,
       "norm_label": "lootpickup",
       "id": "loot_loot_pickup_lootpickup"
     },
@@ -4948,7 +4993,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 56,
       "norm_label": "lootpickup._on_pickup_requested",
       "id": "loot_loot_pickup_on_pickup_requested"
     },
@@ -4987,7 +5032,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "player",
       "id": "player_player_player"
     },
@@ -5065,7 +5110,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "playeranimator",
       "id": "player_player_animator_playeranimator"
     },
@@ -5078,7 +5123,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 72,
+      "community": 56,
       "norm_label": "events bus",
       "id": "concept_events_bus"
     },
@@ -5117,7 +5162,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 56,
       "norm_label": "server-authoritative inventory owner-mirror",
       "id": "concept_inventory_owner_mirror"
     },
@@ -5733,7 +5778,7 @@
       "label": "ProceduralBuildings._solid",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "proceduralbuildings._solid",
       "id": "visual_procedural_buildings_solid"
     },
@@ -5741,7 +5786,7 @@
       "label": "ProceduralBuildings.build_tower",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_tower",
       "id": "visual_procedural_buildings_build_tower"
     },
@@ -5749,7 +5794,7 @@
       "label": "ProceduralBuildings.build_warehouse",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_warehouse",
       "id": "visual_procedural_buildings_build_warehouse"
     },
@@ -5757,7 +5802,7 @@
       "label": "ProceduralBuildings.build_house",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_house",
       "id": "visual_procedural_buildings_build_house"
     },
@@ -5765,7 +5810,7 @@
       "label": "ProceduralBuildings.build_container_yard",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_container_yard",
       "id": "visual_procedural_buildings_build_container_yard"
     },
@@ -5781,7 +5826,7 @@
       "label": "ProceduralModels.build",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "proceduralmodels.build",
       "id": "visual_procedural_models_build"
     },
@@ -5789,7 +5834,7 @@
       "label": "ProceduralModels._part",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "proceduralmodels._part",
       "id": "visual_procedural_models_part"
     },
@@ -5869,7 +5914,7 @@
       "label": "Arena._build_poi_structures",
       "file_type": "code",
       "source_file": "scripts/world/arena.gd",
-      "community": 10,
+      "community": 2,
       "norm_label": "arena._build_poi_structures",
       "id": "world_arena_build_poi_structures"
     },
@@ -6159,6 +6204,47 @@
       "confidence_score": 1.0,
       "source": "main",
       "target": "main_print_hi"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "agent_lighting_qa",
+      "target": "agent_lighting_qa_send"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "agent_lighting_qa",
+      "target": "agent_lighting_qa_wait_drivable"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "agent_lighting_qa_rationale_1",
+      "target": "agent_lighting_qa"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/agent/lighting_qa.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "agent_lighting_qa_wait_drivable",
+      "target": "agent_lighting_qa_send"
     },
     {
       "relation": "contains",
@@ -6640,9 +6726,9 @@
       "source_file": "tools/agent/perf_shootout.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_shootout",
-      "target": "agent_perf_shootout_send",
-      "confidence_score": 1.0
+      "target": "agent_perf_shootout_send"
     },
     {
       "relation": "contains",
@@ -6650,9 +6736,9 @@
       "source_file": "tools/agent/perf_shootout.py",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_shootout",
-      "target": "agent_perf_shootout_wait",
-      "confidence_score": 1.0
+      "target": "agent_perf_shootout_wait"
     },
     {
       "relation": "rationale_for",
@@ -6660,9 +6746,9 @@
       "source_file": "tools/agent/perf_shootout.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_shootout_rationale_1",
-      "target": "agent_perf_shootout",
-      "confidence_score": 1.0
+      "target": "agent_perf_shootout"
     },
     {
       "relation": "calls",
@@ -6671,9 +6757,9 @@
       "source_file": "tools/agent/perf_shootout.py",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_shootout_wait",
-      "target": "agent_perf_shootout_send",
-      "confidence_score": 1.0
+      "target": "agent_perf_shootout_send"
     },
     {
       "relation": "contains",
@@ -6681,9 +6767,9 @@
       "source_file": "tools/agent/perf_spots.py",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_spots",
-      "target": "agent_perf_spots_send",
-      "confidence_score": 1.0
+      "target": "agent_perf_spots_send"
     },
     {
       "relation": "contains",
@@ -6691,9 +6777,9 @@
       "source_file": "tools/agent/perf_spots.py",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_spots",
-      "target": "agent_perf_spots_wait_drivable",
-      "confidence_score": 1.0
+      "target": "agent_perf_spots_wait_drivable"
     },
     {
       "relation": "rationale_for",
@@ -6701,9 +6787,9 @@
       "source_file": "tools/agent/perf_spots.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_spots_rationale_1",
-      "target": "agent_perf_spots",
-      "confidence_score": 1.0
+      "target": "agent_perf_spots"
     },
     {
       "relation": "calls",
@@ -6712,9 +6798,9 @@
       "source_file": "tools/agent/perf_spots.py",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "agent_perf_spots_wait_drivable",
-      "target": "agent_perf_spots_send",
-      "confidence_score": 1.0
+      "target": "agent_perf_spots_send"
     },
     {
       "relation": "contains",
@@ -13406,5 +13492,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "e4c104cc1cfeaf0e3910a2b93f26fe15073ae2d7"
+  "built_at_commit": "0b0a2a4f061248ac1a2e8640501cff2c5c663b13"
 }
