@@ -275,6 +275,10 @@ func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		return
 
+	# Deferred gadget placement (queued by the input handler; the ground-snap raycast
+	# must run in the physics step — see PlayerGear.physics_tick).
+	_gear.physics_tick()
+
 	# Active power-cache buffs: count down + apply per-frame effects (regen/overshield decay).
 	_tick_buffs(delta)
 

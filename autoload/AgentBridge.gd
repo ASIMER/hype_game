@@ -953,7 +953,23 @@ func _debug_power(json: Dictionary) -> Dictionary:
 	return {"ok": false, "error": "unknown action"}
 
 
+# The crosshair report is refreshed from _physics_process (space-state queries are
+# only thread-safe inside the physics step — physics/3d/run_on_separate_thread);
+# the verb + state assembly read this cache (≤1 physics frame stale, fine for QA).
+var _crosshair_cache: Dictionary = {"ok": false, "error": "not ready"}
+
+
+func _physics_process(_delta: float) -> void:
+	if not active:
+		return
+	_crosshair_cache = _crosshair_raycast()
+
+
 func _debug_crosshair() -> Dictionary:
+	return _crosshair_cache
+
+
+func _crosshair_raycast() -> Dictionary:
 	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") if p else null
 	if cam == null:

@@ -71,8 +71,14 @@ func _process(delta: float) -> void:
 		if _ads:
 			target = 2.0
 	_spread = lerpf(_spread, target, clampf(delta * 12.0, 0.0, 1.0))
-	_update_on_enemy()
 	queue_redraw()
+
+
+## The enemy-under-reticle ray runs in the PHYSICS step (space-state queries are only
+## thread-safe there — required for physics/3d/run_on_separate_thread). _draw reads
+## the cached _on_enemy; at 60Hz physics the tint lag is imperceptible.
+func _physics_process(_delta: float) -> void:
+	_update_on_enemy()
 
 
 func _update_on_enemy() -> void:

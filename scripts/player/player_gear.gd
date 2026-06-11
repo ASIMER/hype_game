@@ -198,9 +198,25 @@ func cycle() -> void:
 	Events.grenade_selection_changed.emit(now_sel, int(_p._grenade_counts.get(now_sel, 0)))
 
 
-## Place the deployable gadget in quick-slot `idx` (keys 6/7/8 → GADGET_TYPES order)
-## at the player's feet-forward point snapped to the ground. Server-spawned.
+# Deferred gadget placement: the keypress (an INPUT-context event) only queues the
+# request; the ground-snap raycast runs in the next physics tick — space-state
+# queries are only thread-safe inside the physics step (run_on_separate_thread).
+var _pending_place: int = -1
+
+
+## Queue placing the deployable gadget in quick-slot `idx` (keys 6/7/8 → GADGET_TYPES
+## order). Executed by physics_tick() on the next physics frame.
 func place(idx: int) -> void:
+	_pending_place = idx
+
+
+## Called once per frame from player._physics_process: executes a queued placement
+## at the player's feet-forward point snapped to the ground. Server-spawned.
+func physics_tick() -> void:
+	if _pending_place < 0:
+		return
+	var idx := _pending_place
+	_pending_place = -1
 	if _p.is_downed() or int(_p.stance) == 3 or _p._zipline != null:
 		return
 	var types: Array = Settings.GADGET_TYPES
