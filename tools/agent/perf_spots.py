@@ -36,6 +36,13 @@ def wait_drivable(timeout=150):
 
 if not wait_drivable():
     sys.exit("not drivable")
+# Pin the raid mutator to NONE and redeploy: a randomly-rolled mutator
+# (double_loot/elite_patrols/fog) skews node counts and fps between A/B arms.
+send({"cmd": "mutator", "id": ""})
+send({"cmd": "restart"})
+time.sleep(6)
+if not wait_drivable():
+    sys.exit("not drivable after mutator-pinned restart")
 send({"cmd": "godmode", "on": True})
 
 SPOTS = [("open_field", 80, 80), ("beacon", 50, -55), ("temple", 160, 158)]

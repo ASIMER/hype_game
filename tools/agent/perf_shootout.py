@@ -37,17 +37,35 @@ def wait(port, pred, timeout=180, label=""):
 
 for p in PORTS:
     wait(p, lambda s: True, 120, "bridge")
+# Pin the raid mutator to NONE before deploy: a random roll (double_loot etc.)
+# changes world node counts and skews the perf comparison between runs.
+send(HOST, {"cmd": "mutator", "id": ""})
 send(HOST, {"cmd": "net", "action": "host"})
-time.sleep(4)
-for p in PORTS[1:]:
+wait(HOST, lambda s: len(s.get("peers", [])) >= 1, 60, "host lobby")
+# Condition-driven joins (fixed sleeps flaked when 4 fresh boots compile shaders):
+# each client joins, then we wait until the HOST's roster actually shows it.
+for i, p in enumerate(PORTS[1:], start=2):
     send(p, {"cmd": "net", "action": "join", "ip": "127.0.0.1"})
-    time.sleep(3)
-time.sleep(3)
+    wait(HOST, lambda s, n=i: len(s.get("peers", [])) >= n, 90, f"join {p}")
 for p in PORTS[1:]:
     send(p, {"cmd": "ready", "on": True})
     time.sleep(0.5)
 time.sleep(2)
+# Deploy with one retry: request_start is gated on every member ready — if a
+# ready RPC was still in flight the first START is refused; a second is safe.
 send(HOST, {"cmd": "deploy"})
+t0 = time.time()
+deployed = False
+while time.time() - t0 < 60:
+    try:
+        if send(HOST, {"cmd": "state"}).get("drivable"):
+            deployed = True
+            break
+    except OSError:
+        pass
+    time.sleep(2)
+if not deployed:
+    send(HOST, {"cmd": "deploy"})
 for p in PORTS:
     wait(p, lambda s: s.get("drivable"), 180, "drivable")
 print("all 4 drivable")
