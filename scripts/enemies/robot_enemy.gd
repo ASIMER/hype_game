@@ -76,6 +76,10 @@ var _death_fx_started: bool = false
 var _stuck_dist: float = INF  # best (smallest) distance-to-target seen while chasing
 var _stuck_time: float = 0.0
 var _recover_count: int = 0
+# PERF: last goal actually submitted to the NavigationAgent — chase/investigate only
+# re-issue a path when the goal MOVED (the agent's setter repaths unconditionally;
+# per-frame live-position writes cost a full navmesh A* per enemy per tick).
+var _last_nav_goal: Vector3 = Vector3(INF, INF, INF)
 const STUCK_PROGRESS: float = 1.0  # metres the gap must close to count as progress
 const STUCK_LIMIT: float = 2.5  # seconds chasing without closing the gap -> recover
 
@@ -789,7 +793,15 @@ func _do_chase(delta: float) -> void:
 	if _target == null:
 		_apply_movement(Vector3.ZERO, delta)
 		return
-	_agent.set_target_position(_target.global_position)
+	# PERF: setting target_position to the LIVE player position every physics tick
+	# forced a full navmesh A* replan per enemy per frame (~1ms each — 15 chasers ate
+	# the whole frame; NavigationAgent3D's setter repaths unconditionally, it does NOT
+	# compare values). Replan only when the target drifted >1.5m from the last goal;
+	# the agent keeps following its computed path in between (visually identical).
+	var goal: Vector3 = _target.global_position
+	if goal.distance_squared_to(_last_nav_goal) > 2.25:
+		_last_nav_goal = goal
+		_agent.set_target_position(goal)
 	_navigate_to_agent(delta)
 
 
@@ -822,8 +834,12 @@ func _do_investigate(delta: float) -> void:
 		_apply_movement(Vector3.ZERO, delta)
 	else:
 		_investigate_arrived = false
-		# Navigate at INVESTIGATE_SPEED_MULT of normal speed.
-		_agent.set_target_position(_investigate_point)
+		# Navigate at INVESTIGATE_SPEED_MULT of normal speed. PERF: the point is
+		# static — re-issue the path only when it actually changed (the agent setter
+		# repaths unconditionally on every call).
+		if _investigate_point.distance_squared_to(_last_nav_goal) > 0.01:
+			_last_nav_goal = _investigate_point
+			_agent.set_target_position(_investigate_point)
 		# Temporarily scale speed, navigate, then restore.
 		var base_speed := _stat_speed
 		_stat_speed = base_speed * Settings.INVESTIGATE_SPEED_MULT

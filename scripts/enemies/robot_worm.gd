@@ -195,7 +195,12 @@ func _tick_surface(delta: float) -> void:
 			_attack_cooldown = _next_cooldown()
 	else:
 		current_state = State.CHASE
-		_agent.set_target_position(_target.global_position)
+		# PERF: replan only on >1.5m goal drift (see robot_enemy._do_chase — the
+		# agent setter recomputes the full path on every call).
+		var goal: Vector3 = _target.global_position
+		if goal.distance_squared_to(_last_nav_goal) > 2.25:
+			_last_nav_goal = goal
+			_agent.set_target_position(goal)
 		_navigate_to_agent(delta)
 
 
