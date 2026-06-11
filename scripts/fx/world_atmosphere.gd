@@ -51,9 +51,9 @@ var _tod: Node
 # SkyDome in _ready() so the storm tween always scales the real defaults. The
 # initial values here are only fallbacks if capture fails.
 var _base_ambient := 0.95
-var _base_fog_density := 0.001
-var _base_fog_color := Color(0.64, 0.68, 0.72, 1)
-var _base_glow := 0.55
+var _base_fog_density := 0.0008
+var _base_fog_color := Color(0.62, 0.66, 0.72, 1)
+var _base_glow := 0.5
 # Live volumetric-fog density (the value the quality setting last applied). The storm
 # tween thickens FROM this, and _restore_day() resets BACK to it.
 var _base_vol_fog_density := 0.025
@@ -73,9 +73,9 @@ var _captured := false
 # raid's storm darkness after a restart. Capture then scales the storm tween from
 # the live values, but these are the source-of-truth fallbacks/resets.
 const DAY_AMBIENT := 0.95
-const DAY_FOG_DENSITY := 0.001
-const DAY_FOG_COLOR := Color(0.64, 0.68, 0.72, 1.0)
-const DAY_GLOW := 0.55
+const DAY_FOG_DENSITY := 0.0008
+const DAY_FOG_COLOR := Color(0.62, 0.66, 0.72, 1.0)
+const DAY_GLOW := 0.5
 const DAY_SUN_ENERGY := 1.35
 const DAY_CUMULUS_COVERAGE := 0.55
 const DAY_CUMULUS_THICKNESS := 0.0243
@@ -185,7 +185,7 @@ func _apply_graphics_quality(level: int) -> void:
 			_env.sdfgi_cascades = 6 if rt else 4
 			_env.sdfgi_use_occlusion = true
 			_env.sdfgi_bounce_feedback = 0.75 if rt else 0.5
-			_env.sdfgi_energy = 1.1 if rt else 0.9
+			_env.sdfgi_energy = 1.2 if rt else 1.0
 		# "RT-style" raster reflections: SSR (Forward+; water/metal/wet). Read both ways.
 		_env.ssr_enabled = bool(SettingsManager.get_value("ssr"))
 		if _env.ssr_enabled:
@@ -197,7 +197,7 @@ func _apply_graphics_quality(level: int) -> void:
 		_env.ssil_enabled = bool(SettingsManager.get_value("ssil"))
 		if _env.ssil_enabled:
 			_env.ssil_radius = 5.0
-			_env.ssil_intensity = 1.0
+			_env.ssil_intensity = 1.15
 		# Volumetric fog = the CARRIER for the localized FogVolume smoke banks ONLY. The
 		# GLOBAL ambient density is ALWAYS ZERO (the map itself stays clear — the player
 		# explicitly does not want whole-map haze); fog exists only inside the FogZones
@@ -218,6 +218,19 @@ func _apply_graphics_quality(level: int) -> void:
 		ProceduralFogZones.apply_density(get_tree().current_scene if get_tree() else null)
 		# Same live rescale for the localized climate zones (particle amount_ratio + fog density).
 		ProceduralClimateZones.apply_density(get_tree().current_scene if get_tree() else null)
+	# Soft-shadow FILTER quality (penumbra sampling noise, an image-quality knob —
+	# the penumbra WIDTH itself is the sun's light_angular_distance, identical for
+	# everyone). Derived from the preset level; no settings key of its own.
+	var soft_q: Array = [
+		RenderingServer.SHADOW_QUALITY_SOFT_LOW,
+		RenderingServer.SHADOW_QUALITY_SOFT_LOW,
+		RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM,
+		RenderingServer.SHADOW_QUALITY_SOFT_HIGH,
+		RenderingServer.SHADOW_QUALITY_SOFT_ULTRA,
+	]
+	var sq: RenderingServer.ShadowQuality = soft_q[clampi(level, 0, 4)]
+	RenderingServer.directional_soft_shadow_filter_set_quality(sq)
+	RenderingServer.positional_soft_shadow_filter_set_quality(sq)
 	# God rays: let the sun cast volumetric shafts THROUGH the global fog (no-op when
 	# volumetric fog is off). Shadow distance also lives on the sun. Guard non-null.
 	if _sun != null:
