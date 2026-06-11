@@ -526,9 +526,15 @@ func _handle_line(line: String) -> void:
 			_send({"ok": _ui_action(str(json.get("action", "")))})
 		"setting":
 			# Debug: get/set a SettingsManager value (verify apply + persist).
+			# graphics_quality routes through apply_quality_preset so the WHOLE lever
+			# bundle lands (one-click semantics — same path as the menu dropdown);
+			# a bare set_value would only change the label and leave the matrix stale.
 			var skey := str(json.get("key", ""))
 			if json.has("value"):
-				SettingsManager.set_value(skey, json.get("value"))
+				if skey == "graphics_quality":
+					SettingsManager.apply_quality_preset(int(json.get("value")))
+				else:
+					SettingsManager.set_value(skey, json.get("value"))
 			_send({"ok": true, "value": SettingsManager.get_value(skey)})
 		"goto":
 			# Face a world XZ point and walk forward toward it for `duration`.

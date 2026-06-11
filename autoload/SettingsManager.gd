@@ -21,34 +21,36 @@ const DEFAULTS := {
 	"shadows": 2,  # 0 1024, 1 2048, 2 4096, 3 8192
 	"fov": 60.0,  # 60..100
 	# Graphics quality (Godot does NOT auto-scale to hardware — these presets do it).
-	"graphics_quality": 3,  # 0 Low, 1 Medium, 2 High, 3 Ultra, 4 Ultra+RT (default = Ultra)
+	# DEFAULTS for every preset key mirror the Ultra+RT (tier 4) row of QUALITY_PRESETS,
+	# so a fresh install == the default preset exactly (one-click consistency).
+	"graphics_quality": 4,  # 0 Low, 1 Medium, 2 High, 3 Ultra, 4 Ultra+RT (the default)
 	"render_scale": 1.0,  # 0.5..1.0 viewport 3D render scale (FSR-style upscale; cheapest lever)
 	"sdfgi": true,  # global illumination (heavy)
 	"ssao": true,  # ambient occlusion
 	"glow": true,  # bloom
 	"clouds": true,  # Sky3D volumetric cumulus
 	"water_refraction": true,  # screen-space refractive water (vs flat cheap water)
-	"grass_density": 1.0,  # 0.3..1.0 grass-cap multiplier (rebuild-bound; applies next raid)
+	"grass_density": 1.0,  # FAIR-equal across presets (grass is concealment)
 	# "RT-style" reflections/GI tier (raster — Godot 4.6.3 has NO hardware ray tracing).
-	"ssr": false,  # screen-space reflections (Forward+; water/metal/wet) — Ultra+RT only
-	"ssil": false,  # screen-space indirect lighting — Ultra+RT only
-	"reflection_probes": false,  # baked ReflectionProbes at POIs (rebuild-bound; off-screen reflections)
+	"ssr": true,  # screen-space reflections (Forward+; water/metal/wet) — Ultra+RT default
+	"ssil": true,  # screen-space indirect lighting — Ultra+RT default
+	"reflection_probes": true,  # baked ReflectionProbes at POIs (rebuild-bound)
 	"voxelgi": false,  # EXPERIMENTAL voxel GI bake (rebuild-bound; heavy — never in a preset)
-	# Cinematic pass III — sliders have SANE CLAMPS but a "beyond Ultra" headroom; presets stay
-	# safe, the player can crank further. Numeric value is shown beside each slider in the menu.
-	"draw_distance": 1.0,  # 0.5..2.0 flora/grass visibility-range multiplier (rebuild-bound)
+	# Cinematic levers — sliders have SANE CLAMPS with "beyond Ultra" headroom; the player
+	# can crank further (= "Custom"). Numeric value shown beside each slider in the menu.
+	"draw_distance": 1.0,  # FAIR-equal across presets (flora sightlines)
 	"particle_density": 1.0,  # 0.0..1.5 ambient dust/ember amount multiplier (immediate)
-	"terrain_detail": 1.0,  # 1.0..2.0 ground-mesh subdivision multiplier (rebuild-bound)
-	"volumetric_fog_density": 1.0,  # 0.0..2.0 LOCAL fog-zone density multiplier (immediate; global density is always 0)
-	"shadow_distance": 140.0,  # 60..250 m directional shadow max distance (immediate)
-	"dof_amount": 0.0,  # 0.0..0.2 far depth-of-field blur amount (immediate; 0 = none)
-	"volumetric_fog": false,  # enable the global froxel volumetric fog (immediate)
-	"local_fog": false,  # spawn localized FogVolume zones at POIs (rebuild-bound)
-	"climate_zones": true,  # spawn localized rain/snow/desert zones at the far landmarks (rebuild-bound)
-	"climate_density": 1.0,  # 0.0..2.0 climate precipitation/haze density multiplier (immediate)
-	"god_rays": false,  # sun light shafts through the volumetric fog (immediate)
-	"dof": false,  # cinematic far depth-of-field (immediate)
-	"terrain_parallax": false,  # parallax-occlusion mapping on the ground (rebuild-bound; heavy)
+	"terrain_detail": 1.5,  # 1.0..2.0 ground-mesh subdivision multiplier (rebuild-bound)
+	"volumetric_fog_density": 1.0,  # FAIR-equal LOCAL fog-zone density multiplier
+	"shadow_distance": 200.0,  # 60..250 m directional shadow max distance (immediate)
+	"dof_amount": 0.06,  # FAIR-equal mild far blur (slider stays for personal tuning)
+	"volumetric_fog": true,  # FAIR: the fog/storm/mutator carrier — on for everyone
+	"local_fog": true,  # FAIR: fog banks visible to everyone (rebuild-bound)
+	"climate_zones": true,  # FAIR: rain/snow/desert for everyone (rebuild-bound)
+	"climate_density": 1.0,  # FAIR-equal precipitation/haze density
+	"god_rays": true,  # FAIR-equal light look inside fog (immediate)
+	"dof": true,  # FAIR-equal cinematic far depth-of-field (immediate)
+	"terrain_parallax": true,  # parallax-occlusion mapping (rebuild-bound; tier 3+)
 	# Diagnostics overlay
 	"language": "en",  # UI locale ("en" base/fallback, "ru", ... — TranslationServer)
 	"show_fps": false,  # minimal FPS counter
@@ -150,11 +152,20 @@ func _parse_res(res: String) -> Vector2i:
 	return Vector2i(int(parts[0]), int(parts[1]))
 
 
-## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra → 4 Ultra+RT). Ultra =
-## the hand-tuned look; Ultra+RT = Ultra plus the raster "RT-style" reflection/GI stack
-## (SSR + SSIL + reflection probes + max SDFGI). apply_quality_preset() writes each of these
-## into the live settings, then the per-lever apply functions + Events.graphics_quality_changed
-## carry them to the viewport / Environment / sky / grass / water. Order: Low, Med, High, Ultra, Ultra+RT.
+## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra → 4 Ultra+RT). Ultra+RT
+## (the default) = Ultra plus the raster "RT-style" reflection/GI stack (SSR + SSIL +
+## reflection probes). apply_quality_preset() writes each of these into the live settings,
+## then the per-lever apply functions + Events.graphics_quality_changed carry them to the
+## viewport / Environment / sky / grass / water. Order: Low, Med, High, Ultra, Ultra+RT.
+##
+## FAIRNESS RULE (competitive integrity — игрок на Low не должен видеть лучше): every
+## lever that changes WHAT you can see is IDENTICAL on all five tiers — fog carriers
+## (volumetric/local fog + their densities), weather (climate zones/density), grass
+## (concealment), flora draw distance (sightlines), water refraction (seeing into water),
+## god rays, clouds, DOF (the same mild far-blur for everyone, per the user's call — the
+## dof_amount slider stays for personal tuning = "Custom"). Presets degrade IMAGE QUALITY
+## only: resolution scale, AA, shadows, GI/AO, the RT stack, terrain mesh detail, and the
+## gameplay-neutral ambient dust/embers density.
 const QUALITY_PRESETS := {
 	"render_scale": [0.6, 0.75, 0.9, 1.0, 1.0],
 	"msaa": [0, 1, 2, 2, 2],  # off / 2x / 4x / 4x / 4x
@@ -162,28 +173,27 @@ const QUALITY_PRESETS := {
 	"sdfgi": [false, false, true, true, true],
 	"ssao": [false, false, true, true, true],
 	"glow": [true, true, true, true, true],
-	"clouds": [false, true, true, true, true],
-	"water_refraction": [false, false, true, true, true],
-	"grass_density": [0.3, 0.6, 0.85, 1.0, 1.0],
+	"clouds": [true, true, true, true, true],  # FAIR: sky identical (detail freq stays tiered)
+	"water_refraction": [true, true, true, true, true],  # FAIR: seeing into water equal
+	"grass_density": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: grass is concealment
 	# RT-style tier (index 4 only): screen-space reflections + indirect light + baked probes.
 	# voxelgi stays false in every preset — it's an experimental manual-only toggle.
 	"ssr": [false, false, false, false, true],
 	"ssil": [false, false, false, false, true],
 	"reflection_probes": [false, false, false, false, true],
 	"voxelgi": [false, false, false, false, false],
-	# Cinematic pass III — tasteful defaults per tier; sliders can push beyond ("Custom").
-	"draw_distance": [0.6, 0.8, 1.0, 1.0, 1.2],
-	"particle_density": [0.3, 0.5, 0.85, 1.0, 1.0],
+	"draw_distance": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: equal flora sightlines
+	"particle_density": [0.3, 0.5, 0.85, 1.0, 1.0],  # ambient dust/embers ONLY (neutral)
 	"terrain_detail": [1.0, 1.0, 1.0, 1.3, 1.5],
-	"volumetric_fog_density": [1.0, 1.0, 1.0, 1.0, 1.0],
+	"volumetric_fog_density": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: fog banks equal
 	"shadow_distance": [80.0, 110.0, 140.0, 160.0, 200.0],
-	"dof_amount": [0.0, 0.0, 0.0, 0.06, 0.08],
-	"volumetric_fog": [false, false, false, true, true],
-	"local_fog": [false, false, false, true, true],
-	"climate_zones": [true, true, true, true, true],
-	"climate_density": [0.5, 0.7, 1.0, 1.0, 1.2],
-	"god_rays": [false, false, true, true, true],
-	"dof": [false, false, false, true, true],
+	"dof_amount": [0.06, 0.06, 0.06, 0.06, 0.06],  # FAIR: same mild far-blur for all
+	"volumetric_fog": [true, true, true, true, true],  # FAIR: the fog/storm/mutator carrier
+	"local_fog": [true, true, true, true, true],  # FAIR: fog banks visible to everyone
+	"climate_zones": [true, true, true, true, true],  # FAIR: rain/snow/sand for everyone
+	"climate_density": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: equal visibility through weather
+	"god_rays": [true, true, true, true, true],  # FAIR: equal light look inside fog
+	"dof": [true, true, true, true, true],  # FAIR (user's call: "вредит — так всем")
 	"terrain_parallax": [false, false, false, true, true],
 }
 
@@ -271,11 +281,24 @@ func load_config() -> void:
 	# the zones invisible — coerce anything in the old range to the 1.0 default.
 	if float(_values.get("volumetric_fog_density", 1.0)) <= 0.081:
 		_values["volumetric_fog_density"] = 1.0
+	# ONE-TIME PRESET MIGRATION (fairness rework): saves stamped before the threshold
+	# carry the OLD preset matrix (fog/weather off on Low-High, the old Ultra default) —
+	# re-apply the new Ultra+RT default so every player lands on the fair table once
+	# (they can re-pick any tier after; the whole table is fair now). The stamp lives in
+	# "_meta/presets_migrated" so the migration can never re-fire.
+	if not bool(cfg.get_value("_meta", "presets_migrated", false)):
+		for key in QUALITY_PRESETS:
+			_values[key] = QUALITY_PRESETS[key][4]
+		_values["graphics_quality"] = 4
+		save()
 
 
 func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("_meta", "save_version", Settings.GAME_VERSION)
+	# Stamp the one-time preset migration (see load_config) — any save written by this
+	# build is already on the fair matrix, so the migration must never re-fire on it.
+	cfg.set_value("_meta", "presets_migrated", true)
 	for key in _values:
 		cfg.set_value("settings", key, _values[key])
 	cfg.save(_path())

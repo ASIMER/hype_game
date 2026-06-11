@@ -32,7 +32,10 @@ const ZONES := {
 	8: {"kind": "desert", "radius": 38.0, "top": 16.0},  # Desert Ruins (SW)
 }
 
-# Per-kind base particle counts (scaled by particle_density at build + climate_density live).
+# Per-kind base particle counts. FAIRNESS: climate precipitation is deliberately NOT
+# scaled by the particle_density quality lever (that lever now drives only the
+# gameplay-neutral ambient dust/embers) — weather visibility must be identical on every
+# preset. Only climate_density (preset-equal, manual slider = Custom) modulates it live.
 const BASE_AMOUNT := {"rain": 950, "snow": 460, "desert": 320}
 
 # Cached soft-radial decal texture (white RGB, radial alpha) — one shared instance.
@@ -70,14 +73,12 @@ static func _add_zone(root: Node3D, center: Vector3, prof: Dictionary) -> void:
 	var kind: String = String(prof["kind"])
 	var radius: float = float(prof["radius"])
 	var top: float = float(prof["top"])
-	# Particle count scales with the ambient particle-density quality lever (like dust/embers).
-	var pd: float = clampf(float(SettingsManager.get_value("particle_density")), 0.0, 1.5)
 	var zone := Node3D.new()
 	zone.name = "Climate_%s" % kind
 	root.add_child(zone)
 	zone.global_position = Vector3(center.x, 0.0, center.z)
-	# Precipitation / haze.
-	var p := _build_particles(kind, radius, top, pd)
+	# Precipitation / haze — fixed base amount (fair across presets; see BASE_AMOUNT).
+	var p := _build_particles(kind, radius, top)
 	zone.add_child(p)
 	# Ground tint (conforms to terrain relief).
 	var dec := _build_decal(kind, radius)
@@ -88,10 +89,10 @@ static func _add_zone(root: Node3D, center: Vector3, prof: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- particles
-static func _build_particles(kind: String, radius: float, top: float, pd: float) -> GPUParticles3D:
+static func _build_particles(kind: String, radius: float, top: float) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.name = "Precip"
-	p.amount = maxi(1, int(float(int(BASE_AMOUNT.get(kind, 300))) * clampf(pd, 0.05, 1.5)))
+	p.amount = int(BASE_AMOUNT.get(kind, 300))
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.fixed_fps = 24
 	p.randomness = 1.0
