@@ -209,6 +209,12 @@ static func _pad_w(x: float, z: float) -> float:
 
 
 # ---------------------------------------------------------------- river geometry
+## PUBLIC river-centerline distance — FloraField uses it for the riparian treeline
+## band (trees hugging the banks). Same math the channel carve uses.
+static func river_distance(x: float, z: float) -> float:
+	return _river_dist(x, z)
+
+
 ## Distance from (x,z) to the polyline river centerline (world units).
 static func _river_dist(x: float, z: float) -> float:
 	var p := Vector2(x, z)
@@ -590,10 +596,20 @@ static func _build_ground_material() -> ShaderMaterial:
 	m.set_shader_parameter("tex2_albedo", _gload("Rock029_Color.jpg"))
 	m.set_shader_parameter("tex2_normal", _gload("Rock029_NormalGL.jpg"))
 	m.set_shader_parameter("tex2_rough", _gload("Rock029_Roughness.jpg"))
-	# World-space tiling (metres per texture repeat). ~3.5 m grass, ~4 m dirt, ~5 m rock.
-	m.set_shader_parameter("scale0", 0.285)  # 1/3.5
-	m.set_shader_parameter("scale1", 0.25)  # 1/4
-	m.set_shader_parameter("scale2", 0.20)  # 1/5
+	# 4th layer: gravel/crushed-stone APRONS around the POI/zone pads (ragged mask baked
+	# below) — building surrounds read as worked ground instead of lawn-to-wall.
+	m.set_shader_parameter("texg_albedo", _gload("Gravel022_Color.jpg"))
+	m.set_shader_parameter("texg_normal", _gload("Gravel022_NormalGL.jpg"))
+	m.set_shader_parameter("texg_rough", _gload("Gravel022_Roughness.jpg"))
+	m.set_shader_parameter("scaleg", 0.30)
+	m.set_shader_parameter("pad_mask", _bake_pad_mask())
+	m.set_shader_parameter("map_origin", Vector2(WorldBounds.X_MIN, WorldBounds.Z_MIN))
+	m.set_shader_parameter("map_span", WorldBounds.SPAN)
+	# World-space tiling (metres per texture repeat), retuned for the 2K sets:
+	# ~4.5 m grass, ~5 m dirt, ~6.3 m rock — fewer repeats AND more texels per metre.
+	m.set_shader_parameter("scale0", 0.22)
+	m.set_shader_parameter("scale1", 0.20)
+	m.set_shader_parameter("scale2", 0.16)
 	# Height blend (world-Y, metres). Grass below ~2.5 m, dirt fades in by ~5 m.
 	m.set_shader_parameter("dirt_lo", 2.5)
 	m.set_shader_parameter("dirt_hi", 5.5)
@@ -608,6 +624,25 @@ static func _build_ground_material() -> ShaderMaterial:
 	# decent height proxy → ZERO new asset dependency); see _GROUND_SHADER. 0.04 m max relief.
 	m.set_shader_parameter("parallax_scale", 0.04 if Settings.terrain_parallax_enabled else 0.0)
 	return m
+
+
+## Bake a 192² R8 world-rect mask of the POI/zone pad APRONS for the gravel splat:
+## value = _pad_w × a per-texel hash breakup so apron rims read ragged, not stamped
+## discs. Render-only (no heights/transforms change → golden-safe); ~37k pad evals,
+## well under a second inside the arena-build coroutine.
+static func _bake_pad_mask() -> ImageTexture:
+	var n: int = 192
+	var img := Image.create(n, n, false, Image.FORMAT_R8)
+	for ty in range(n):
+		for tx in range(n):
+			var wx: float = WorldBounds.X_MIN + (float(tx) + 0.5) / float(n) * WorldBounds.SPAN
+			var wz: float = WorldBounds.Z_MIN + (float(ty) + 0.5) / float(n) * WorldBounds.SPAN
+			var w: float = _pad_w(wx, wz)
+			if w <= 0.001:
+				continue
+			var rag: float = ProcHash.hf(ProcHash.h(7351 + tx * 193 + ty * 71))
+			img.set_pixel(tx, ty, Color(clampf(w * (0.55 + 0.45 * rag), 0.0, 1.0), 0.0, 0.0))
+	return ImageTexture.create_from_image(img)
 
 
 # Embedded triplanar splat shader (kept in this file to keep Lane C self-contained — owns
@@ -627,10 +662,18 @@ uniform sampler2D tex1_rough : hint_default_white, filter_linear_mipmap, repeat_
 uniform sampler2D tex2_albedo : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D tex2_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform sampler2D tex2_rough : hint_default_white, filter_linear_mipmap, repeat_enable;
+// Gravel apron layer (POI/zone pad surrounds) — weighted by the baked pad mask.
+uniform sampler2D texg_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D texg_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D texg_rough : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D pad_mask : hint_default_black, filter_linear, repeat_disable;
+uniform vec2 map_origin = vec2(-80.0, -80.0);
+uniform float map_span = 320.0;
+uniform float scaleg = 0.30;
 
-uniform float scale0 = 0.285;
-uniform float scale1 = 0.25;
-uniform float scale2 = 0.20;
+uniform float scale0 = 0.22;
+uniform float scale1 = 0.20;
+uniform float scale2 = 0.16;
 uniform float dirt_lo = 2.5;
 uniform float dirt_hi = 5.5;
 uniform float rock_slope_lo = 0.66;
@@ -647,6 +690,26 @@ varying vec3 v_wnrm;
 void vertex() {
 	v_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+
+// Cheap 2D hash + smooth value noise for the ANTI-TILING macro variation and the
+// dry-patch tint (frequency 0.022 matches the grass shader so dry grass sits on
+// dry ground). Pure functions of world position — deterministic on every peer.
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 345.45));
+	p += dot(p, p + 34.345);
+	return fract(p.x * p.y);
+}
+
+float vnoise01(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 s = f * f * (3.0 - 2.0 * f);
+	float a = hash21(i);
+	float b = hash21(i + vec2(1.0, 0.0));
+	float c = hash21(i + vec2(0.0, 1.0));
+	float d = hash21(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, s.x), mix(c, d, s.x), s.y);
 }
 
 // World-space triplanar albedo for one set. `duv` shifts ONLY the dominant plane (selected by
@@ -771,21 +834,39 @@ void fragment() {
 	}
 	// ---------------------------------------------------------------------------------------
 
+	// Gravel apron weight from the baked pad mask (never on steep rock).
+	vec2 map_uv = (v_wpos.xz - map_origin) / map_span;
+	float gravel_w = texture(pad_mask, map_uv).r * (1.0 - rock_w);
+
 	vec3 a0 = tri_albedo(tex0_albedo, v_wpos, bw, scale0, dom, duv);
 	vec3 a1 = tri_albedo(tex1_albedo, v_wpos, bw, scale1, dom, duv);
 	vec3 a2 = tri_albedo(tex2_albedo, v_wpos, bw, scale2, dom, duv);
+	vec3 ag = tri_albedo(texg_albedo, v_wpos, bw, scaleg, dom, duv);
 	vec3 base = mix(a0, a1, dirt_w);
+	base = mix(base, ag, gravel_w);
 	base = mix(base, a2, rock_w);
+
+	// ANTI-TILING macro variation: low-frequency value-noise brightness drift breaks the
+	// repeat read at mid distance; a second noise pulls the GRASS layer toward sun-dried
+	// straw in ~45 m patches (matches the grass shader's dry patches).
+	float macro = vnoise01(v_wpos.xz * 0.013);
+	base *= mix(0.90, 1.10, macro);
+	float dry = smoothstep(0.55, 0.80,
+		vnoise01(v_wpos.xz * 0.022) * 0.65 + vnoise01(v_wpos.xz * 0.044) * 0.35);
+	float grass_only = (1.0 - dirt_w) * (1.0 - rock_w) * (1.0 - gravel_w);
+	base = mix(base, base * vec3(1.10, 1.03, 0.78), dry * 0.35 * grass_only);
 
 	float r0 = tri_rough(tex0_rough, v_wpos, bw, scale0, dom, duv);
 	float r1 = tri_rough(tex1_rough, v_wpos, bw, scale1, dom, duv);
 	float r2 = tri_rough(tex2_rough, v_wpos, bw, scale2, dom, duv);
-	float rough = mix(mix(r0, r1, dirt_w), r2, rock_w);
+	float rg = tri_rough(texg_rough, v_wpos, bw, scaleg, dom, duv);
+	float rough = mix(mix(mix(r0, r1, dirt_w), rg, gravel_w), r2, rock_w);
 
 	vec3 n0 = tri_normal_world(tex0_normal, v_wpos, wn, bw, scale0, dom, duv);
 	vec3 n1 = tri_normal_world(tex1_normal, v_wpos, wn, bw, scale1, dom, duv);
 	vec3 n2 = tri_normal_world(tex2_normal, v_wpos, wn, bw, scale2, dom, duv);
-	vec3 worldN = normalize(mix(mix(n0, n1, dirt_w), n2, rock_w));
+	vec3 ng = tri_normal_world(texg_normal, v_wpos, wn, bw, scaleg, dom, duv);
+	vec3 worldN = normalize(mix(mix(mix(n0, n1, dirt_w), ng, gravel_w), n2, rock_w));
 
 	ALBEDO = base;
 	ROUGHNESS = clamp(rough, 0.04, 1.0);

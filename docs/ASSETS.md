@@ -15,10 +15,11 @@ All SHIPPED assets are **CC0** (public domain, no attribution required), **MIT**
 |---|---|---|---|---|---|
 | **GodotGrass** (2Retr0 / Ethan Truong) | Grass shader | https://github.com/2Retr0/GodotGrass | MIT | ✅ | `shaders/grass.gdshader` — SSS + root→tip gradient + Perlin wind + AO + view-space widening, ported onto our tiled MultiMesh grass |
 | **Sky3D** (TokisanGames) | Sky plugin | https://store.godotengine.org/asset/tokisangames/sky3d/ · https://github.com/TokisanGames/Sky3D | MIT | ✅ | `addons/sky_3d/` — replaces `sky_storm.gdshader`; day→storm tween retargeted in `world_atmosphere.gd` |
-| **Stylized Nature MegaKit** (Quaternius) | Trees/rocks/bushes | https://quaternius.com/packs/stylizednaturemegakit.html · https://quaternius.itch.io/stylized-nature-megakit | CC0 | ✅ | `assets/models/flora/` — glTF trees/rocks/bushes replace procedural ones in `procedural_flora.gd` |
-| **ambientCG Ground003** (grass-dirt) | PBR ground tex | https://ambientcg.com/view?id=Ground003 | CC0 | ✅ | `assets/textures/ground/` — terrain low/flat blend |
-| **ambientCG Ground054** (dirt) | PBR ground tex | https://ambientcg.com/view?id=Ground054 | CC0 | ✅ | terrain mid-elevation blend |
-| **ambientCG Rock029** (warm rock) | PBR ground tex | https://ambientcg.com/view?id=Rock029 | CC0 | ✅ | terrain steep-slope/cliff blend |
+| **Stylized Nature MegaKit** (Quaternius) | Trees/rocks/bushes/clutter | https://quaternius.com/packs/stylizednaturemegakit.html · https://quaternius.itch.io/stylized-nature-megakit | CC0 | ✅ | `assets/models/flora/` — 15 tree variants (Common/Pine/Dead/Twisted ×biome mixes), bushes, rocks + the vegetation-overhaul CLUTTER set (Fern_1, Clover_1/2, Flower_3/4_Group, Mushroom_Common/Laetiporus, Plant_1/7, Pebble_Round/Square ×5, RockPath_*_Wide) used by `procedural_flora.gd` + `flora_clutter.gd` |
+| **ambientCG Ground003** (grass-dirt) | PBR ground tex | https://ambientcg.com/view?id=Ground003 | CC0 | ✅ | `assets/textures/ground/` — terrain low/flat blend (**2K** since the graphics overhaul; fetch via `tools/art/fetch_ground_textures.ps1`) |
+| **ambientCG Ground054** (dirt) | PBR ground tex | https://ambientcg.com/view?id=Ground054 | CC0 | ✅ | terrain mid-elevation blend (**2K**) |
+| **ambientCG Rock029** (warm rock) | PBR ground tex | https://ambientcg.com/view?id=Rock029 | CC0 | ✅ | terrain steep-slope/cliff blend (**2K**) |
+| **ambientCG Gravel022** (crushed stone) | PBR ground tex | https://ambientcg.com/view?id=Gravel022 | CC0 | ✅ | terrain 4th layer — ragged gravel APRONS around POI/zone pads (baked pad mask, `procedural_terrain.gd`) |
 | **ambientCG Rock035** (dark cliff) | PBR ground tex | https://ambientcg.com/view?id=Rock035 | CC0 | 🔎 | alt cliff (storm/shadowed) |
 | **Sci-Fi Modular Gun Pack** (Quaternius) | Weapons | https://quaternius.com/packs/scifimodularguns.html | CC0 | ✅ | `assets/models/weapons/` → `AssetRegistry` rifle/pistol/smg/shotgun/dmr |
 | **Blaster Kit** (Kenney) | Weapons (fallback) | https://kenney.nl/assets/blaster-kit | CC0 | ✅/🔎 | reliable CC0 GLB fallback for gun ids + projectiles/crates |

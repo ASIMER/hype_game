@@ -25,6 +25,11 @@ uniform vec3 tip_color : source_color = vec3(0.46, 0.64, 0.26);    // bright tip
 uniform vec3 sss_color : source_color = vec3(1.0, 0.78, 0.28);     // warm backlight tint
 uniform float sss_strength : hint_range(0.0, 2.0) = 0.7;
 uniform float ao_strength : hint_range(0.0, 1.0) = 0.85;           // root darkening amount
+// Dry-patch tint: ~45 m world-noise patches pull the palette toward sun-dried straw
+// (frequency 0.022 matches the terrain macro tint so dry grass sits on dry ground).
+uniform vec3 dry_base_color : source_color = vec3(0.30, 0.26, 0.10);
+uniform vec3 dry_tip_color : source_color = vec3(0.62, 0.55, 0.25);
+uniform float dry_strength : hint_range(0.0, 1.0) = 0.7;
 
 group_uniforms Wind;
 uniform float sway_strength : hint_range(0.0, 1.0) = 0.18;
@@ -40,6 +45,18 @@ float hash21(vec2 p) {
 
 float ease_in_quad(float x) { return x * x; }
 float ease_in_quartic(float x) { float a = x * x; return a * a; }
+
+// Smooth 2-octave value noise (bilinear-lerped hash lattice) for the dry patches.
+float vnoise01(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 s = f * f * (3.0 - 2.0 * f);
+	float a = hash21(i);
+	float b = hash21(i + vec2(1.0, 0.0));
+	float c = hash21(i + vec2(0.0, 1.0));
+	float d = hash21(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, s.x), mix(c, d, s.x), s.y);
+}
 
 // World position of this tuft's root, stashed for the fragment tint.
 varying vec3 v_wpos;
@@ -85,7 +102,13 @@ void vertex() {
 void fragment() {
 	// Root->tip vertical gradient (quartic so the bright tip is concentrated up top).
 	float g = ease_in_quartic(v_hf);
-	vec3 col = mix(base_color, tip_color, g);
+	// Dry patches: blend BOTH gradient ends toward straw inside ~45 m noise blobs.
+	float dryness = smoothstep(0.55, 0.80,
+		vnoise01(v_wpos.xz * 0.022) * 0.65 + vnoise01(v_wpos.xz * 0.044) * 0.35);
+	float dry = dryness * dry_strength;
+	vec3 root_c = mix(base_color, dry_base_color, dry);
+	vec3 tip_c = mix(tip_color, dry_tip_color, dry);
+	vec3 col = mix(root_c, tip_c, g);
 
 	// Per-tuft tint so neighbouring clumps differ (hash a coarse world grid).
 	float tint = hash21(floor(v_wpos.xz * 0.5));

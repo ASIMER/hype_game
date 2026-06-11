@@ -164,9 +164,10 @@ func _build_terrain() -> void:
 
 
 func _build_flora() -> void:
-	# NW-only extraction keep-outs: the 9 new-biome zones never had flora keep-outs
-	# (pre-existing asymmetry, kept bit-exact — see docs/AUDIT.md F2).
-	ProceduralFlora.build(nav_region, _POI_DEFS, _extraction_zone_points(true))
+	# Flora keep-outs cover ALL 12 extraction zones (the old NW-only asymmetry —
+	# docs/AUDIT.md F2 — was deliberately closed by the vegetation overhaul: at 4×
+	# tree density, trees planting on the 9 new-biome zone pads became a real bug).
+	ProceduralFlora.build(nav_region, _POI_DEFS, _extraction_zone_points())
 
 
 ## Ultra+RT tier: spawn baked ReflectionProbes at the POIs for off-screen reflections.

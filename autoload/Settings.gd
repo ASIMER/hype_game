@@ -49,16 +49,23 @@ const TERRAIN_RIM_HEIGHT: float = 7.0  # rocky berm height near the perimeter wa
 const RIVER_WIDTH: float = 5.0  # river channel width (m)
 const RIVER_DEPTH: float = 0.45  # ≤ navmesh agent_max_climb 0.5 → walkable ford everywhere
 # Flora budgets (MultiMesh where possible; trees/boulders are individual nodes).
-# 4× MAP: counts scaled ~2.5× for the 320×320 world (the scatter spreads EVENLY across the
-# whole rectangle via per-cell acceptance, so these are expected totals, not corner caps).
-# GRASS is density-driven (per-cell probability + spatial tiling) so its budgets are unused
-# for placement now — only the visibility ranges below matter.
-const FLORA_TREES: int = 200
-const FLORA_BUSHES: int = 150
+# VEGETATION OVERHAUL (forest + clearings): trees/bushes are placed by the FloraField
+# density field (groves, treelines, ecotone edges, authored corridors) — these are
+# EXPECTED TOTALS for calibration/QA prints, not caps (the field's acceptance math in
+# procedural_flora is tuned to land near them: 6400 cells × mean_w 0.30 × accept 0.45
+# ≈ 760 trees after keep-out/river losses). GRASS is density-driven (per-cell probability
+# + spatial tiling) so its budgets are unused for placement — only visibility ranges.
+# FAIRNESS: all vegetation density is identical on every graphics preset (concealment).
+const FLORA_TREES: int = 760
+const FLORA_BUSHES: int = 650
 const GRASS_VIS_RANGE: float = 58.0  # near-layer visibility_range_end (m); wider so grass doesn't pop on the 160m map
 const GRASS_FAR_RANGE: float = 90.0  # far-layer visibility_range_end (m)
-const FLORA_STONES: int = 1000  # small render-only stones (MultiMesh)
+const FLORA_STONES: int = 1000  # textured pebbles (FloraClutter MultiMesh, render-only)
 const FLORA_BOULDERS: int = 36  # big collidable cover rocks
+# FloraClutter expected per-layer totals (documentation + NET_DEBUG count checks).
+const FLORA_CLUTTER: Dictionary = {
+	"fern": 500, "flower": 280, "clover": 200, "mushroom": 180, "plant": 250, "flagstone": 60
+}
 # Building interior lighting (shadowless warm omnis; budget ≤ ~14 lights map-wide)
 const INTERIOR_LIGHT_ENERGY: float = 2.6
 const INTERIOR_LIGHT_RANGE: float = 10.0

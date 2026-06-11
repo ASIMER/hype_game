@@ -1,8 +1,10 @@
 extends RefCounted
 class_name ProceduralFlora
-## Procedural VEGETATION + ROCKS scattered across the 160×160 urban-ruins map:
-## trees (conifer/broadleaf), bushes, a dense grass MultiMesh, a small-stone
-## MultiMesh, and a handful of BIG collidable boulders used as cover.
+## Procedural VEGETATION + ROCKS across the 320×320 map: trees in FOREST/CLEARING
+## clusters (FloraField density field — groves, treelines, ecotone edges, authored
+## corridors), edge-hugging bushes, a dense two-LOD grass MultiMesh with meadow/
+## canopy modulation, ground clutter (FloraClutter: ferns/flowers/mushrooms/pebbles)
+## and a handful of BIG collidable boulders used as cover.
 ##
 ## EVERYTHING is DETERMINISTIC — co-op peers each build the arena locally, so the
 ## geometry MUST be identical on every machine. All placement and per-instance
@@ -66,6 +68,12 @@ static func _collect_keepouts(poi_defs: Dictionary, extraction_points: Array[Vec
 		_circles.append([zc.x, zc.y, _EXTRACT_KEEPOUT_R])
 
 
+## PUBLIC keep-out test for the flora family (FloraClutter scatters with the same
+## rules) — true when (x,z) is inside any structure/zone/spawn keep-out or off-field.
+static func blocked_at(x: float, z: float) -> bool:
+	return _blocked(x, z)
+
+
 ## True when (x,z) is inside any structure/zone/spawn keep-out OR off the playable
 ## field. `allow_berm` lets boulders sit a little closer to the perimeter wall (inset 5 vs 8).
 static func _blocked(x: float, z: float, allow_berm: bool = false) -> bool:
@@ -92,9 +100,9 @@ static func _blocked(x: float, z: float, allow_berm: bool = false) -> bool:
 # ================================================================ entry point
 ## Construct all flora, add a single root under `parent`, and return it. `poi_defs` is
 ## arena._POI_DEFS (the ONE POI source); `extraction_points` are the zone XZ centres
-## arena passes (today: the 3 original NW zones — the 9 new-biome zones never had flora
-## keep-outs; adding them would reshape the world, so that stays a deliberate decision,
-## see docs/AUDIT.md F2).
+## arena passes — since the vegetation overhaul this is ALL 12 zones (the old 3-NW-only
+## asymmetry was a deliberate deferral, docs/AUDIT.md F2, closed when 4× tree density
+## made trees-on-pads a real bug).
 static func build(
 	parent: Node3D, poi_defs: Dictionary = {}, extraction_points: Array[Vector2] = []
 ) -> Node3D:
@@ -109,29 +117,78 @@ static func build(
 	_build_trees(root, seed)
 	_build_bushes(root, seed)
 	_build_grass(root, seed)
-	_build_stones(root, seed)
+	FloraClutter.build(root, seed, poi_defs)
 	_build_boulders(root, seed)
 	return root
 
 
-# ---------------------------------------------------------------- glTF model cache
-## Quaternius CC0 megakit models (copied into assets/models/flora/). We pull the Mesh out
-## of each imported glTF PackedScene ONCE and feed it to a MultiMesh, exactly like the
-## grass — so 100 trees are a handful of draw calls, NOT 100 scene nodes. Render-only;
-## collision is emitted separately as StaticBody3D primitives so the navmesh bakes around
-## trunks/rocks.
-##
-## Each entry: id -> {mesh, base_scale, trunk_r}. `base_scale` normalises the raw model
-## (Quaternius models range ~7 m to ~17 m tall) to our ~5-8 m tree look; `trunk_r` is the
-## collision-cylinder radius (rocks reuse the field as a sphere radius).
-const _TREE_MODELS: Array = [
-	# [id, base_scale, trunk_radius]
-	["CommonTree_1", 0.95, 0.42],
-	["CommonTree_3", 0.95, 0.42],
-	["Pine_1", 0.95, 0.40],
-	["DeadTree_2", 0.62, 0.40],
-	["TwistedTree_1", 0.42, 0.55],
-]
+# ---------------------------------------------------------------- glTF model tables
+## Quaternius CC0 MegaKit models (assets/models/flora/). Mesh loading + MultiMesh
+## emission live in FloraMeshLib (shared with FloraClutter). `base_scale` normalises
+## raw model height (~7-19 m) to the ~5-8 m world look; `trunk_r` = collision radius.
+const _TREE_DEFS: Dictionary = {
+	# id: [base_scale, trunk_radius]
+	"CommonTree_1": [0.95, 0.42],
+	"CommonTree_2": [0.95, 0.42],
+	"CommonTree_3": [0.95, 0.42],
+	"CommonTree_4": [0.95, 0.42],
+	"CommonTree_5": [0.95, 0.42],
+	"Pine_1": [0.95, 0.40],
+	"Pine_2": [0.85, 0.40],
+	"Pine_3": [0.85, 0.40],
+	"Pine_4": [0.75, 0.42],
+	"DeadTree_1": [0.60, 0.40],
+	"DeadTree_2": [0.62, 0.40],
+	"DeadTree_3": [0.45, 0.40],
+	"TwistedTree_1": [0.42, 0.55],
+	"TwistedTree_2": [0.40, 0.55],
+	"TwistedTree_3": [0.45, 0.55],
+}
+## Per-biome model mixes (weights sum to 100): urban parkland, snow conifers,
+## desert deadwood, lush rain broadleaf. Picked by hash per accepted site.
+const _TREE_MIX: Dictionary = {
+	"urban":
+	[
+		["CommonTree_1", 18],
+		["CommonTree_2", 14],
+		["CommonTree_3", 18],
+		["CommonTree_5", 10],
+		["Pine_1", 10],
+		["Pine_2", 8],
+		["DeadTree_2", 8],
+		["TwistedTree_1", 8],
+		["TwistedTree_2", 6],
+	],
+	"snow":
+	[
+		["Pine_1", 22],
+		["Pine_2", 20],
+		["Pine_3", 18],
+		["Pine_4", 14],
+		["DeadTree_1", 10],
+		["DeadTree_2", 8],
+		["CommonTree_3", 8],
+	],
+	"desert":
+	[
+		["DeadTree_1", 30],
+		["DeadTree_2", 25],
+		["DeadTree_3", 20],
+		["TwistedTree_1", 15],
+		["TwistedTree_2", 10],
+	],
+	"rain":
+	[
+		["CommonTree_4", 18],
+		["CommonTree_2", 16],
+		["CommonTree_5", 16],
+		["TwistedTree_1", 12],
+		["TwistedTree_2", 12],
+		["TwistedTree_3", 10],
+		["Pine_3", 8],
+		["CommonTree_1", 8],
+	],
+}
 const _ROCK_MODELS: Array = [
 	# [id, base_scale]
 	["Rock_Medium_1", 1.0],
@@ -143,206 +200,184 @@ const _BUSH_MODELS: Array = [
 	["Bush_Common", 0.6],
 	["Bush_Common_Flowers", 0.6],
 ]
-
-## Load a glTF model's Mesh (with all its surfaces/materials). Returns null in headless
-## (no rendering server) — callers guard so the arena still builds. Cached per-id.
-static var _mesh_cache: Dictionary = {}
-
-
-static func _model_mesh(id: String) -> Mesh:
-	if _mesh_cache.has(id):
-		return _mesh_cache[id]
-	var ps: PackedScene = load("res://assets/models/flora/%s.gltf" % id)
-	var m: Mesh = null
-	if ps != null:
-		var inst: Node = ps.instantiate()
-		var mi: MeshInstance3D = _find_mesh_instance(inst)
-		if mi != null:
-			m = mi.mesh
-		inst.free()
-	_mesh_cache[id] = m
-	return m
+# Rain-quadrant bushes mix in Plant_1 as broadleaf undergrowth.
+const _BUSH_MODELS_RAIN: Array = [
+	["Bush_Common", 0.6],
+	["Bush_Common_Flowers", 0.6],
+	["Plant_1", 0.9],
+]
 
 
-## Depth-first search for the first MeshInstance3D in an instanced glTF scene.
-static func _find_mesh_instance(n: Node) -> MeshInstance3D:
-	if n is MeshInstance3D:
-		return n
-	for c in n.get_children():
-		var r: MeshInstance3D = _find_mesh_instance(c)
-		if r != null:
-			return r
-	return null
-
-
-## Emit ONE MultiMeshInstance3D for `mesh` from a transform list (render-only, no colors).
-static func _emit_model_mm(
-	parent: Node3D, nm: String, mesh: Mesh, xforms: Array[Transform3D]
-) -> void:
-	if mesh == null or xforms.is_empty():
-		return
-	var mmi := MultiMeshInstance3D.new()
-	mmi.name = nm
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = false
-	mm.mesh = mesh
-	mm.instance_count = xforms.size()
-	for j in range(xforms.size()):
-		mm.set_instance_transform(j, xforms[j])
-	mmi.multimesh = mm
-	# Beyond ~110 m a tree is a few pixels — cull the lot to keep distant draw cheap. The
-	# Settings.draw_distance_scale lever (0.5..2.0, read at build) widens/narrows this range;
-	# 1.0 keeps the current 120 m cutoff.
-	mmi.visibility_range_end = 120.0 * clampf(Settings.draw_distance_scale, 0.5, 2.0)
-	mmi.visibility_range_end_margin = 12.0
-	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	parent.add_child(mmi)
+## Flora layers cull beyond this (× draw_distance_scale): a tree is pixels at 120 m.
+static func _flora_vis_end() -> float:
+	return 120.0 * clampf(Settings.draw_distance_scale, 0.5, 2.0)
 
 
 # ================================================================ TREES (Quaternius glTF)
-## Deterministic jittered-grid scatter: walk a coarse grid over the field, hash-decide
-## presence per cell + hash-jitter the position inside the cell. The grid spacing gives
-## the ≥4 m min-spacing between trees for free and stays fully deterministic. Each accepted
-## site picks one of the 5 tree models by hash and appends to that model's transform list;
-## we then emit ONE MultiMeshInstance3D per model + a collidable trunk per instance.
+## FOREST/CLEARING scatter: a fine 4 m jittered grid whose per-cell acceptance is
+## FloraField.forest_w × 0.45 — groves cluster where the field is high, clearings stay
+## open, the 0.45 cap keeps even grove cores walkable (navmesh corridors guaranteed by
+## the field's authored lanes). Model per site = the biome's weighted mix. Collision:
+## ONE shared "TreeTrunks" StaticBody3D holding a CylinderShape3D per tree (same navmesh
+## input as per-tree bodies at half the node count).
 static func _build_trees(root: Node3D, seed: int) -> int:
 	var trees := Node3D.new()
 	trees.name = "Trees"
 	root.add_child(trees)
-	# A separate node holding all the (render-less) trunk StaticBodies so the navmesh
-	# bake + player collision route around them; the glTF MultiMeshes are render-only.
-	var colliders := Node3D.new()
-	colliders.name = "TreeColliders"
-	trees.add_child(colliders)
+	var trunks := StaticBody3D.new()
+	trunks.name = "TreeTrunks"
+	trunks.collision_layer = 1
+	trunks.collision_mask = 0
+	trees.add_child(trunks)
 
-	# Per-model transform buckets, parallel to _TREE_MODELS.
-	var buckets: Array = []
-	for i in range(_TREE_MODELS.size()):
-		buckets.append([] as Array[Transform3D])
+	# Per-model-id transform buckets (only ids actually used get an MMI).
+	var buckets: Dictionary = {}
 
-	# EVEN spread over the whole rectangle: walk the grid across the WorldBounds rect
-	# and accept a per-cell PROBABILITY tuned so the expected total ≈ FLORA_TREES — NOT a
-	# fill-until-target cap (which would pile every tree into the NW corner and leave the new
-	# +X/+Z quadrants bare). The river/keep-out losses just thin it locally.
-	var target: int = Settings.FLORA_TREES
 	var placed: int = 0
-	var step: float = 7.0
+	var step: float = 4.0
 	var nx: int = int((WorldBounds.X_MAX - WorldBounds.X_MIN) / step)
 	var nz: int = int((WorldBounds.Z_MAX - WorldBounds.Z_MIN) / step)
-	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 95)
-	var gx: int = 0
-	var x: float = WorldBounds.X_MIN + step * 0.5
-	while x <= WorldBounds.X_MAX - step * 0.5:
-		var gz: int = 0
-		var z: float = WorldBounds.Z_MIN + step * 0.5
-		while z <= WorldBounds.Z_MAX - step * 0.5:
+	for gx in range(nx):
+		for gz in range(nz):
 			var cell: int = ProcHash.h(seed * 911 + gx * 257 + gz * 31 + 7)
-			# Jitter keeps accepted sites off a visible lattice.
-			if (cell % 100) < accept:
-				var px: float = x + ProcHash.hrange(cell + 1, -2.6, 2.6)
-				var pz: float = z + ProcHash.hrange(cell + 2, -2.6, 2.6)
-				if not _blocked(px, pz):
-					var gy: float = _ground_y(px, pz)
-					if gy >= -0.05:  # not in the river
-						_place_tree(colliders, buckets, cell, px, gy, pz)
-						placed += 1
-			gz += 1
-			z += step
-		gx += 1
-		x += step
+			var px: float = (
+				WorldBounds.X_MIN + (float(gx) + 0.5) * step + ProcHash.hrange(cell + 1, -1.4, 1.4)
+			)
+			var pz: float = (
+				WorldBounds.Z_MIN + (float(gz) + 0.5) * step + ProcHash.hrange(cell + 2, -1.4, 1.4)
+			)
+			# Cluster acceptance: the forest field IS the density (cap 0.45 ⇒ walkable groves).
+			var accept_p: float = FloraField.forest_w(px, pz) * 0.45
+			if ProcHash.hf(cell + 9) >= accept_p:
+				continue
+			if _blocked(px, pz):
+				continue
+			var gy: float = _ground_y(px, pz)
+			if gy < -0.05:  # not in the river
+				continue
+			_place_tree(trunks, buckets, cell, px, gy, pz)
+			placed += 1
 
-	# Emit one MultiMesh per tree model from its bucket.
-	for i in range(_TREE_MODELS.size()):
-		var id: String = String(_TREE_MODELS[i][0])
-		var mesh: Mesh = _model_mesh(id)
-		_emit_model_mm(trees, "Tree_%s" % id, mesh, buckets[i])
+	# Emit one MultiMesh per model id actually used (sorted for deterministic node order).
+	var ids: Array = buckets.keys()
+	ids.sort()
+	for id in ids:
+		FloraMeshLib.emit_model_mm(
+			trees,
+			"Tree_%s" % String(id),
+			FloraMeshLib.model_meshes(String(id)),
+			buckets[id],
+			_flora_vis_end()
+		)
+	if Settings.NET_DEBUG:
+		print("[flora] trees placed=%d (target %d)" % [placed, Settings.FLORA_TREES])
 	return placed
 
 
-## Pick a model by hash, append a yaw+scale-jittered Transform3D to its bucket, and emit a
-## collidable trunk cylinder (layer 1) sized to the scaled model footprint.
-static func _place_tree(
-	colliders: Node3D, buckets: Array, hseed: int, x: float, y: float, z: float
-) -> void:
-	var mi: int = ProcHash.h(hseed + 5) % _TREE_MODELS.size()
-	var base_scale: float = float(_TREE_MODELS[mi][1])
-	var trunk_r: float = float(_TREE_MODELS[mi][2])
-	var yaw: float = ProcHash.hrange(hseed + 11, 0.0, TAU)
-	# Slight per-instance scale variation so the same model doesn't read as clones.
-	var sc: float = base_scale * ProcHash.hrange(hseed + 13, 0.82, 1.18)
-	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
-	(buckets[mi] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y, z)))
+## Weighted biome-mix pick: roll in [0,100) walks the cumulative weight table.
+static func _pick_tree_id(biome: String, roll: int) -> String:
+	var mix: Array = _TREE_MIX.get(biome, _TREE_MIX["urban"])
+	var acc: int = 0
+	for e in mix:
+		acc += int(e[1])
+		if roll < acc:
+			return String(e[0])
+	return String(mix[0][0])
 
-	# --- collidable trunk (render-only StaticBody) ---
-	var body := StaticBody3D.new()
-	body.collision_layer = 1
-	body.collision_mask = 0
-	body.position = Vector3(x, y, z)
-	colliders.add_child(body)
+
+## Pick the biome-mix model, append a yaw+scale-jittered Transform3D to its bucket, and
+## add a trunk CylinderShape3D to the SHARED TreeTrunks body (layer 1, navmesh input).
+static func _place_tree(
+	trunks: StaticBody3D, buckets: Dictionary, hseed: int, x: float, y: float, z: float
+) -> void:
+	var id: String = _pick_tree_id(WorldBounds.biome_at(x, z), ProcHash.h(hseed + 5) % 100)
+	var def: Array = _TREE_DEFS[id]
+	var base_scale: float = float(def[0])
+	var trunk_r: float = float(def[1])
+	var yaw: float = ProcHash.hrange(hseed + 11, 0.0, TAU)
+	# Wider per-instance scale variation so groves don't read as clone stamps.
+	var sc: float = base_scale * ProcHash.hrange(hseed + 13, 0.75, 1.25)
+	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
+	if not buckets.has(id):
+		buckets[id] = [] as Array[Transform3D]
+	(buckets[id] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y, z)))
+
 	var col := CollisionShape3D.new()
 	var cs := CylinderShape3D.new()
 	cs.radius = maxf(trunk_r * sc, 0.25)
-	# A tall trunk capsule so players/AI can't clip past it; height scaled with the model.
+	# A tall trunk cylinder so players/AI can't clip past it; height scaled with the model.
 	cs.height = 6.0 * sc
 	col.shape = cs
-	col.position = Vector3(0.0, cs.height * 0.5, 0.0)
-	body.add_child(col)
+	col.position = Vector3(x, y + cs.height * 0.5, z)
+	trunks.add_child(col)
 
 
 # ================================================================ BUSHES (Quaternius glTF)
-## Render-only shrubs (no collision). Scattered on a finer jittered grid, separate hash
-## stream so they don't share the tree lattice. One MultiMesh per bush model.
+## Render-only shrubs hugging the FOREST EDGES (the ecotone): acceptance = a small open-
+## field base + a strong FloraField.edge_w term, scaled per biome (lush rain, sparse
+## snow/desert). Rain mixes Plant_1 in as broadleaf undergrowth. One MultiMesh per model.
 static func _build_bushes(root: Node3D, seed: int) -> int:
 	var bushes := Node3D.new()
 	bushes.name = "Bushes"
 	root.add_child(bushes)
 
-	var buckets: Array = []
-	for i in range(_BUSH_MODELS.size()):
-		buckets.append([] as Array[Transform3D])
+	# Buckets per model id across BOTH mix tables.
+	var buckets: Dictionary = {}
 
-	# Same even-spread model as the trees (probability tuned to the rectangle, not a corner cap).
-	var target: int = Settings.FLORA_BUSHES
 	var placed: int = 0
-	var step: float = 6.5
+	var step: float = 4.5
 	var nx: int = int((WorldBounds.X_MAX - WorldBounds.X_MIN) / step)
 	var nz: int = int((WorldBounds.Z_MAX - WorldBounds.Z_MIN) / step)
-	var accept: int = clampi(int(round(float(target) * 100.0 / float(maxi(1, nx * nz)))), 1, 90)
-	var gx: int = 0
-	var x: float = WorldBounds.X_MIN + step * 0.5
-	while x <= WorldBounds.X_MAX - step * 0.5:
-		var gz: int = 0
-		var z: float = WorldBounds.Z_MIN + step * 0.5
-		while z <= WorldBounds.Z_MAX - step * 0.5:
+	for gx in range(nx):
+		for gz in range(nz):
 			var cell: int = ProcHash.h(seed * 1303 + gx * 193 + gz * 47 + 17)
-			if (cell % 100) < accept:
-				var px: float = x + ProcHash.hrange(cell + 1, -2.4, 2.4)
-				var pz: float = z + ProcHash.hrange(cell + 2, -2.4, 2.4)
-				if not _blocked(px, pz):
-					var gy: float = _ground_y(px, pz)
-					if gy >= -0.05:
-						var mi: int = ProcHash.h(cell + 51) % _BUSH_MODELS.size()
-						var bscale: float = float(_BUSH_MODELS[mi][1])
-						var yaw: float = ProcHash.hrange(cell + 3, 0.0, TAU)
-						# Bushes are small/low — keep them under 1× so they don't tower.
-						var sc: float = bscale * ProcHash.hrange(cell + 4, 0.55, 0.95)
-						var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(
-							Vector3(sc, sc, sc)
-						)
-						(buckets[mi] as Array[Transform3D]).append(
-							Transform3D(basis, Vector3(px, gy, pz))
-						)
-						placed += 1
-			gz += 1
-			z += step
-		gx += 1
-		x += step
+			var px: float = (
+				WorldBounds.X_MIN + (float(gx) + 0.5) * step + ProcHash.hrange(cell + 1, -2.0, 2.0)
+			)
+			var pz: float = (
+				WorldBounds.Z_MIN + (float(gz) + 0.5) * step + ProcHash.hrange(cell + 2, -2.0, 2.0)
+			)
+			var biome: String = WorldBounds.biome_at(px, pz)
+			var bf: float = 1.0
+			if biome == "snow":
+				bf = 0.6
+			elif biome == "desert":
+				bf = 0.25
+			elif biome == "rain":
+				bf = 1.3
+			var accept_p: float = (0.10 + 0.40 * FloraField.edge_w(px, pz)) * bf
+			if ProcHash.hf(cell + 9) >= accept_p:
+				continue
+			if _blocked(px, pz):
+				continue
+			var gy: float = _ground_y(px, pz)
+			if gy < -0.05:
+				continue
+			var models: Array = _BUSH_MODELS_RAIN if biome == "rain" else _BUSH_MODELS
+			var mi: int = ProcHash.h(cell + 51) % models.size()
+			var id: String = String(models[mi][0])
+			var bscale: float = float(models[mi][1])
+			var yaw: float = ProcHash.hrange(cell + 3, 0.0, TAU)
+			# Bushes are small/low — keep them under 1× so they don't tower.
+			var sc: float = bscale * ProcHash.hrange(cell + 4, 0.55, 0.95)
+			var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
+			if not buckets.has(id):
+				buckets[id] = [] as Array[Transform3D]
+			(buckets[id] as Array[Transform3D]).append(Transform3D(basis, Vector3(px, gy, pz)))
+			placed += 1
 
-	for i in range(_BUSH_MODELS.size()):
-		var id: String = String(_BUSH_MODELS[i][0])
-		var mesh: Mesh = _model_mesh(id)
-		_emit_model_mm(bushes, "Bush_%s" % id, mesh, buckets[i])
+	var ids: Array = buckets.keys()
+	ids.sort()
+	for id in ids:
+		FloraMeshLib.emit_model_mm(
+			bushes,
+			"Bush_%s" % String(id),
+			FloraMeshLib.model_meshes(String(id)),
+			buckets[id],
+			_flora_vis_end()
+		)
+	if Settings.NET_DEBUG:
+		print("[flora] bushes placed=%d (target %d)" % [placed, Settings.FLORA_BUSHES])
 	return placed
 
 
@@ -366,18 +401,20 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 ## silently lossy in Godot 4.6 here). Density uses a clumped jittered grid; keep-out / river
 ## instances aren't emitted. Fully deterministic (_h/_hf).
 const GRASS_TILE_M: float = 16.0  # spatial-tile edge (m) for the MultiMesh-LOD cull fix
-# DENSITY model (4× map): grass is now PER-CELL-PROBABILITY-driven, not a global instance cap.
-# `NEAR_GRASS_DENSITY` is the base near-layer acceptance at quality q=1.0, CALIBRATED so the
-# per-16m-tile blade count matches the old budgeted map (~340 blades/tile → identical weak-GPU
-# per-frame load, since tiling means only the ~45 m visible bubble of tiles ever draws). The
-# total count just scales with the bigger area; per-frame cost does not. (0.5 × the natural
-# clumped grid ≈ the old 26k-over-the-old-field budget.)
-const NEAR_GRASS_DENSITY: float = 0.5  # base near-layer per-cell acceptance at q=1 (tile-density calibrated)
+# DENSITY model (4× map): grass is PER-CELL-PROBABILITY-driven, not a global instance cap.
+# Vegetation-overhaul v2: mean ≈386 tufts per 16 m tile (the FAIRNESS/perf invariant —
+# identical on every preset; per-frame cost is bounded by the visible tile bubble, not the
+# map size). Density up (0.5→0.72) with the clump floor LOWERED back (0.85→0.50) so natural
+# bald patches return — organic rhythm instead of a uniform lawn — plus a coarse 18 m
+# patchiness octave, tall meadows at forest edges and thinning under grove canopies.
+const NEAR_GRASS_DENSITY: float = 0.72  # base near-layer per-cell acceptance at q=1
 const NEAR_GRASS_GRID: float = 0.7  # near-layer nominal blade spacing (m)
-# Clumping density floor: the old 0.4x minimum carved big bald gaps. Raise the floor so the
-# field is uniformly dense with only gentle density variation (no bare patches).
-const GRASS_CLUMP_FLOOR: float = 0.85  # min per-clump emission weight (was 0.40)
-const GRASS_CLUMP_RANGE: float = 0.95  # added on top of the floor => 0.85x .. 1.80x
+const GRASS_CLUMP_FLOOR: float = 0.50  # min per-clump emission weight (organic gaps)
+const GRASS_CLUMP_RANGE: float = 1.05  # added on top of the floor => 0.50x .. 1.55x
+const GRASS_PATCH_M: float = 18.0  # coarse second patchiness octave (×0.8..1.2)
+const GRASS_MEADOW_BOOST: float = 0.4  # density boost at forest edges (× edge_w)
+const GRASS_MEADOW_HEIGHT: float = 0.35  # tuft height boost at forest edges (× edge_w)
+const GRASS_CANOPY_THIN: float = 0.25  # density cut inside grove cores
 
 
 static func _build_grass(root: Node3D, seed: int) -> void:
@@ -529,7 +566,11 @@ static func _grass_transforms(
 	var i: int = 0
 	var placed: int = 0
 	var cells: int = nx * nz
-	var safety_cap: int = 400000
+	var safety_cap: int = 500000
+	# FloraField memo at 6 m clump-cell granularity (groves are 25-60 m features, so the
+	# coarse sample is exact enough) — bounds the field queries to ~2.8k per layer instead
+	# of one per 0.7 m grass cell. Value = Vector2(meadow edge_w, grove forest_w).
+	var field_memo: Dictionary = {}
 	while i < cells and placed < safety_cap:
 		var cx: int = i % nx
 		var cz: int = i / nx
@@ -537,14 +578,33 @@ static func _grass_transforms(
 		var hcell: int = ProcHash.h(seed * salt + cx * 131 + cz * 71 + 3)
 		var bx: float = WorldBounds.X_MIN + (float(cx) + 0.5) * grid
 		var bz: float = WorldBounds.Z_MIN + (float(cz) + 0.5) * grid
-		# Per-cell emission weight: base `density` × (optional) coarse ~6 m clump field.
+		# Per-cell emission weight: base `density` × coarse clump/patch fields (near layer).
 		var dens_mul: float = density
+		var meadow: float = 0.0
 		if clump:
 			var clx: int = int(floor((bx - WorldBounds.X_MIN) / 6.0))
 			var clz: int = int(floor((bz - WorldBounds.Z_MIN) / 6.0))
 			var cf: float = ProcHash.hf(ProcHash.h(seed * 769 + clx * 211 + clz * 97 + 5))
-			# Map the clump field to an emission weight; floor raised so no bald patches.
 			dens_mul = (GRASS_CLUMP_FLOOR + cf * GRASS_CLUMP_RANGE) * density
+			# Coarse 18 m patchiness octave (large-scale density drift ×0.8..1.2).
+			var ptx: int = int(floor((bx - WorldBounds.X_MIN) / GRASS_PATCH_M))
+			var ptz: int = int(floor((bz - WorldBounds.Z_MIN) / GRASS_PATCH_M))
+			var pf: float = ProcHash.hf(ProcHash.h(seed * 911 + ptx * 313 + ptz * 109 + 11))
+			dens_mul *= 0.8 + pf * 0.4
+			# Forest-field modulation at clump granularity (memoized): tall meadows at
+			# the treelines, thinner forest floor under grove canopies.
+			var mkey: int = clx * 4096 + clz
+			var fv: Vector2
+			if field_memo.has(mkey):
+				fv = field_memo[mkey]
+			else:
+				fv = Vector2(FloraField.edge_w(bx, bz), FloraField.forest_w(bx, bz))
+				field_memo[mkey] = fv
+			meadow = fv.x
+			dens_mul *= (
+				(1.0 + GRASS_MEADOW_BOOST * meadow)
+				* (1.0 - GRASS_CANOPY_THIN * smoothstep(0.6, 1.0, fv.y))
+			)
 		# Probabilistically skip cells per the (clumped) density (deterministic per-cell hash).
 		if ProcHash.hf(hcell + 9) > dens_mul:
 			continue
@@ -556,8 +616,12 @@ static func _grass_transforms(
 		if gy < -0.05:
 			continue
 		var yaw: float = ProcHash.hrange(hcell + 3, 0.0, TAU)
-		# Denser clumps get slightly taller tufts too.
-		var sc: float = ProcHash.hrange(hcell + 4, 0.85, 1.15) * scale_mul
+		# Denser clumps get slightly taller tufts; meadow edges get genuinely tall grass.
+		var sc: float = (
+			ProcHash.hrange(hcell + 4, 0.85, 1.15)
+			* scale_mul
+			* (1.0 + GRASS_MEADOW_HEIGHT * meadow)
+		)
 		var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
 		xforms.append(Transform3D(basis, Vector3(px, gy, pz)))
 		placed += 1
@@ -781,8 +845,9 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 	# Emit one MultiMesh per rock model from its bucket.
 	for i in range(_ROCK_MODELS.size()):
 		var id: String = String(_ROCK_MODELS[i][0])
-		var mesh: Mesh = _model_mesh(id)
-		_emit_model_mm(node, "Boulder_%s" % id, mesh, buckets[i])
+		FloraMeshLib.emit_model_mm(
+			node, "Boulder_%s" % id, FloraMeshLib.model_meshes(id), buckets[i], _flora_vis_end()
+		)
 
 
 ## Pick a rock model by hash, append a yaw+scale-jittered Transform3D to its bucket, and
