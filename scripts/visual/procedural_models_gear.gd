@@ -70,7 +70,7 @@ static func _flare() -> Node3D:
 	var root := Node3D.new()
 	var body := ProceduralModels._mat(Color(0.45, 0.3, 0.6), 0.1, 0.55)
 	var cap := ProceduralModels._mat(Color(0.16, 0.15, 0.18), 0.2, 0.6)
-	var tip := ProceduralModels._mat(Color(0.8, 0.45, 1.0), 0.0, 0.3, Color(0.7, 0.4, 1.0), 3.0)
+	var tip := ProceduralModels._mat(Color(0.8, 0.45, 1.0), 0.0, 0.3, Color(0.7, 0.4, 1.0), 2.0)
 	ProceduralModels._part(root, ProceduralModels._cyl(0.055, 0.3), body)
 	ProceduralModels._part(root, ProceduralModels._cyl(0.06, 0.05), cap, Vector3(0, -0.16, 0))
 	ProceduralModels._part(root, ProceduralModels._cyl(0.045, 0.06), tip, Vector3(0, 0.17, 0))

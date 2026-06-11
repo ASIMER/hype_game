@@ -675,10 +675,20 @@ func _nearest_player_visual() -> Node3D:
 
 # --- Hit flash --------------------------------------------------------------
 
-
 ## Walk the model subtree and remember every StandardMaterial3D (and its base
 ## emission) so a hit can briefly drive emission white. We duplicate shared
 ## materials so flashing one enemy doesn't flash every instance sharing the art.
+## OVERRIDE TRAP: procedural parts assign their material via `material_override`,
+## which OUTRANKS surface overrides at draw time — installing the dup as a surface
+## override left the flash mutating a material that was never drawn (the flash and
+## the elite tint were silently invisible on every procedural enemy). When the
+## active material IS the override, the dup must replace the override itself.
+## `_flash_dups` maps each SOURCE material to its one dup, so the ~30 parts sharing a
+## builder's 5 role materials keep sharing 5 dups — duplicating per PART exploded the
+## scene's unique-material count ~6× and cost real frame time at 15+ enemies.
+var _flash_dups: Dictionary = {}
+
+
 func _collect_flash_materials(root: Node) -> void:
 	if root is MeshInstance3D:
 		var mi := root as MeshInstance3D
@@ -687,12 +697,20 @@ func _collect_flash_materials(root: Node) -> void:
 			for s in mesh.get_surface_count():
 				var mat := mi.get_active_material(s)
 				if mat is StandardMaterial3D:
-					var dup := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
-					mi.set_surface_override_material(s, dup)
-					_flash_mats.append(dup)
-					_flash_base_emission.append(
-						dup.emission if dup.emission_enabled else Color(0, 0, 0)
-					)
+					var dup: StandardMaterial3D
+					if _flash_dups.has(mat):
+						dup = _flash_dups[mat]
+					else:
+						dup = (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
+						_flash_dups[mat] = dup
+						_flash_mats.append(dup)
+						_flash_base_emission.append(
+							dup.emission if dup.emission_enabled else Color(0, 0, 0)
+						)
+					if mi.material_override == mat:
+						mi.material_override = dup
+					else:
+						mi.set_surface_override_material(s, dup)
 	for c in root.get_children():
 		_collect_flash_materials(c)
 

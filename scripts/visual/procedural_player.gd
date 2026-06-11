@@ -247,12 +247,12 @@ static func _mats(paint: Dictionary) -> Dictionary:
 	var secondary: Color = paint["secondary"]
 	var accent: Color = paint["accent"]
 	return {
-		"armor":
-		ProcMaterials.weathered(primary, 0.45, 0.55, 0.5, 7, Vector3(0.5, 0.5, 0.5), false),
-		"trim": ProceduralModels._mat(secondary, 0.5, 0.45),
-		"metal": ProceduralModels._mat(Color(0.15, 0.17, 0.19), 0.6, 0.4),
-		"dark": ProceduralModels._mat(Color(0.10, 0.11, 0.13), 0.5, 0.5),
-		"accent": ProceduralModels._mat(accent, 0.0, 0.3, accent, 6.0),
+		"armor": ProcPlating.armor_plate(primary, 7, Vector3(0.9, 0.9, 0.9)),
+		"trim": ProcPlating.lacquer(secondary, 9),
+		"metal": ProcPlating.steel(),
+		"dark": ProcPlating.rubber(Color(0.12, 0.13, 0.15), 5),
+		"suit": ProcPlating.rubber(secondary.lerp(Color(0.13, 0.14, 0.16), 0.6), 13),
+		"accent": ProcPlating.glow(accent, 3.5),
 	}
 
 
