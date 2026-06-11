@@ -286,6 +286,10 @@ func _handle_line(line: String) -> void:
 			# QA: NavigationServer visibility (maps/regions/per-enemy agent path state)
 			# for diagnosing ground-enemy pathing failures. Read-only.
 			_send(NavDebug.capture(get_tree()))
+		"perf":
+			# QA: frame-time sampling window for perf A/B ({window: seconds}) — fps,
+			# frame_ms p95, script/physics ms, draw calls, node counts, world_children.
+			_send(await PerfProbe.capture(get_tree(), float(json.get("window", 1.0))))
 		"mutator":
 			# QA (batch C): {id:"fog"|"double_loot"|"elite_patrols"|"night_raid"|""} forces
 			# the raid mutator for every FOLLOWING deploy AND applies it immediately
