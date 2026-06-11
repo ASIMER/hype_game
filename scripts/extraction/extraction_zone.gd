@@ -30,6 +30,9 @@ var _beacon_decal: Decal = null  # soft radial ground glow (recoloured on flip)
 var _beacon_mats: Array[StandardMaterial3D] = []  # all tinted mats (recolour on flip)
 var _beacon_time: float = 0.0
 var _beacon_pulse_base: float = 1.0  # 1.0 open / dimmer when closed
+# PERF gate: animate the beacon only when the camera is near (2 Hz distance check).
+var _beacon_gate_accum: float = 1.0  # start past the threshold → first frame evaluates
+var _beacon_anim_on: bool = true
 const _OPEN_TINT := Color(0.25, 1.0, 0.6)  # green/teal
 const _CLOSED_TINT := Color(0.95, 0.6, 0.15)  # dim amber
 
@@ -773,8 +776,21 @@ func _apply_beacon_tint() -> void:
 
 ## Animate the beacon: a gentle core pulse + expanding/fading rings + a slow pillar
 ## shimmer. Cheap; disabled entirely on headless (set_process(false) in _build).
+## PERF: 12 zones × ~6 material + ~4 transform writes per frame add up — animate only
+## when the camera is within ~130m (checked at 2 Hz). _beacon_time deliberately does
+## NOT advance while gated, so the phase freezes and resumes without a pop; beyond
+## 130m the ±shimmer is sub-pixel anyway (the pillar/beam stay lit from afar).
 func _process(delta: float) -> void:
 	if _beacon == null:
+		return
+	_beacon_gate_accum += delta
+	if _beacon_gate_accum >= 0.5:
+		_beacon_gate_accum = 0.0
+		var cam := get_viewport().get_camera_3d()
+		_beacon_anim_on = (
+			cam != null and cam.global_position.distance_squared_to(global_position) < 130.0 * 130.0
+		)
+	if not _beacon_anim_on:
 		return
 	_beacon_time += delta
 	# Core pulse (brightness breathes).

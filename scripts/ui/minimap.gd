@@ -128,9 +128,18 @@ func _event_ratio(node: Node) -> float:
 	return -1.0
 
 
+# PERF: a full minimap redraw iterates every enemy/zone/event — 10 Hz is visually
+# indistinguishable for a radar (the sweep/pulse stay smooth because _pulse keeps
+# real time and _draw derives everything from it at draw time).
+var _redraw_accum: float = 0.0
+
+
 func _process(delta: float) -> void:
 	_pulse += delta
-	queue_redraw()
+	_redraw_accum += delta
+	if _redraw_accum >= 0.1 and visible:
+		_redraw_accum = 0.0
+		queue_redraw()
 
 
 func _draw() -> void:

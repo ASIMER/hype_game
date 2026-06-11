@@ -140,6 +140,9 @@ var _hp_bar: EnemyHealthBar = null
 # replicated body transform/velocity/state — so co-op stays in sync.
 var _has_proc_anim: bool = false
 var _anim_time: float = 0.0
+# PERF gate: idle animation only runs when the camera is within 60m (2 Hz check).
+var _idle_gate_accum: float = 1.0  # start past the threshold → first frame evaluates
+var _idle_anim_on: bool = true
 # Tick parts.
 var _proc_eye: MeshInstance3D = null
 var _proc_legs: Array[Node3D] = []
@@ -447,8 +450,20 @@ func _process(delta: float) -> void:
 		_tick_flash(delta)  # let a final hit-flash finish; it only touches emission
 		return
 	if _has_proc_anim:
-		_anim_time += delta
-		_animate_visual(delta)
+		# PERF: idle bobbing/rotor spin is invisible past ~60m — gate it on camera
+		# distance (2 Hz check, per peer, render-only). Combat feedback below
+		# (_tick_flash/_tick_stagger) is deliberately NEVER gated.
+		_idle_gate_accum += delta
+		if _idle_gate_accum >= 0.5:
+			_idle_gate_accum = 0.0
+			var cam := get_viewport().get_camera_3d()
+			_idle_anim_on = (
+				cam != null
+				and cam.global_position.distance_squared_to(global_position) < 60.0 * 60.0
+			)
+		if _idle_anim_on:
+			_anim_time += delta
+			_animate_visual(delta)
 	_tick_flash(delta)
 	_tick_stagger(delta)
 

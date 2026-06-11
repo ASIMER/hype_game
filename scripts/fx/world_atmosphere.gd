@@ -110,6 +110,21 @@ var _stormed := false
 # murk persists across the storm fade-out as long as the mutator is set.
 var _fog_mutator_active := false
 
+# Day-night throttle state (PERF): the Sky3D clock writes at 4 Hz; sun/ambient floats
+# write only when sun_ratio actually changed. -1.0 sentinels force a write after any
+# reset (match start / _restore_day) so a fresh raid never holds a stale sky.
+var _tod_accum: float = 0.0
+var _last_tod_hour: float = -1.0
+var _last_sun_ratio: float = -1.0
+
+# Climate-zone distance gate (PERF): the 3 landmark precip systems (~1700 particles)
+# + their FogVolumes/Decals simulate even when nobody is in that quadrant. Checked at
+# 1 Hz; 130m covers every zone radius (33-38m) + a 90m approach margin, so an 8s
+# snow column is fully populated before flakes are resolvable. The full-map ambient
+# dust/embers are deliberately NOT gated — the player is always inside those fields.
+var _climate_gate_accum: float = 1.0
+var _climate_root: Node3D = null
+
 
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
@@ -626,22 +641,84 @@ func _apply_storm_instant() -> void:
 ## skip entirely while `_stormed`. Works offline too — DayNight reads GameState, which is set
 ## in single-player as well as co-op. Headless never reaches here (set_process false in _ready
 ## via the early return).
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _stormed:
 		return
 	if GameState == null or GameState.phase != GameState.Phase.IN_MATCH:
 		return
-	_apply_daynight(DayNight.current_hour())
+	# PERF: the Sky3D TimeOfDay setter runs a full celestial recompute (trig + sky
+	# shader params + signals) on EVERY write, and the sun/ambient writes dirty the
+	# environment — at 12 in-game hours per match the per-frame delta is invisible.
+	# Throttle the expensive sky-clock write to 4 Hz (dome step ≈0.08° — sub-pixel)
+	# and gate the cheap sun/ambient floats on an actual sun_ratio change (the ratio
+	# plateaus at 1.0 all day / 0.0 deep night, so writes only happen across the
+	# dawn/dusk ramps — per-frame-smooth exactly where the eye watches the change).
+	var hour: float = DayNight.current_hour()
+	_tod_accum += delta
+	if _tod_accum >= 0.25:
+		_tod_accum = 0.0
+		if _tod != null and absf(hour - _last_tod_hour) > 0.0005:
+			_last_tod_hour = hour
+			_tod.set("current_time", hour)
+	var s: float = DayNight.sun_ratio(hour)
+	if absf(s - _last_sun_ratio) > 0.0005:
+		_last_sun_ratio = s
+		_apply_sun_ambient(s)
+	_climate_gate_accum += delta
+	if _climate_gate_accum >= 1.0:
+		_climate_gate_accum = 0.0
+		_gate_climate_zones()
 
 
 ## Apply one day-night frame for the given in-game hour: spin the Sky3D dome to that hour and
 ## lerp the Arena sun energy + pitch and the WorldEnvironment ambient off DayNight.sun_ratio.
-## Used both per-frame (_process) and as the static reset in _restore_day. The sun's yaw/roll
-## are kept from the captured base; only pitch (rotation.x) sweeps with the day.
+## Used by the throttled _process drive and as the FORCED reset in _restore_day (which also
+## clears the throttle sentinels so the next frame re-writes everything).
 func _apply_daynight(hour: float) -> void:
 	if _tod != null:
 		_tod.set("current_time", hour)
+	_last_tod_hour = hour
 	var s: float = DayNight.sun_ratio(hour)
+	_last_sun_ratio = s
+	_apply_sun_ambient(s)
+
+
+## PERF: pause the landmark climate systems (precip particles / fog volume / ground
+## decal) while the camera is far from that zone. Visibility only — deterministic
+## world build untouched. Re-resolves the ClimateZones root per arena (it dies with
+## the world); a camera-less frame (hub/menu) gates everything off.
+func _gate_climate_zones() -> void:
+	if _climate_root == null or not is_instance_valid(_climate_root):
+		_climate_root = null
+		var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
+		if arena != null:
+			_climate_root = arena.find_child("ClimateZones", true, false) as Node3D
+	if _climate_root == null:
+		return
+	var cam := get_viewport().get_camera_3d()
+	for zone in _climate_root.get_children():
+		if not (zone is Node3D):
+			continue
+		var near := (
+			cam != null
+			and (
+				cam.global_position.distance_squared_to((zone as Node3D).global_position)
+				< 130.0 * 130.0
+			)
+		)
+		var precip := zone.get_node_or_null("Precip") as GPUParticles3D
+		if precip != null and precip.emitting != near:
+			precip.emitting = near
+		var fog := zone.get_node_or_null("ClimateFog") as FogVolume
+		if fog != null and fog.visible != near:
+			fog.visible = near
+		var tint := zone.get_node_or_null("GroundTint") as Decal
+		if tint != null and tint.visible != near:
+			tint.visible = near
+
+
+## The cheap per-ramp writes: sun energy + pitch and the environment ambient.
+func _apply_sun_ambient(s: float) -> void:
 	if _sun != null:
 		_sun.light_energy = lerpf(NIGHT_SUN_ENERGY, DAY_SUN_ENERGY, s)
 		# Only sweep pitch once the authored yaw/roll have been captured — before that (the
