@@ -248,6 +248,10 @@ const SHOT_CLASS := {
 
 
 func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
+	# Entity SFX only while a match runs — a lingering/tearing-down world must never
+	# keep shooting sounds into the lobby (UI/extract/win-lose SFX stay ungated).
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
 	var now := Time.get_ticks_msec() / 1000.0
 	if _last_shot_time >= 0.0 and now - _last_shot_time < SHOT_MIN_INTERVAL:
 		return
@@ -277,10 +281,16 @@ func _play_pitched(id: String, pitch: float, vol_extra: float) -> void:
 
 
 func _on_damage_dealt(target: Node, _amount: float, _source: Node) -> void:
+	# The lobby "I'm being hit" loop fix, layer 2: damage in a lingering world
+	# (post-match teardown, bleed ticks) must never reach the speakers.
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
 	_play_at("hit", target)
 
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
 	if entity != null and entity.is_in_group(Groups.PLAYERS):
 		_play_at("player_death", entity)
 	else:

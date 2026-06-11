@@ -79,12 +79,17 @@ func _update_on_enemy() -> void:
 	_on_enemy = false
 	if not is_instance_valid(_camera):
 		return
+	# Teardown race: while the world is being freed (quit/continue-to-lobby) the
+	# camera can outlive its World3D for a frame — skip rather than null-deref.
+	var w3d := _camera.get_world_3d()
+	if w3d == null or w3d.direct_space_state == null:
+		return
 	var from := _camera.global_position
 	var to := from - _camera.global_transform.basis.z * 120.0
 	var q := PhysicsRayQueryParameters3D.create(from, to)
 	q.collision_mask = 0b1000100  # enemy(3) + hurtbox(7)
 	q.collide_with_areas = true
-	var hit := _camera.get_world_3d().direct_space_state.intersect_ray(q)
+	var hit := w3d.direct_space_state.intersect_ray(q)
 	if hit:
 		var c: Node = hit["collider"]
 		while c != null:

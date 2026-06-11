@@ -379,8 +379,20 @@ func _on_match_started() -> void:
 ## between raids); RESTART reloads a fresh raid directly.
 func _on_summary_continue() -> void:
 	_raid_summary = null
+	_paused = false
+	get_tree().paused = false  # defensive, mirrors _on_quit_to_menu
+	# BUG FIX: the Hub used to OVERLAY a still-simulating arena — enemies / the bleed
+	# DoT kept dealing damage to the leftover player, so the "I'm hit" SFX looped in
+	# the lobby. Free the world FIRST, while the phase is still RESULTS (the teardown
+	# -driven win/lose re-fires hit the RESULTS idempotency guards), with an explicit
+	# remove_child so a same-frame re-deploy can never collide with the freed Arena's
+	# node name (the @Arena@2 spawner-path-parity bug — see load_arena).
+	for c in world_root.get_children():
+		world_root.remove_child(c)
+		c.queue_free()
 	if GameState.is_local_authority_server():
 		GameState.reset_match()
+	GameState.set_phase(GameState.Phase.LOBBY)  # the Hub IS the lobby (per-peer local)
 	open_hub(_deploy_mode)
 
 

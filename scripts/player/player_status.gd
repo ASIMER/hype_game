@@ -41,6 +41,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _p == null or not _p.is_multiplayer_authority():
 		return
+	# Statuses only tick while the match runs — a lingering world under the lobby
+	# must never keep the bleed DoT (and its hit sound) alive (layer 3 of the fix).
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
 	# DOWNED: freeze every status timer (don't tick the DoT, don't expire bleed/painkiller).
 	if bool(_p.get("downed")):
 		return

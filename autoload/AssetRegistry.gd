@@ -303,6 +303,113 @@ const CATALOG := {
 		"size": Vector3(0.35, 0.25, 0.35),
 		"color": Color(0.7, 0.6, 0.25)
 	},
+	# --- Batch B/C gear + consumables (ProceduralModelsGear builders; prim = safety
+	# net). Without CATALOG entries these ids were invisible: the icon prewarm loops
+	# THIS dict, so get_icon returned null forever -> grey boxes in the shop/stash.
+	"key_tower":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.3, 0.06, 0.15),
+		"color": Color(0.85, 0.7, 0.3)
+	},
+	"key_lodge":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.3, 0.06, 0.15),
+		"color": Color(0.55, 0.8, 0.95)
+	},
+	"key_temple":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.3, 0.06, 0.15),
+		"color": Color(0.9, 0.35, 0.25)
+	},
+	"loot_flare":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.CYLINDER,
+		"size": Vector3(0.12, 0.4, 0.12),
+		"color": Color(0.7, 0.4, 1.0)
+	},
+	"loot_bandage":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.CYLINDER,
+		"size": Vector3(0.22, 0.14, 0.22),
+		"color": Color(0.92, 0.9, 0.85)
+	},
+	"loot_splint":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.14, 0.42, 0.12),
+		"color": Color(0.72, 0.55, 0.3)
+	},
+	"loot_painkiller":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.CYLINDER,
+		"size": Vector3(0.15, 0.24, 0.15),
+		"color": Color(0.95, 0.6, 0.2)
+	},
+	"armor_helmet_t1":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.SPHERE,
+		"size": Vector3(0.42, 0.3, 0.42),
+		"color": Color(0.5, 0.52, 0.4)
+	},
+	"armor_helmet_t2":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.SPHERE,
+		"size": Vector3(0.44, 0.32, 0.44),
+		"color": Color(0.35, 0.4, 0.48)
+	},
+	"armor_vest_t1":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.42, 0.55, 0.2),
+		"color": Color(0.45, 0.47, 0.36)
+	},
+	"armor_vest_t2":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.44, 0.58, 0.22),
+		"color": Color(0.32, 0.36, 0.42)
+	},
+	"armor_pack_med":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.42, 0.55, 0.3),
+		"color": Color(0.55, 0.45, 0.3)
+	},
+	"armor_pack_large":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.46, 0.66, 0.34),
+		"color": Color(0.45, 0.38, 0.28)
+	},
 	"loot_plastic":
 	{
 		# --- Expansion: salvage materials + valuables (colored-box fallback; no icons yet) ---

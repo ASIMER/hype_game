@@ -58,6 +58,23 @@ const ATT_GRIP := ["att_heavy_grip", "att_quickdraw_grip"]
 # Deployable gadgets — each has a named tracking part the gadget script rotates
 # ("Barrel" on the turret, "Head" on the sensor).
 const GADGET_BUILDERS := ["gadget_turret", "gadget_dome", "gadget_sensor"]
+# Batch B/C gear + consumables — built in ProceduralModelsGear (split out for the
+# max-file-lines ceiling; this file only dispatches).
+const GEAR_BUILDERS := [
+	"key_tower",
+	"key_lodge",
+	"key_temple",
+	"loot_flare",
+	"loot_bandage",
+	"loot_splint",
+	"loot_painkiller",
+	"armor_helmet_t1",
+	"armor_helmet_t2",
+	"armor_vest_t1",
+	"armor_vest_t2",
+	"armor_pack_med",
+	"armor_pack_large",
+]
 
 
 static func has_builder(id: String) -> bool:
@@ -65,11 +82,15 @@ static func has_builder(id: String) -> bool:
 		return true
 	if id in ATT_OPTIC or id in ATT_MAG or id in ATT_BARREL or id in ATT_GRIP:
 		return true
+	if id in GEAR_BUILDERS:
+		return true
 	return id.begins_with("schematic_")
 
 
 ## Returns a fresh Node3D assembly for `id`, or null if there is no builder.
 static func build(id: String) -> Node3D:
+	if id in GEAR_BUILDERS:
+		return ProceduralModelsGear.build(id)
 	match id:
 		"robot_tick":
 			return build_robot_tick()
