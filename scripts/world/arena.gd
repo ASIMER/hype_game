@@ -71,6 +71,12 @@ func _ready() -> void:
 	Events.arena_build_progress.emit(0.88, "Climate")
 	await get_tree().process_frame
 	_build_climate_zones()
+	# Building-detail kits (rooftop/street MultiMeshes + night lamps) and grime decals
+	# (scorch/leak-streak/rain-puddle). Render-only, per-peer cosmetic, headless-skipped
+	# inside; both live under the Arena ROOT (never NavigationRegion3D), so the golden
+	# determinism snapshot is untouched.
+	ProceduralBuildingDetail.build(self, _POI_DEFS, _extraction_zone_points())
+	ProceduralGrimeDecals.build(self, _POI_DEFS, _scatter_spots)
 	Events.arena_build_progress.emit(0.90, "Navmesh")
 	await get_tree().process_frame
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
@@ -250,6 +256,7 @@ func _build_poi_structures() -> void:
 	if geometry == null:
 		return
 	_annexes.clear()
+	ProceduralBuildings._glass_seq = 0  # per-build window-pick determinism (co-op parity)
 	for poi_name in _POI_DEFS.keys():
 		var def: Dictionary = _POI_DEFS[poi_name]
 		var old := geometry.get_node_or_null(poi_name)
@@ -290,6 +297,8 @@ func _build_poi_structures() -> void:
 
 # Locked-annex roots built this arena (batch C) — read by _populate_locked_loot.
 var _annexes: Array[Node3D] = []
+# Rubble-pile world positions from the last _rebuild_scatter — fed to ProceduralGrimeDecals.
+var _scatter_spots: Array[Vector3] = []
 var _locked_loot_done: bool = false  # idempotence: begin_match can re-fire
 
 
@@ -335,6 +344,7 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 	var scatter := Node3D.new()
 	scatter.name = "Scatter"
 	geometry.add_child(scatter)
+	_scatter_spots.clear()
 	# Hand-picked open-ground spots (avoid POIs at ~±40/±50, spawns at +60, zones).
 	var spots: Array[Vector3] = [
 		Vector3(-15, 0, -20),
@@ -360,10 +370,10 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 		Vector3(22, 0, -10),
 		Vector3(-8, 0, -58),
 	]
+	var pile_positions: Array[Vector3] = []
 	for i in range(spots.size()):
-		var pile := ProceduralBuildings.rubble_pile(i * 137 + 11)
-		pile.position = spots[i]
-		scatter.add_child(pile)
+		pile_positions.append(spots[i])
+		_scatter_spots.append(spots[i])
 	# NEW quadrants (NE/SW/SE): rubble across the open areas for cover + landscape interest, so
 	# the new biomes don't read as empty. These have no flat pad, so they sit on the rolling
 	# terrain via height_at (rocks following the hills look natural). Clear of POIs/evac zones.
@@ -383,9 +393,13 @@ func _rebuild_scatter(geometry: Node3D) -> void:
 	]
 	for j in range(new_spots.size()):
 		var s2: Vector2 = new_spots[j]
-		var pile2 := ProceduralBuildings.rubble_pile((spots.size() + j) * 137 + 11)
-		pile2.position = Vector3(s2.x, ProceduralTerrain.height_at(s2.x, s2.y), s2.y)
-		scatter.add_child(pile2)
+		var p2 := Vector3(s2.x, ProceduralTerrain.height_at(s2.x, s2.y), s2.y)
+		pile_positions.append(p2)
+		_scatter_spots.append(p2)
+	# BATCHED rubble: same per-pile chunk math/seeds (cover geometry identical), but
+	# ~150 per-chunk draws collapse into 3 map-wide MultiMeshes; collision stays one
+	# StaticBody3D per pile so the navmesh input is unchanged.
+	ProceduralBuildingDetail.rubble_field(scatter, pile_positions)
 
 
 func _bake_navmesh() -> void:

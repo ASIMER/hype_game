@@ -64,7 +64,9 @@ func _ready() -> void:
 	monitoring = true
 	add_to_group(Groups.PICKUPS)
 
-	var model := AssetRegistry.get_model(item_id)
+	# Merged static model: one MeshInstance3D per pickup instead of ~4 part draws —
+	# the map carries ~100 pickups, so this saves a few hundred draw calls.
+	var model := AssetRegistry.get_model_merged(item_id)
 	model.name = "ModelRoot"
 	add_child(model)
 	_model_root = model

@@ -258,15 +258,17 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 			_place_tree(trunks, buckets, cell, px, gy, pz)
 			placed += 1
 
-	# Emit one MultiMesh per model id actually used (sorted for deterministic node order).
+	# Emit TILED MultiMeshes per model id (sorted for deterministic node order) — 64 m
+	# tiles so distant groves genuinely cull from the camera AND the shadow splits.
 	var ids: Array = buckets.keys()
 	ids.sort()
 	for id in ids:
-		FloraMeshLib.emit_model_mm(
+		FloraMeshLib.emit_model_mm_tiled(
 			trees,
 			"Tree_%s" % String(id),
 			FloraMeshLib.model_meshes(String(id)),
 			buckets[id],
+			64.0,
 			_flora_vis_end()
 		)
 	if Settings.NET_DEBUG:
@@ -369,11 +371,12 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 	var ids: Array = buckets.keys()
 	ids.sort()
 	for id in ids:
-		FloraMeshLib.emit_model_mm(
+		FloraMeshLib.emit_model_mm_tiled(
 			bushes,
 			"Bush_%s" % String(id),
 			FloraMeshLib.model_meshes(String(id)),
 			buckets[id],
+			64.0,
 			_flora_vis_end()
 		)
 	if Settings.NET_DEBUG:

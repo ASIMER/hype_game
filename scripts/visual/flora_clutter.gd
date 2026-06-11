@@ -62,7 +62,7 @@ static func _layer_ferns(root: Node3D, seed: int) -> void:
 		0.8,
 		1.3
 	)
-	_emit(root, "Ferns", _FERN, seed * 11, xforms)
+	_emit(root, "Ferns", _FERN, seed * 11, xforms, 64.0)
 
 
 ## Flowers prefer open CLEARINGS and edges (1-w), urban + rain only.
@@ -124,7 +124,7 @@ static func _layer_plants(root: Node3D, seed: int) -> void:
 		0.8,
 		1.2
 	)
-	_emit(root, "Plants_Rain", [["Plant_1", 0.9]], seed * 23, rain_xf)
+	_emit(root, "Plants_Rain", [["Plant_1", 0.9]], seed * 23, rain_xf, 64.0)
 	var desert_xf: Array[Transform3D] = _scatter(
 		seed,
 		7639,
@@ -134,7 +134,7 @@ static func _layer_plants(root: Node3D, seed: int) -> void:
 		0.8,
 		1.4
 	)
-	_emit(root, "Plants_Desert", [["Plant_7", 1.0]], seed * 29, desert_xf)
+	_emit(root, "Plants_Desert", [["Plant_7", 1.0]], seed * 29, desert_xf, 64.0)
 
 
 ## Textured pebbles — replaces the old plain grey squashed spheres. Even map-wide
@@ -222,8 +222,15 @@ static func _scatter(
 
 
 ## Split `xforms` across the layer's model table by hash and emit one MMI per model.
+## `tile_m` > 0 spatially tiles the layer (leafy high-count layers like ferns/plants —
+## map-wide AABBs never cull; see FloraMeshLib.emit_model_mm_tiled).
 static func _emit(
-	root: Node3D, nm: String, models: Array, salt: int, xforms: Array[Transform3D]
+	root: Node3D,
+	nm: String,
+	models: Array,
+	salt: int,
+	xforms: Array[Transform3D],
+	tile_m: float = 0.0
 ) -> void:
 	if xforms.is_empty():
 		return
@@ -238,9 +245,14 @@ static func _emit(
 		(buckets[mi] as Array[Transform3D]).append(xf)
 	for i in range(models.size()):
 		var id: String = String(models[i][0])
-		FloraMeshLib.emit_model_mm(
-			root, "%s_%s" % [nm, id], FloraMeshLib.model_meshes(id), buckets[i]
-		)
+		if tile_m > 0.0:
+			FloraMeshLib.emit_model_mm_tiled(
+				root, "%s_%s" % [nm, id], FloraMeshLib.model_meshes(id), buckets[i], tile_m, 90.0
+			)
+		else:
+			FloraMeshLib.emit_model_mm(
+				root, "%s_%s" % [nm, id], FloraMeshLib.model_meshes(id), buckets[i]
+			)
 
 
 ## Per-biome multiplier helper: urban / snow / desert / rain factors.

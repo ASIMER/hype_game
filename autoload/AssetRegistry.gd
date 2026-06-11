@@ -709,6 +709,65 @@ func _retint_untextured(node: Node, albedo: Color) -> void:
 		_retint_untextured(c, albedo)
 
 
+# Merged-static-model cache: id -> ArrayMesh (or null when the model can't merge).
+var _merged_cache: Dictionary = {}
+
+
+## MERGED static model for HIGH-COUNT world props (loot pickups): the id's multi-part
+## model collapsed into ONE MeshInstance3D with one ArrayMesh surface per material —
+## ~100 pickups × ~4 parts stop costing a draw call per part. The ArrayMesh (with its
+## materials embedded) is cached per id and SHARED by every pickup, so this is only
+## safe for static visuals that never mutate materials per instance (loot never
+## hit-flashes; its rarity glow is an OmniLight). Falls back to get_model() when the
+## model has nothing mergeable (e.g. a skinned .glb).
+func get_model_merged(id: String) -> Node3D:
+	if not _merged_cache.has(id):
+		_merged_cache[id] = _merge_model(id)
+	var mesh: ArrayMesh = _merged_cache[id]
+	if mesh == null:
+		return get_model(id)
+	var root := Node3D.new()
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	root.add_child(mi)
+	return root
+
+
+func _merge_model(id: String) -> ArrayMesh:
+	var src: Node3D = get_model(id)
+	if src == null:
+		return null
+	var by_mat: Dictionary = {}  # Material -> SurfaceTool
+	_collect_merge_surfaces(src, Transform3D.IDENTITY, by_mat)
+	src.free()
+	if by_mat.is_empty():
+		return null
+	var arr := ArrayMesh.new()
+	for mat in by_mat:
+		var st: SurfaceTool = by_mat[mat]
+		st.commit(arr)
+		arr.surface_set_material(arr.get_surface_count() - 1, mat)
+	return arr
+
+
+func _collect_merge_surfaces(n: Node, xf: Transform3D, by_mat: Dictionary) -> void:
+	var local: Transform3D = xf
+	if n is Node3D:
+		local = xf * (n as Node3D).transform
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.mesh != null:
+			for s in mi.mesh.get_surface_count():
+				var mat: Material = mi.get_active_material(s)
+				if not by_mat.has(mat):
+					var st := SurfaceTool.new()
+					st.begin(Mesh.PRIMITIVE_TRIANGLES)
+					by_mat[mat] = st
+				(by_mat[mat] as SurfaceTool).append_from(mi.mesh, s, local)
+	for c in n.get_children():
+		_collect_merge_surfaces(c, local, by_mat)
+
+
 ## Returns an icon texture for inventory UI, or null (UI should draw a colored box fallback).
 func get_icon(id: String) -> Texture2D:
 	var entry: Dictionary = CATALOG.get(id, {})

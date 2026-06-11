@@ -93,6 +93,24 @@ static func mat_glass() -> StandardMaterial3D:
 	return ProceduralModels._mat(Color(0.35, 0.45, 0.55), 0.4, 0.1, Color(0.12, 0.18, 0.24), 0.6)
 
 
+# Day-night window glass pool [dark, dim, lit]: THREE shared materials; only the dim/lit
+# emission ENERGY is animated by world_atmosphere._apply_sun_ambient (warm windows at night).
+static var _glass_pool: Array[StandardMaterial3D] = []
+static var _glass_seq: int = 0
+
+
+static func glass_pool() -> Array[StandardMaterial3D]:
+	if _glass_pool.is_empty():
+		var warm := Color(1.0, 0.78, 0.5)
+		var dark := ProceduralModels._mat(Color(0.30, 0.39, 0.48), 0.4, 0.1)
+		var dim := ProceduralModels._mat(Color(0.32, 0.40, 0.47), 0.4, 0.12, warm, 0.001)
+		var lit := ProceduralModels._mat(Color(0.32, 0.40, 0.47), 0.4, 0.12, warm, 0.001)
+		dim.emission_energy_multiplier = 0.0
+		lit.emission_energy_multiplier = 0.0
+		_glass_pool = [dark, dim, lit]
+	return _glass_pool
+
+
 static func mat_container(sid: int) -> StandardMaterial3D:
 	# Pick a faded shipping-container color deterministically from seed, then weather
 	# it with vertical streaks (rust running down the corrugated panels).
@@ -321,7 +339,10 @@ static func wall(
 	with_door: bool = false
 ) -> Node3D:
 	var root := Node3D.new()
-	var glass := mat_glass()
+	# Deterministic dark/dim/lit window pick (5/3/2 of 10) from the shared glass pool.
+	_glass_seq += 1
+	var gpick: int = ProcHash.h(_glass_seq * 53 + int(length * 7.0 + height * 11.0)) % 10
+	var glass: StandardMaterial3D = glass_pool()[0 if gpick < 5 else (1 if gpick < 8 else 2)]
 	if with_door:
 		# Door gap centered, 1.6 wide × 2.2 tall. Left pier, right pier, lintel above.
 		var dw: float = 1.6
@@ -531,6 +552,7 @@ static func build_tower(footprint: Vector2) -> Node3D:
 		if s < storeys - 1:
 			_place(root, floor_slab(w - 0.4, d - 0.4, conc_d), Vector3(0, (s + 1) * sh, 0))
 	var top: float = storeys * sh
+	root.set_meta("roof_h", top)  # ProceduralBuildingDetail rooftop-kit anchor
 	# Roof + small rooftop utility housing.
 	_place(root, roof(w, d, conc_d), Vector3(0, top, 0))
 	_place(
@@ -560,6 +582,7 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 	var conc := mat_concrete_stained(int(w + d * 3.0))
 	var th: float = 0.4
 	var h: float = 5.0
+	root.set_meta("roof_h", h)  # ProceduralBuildingDetail rooftop-kit anchor
 	# Back wall (north, -Z) + two side walls always; front wall only if NOT courtyard.
 	_place_wall(root, w, h, th, conc, Vector3(0, 0, -d * 0.5 + th * 0.5), 0.0, true, false)
 	# Side walls — if courtyard, only the OUTER halves (skip the inner span near origin).
@@ -620,6 +643,7 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 	var conc_d := mat_concrete_dark(int(w + d * 2.0))
 	var th: float = 0.3
 	var sh: float = 3.0
+	root.set_meta("roof_h", sh * 2.0)  # ProceduralBuildingDetail rooftop-kit anchor
 	# Ground slab.
 	_place(root, floor_slab(w, d, conc_d), Vector3(0, 0.0, 0))
 	# Back + sides (ground). Front wall (with door) only if not courtyard.

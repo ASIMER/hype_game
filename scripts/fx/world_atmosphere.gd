@@ -742,6 +742,22 @@ func _apply_sun_ambient(s: float) -> void:
 			_sun.rotation = Vector3(pitch, _base_sun_rot.y, _base_sun_rot.z)
 	if _env != null:
 		_env.ambient_light_energy = lerpf(NIGHT_AMBIENT, DAY_AMBIENT, s)
+	# Night identity: warm window panes (shared glass pool) + street-lamp lights/heads
+	# fade IN as the sun fades OUT. Render-only; already throttled by the caller's
+	# sun_ratio change gate, so these writes only happen across the dawn/dusk ramps.
+	var night: float = 1.0 - s
+	var pool: Array[StandardMaterial3D] = ProceduralBuildings.glass_pool()
+	if pool.size() == 3:
+		pool[1].emission_energy_multiplier = 1.2 * night
+		pool[2].emission_energy_multiplier = 2.6 * night
+	for ln in get_tree().get_nodes_in_group(Groups.NIGHT_LIGHTS):
+		var lamp := ln as OmniLight3D
+		if lamp == null:
+			continue
+		lamp.light_energy = 2.2 * night
+		var gm: Variant = lamp.get_meta("night_glow_mat", null)
+		if gm is StandardMaterial3D:
+			(gm as StandardMaterial3D).emission_energy_multiplier = 3.0 * night
 
 
 # ---------------------------------------------------------------------------
