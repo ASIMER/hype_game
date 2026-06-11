@@ -8,6 +8,7 @@ class_name DamageNumber
 const LIFETIME := 0.7
 const RISE := 1.1  # world units the number floats upward over its life
 
+var pooled := false  # set by DamageNumbersLayer; end-of-life parks instead of freeing
 var _t := 0.0
 var _label: Label3D
 var _start_y := 0.0
@@ -61,6 +62,15 @@ func _apply() -> void:
 	_pending = false
 
 
+## (Re)start at the CURRENT position for a pooled reuse (position first, then call).
+func restart_at_position() -> void:
+	_t = 0.0
+	_start_y = global_position.y
+	visible = true
+	set_process(true)
+	_apply()
+
+
 func _process(delta: float) -> void:
 	_t += delta
 	var k := clampf(_t / LIFETIME, 0.0, 1.0)
@@ -73,4 +83,8 @@ func _process(delta: float) -> void:
 		_label.modulate.a = clampf(a, 0.0, 1.0)
 		_label.outline_modulate.a = clampf(a, 0.0, 1.0) * 0.9
 	if _t >= LIFETIME:
-		queue_free()
+		if pooled:
+			visible = false
+			set_process(false)
+		else:
+			queue_free()

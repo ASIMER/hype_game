@@ -6,6 +6,8 @@ class_name MuzzleSmoke
 
 const LIFETIME := 0.7
 
+var pooled := false  # set by FXPool; end-of-life releases instead of freeing
+var _t := 0.0
 var _ps: GPUParticles3D
 var _scale_mult := 1.0
 
@@ -48,8 +50,6 @@ func _ready() -> void:
 	add_child(_ps)
 	_ps.emitting = true
 
-	get_tree().create_timer(LIFETIME + 0.4).timeout.connect(queue_free)
-
 
 func set_scale_mult(m: float) -> void:
 	_scale_mult = clampf(m, 0.4, 2.0)
@@ -57,3 +57,23 @@ func set_scale_mult(m: float) -> void:
 		var pm := _ps.process_material as ParticleProcessMaterial
 		pm.scale_min = 0.5 * _scale_mult
 		pm.scale_max = 1.0 * _scale_mult
+
+
+## (Re)start the wisp for a pooled reuse.
+func fire() -> void:
+	_t = 0.0
+	visible = true
+	set_process(true)
+	if _ps != null:
+		_ps.restart()
+
+
+## Delta-accumulated end-of-life (the old create_timer leaked timers per shot and
+## couldn't be pooled). Pooled instances return to the pool, standalone ones free.
+func _process(delta: float) -> void:
+	_t += delta
+	if _t >= LIFETIME + 0.4:
+		if pooled and FXPool.active != null:
+			FXPool.active.release(self)
+		else:
+			queue_free()

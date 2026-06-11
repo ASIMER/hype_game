@@ -13,6 +13,11 @@ class_name Impact
 const LIFETIME := 0.7  # outlive the longest burst (smoke 0.6 / debris 0.55)
 const DECAL_LIFETIME := 4.0
 
+# The soft radial scorch blob — built ONCE for every impact ever (PERF: this used
+# to be a fresh 16x16 Image+ImageTexture per world hit).
+static var _scorch_tex: ImageTexture = null
+
+var pooled := false  # set by FXPool; end-of-life releases instead of freeing
 var _t := 0.0
 var _enemy := false
 var _particles: GPUParticles3D
@@ -153,8 +158,40 @@ func _ready() -> void:
 	_flash.material_override = _flash_mat
 	add_child(_flash)
 
+	# The scorch decal is a PERMANENT child toggled per use (the old per-use
+	# create/free pattern fought the pool); hidden for enemy hits.
+	_decal = Decal.new()
+	_decal.size = Vector3(0.8, 0.8, 0.8)
+	_decal.albedo_mix = 1.0
+	_decal.modulate = Color(0.05, 0.05, 0.05, 0.85)
+	_decal.texture_albedo = _scorch_texture()
+	_decal.visible = false
+	add_child(_decal)
+
 	_apply_mode()
 	_apply_normal()
+
+
+## (Re)start this impact at its current position/config: reset clocks, re-apply the
+## enemy/world mode + tint + normal, restart the one-shot particle systems. Used by
+## the pool on every reuse; harmless to call on a fresh standalone instance too.
+func fire() -> void:
+	_t = 0.0
+	_decal_t = 0.0
+	visible = true
+	set_process(true)
+	_apply_tint()
+	_apply_mode()
+	_apply_normal()
+	if _flash_mat != null:
+		_flash_mat.albedo_color.a = 1.6 if _enemy else 1.0
+	if _particles != null:
+		_particles.restart()
+	if _enemy:
+		if _smoke != null:
+			_smoke.restart()
+		if _debris != null:
+			_debris.restart()
 
 
 func _tint() -> Color:
@@ -182,28 +219,22 @@ func _apply_normal() -> void:
 
 
 ## Toggle the enemy oil puff + debris vs the world scorch decal based on _enemy.
+## The decal is a permanent child — only its visibility flips here.
 func _apply_mode() -> void:
 	if _smoke:
 		_smoke.emitting = _enemy
 	if _debris:
 		_debris.emitting = _enemy
-	# World hits: drop a fading scorch decal projected onto the surface below.
-	if not _enemy and _decal == null:
-		_decal = Decal.new()
-		_decal.size = Vector3(0.8, 0.8, 0.8)  # extents box the projection (bigger puff/scorch)
-		_decal.albedo_mix = 1.0
-		_decal.modulate = Color(0.05, 0.05, 0.05, 0.85)
-		_decal.texture_albedo = _scorch_texture()
-		# Project straight down so it lands on the floor under the hit point.
-		add_child(_decal)
-	elif _enemy and _decal:
-		_decal.queue_free()
-		_decal = null
+	if _decal:
+		_decal.visible = not _enemy
+		_decal.modulate.a = 0.85
 
 
-## A soft radial dark blob used as the scorch albedo. Built once per impact;
-## cheap (16x16) and good enough for a quick fading mark.
-func _scorch_texture() -> ImageTexture:
+## A soft radial dark blob used as the scorch albedo — built ONCE per process
+## (static), shared by every impact instance. Cheap (16x16).
+static func _scorch_texture() -> ImageTexture:
+	if _scorch_tex != null:
+		return _scorch_tex
 	var size := 16
 	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
 	var c := Vector2(size * 0.5, size * 0.5)
@@ -213,7 +244,8 @@ func _scorch_texture() -> ImageTexture:
 			var a := clampf(1.0 - d, 0.0, 1.0)
 			a = a * a
 			img.set_pixel(x, y, Color(1, 1, 1, a))
-	return ImageTexture.create_from_image(img)
+	_scorch_tex = ImageTexture.create_from_image(img)
+	return _scorch_tex
 
 
 func _process(delta: float) -> void:
@@ -226,13 +258,22 @@ func _process(delta: float) -> void:
 		var peak := 1.6 if _enemy else 1.0
 		_flash_mat.albedo_color.a = peak * (1.0 - fk)
 	# Scorch decal lingers and fades over DECAL_LIFETIME, outliving the sparks.
-	if _decal:
+	var decal_live := _decal != null and _decal.visible
+	if decal_live:
 		_decal_t += delta
 		var dk := clampf(_decal_t / DECAL_LIFETIME, 0.0, 1.0)
 		_decal.modulate.a = 0.85 * (1.0 - dk)
 		if _decal_t >= DECAL_LIFETIME:
-			_decal.queue_free()
-			_decal = null
-	# Keep the node alive while either the burst or its decal still has work.
-	if _t >= LIFETIME and _decal == null:
+			_decal.visible = false
+			decal_live = false
+	# Stay alive while either the burst or its decal still has work; then return to
+	# the pool (or free when standalone).
+	if _t >= LIFETIME and not decal_live:
+		_finish()
+
+
+func _finish() -> void:
+	if pooled and FXPool.active != null:
+		FXPool.active.release(self)
+	else:
 		queue_free()

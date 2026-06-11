@@ -272,6 +272,10 @@ func load_arena() -> void:
 	# whole squad sees each other's combat (co-op FX sync).
 	if DisplayServer.get_name() != "headless":
 		world_root.add_child(RemoteShotFX.new())
+		# Per-raid combat-FX pools (PERF): the MultiMesh tracer arcs + the impact/
+		# muzzle/shell pools. Local visuals only; they die with the world.
+		world_root.add_child(TracerPool.new())
+		world_root.add_child(FXPool.new())
 	# Local HUD + inventory overlay (skip on a dedicated headless server).
 	if DisplayServer.get_name() != "headless":
 		if ResourceLoader.exists("res://scenes/ui/HUD.tscn"):

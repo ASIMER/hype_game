@@ -43,26 +43,32 @@ func _on_remote_shot(
 	var host := _fx_host()
 	if host == null:
 		return
-	# Muzzle flash at the teammate's barrel.
-	if _muzzle_flash_ps:
-		var mf := _muzzle_flash_ps.instantiate()
-		host.add_child(mf)
+	# Muzzle flash at the teammate's barrel (pooled when the FXPool exists — PERF).
+	var mf := FXPool.acquire_or_new("muzzle_flash", _muzzle_flash_ps, host)
+	if mf != null:
 		if mf is Node3D:
 			(mf as Node3D).global_position = muzzle
+		if mf.has_method("fire"):
+			mf.call("fire")
 	# Muzzle smoke + a few shells so a teammate's gun also reads as a real gun (no orientation
 	# in the broadcast → shells eject with the FX default direction; close enough for remotes).
-	if _muzzle_smoke_script != null:
-		var sm: Node = _muzzle_smoke_script.new()
-		host.add_child(sm)
+	var sm := FXPool.acquire_or_new("muzzle_smoke", _muzzle_smoke_script, host)
+	if sm != null:
 		if sm is Node3D:
 			(sm as Node3D).global_position = muzzle
-	if _shell_script != null:
-		var sc: Node = _shell_script.new()
-		host.add_child(sc)
+		if sm.has_method("fire"):
+			sm.call("fire")
+	var sc := FXPool.acquire_or_new("shells", _shell_script, host)
+	if sc != null:
 		if sc is Node3D:
 			(sc as Node3D).global_position = muzzle
-	# Tracer chain following the ballistic arc (anchored at the real muzzle).
-	if _tracer_ps and arc.size() >= 2:
+		if sc.has_method("fire"):
+			sc.call("fire")
+	# Tracer chain following the ballistic arc (anchored at the real muzzle) — the
+	# pooled MultiMesh path costs zero nodes; legacy per-segment nodes as fallback.
+	if TracerPool.active != null:
+		TracerPool.active.spawn_arc(arc, muzzle)
+	elif _tracer_ps and arc.size() >= 2:
 		for i in range(arc.size() - 1):
 			var a: Vector3 = muzzle if i == 0 else arc[i]
 			var b: Vector3 = arc[i + 1]
@@ -71,14 +77,15 @@ func _on_remote_shot(
 				(tr as Tracer).setup(a, b)
 			host.add_child(tr)
 	# Impact burst at the hit point (sparks for enemies, dust for the world).
-	if _impact_ps:
-		var im := _impact_ps.instantiate()
+	var im := FXPool.acquire_or_new("impact", _impact_ps, host)
+	if im != null:
 		if im is Impact:
 			(im as Impact).set_enemy_hit(enemy_hit)
 			(im as Impact).set_surface_normal(normal)
-		host.add_child(im)
 		if im is Node3D:
 			(im as Node3D).global_position = hit_point
+		if im.has_method("fire"):
+			im.call("fire")
 
 
 func _fx_host() -> Node:

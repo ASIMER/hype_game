@@ -305,43 +305,49 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 	var muzzle := _muzzle_position()
 	var mscale: float = float(_last_data.muzzle_scale) if _last_data != null else 1.0
 
-	if _muzzle_flash_ps:
-		var mf := _muzzle_flash_ps.instantiate()
-		host.add_child(mf)
+	# All per-shot FX go through the FXPool when one exists (PERF: zero node/material
+	# churn under fire); the legacy instantiate path stays as the fallback.
+	var mf := FXPool.acquire_or_new("muzzle_flash", _muzzle_flash_ps, host)
+	if mf != null:
 		if mf is Node3D:
 			(mf as Node3D).global_position = muzzle
 		if mf.has_method("set_intensity"):
 			mf.call("set_intensity", mscale)
+		if mf.has_method("fire"):
+			mf.call("fire")
 
 	# Muzzle smoke puff drifting up off the barrel (builds a light haze on sustained fire).
-	if _muzzle_smoke_script != null:
-		var sm: Node = _muzzle_smoke_script.new()
-		host.add_child(sm)
+	var sm := FXPool.acquire_or_new("muzzle_smoke", _muzzle_smoke_script, host)
+	if sm != null:
 		if sm is Node3D:
 			(sm as Node3D).global_position = muzzle
 		if sm.has_method("set_scale_mult"):
 			sm.call("set_scale_mult", mscale)
+		if sm.has_method("fire"):
+			sm.call("fire")
 
 	# Shell casing ejection from the side port (skip the tube-fed shotgun's per-shot brass).
-	if _shell_script != null and (_last_data == null or _last_data.id != "shotgun"):
-		var et: Transform3D = _eject_transform()
-		var sc: Node = _shell_script.new()
-		host.add_child(sc)
-		if sc is Node3D:
-			(sc as Node3D).global_transform = et
+	if _last_data == null or _last_data.id != "shotgun":
+		var sc := FXPool.acquire_or_new("shells", _shell_script, host)
+		if sc != null:
+			if sc is Node3D:
+				(sc as Node3D).global_transform = _eject_transform()
+			if sc.has_method("fire"):
+				sc.call("fire")
 
 	# Tracer is drawn by _on_fired_arc (which follows the ballistic curve). We only
 	# spawn the impact burst here. (fired_arc always fires alongside fired.)
 
-	if _impact_ps:
-		var im := _impact_ps.instantiate()
+	var im := FXPool.acquire_or_new("impact", _impact_ps, host)
+	if im != null:
 		if im is Impact:
 			(im as Impact).set_enemy_hit(_is_enemy(hit_node))
 			# Orient the burst to the surface normal if we can resolve one.
 			(im as Impact).set_surface_normal(_last_hit_normal)
-		host.add_child(im)
 		if im is Node3D:
 			(im as Node3D).global_position = hit_point
+		if im.has_method("fire"):
+			im.call("fire")
 
 
 ## Draws the tracer as a chain of short straight Tracer segments through the arc
@@ -349,7 +355,14 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 ## Tracer scene (one per segment) — kept cheap by the capped segment count. The
 ## first arc point is the muzzle, so the segment chain starts exactly at the barrel.
 func _on_fired_arc(arc_points: PackedVector3Array, _hit_node: Node) -> void:
-	if _tracer_ps == null or arc_points.size() < 2:
+	if arc_points.size() < 2:
+		return
+	# PERF: the pooled MultiMesh draws the whole arc with ONE material and zero node
+	# churn (the old path made ~32 nodes + 32 unique materials per shot).
+	if TracerPool.active != null:
+		TracerPool.active.spawn_arc(arc_points, _muzzle_position())
+		return
+	if _tracer_ps == null:
 		return
 	var host := _fx_host()
 	if host == null:

@@ -80,6 +80,8 @@ var _recover_count: int = 0
 # re-issue a path when the goal MOVED (the agent's setter repaths unconditionally;
 # per-frame live-position writes cost a full navmesh A* per enemy per tick).
 var _last_nav_goal: Vector3 = Vector3(INF, INF, INF)
+# PERF: per-enemy noise-handling cooldown (see _on_noise_emitted).
+var _noise_ignore_until_ms: int = 0
 const STUCK_PROGRESS: float = 1.0  # metres the gap must close to count as progress
 const STUCK_LIMIT: float = 2.5  # seconds chasing without closing the gap -> recover
 
@@ -973,14 +975,22 @@ func _cascade_alert() -> void:
 
 ## Noise event handler (gunfire / grenades from Events.noise_emitted).
 ## Only runs on the authority (connected in _ready only when authority).
+## PERF: EVERY enemy receives EVERY noise event (4 players sustained-firing = ~40
+## events/s × N enemies) — cheap squared-distance cull first, plus a short per-enemy
+## cooldown once a noise was actually HANDLED so a barrage costs ≤3 reactions/s each.
 func _on_noise_emitted(world_pos: Vector3, loudness: float, kind: int) -> void:
 	if hunter:
 		return
+	var now := Time.get_ticks_msec()
+	if now < _noise_ignore_until_ms:
+		return
 	if _dying or (_health != null and _health.is_dead):
 		return
-	var d := global_position.distance_to(world_pos)
-	if d > loudness:
+	var dsq := global_position.distance_squared_to(world_pos)
+	if dsq > loudness * loudness:
 		return
+	_noise_ignore_until_ms = now + 300
+	var d := sqrt(dsq)
 	# Already chasing something nearby? Don't downgrade.
 	if current_state == State.CHASE or current_state == State.ATTACK:
 		return
