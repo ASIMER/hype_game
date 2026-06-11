@@ -3,8 +3,10 @@
   One-command portable Windows release for Hype Raiders.
 
   Produces a single self-contained HypeRaiders.exe (the game data .pck is embedded),
-  bundles a README, and zips it as export/HypeRaiders-v<version>-win64.zip — ready to
-  hand to friends: they unzip and double-click the exe.
+  bundles a README, and zips it as export/v<version>/windows/HypeRaiders-v<version>-win64.zip —
+  ready to hand to friends: they unzip and double-click the exe. Each version exports
+  into its own export/v<version>/<platform>/ folder (windows/ here, mac/ via
+  export_macos.ps1), so older releases and other platforms are never overwritten.
 
   On first run it installs the matching Godot export templates if they're missing
   (one-time ~700 MB download), then skips that on later runs. Re-run anytime to cut a
@@ -18,7 +20,10 @@ param(
     # The Godot 4.6.3 console executable (used headless to export).
     [string]$Godot = "C:\Users\illya\Desktop\godot\Godot_v4.6.3-stable_win64_console.exe",
     # Release version; defaults to the contents of the VERSION file at the repo root.
-    [string]$Version = ""
+    [string]$Version = "",
+    # Build-timestamp subfolder (yyyy-MM-dd_HH-mm-ss). When called from export_all.ps1 the
+    # SAME stamp is passed to both platforms so they land together. Empty = generate now.
+    [string]$Stamp = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,7 +35,7 @@ $PresetName   = "Windows Desktop"
 # DirAccess can't enumerate a res:// directory inside a PCK. Keeps releases current.
 function Write-ResourceIndex {
     param([string]$Proj)
-    $cats = [ordered]@{ ITEMS = "resources/items"; ATTACHMENTS = "resources/attachments"; RECIPES = "resources/recipes"; QUESTS = "resources/quests" }
+    $cats = [ordered]@{ ITEMS = "resources/items"; ATTACHMENTS = "resources/attachments"; RECIPES = "resources/recipes"; QUESTS = "resources/quests"; QUESTLINES = "resources/questlines" }
     $lines = @(
         "extends RefCounted",
         "class_name ResourceIndex",
@@ -56,11 +61,15 @@ function Write-ResourceIndex {
 
 # --- Resolve paths (script lives in tools/build/, project is two levels up) ---
 $ProjectDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$ExportDir  = Join-Path $ProjectDir "export"
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $verFile = Join-Path $ProjectDir "VERSION"
     if (Test-Path $verFile) { $Version = (Get-Content $verFile -Raw).Trim() } else { $Version = "0.0.0" }
 }
+# Timestamped, per-platform output folder: export/v<Version>/<stamp>/windows/ — every build
+# goes to a NEW dated folder so previous builds are PRESERVED for rollback. The stamp is
+# shared with the macOS build when both are run via export_all.ps1.
+if ([string]::IsNullOrWhiteSpace($Stamp)) { $Stamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss" }
+$ExportDir  = Join-Path $ProjectDir "export\v$Version\$Stamp\windows"
 
 Write-Host "== Hype Raiders — Windows release build ==" -ForegroundColor Cyan
 Write-Host "  Project : $ProjectDir"

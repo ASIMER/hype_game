@@ -1,13 +1,19 @@
-[gd_scene load_steps=82 format=3 uid="uid://c0arcarena01"]
+[gd_scene load_steps=87 format=3 uid="uid://c0arcarena01"]
 
 [ext_resource type="Script" path="res://scripts/world/arena.gd" id="1_arena"]
 [ext_resource type="Environment" path="res://default_env.tres" id="2_env"]
 [ext_resource type="Script" path="res://scripts/extraction/extraction_zone.gd" id="3_extract"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/Sky3D.gd" id="4_sky3d"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/SkyDome.gd" id="5_skydome"]
+[ext_resource type="Script" path="res://addons/sky_3d/src/TimeOfDay.gd" id="6_tod"]
+[ext_resource type="PackedScene" path="res://scenes/world/Ziplines.tscn" id="7_ziplines"]
+
+[sub_resource type="CameraAttributesPractical" id="CamAttr_sky3d"]
 
 [sub_resource type="NavigationMesh" id="NavMesh_1"]
 geometry_parsed_geometry_type = 1
 geometry_collision_mask = 1
-cell_size = 0.25
+cell_size = 0.3
 cell_height = 0.2
 agent_radius = 0.6
 agent_height = 1.8
@@ -57,16 +63,16 @@ emission = Color(0.3, 0.5, 0.6, 1)
 emission_energy_multiplier = 0.15
 
 [sub_resource type="BoxShape3D" id="Box_perim_NS"]
-size = Vector3(162, 10, 2)
+size = Vector3(322, 10, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_perim_NS"]
-size = Vector3(162, 10, 2)
+size = Vector3(322, 10, 2)
 
 [sub_resource type="BoxShape3D" id="Box_perim_EW"]
-size = Vector3(2, 10, 162)
+size = Vector3(2, 10, 322)
 
 [sub_resource type="BoxMesh" id="Mesh_perim_EW"]
-size = Vector3(2, 10, 162)
+size = Vector3(2, 10, 322)
 
 [sub_resource type="StandardMaterial3D" id="Mat_extract"]
 transparency = 1
@@ -253,12 +259,54 @@ size = Vector3(3, 2.4, 3)
 [node name="Arena" type="Node3D"]
 script = ExtResource("1_arena")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="Sky3D" type="WorldEnvironment" parent="."]
 environment = ExtResource("2_env")
+camera_attributes = SubResource("CamAttr_sky3d")
+script = ExtResource("4_sky3d")
+sky3d_enabled = true
+lights_enabled = false
+editor_time_enabled = false
+game_time_enabled = false
+current_time = 10.5
+minutes_per_day = 0.0
+cloud_intensity = 0.7
+skydome_energy = 1.0
+tonemap_exposure = 0.95
+
+[node name="SkyDome" type="Node" parent="Sky3D"]
+script = ExtResource("5_skydome")
+sun_azimuth = 0.6981317
+sun_altitude = 0.9599311
+atm_darkness = 0.45
+atm_thickness = 0.7
+exposure = 1.0
+fog_visible = false
+cumulus_visible = true
+cumulus_coverage = 0.55
+cumulus_thickness = 0.0243
+cumulus_absorption = 2.0
+cumulus_intensity = 0.7
+cirrus_visible = true
+cirrus_coverage = 0.45
+wind_speed = 3.0
+wind_direction = 1.5708
+
+[node name="TimeOfDay" type="Node" parent="Sky3D"]
+script = ExtResource("6_tod")
+dome_path = NodePath("../SkyDome")
+editor_time_enabled = false
+game_time_enabled = false
+system_sync = false
+minutes_per_day = 0.0
+current_time = 10.5
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 40, 0)
+light_color = Color(1, 0.96, 0.88, 1)
+light_energy = 1.35
 shadow_enabled = true
+shadow_blur = 1.2
+directional_shadow_max_distance = 140.0
 
 [node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("NavMesh_1")
@@ -1200,7 +1248,7 @@ shape = SubResource("Shape_b20")
 [node name="Walls" type="Node3D" parent="."]
 
 [node name="WallNorth" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -80)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 5, -80)
 collision_layer = 1
 collision_mask = 0
 
@@ -1212,7 +1260,7 @@ mesh = SubResource("Mesh_perim_NS")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="WallSouth" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 80)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 5, 240)
 collision_layer = 1
 collision_mask = 0
 
@@ -1224,7 +1272,7 @@ mesh = SubResource("Mesh_perim_NS")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="WallEast" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 240, 5, 80)
 collision_layer = 1
 collision_mask = 0
 
@@ -1236,7 +1284,7 @@ mesh = SubResource("Mesh_perim_EW")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="WallWest" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 5, 80)
 collision_layer = 1
 collision_mask = 0
 
@@ -1280,6 +1328,24 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 6)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, 50)
 [node name="E10" type="Marker3D" parent="EnemySpawnMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 1, 42)
+[node name="E11" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 145, 1, -10)
+[node name="E12" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 178, 1, -2)
+[node name="E13" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 1, 24)
+[node name="E14" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 1, 158)
+[node name="E15" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 1, 150)
+[node name="E16" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 1, 188)
+[node name="E17" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 144, 1, 160)
+[node name="E18" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 178, 1, 150)
+[node name="E19" type="Marker3D" parent="EnemySpawnMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 1, 196)
 
 [node name="POIMarkers" type="Node3D" parent="."]
 [node name="POI_NorthTower" type="Marker3D" parent="POIMarkers"]
@@ -1294,6 +1360,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 1.0, 30)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1.0, 50)
 [node name="POI_EastYard" type="Marker3D" parent="POIMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 1.0, 42)
+[node name="POI_SnowLodge" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 1.0, -10)
+[node name="POI_SnowDepot" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 205, 1.0, 40)
+[node name="POI_DesertRuins" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 158)
+[node name="POI_RuinColumns" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 1.0, 205)
+[node name="POI_Temple" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 1.0, 158)
+[node name="POI_ShrineHouse" type="Marker3D" parent="POIMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 205, 1.0, 205)
 
 [node name="LootCacheMarkers" type="Node3D" parent="."]
 [node name="L0" type="Marker3D" parent="LootCacheMarkers"]
@@ -1318,6 +1396,30 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0.6, 50)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 5.4, 42)
 [node name="L10" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.6, 42)
+[node name="L11" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 152, 0.6, -4)
+[node name="L12" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 168, 0.6, -16)
+[node name="L13" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 199, 0.6, 34)
+[node name="L14" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 211, 0.6, 46)
+[node name="L15" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.6, 152)
+[node name="L16" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.6, 164)
+[node name="L17" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39, 0.6, 199)
+[node name="L18" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 51, 0.6, 211)
+[node name="L19" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 152, 0.6, 152)
+[node name="L20" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 168, 0.6, 164)
+[node name="L21" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 199, 0.6, 199)
+[node name="L22" type="Marker3D" parent="LootCacheMarkers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 211, 0.6, 211)
 
 [node name="ExtractionZone" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 2, -28)
@@ -1367,6 +1469,150 @@ mesh = SubResource("Mesh_extract")
 material_override = SubResource("Mat_extract")
 mesh = SubResource("Mesh_extract")
 
+[node name="ExtractionZone4" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 2, 30)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone4"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone4"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone4"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone5" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 2, -30)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone5"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone5"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone5"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone6" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 175, 2, 60)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone6"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone6"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone6"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone7" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 2, 130)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone7"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone7"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone7"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone8" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 2, 130)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone8"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone8"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone8"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone9" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 2, 200)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone9"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone9"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone9"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone10" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 2, 120)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone10"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone10"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone10"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone11" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 2, 130)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone11"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone11"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone11"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
+[node name="ExtractionZone12" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 130, 2, 200)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("3_extract")
+
+[node name="Col" type="CollisionShape3D" parent="ExtractionZone12"]
+shape = SubResource("Box_extract")
+
+[node name="Mesh" type="MeshInstance3D" parent="ExtractionZone12"]
+mesh = SubResource("Mesh_extract")
+
+[node name="Beacon" type="MeshInstance3D" parent="ExtractionZone12"]
+material_override = SubResource("Mat_extract")
+mesh = SubResource("Mesh_extract")
+
 [node name="Net" type="Node" parent="."]
 
 [node name="Players" type="Node3D" parent="Net"]
@@ -1380,9 +1626,16 @@ _spawnable_scenes = PackedStringArray("res://scenes/player/Player.tscn")
 spawn_path = NodePath("../Players")
 
 [node name="EnemySpawner" type="MultiplayerSpawner" parent="Net"]
-_spawnable_scenes = PackedStringArray("res://scenes/enemies/RobotEnemy.tscn", "res://scenes/enemies/RobotTick.tscn", "res://scenes/enemies/RobotHeavy.tscn", "res://scenes/enemies/RobotWasp.tscn", "res://scenes/enemies/RobotBastion.tscn", "res://scenes/enemies/RobotBoss.tscn")
+_spawnable_scenes = PackedStringArray("res://scenes/enemies/RobotEnemy.tscn", "res://scenes/enemies/RobotTick.tscn", "res://scenes/enemies/RobotHeavy.tscn", "res://scenes/enemies/RobotWasp.tscn", "res://scenes/enemies/RobotBastion.tscn", "res://scenes/enemies/RobotBoss.tscn", "res://scenes/enemies/RobotCaller.tscn", "res://scenes/enemies/RobotElite.tscn", "res://scenes/enemies/RobotSandworm.tscn", "res://scenes/enemies/RobotScarab.tscn", "res://scenes/enemies/RobotDustdevil.tscn", "res://scenes/enemies/RobotFrosthound.tscn", "res://scenes/enemies/RobotCryomortar.tscn", "res://scenes/enemies/RobotAvalanche.tscn", "res://scenes/enemies/RobotOni.tscn", "res://scenes/enemies/RobotKappa.tscn", "res://scenes/enemies/RobotRaiju.tscn", "res://scenes/enemies/RobotSnowGolem.tscn", "res://scenes/enemies/RobotDuneWarden.tscn", "res://scenes/enemies/RobotOniChief.tscn", "res://scenes/enemies/RobotSpecter.tscn")
 spawn_path = NodePath("../Enemies")
 
 [node name="LootSpawner" type="MultiplayerSpawner" parent="Net"]
 _spawnable_scenes = PackedStringArray("res://scenes/items/LootPickup.tscn")
 spawn_path = NodePath("../Loot")
+
+[node name="Gadgets" type="Node3D" parent="Net"]
+
+[node name="GadgetSpawner" type="MultiplayerSpawner" parent="Net"]
+spawn_path = NodePath("../Gadgets")
+
+[node name="Ziplines" parent="." instance=ExtResource("7_ziplines")]

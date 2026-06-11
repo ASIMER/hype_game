@@ -14,3 +14,4 @@ reward_currency = 300
 reward_item_ids = PackedStringArray("loot_cell")
 reward_item_counts = PackedInt32Array(3)
 reward_blueprints = PackedStringArray()
+offer_weight = 2

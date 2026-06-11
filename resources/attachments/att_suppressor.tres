@@ -18,3 +18,4 @@ slot = "barrel"
 recoil_mult = 0.68
 spread_mult = 0.70
 range_mult = 0.95
+noise_mult = 0.35

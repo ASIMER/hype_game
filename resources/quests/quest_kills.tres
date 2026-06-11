@@ -11,3 +11,4 @@ obj_type = "kill"
 obj_target = ""
 obj_count = 10
 reward_currency = 200
+offer_weight = 2

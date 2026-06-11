@@ -2,7 +2,11 @@
   "mcpServers": {
     "hype-game": {
       "command": "python",
-      "args": ["tools/agent/mcp_server.py"]
+      "args": ["tools/agent/mcp_server.py"],
+      "env": {
+        "AGENT_HOST": "127.0.0.1",
+        "AGENT_PORT": "${HYPE_AGENT_PORT}"
+      }
     }
   }
 }

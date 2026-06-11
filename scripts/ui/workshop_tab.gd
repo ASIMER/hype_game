@@ -10,26 +10,26 @@ extends Control
 
 # Weapon display names and canonical id order (same as old workshop.gd).
 const WEAPON_DISPLAY := {
-	"rifle":   "RIFLE",
-	"pistol":  "PISTOL",
-	"smg":     "SMG",
+	"rifle": "RIFLE",
+	"pistol": "PISTOL",
+	"smg": "SMG",
 	"shotgun": "SHOTGUN",
-	"dmr":     "DMR",
+	"dmr": "DMR",
 }
 const WEAPON_ORDER: Array[String] = ["rifle", "pistol", "smg", "shotgun", "dmr"]
 
 # Colours matching the project theme.
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)   # amber accent
-const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)  # teal accent
-const COL_DIM   := Color(0.45, 0.50, 0.55, 1.0)   # muted label
-const COL_WHITE := Color(0.88, 0.90, 0.92, 1.0)   # body text
-const COL_RED   := Color(0.85, 0.30, 0.25, 1.0)   # locked / unaffordable hint
+const COL_AMBER := UIStyle.AMBER  # amber accent
+const COL_TEAL := UIStyle.TEAL  # teal accent
+const COL_DIM := UIStyle.DIM  # muted label
+const COL_WHITE := UIStyle.WHITE  # body text
+const COL_RED := UIStyle.RED  # locked / unaffordable hint
 
 # ── Node refs (assigned in _build_layout, not @onready — tree is built in code) ─
-var _currency_label: Label       = null
-var _weapon_rows: VBoxContainer  = null
+var _currency_label: Label = null
+var _weapon_rows: VBoxContainer = null
 var _upgrade_rows: VBoxContainer = null
-var _craft_rows: VBoxContainer   = null
+var _craft_rows: VBoxContainer = null
 
 # Runtime state ---------------------------------------------------------------
 ## weapon id -> { cost_lbl: Label, unlock_btn: Button }
@@ -61,6 +61,7 @@ func _exit_tree() -> void:
 
 # ── Layout construction ───────────────────────────────────────────────────────
 
+
 ## Builds the full node tree in code (no .tscn sub-resources needed).
 ## Structure:
 ##   ScrollContainer (fills tab)
@@ -71,41 +72,12 @@ func _exit_tree() -> void:
 ##         Right VBox: permanent upgrades
 ##       craft section
 func _build_layout() -> void:
-	# Panel StyleBox shared by section panels.
-	var sb_panel := StyleBoxFlat.new()
-	sb_panel.content_margin_left   = 16.0
-	sb_panel.content_margin_top    = 12.0
-	sb_panel.content_margin_right  = 16.0
-	sb_panel.content_margin_bottom = 12.0
-	sb_panel.bg_color       = Color(0.106, 0.133, 0.157, 0.97)
-	sb_panel.border_width_left   = 1
-	sb_panel.border_width_top    = 1
-	sb_panel.border_width_right  = 1
-	sb_panel.border_width_bottom = 1
-	sb_panel.border_color = Color(0.235, 0.3, 0.36, 1.0)
-	sb_panel.corner_radius_top_left     = 6
-	sb_panel.corner_radius_top_right    = 6
-	sb_panel.corner_radius_bottom_right = 6
-	sb_panel.corner_radius_bottom_left  = 6
-
-	# Section header StyleBox.
-	var sb_sec := StyleBoxFlat.new()
-	sb_sec.content_margin_left   = 12.0
-	sb_sec.content_margin_top    = 8.0
-	sb_sec.content_margin_right  = 12.0
-	sb_sec.content_margin_bottom = 8.0
-	sb_sec.bg_color = Color(0.13, 0.165, 0.20, 1.0)
-	sb_sec.border_width_bottom = 1
-	sb_sec.border_color = Color(0.235, 0.3, 0.36, 0.8)
-	sb_sec.corner_radius_top_left  = 6
-	sb_sec.corner_radius_top_right = 6
-
 	# Outer scroll so the whole tab scrolls on small screens.
 	var scroll := ScrollContainer.new()
 	scroll.name = "Scroll"
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
 
@@ -123,17 +95,15 @@ func _build_layout() -> void:
 	var title_lbl := Label.new()
 	title_lbl.text = "WORKSHOP"
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_lbl.add_theme_color_override("font_color", COL_AMBER)
-	title_lbl.add_theme_font_size_override("font_size", 32)
+	UIStyle.make_header(title_lbl, UIStyle.AMBER, 42, 3)
 	hdr.add_child(title_lbl)
 
 	_currency_label = Label.new()
 	_currency_label.name = "CurrencyLabel"
 	_currency_label.text = "CR 0"
 	_currency_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_currency_label.add_theme_color_override("font_color", COL_AMBER)
-	_currency_label.add_theme_font_size_override("font_size", 22)
 	_currency_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	UIStyle.make_header(_currency_label, UIStyle.AMBER, 22, 2)
 	hdr.add_child(_currency_label)
 
 	# ── Two-column body: unlocks (left) + upgrades (right) ───────────────────
@@ -145,29 +115,24 @@ func _build_layout() -> void:
 	# LEFT — Weapon Unlocks
 	var left_col := VBoxContainer.new()
 	left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_col.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	left_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_col.add_theme_constant_override("separation", 8)
 	cols.add_child(left_col)
 
 	var unlk_hdr_panel := PanelContainer.new()
-	unlk_hdr_panel.add_theme_stylebox_override("panel", sb_sec)
+	unlk_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
 	left_col.add_child(unlk_hdr_panel)
-
-	var unlk_hdr_lbl := Label.new()
-	unlk_hdr_lbl.text = "WEAPON UNLOCKS"
-	unlk_hdr_lbl.add_theme_color_override("font_color", COL_TEAL)
-	unlk_hdr_lbl.add_theme_font_size_override("font_size", 15)
-	unlk_hdr_panel.add_child(unlk_hdr_lbl)
+	unlk_hdr_panel.add_child(UIStyle.micro_header("WEAPON UNLOCKS", UIStyle.TEAL, 15))
 
 	var unlk_panel := PanelContainer.new()
 	unlk_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	unlk_panel.add_theme_stylebox_override("panel", sb_panel)
+	unlk_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	left_col.add_child(unlk_panel)
 
 	var unlk_margin := MarginContainer.new()
-	unlk_margin.add_theme_constant_override("margin_left",   12)
-	unlk_margin.add_theme_constant_override("margin_top",    10)
-	unlk_margin.add_theme_constant_override("margin_right",  12)
+	unlk_margin.add_theme_constant_override("margin_left", 12)
+	unlk_margin.add_theme_constant_override("margin_top", 10)
+	unlk_margin.add_theme_constant_override("margin_right", 12)
 	unlk_margin.add_theme_constant_override("margin_bottom", 10)
 	unlk_panel.add_child(unlk_margin)
 
@@ -179,29 +144,24 @@ func _build_layout() -> void:
 	# RIGHT — Permanent Upgrades
 	var right_col := VBoxContainer.new()
 	right_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_col.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	right_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_col.add_theme_constant_override("separation", 8)
 	cols.add_child(right_col)
 
 	var upg_hdr_panel := PanelContainer.new()
-	upg_hdr_panel.add_theme_stylebox_override("panel", sb_sec)
+	upg_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
 	right_col.add_child(upg_hdr_panel)
-
-	var upg_hdr_lbl := Label.new()
-	upg_hdr_lbl.text = "PERMANENT UPGRADES"
-	upg_hdr_lbl.add_theme_color_override("font_color", COL_TEAL)
-	upg_hdr_lbl.add_theme_font_size_override("font_size", 15)
-	upg_hdr_panel.add_child(upg_hdr_lbl)
+	upg_hdr_panel.add_child(UIStyle.micro_header("PERMANENT UPGRADES", UIStyle.TEAL, 15))
 
 	var upg_panel := PanelContainer.new()
 	upg_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	upg_panel.add_theme_stylebox_override("panel", sb_panel)
+	upg_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	right_col.add_child(upg_panel)
 
 	var upg_margin := MarginContainer.new()
-	upg_margin.add_theme_constant_override("margin_left",   12)
-	upg_margin.add_theme_constant_override("margin_top",    10)
-	upg_margin.add_theme_constant_override("margin_right",  12)
+	upg_margin.add_theme_constant_override("margin_left", 12)
+	upg_margin.add_theme_constant_override("margin_top", 10)
+	upg_margin.add_theme_constant_override("margin_right", 12)
 	upg_margin.add_theme_constant_override("margin_bottom", 10)
 	upg_panel.add_child(upg_margin)
 
@@ -212,23 +172,18 @@ func _build_layout() -> void:
 
 	# ── CRAFT section (below the two columns) ─────────────────────────────────
 	var craft_hdr_panel := PanelContainer.new()
-	craft_hdr_panel.add_theme_stylebox_override("panel", sb_sec)
+	craft_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
 	root_vbox.add_child(craft_hdr_panel)
-
-	var craft_hdr_lbl := Label.new()
-	craft_hdr_lbl.text = "CRAFT"
-	craft_hdr_lbl.add_theme_color_override("font_color", COL_TEAL)
-	craft_hdr_lbl.add_theme_font_size_override("font_size", 15)
-	craft_hdr_panel.add_child(craft_hdr_lbl)
+	craft_hdr_panel.add_child(UIStyle.micro_header("CRAFT", UIStyle.TEAL, 15))
 
 	var craft_panel := PanelContainer.new()
-	craft_panel.add_theme_stylebox_override("panel", sb_panel)
+	craft_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel())
 	root_vbox.add_child(craft_panel)
 
 	var craft_margin := MarginContainer.new()
-	craft_margin.add_theme_constant_override("margin_left",   12)
-	craft_margin.add_theme_constant_override("margin_top",    10)
-	craft_margin.add_theme_constant_override("margin_right",  12)
+	craft_margin.add_theme_constant_override("margin_left", 12)
+	craft_margin.add_theme_constant_override("margin_top", 10)
+	craft_margin.add_theme_constant_override("margin_right", 12)
 	craft_margin.add_theme_constant_override("margin_bottom", 10)
 	craft_panel.add_child(craft_margin)
 
@@ -245,6 +200,7 @@ func _build_layout() -> void:
 
 # ── Row construction (called once after the containers exist) ─────────────────
 
+
 ## One row per weapon in WEAPON_ORDER. Owned/free weapons show "OWNED"/"FREE";
 ## locked weapons show their cost and an UNLOCK button (disabled if unaffordable).
 ## The loadout CheckButton from the old workshop is dropped — loadout lives elsewhere.
@@ -252,7 +208,12 @@ func _build_weapon_rows() -> void:
 	for id in WEAPON_ORDER:
 		var row := HBoxContainer.new()
 		row.name = "Row_" + id
-		row.add_theme_constant_override("separation", 12)
+		row.add_theme_constant_override("separation", 10)
+
+		# Small weapon icon cell.
+		var icon := _icon_cell(id, 0, 40)
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(icon)
 
 		var name_lbl := Label.new()
 		name_lbl.name = "NameLbl"
@@ -278,11 +239,12 @@ func _build_weapon_rows() -> void:
 		unlock_btn.custom_minimum_size = Vector2(90, 32)
 		unlock_btn.text = "UNLOCK"
 		unlock_btn.pressed.connect(func() -> void: _on_unlock_pressed(id))
+		UIStyle.hover_lift(unlock_btn)
 		row.add_child(unlock_btn)
 
 		_weapon_rows.add_child(row)
 		_weapon_ui[id] = {
-			"cost_lbl":   cost_lbl,
+			"cost_lbl": cost_lbl,
 			"unlock_btn": unlock_btn,
 		}
 
@@ -295,15 +257,45 @@ func _build_upgrade_rows() -> void:
 
 		var row := HBoxContainer.new()
 		row.name = "Row_" + key
-		row.add_theme_constant_override("separation", 10)
+		row.add_theme_constant_override("separation", 12)
+
+		var acc: Color = info.get("color", COL_TEAL)
+
+		# Icon cell (accent-bordered glass tile + the upgrade's game-icons texture, tinted by
+		# its accent colour) on the LEFT — recognisable at a glance, no need to read the text.
+		var cell := Panel.new()
+		cell.custom_minimum_size = Vector2(46, 46)
+		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var csb := StyleBoxFlat.new()
+		csb.bg_color = Color(0.09, 0.10, 0.13, 0.95)
+		csb.set_border_width_all(2)
+		csb.border_color = Color(acc, 0.85)
+		csb.set_corner_radius_all(5)
+		cell.add_theme_stylebox_override("panel", csb)
+		var utex: Texture2D = MetaProgression.upgrade_icon(key)
+		if utex != null:
+			var itex := TextureRect.new()
+			itex.texture = utex
+			itex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			itex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			itex.set_anchors_preset(Control.PRESET_FULL_RECT)
+			itex.offset_left = 7
+			itex.offset_top = 7
+			itex.offset_right = -7
+			itex.offset_bottom = -7
+			itex.modulate = acc
+			itex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cell.add_child(itex)
+		row.add_child(cell)
 
 		var vname := VBoxContainer.new()
-		vname.custom_minimum_size = Vector2(160, 0)
+		vname.custom_minimum_size = Vector2(150, 0)
 		vname.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 		var title_lbl := Label.new()
 		title_lbl.text = info["name"]
-		title_lbl.add_theme_color_override("font_color", COL_WHITE)
+		title_lbl.add_theme_color_override("font_color", acc)
 		vname.add_child(title_lbl)
 
 		var desc_lbl := Label.new()
@@ -335,19 +327,81 @@ func _build_upgrade_rows() -> void:
 		btn.custom_minimum_size = Vector2(90, 32)
 		btn.text = "UPGRADE"
 		btn.pressed.connect(func() -> void: _on_upgrade_pressed(key))
+		UIStyle.hover_lift(btn)
 		row.add_child(btn)
 
 		_upgrade_rows.add_child(row)
 		_upgrade_ui[key] = {
 			"level_lbl": level_lbl,
-			"cost_lbl":  cost_lbl,
-			"btn":       btn,
+			"cost_lbl": cost_lbl,
+			"btn": btn,
 		}
 
 
-## One row per recipe from Crafting.all_recipes(). Shows blueprint-gating,
-## output × count, and the full ingredient list. Rows are rebuilt whenever the
-## recipe list could change (currently only at startup, but this is forward-safe).
+## Arc-style icon cell: a fixed-size Panel with a rarity-colored border holding an
+## icon TextureRect (or colored-box fallback) + an optional count badge.
+## Modeled on inventory_ui.gd::_make_slot. `id` may be an ItemData id (border uses
+## rarity_color) or any other id (border uses a neutral teal).
+func _icon_cell(id: String, count: int, cell_size: int) -> Panel:
+	var slot := Panel.new()
+	slot.custom_minimum_size = Vector2(cell_size, cell_size)
+	slot.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	sb.set_border_width_all(2)
+	var item: ItemData = ItemCatalog.get_item(id)
+	sb.border_color = item.rarity_color() if item != null else COL_TEAL
+	sb.set_corner_radius_all(4)
+	slot.add_theme_stylebox_override("panel", sb)
+	if item != null:
+		slot.tooltip_text = item.display_name
+
+	var icon := AssetRegistry.get_icon(id)
+	if icon != null:
+		var tex := TextureRect.new()
+		tex.texture = icon
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tex.offset_left = 5
+		tex.offset_top = 5
+		tex.offset_right = -5
+		tex.offset_bottom = -5
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(tex)
+	else:
+		var box := ColorRect.new()
+		box.color = AssetRegistry.get_color(id)
+		box.set_anchors_preset(Control.PRESET_FULL_RECT)
+		box.offset_left = 7
+		box.offset_top = 7
+		box.offset_right = -7
+		box.offset_bottom = -7
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(box)
+
+	if count > 1:
+		var badge := Label.new()
+		badge.text = "x%d" % count
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		badge.set_anchors_preset(Control.PRESET_FULL_RECT)
+		badge.offset_right = -3
+		badge.offset_bottom = -1
+		badge.add_theme_color_override("font_color", Color.WHITE)
+		badge.add_theme_color_override("font_outline_color", Color.BLACK)
+		badge.add_theme_constant_override("outline_size", 4)
+		badge.add_theme_font_size_override("font_size", 12)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(badge)
+	return slot
+
+
+## One row per recipe from Crafting.all_recipes(). Renders the OUTPUT item as an
+## icon cell, a "←" arrow, the INPUT ingredients as small icon cells (with counts),
+## a status label (lock / cost / affordability), and a CRAFT button. Rows are
+## rebuilt whenever the recipe list could change.
 func _build_craft_rows() -> void:
 	# Clear any previously built rows so a future hot-rebuild is safe.
 	for c in _craft_rows.get_children():
@@ -359,51 +413,70 @@ func _build_craft_rows() -> void:
 		if recipe == null or recipe.id == "":
 			continue
 
-		var row := HBoxContainer.new()
-		row.name = "CraftRow_" + recipe.id
-		row.add_theme_constant_override("separation", 12)
-
-		# ── Left: recipe description label ───────────────────────────────────
-		# "Output Name ×N  ←  A ×a  +  B ×b  [+  CR cost]"
 		var out_item: ItemData = ItemCatalog.get_item(recipe.output_id)
 		var out_name: String = out_item.display_name if out_item != null else recipe.output_id
 
-		var parts: Array[String] = []
+		var row := HBoxContainer.new()
+		row.name = "CraftRow_" + recipe.id
+		row.add_theme_constant_override("separation", 8)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		# ── OUTPUT icon cell (48px, badged with output_count) ────────────────
+		var out_cell := _icon_cell(recipe.output_id, maxi(1, recipe.output_count), 48)
+		out_cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		out_cell.tooltip_text = "%s ×%d" % [out_name, maxi(1, recipe.output_count)]
+		row.add_child(out_cell)
+
+		# ── "←" arrow ────────────────────────────────────────────────────────
+		var arrow := Label.new()
+		arrow.text = "←"
+		arrow.add_theme_color_override("font_color", COL_TEAL)
+		arrow.add_theme_font_size_override("font_size", 22)
+		arrow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(arrow)
+
+		# ── INPUT ingredient icon cells (36px, badged with count) ────────────
+		var ingredients := HBoxContainer.new()
+		ingredients.name = "Ingredients"
+		ingredients.add_theme_constant_override("separation", 6)
+		ingredients.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ingredients.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		for inp in recipe.inputs():
-			var in_item: ItemData = ItemCatalog.get_item(String(inp["id"]))
-			var in_name: String = in_item.display_name if in_item != null else String(inp["id"])
-			parts.append("%d× %s" % [int(inp["count"]), in_name])
+			var in_id: String = String(inp["id"])
+			var in_cnt: int = int(inp["count"])
+			var in_item: ItemData = ItemCatalog.get_item(in_id)
+			var in_name: String = in_item.display_name if in_item != null else in_id
+			var in_cell := _icon_cell(in_id, in_cnt, 36)
+			in_cell.tooltip_text = "%d× %s" % [in_cnt, in_name]
+			ingredients.add_child(in_cell)
+		row.add_child(ingredients)
 
-		var cost_suffix: String = ("  +  %d CR" % recipe.cost) if recipe.cost > 0 else ""
-		var recipe_text: String = "%s ×%d  ←  %s%s" % [
-			out_name,
-			maxi(1, recipe.output_count),
-			"  +  ".join(parts),
-			cost_suffix,
-		]
+		# ── Status label (lock / cost / affordability) ──────────────────────
+		var status_lbl := Label.new()
+		status_lbl.name = "StatusLbl"
+		status_lbl.custom_minimum_size = Vector2(110, 0)
+		status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		status_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		status_lbl.add_theme_font_size_override("font_size", 12)
+		row.add_child(status_lbl)
 
-		var recipe_lbl := Label.new()
-		recipe_lbl.name = "RecipeLbl"
-		recipe_lbl.text = recipe_text
-		recipe_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		recipe_lbl.add_theme_color_override("font_color", COL_WHITE)
-		recipe_lbl.add_theme_font_size_override("font_size", 13)
-		recipe_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(recipe_lbl)
-
-		# ── Right: CRAFT button ───────────────────────────────────────────────
+		# ── CRAFT button ─────────────────────────────────────────────────────
 		var craft_btn := Button.new()
 		craft_btn.name = "CraftBtn"
-		craft_btn.custom_minimum_size = Vector2(90, 32)
+		craft_btn.custom_minimum_size = Vector2(90, 36)
 		craft_btn.text = "CRAFT"
+		craft_btn.focus_mode = Control.FOCUS_NONE
 		craft_btn.pressed.connect(func() -> void: _on_craft_pressed(recipe.id))
+		UIStyle.hover_lift(craft_btn)
 		row.add_child(craft_btn)
 
 		_craft_rows.add_child(row)
-		_craft_ui[recipe.id] = { "lbl": recipe_lbl, "btn": craft_btn }
+		_craft_ui[recipe.id] = {"lbl": status_lbl, "btn": craft_btn}
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
+
 
 ## Full state sync from MetaProgression + Stash. Called on _ready and after each
 ## purchase or craft so the UI always reflects current data.
@@ -425,11 +498,11 @@ func _refresh_weapon_rows() -> void:
 		var ui: Dictionary = _weapon_ui.get(id, {})
 		if ui.is_empty():
 			continue
-		var owned: bool    = MetaProgression.is_unlocked(id)
-		var is_free: bool  = id in MetaProgression.FREE_WEAPONS
-		var cost: int      = MetaProgression.weapon_cost(id)
+		var owned: bool = MetaProgression.is_unlocked(id)
+		var is_free: bool = id in MetaProgression.FREE_WEAPONS
+		var cost: int = MetaProgression.weapon_cost(id)
 
-		var cost_lbl: Label    = ui["cost_lbl"]
+		var cost_lbl: Label = ui["cost_lbl"]
 		var unlock_btn: Button = ui["unlock_btn"]
 
 		if owned:
@@ -440,7 +513,7 @@ func _refresh_weapon_rows() -> void:
 			cost_lbl.text = "CR %d" % cost
 			var affordable: bool = MetaProgression.currency >= cost
 			cost_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
-			unlock_btn.visible  = true
+			unlock_btn.visible = true
 			unlock_btn.disabled = not affordable
 
 
@@ -449,13 +522,13 @@ func _refresh_upgrade_rows() -> void:
 		var ui: Dictionary = _upgrade_ui[key]
 		if ui.is_empty():
 			continue
-		var lvl: int  = MetaProgression.upgrade_level(key)
+		var lvl: int = MetaProgression.upgrade_level(key)
 		var maxl: int = MetaProgression.upgrade_max(key)
 		var cost: int = MetaProgression.upgrade_cost(key)
 
 		var level_lbl: Label = ui["level_lbl"]
-		var cost_lbl: Label  = ui["cost_lbl"]
-		var btn: Button      = ui["btn"]
+		var cost_lbl: Label = ui["cost_lbl"]
+		var btn: Button = ui["btn"]
 
 		level_lbl.text = "Lv %d / %d" % [lvl, maxl]
 
@@ -471,8 +544,8 @@ func _refresh_upgrade_rows() -> void:
 
 
 ## Refresh craft row affordability + blueprint-gating from the live Crafting state.
-## Blueprint-locked rows appear dimmed with a lock note; unlocked rows color
-## missing inputs red and disable the button.
+## Blueprint-locked rows show a lock note + hide CRAFT; unlocked rows show the
+## CR cost (or READY) tinted red when missing inputs / unaffordable.
 func _refresh_craft_rows() -> void:
 	for recipe_id in _craft_ui:
 		var ui: Dictionary = _craft_ui[recipe_id]
@@ -482,58 +555,42 @@ func _refresh_craft_rows() -> void:
 		if recipe == null:
 			continue
 
-		var lbl: Label   = ui["lbl"] as Label
-		var btn: Button  = ui["btn"] as Button
+		var lbl: Label = ui["lbl"] as Label
+		var btn: Button = ui["btn"] as Button
 
 		if not Crafting.recipe_unlocked(recipe):
-			# Locked: dim the row, annotate label, disable button.
+			# Locked: annotate the status label, hide the CRAFT button.
 			lbl.add_theme_color_override("font_color", COL_DIM)
-			# Show a lock note so the player knows why they cannot craft.
-			var locked_item: ItemData = ItemCatalog.get_item(recipe.output_id)
-			var locked_name: String   = locked_item.display_name if locked_item != null else recipe.output_id
-			lbl.text    = "%s — Blueprint required (extract / buy / quest)" % locked_name
+			lbl.text = "Blueprint required\n(extract / buy / quest)"
 			btn.disabled = true
-			btn.visible  = false
+			btn.visible = false
 			continue
 
 		# Blueprint known — restore button visibility then check ingredients.
 		btn.visible = true
 
-		# Rebuild label text (may have been overwritten by the lock note on a prior refresh).
-		var out_item: ItemData = ItemCatalog.get_item(recipe.output_id)
-		var out_name: String   = out_item.display_name if out_item != null else recipe.output_id
-
-		# Per-ingredient availability check.  Label is a plain Label (no BBCode),
-		# so we tint the whole label red when anything is missing or unaffordable.
-		var inputs: Array = recipe.inputs()
-		var all_ok: bool  = true
-		var parts: Array[String] = []
-		for inp in inputs:
-			var in_id: String     = String(inp["id"])
-			var in_cnt: int       = int(inp["count"])
-			var in_item: ItemData = ItemCatalog.get_item(in_id)
-			var in_name: String   = in_item.display_name if in_item != null else in_id
-			if not Stash.has(in_id, in_cnt):
+		# Per-ingredient availability check.
+		var all_ok: bool = true
+		for inp in recipe.inputs():
+			if not Stash.has(String(inp["id"]), int(inp["count"])):
 				all_ok = false
-			parts.append("%d× %s" % [in_cnt, in_name])
+				break
 
-		var cost_suffix: String = ("  +  %d CR" % recipe.cost) if recipe.cost > 0 else ""
-		var currency_ok: bool   = recipe.cost <= 0 or MetaProgression.currency >= recipe.cost
-		var can_make: bool      = all_ok and currency_ok
+		var currency_ok: bool = recipe.cost <= 0 or MetaProgression.currency >= recipe.cost
+		var can_make: bool = all_ok and currency_ok
 
-		lbl.text = "%s ×%d  ←  %s%s" % [
-			out_name,
-			maxi(1, recipe.output_count),
-			"  +  ".join(parts),
-			cost_suffix,
-		]
-		# Color the whole row: white when all ingredients present, red when not.
-		lbl.add_theme_color_override("font_color", COL_WHITE if can_make else COL_RED)
+		if recipe.cost > 0:
+			lbl.text = "CR %d" % recipe.cost
+		else:
+			lbl.text = "READY" if can_make else "MISSING"
+		# Amber/READY when craftable, red when missing inputs or unaffordable.
+		lbl.add_theme_color_override("font_color", COL_AMBER if can_make else COL_RED)
 
 		btn.disabled = not can_make
 
 
 # ── Event handlers ────────────────────────────────────────────────────────────
+
 
 func _on_currency_changed(_amount: int) -> void:
 	_refresh_currency()

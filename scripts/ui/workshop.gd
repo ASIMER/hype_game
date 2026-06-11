@@ -14,16 +14,16 @@ extends Control
 ## All purchases refresh the relevant panel rows immediately; currency_changed also
 ## keeps the header readout in sync live.
 
-signal deploy_requested()
-signal back_requested()
+signal deploy_requested
+signal back_requested
 
 # Weapon display names and canonical id order.
 const WEAPON_DISPLAY := {
-	"rifle":   "RIFLE",
-	"pistol":  "PISTOL",
-	"smg":     "SMG",
+	"rifle": "RIFLE",
+	"pistol": "PISTOL",
+	"smg": "SMG",
 	"shotgun": "SHOTGUN",
-	"dmr":     "DMR",
+	"dmr": "DMR",
 }
 const WEAPON_ORDER: Array[String] = ["rifle", "pistol", "smg", "shotgun", "dmr"]
 
@@ -33,22 +33,27 @@ const DIFFICULTY_DESCS := [
 	"NORMAL — balanced threat. Recommended for most runs.",
 	"HARD — more enemies, higher damage. Extraction is brutal.",
 ]
+# NOTE: DIFFICULTY_DESCS are tr()-wrapped at point of use (_refresh_difficulty)
 
 # Colours matching the project theme.
-const COL_AMBER  := Color(0.91, 0.64, 0.24, 1.0)   # amber accent
-const COL_TEAL   := Color(0.247, 0.71, 0.79, 1.0)  # teal accent
-const COL_DIM    := Color(0.45, 0.50, 0.55, 1.0)   # muted label
-const COL_WHITE  := Color(0.88, 0.90, 0.92, 1.0)   # body text
-const COL_RED    := Color(0.85, 0.30, 0.25, 1.0)   # locked / unaffordable hint
+const COL_AMBER := UIStyle.AMBER  # amber accent
+const COL_TEAL := UIStyle.TEAL  # teal accent
+const COL_DIM := UIStyle.DIM  # muted label
+const COL_WHITE := UIStyle.WHITE  # body text
+const COL_RED := UIStyle.RED  # locked / unaffordable hint
 
 # ---------------------------------------------------------------- node refs
-@onready var _currency_label: Label      = $Layout/Header/HRow/CurrencyLabel
-@onready var _weapon_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Left/LoadoutPanel/Scroll/WeaponRows
-@onready var _upgrade_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Right/UpgradesPanel/Scroll/UpgradeRows
-@onready var _diff_option: OptionButton  = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffOption
-@onready var _diff_desc: Label           = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffDesc
-@onready var _deploy_btn: Button         = $Layout/Footer/FooterRow/DeployBtn
-@onready var _back_btn: Button           = $Layout/Footer/FooterRow/BackBtn
+@onready var _currency_label: Label = $Layout/Header/HRow/CurrencyLabel
+@onready
+var _weapon_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Left/LoadoutPanel/Scroll/WeaponRows
+@onready
+var _upgrade_rows: VBoxContainer = $Layout/Body/BodyMargin/Columns/Right/UpgradesPanel/Scroll/UpgradeRows
+@onready
+var _diff_option: OptionButton = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffOption
+@onready
+var _diff_desc: Label = $Layout/Body/BodyMargin/Columns/Right/DifficultyPanel/DiffVBox/DiffDesc
+@onready var _deploy_btn: Button = $Layout/Footer/FooterRow/DeployBtn
+@onready var _back_btn: Button = $Layout/Footer/FooterRow/BackBtn
 
 # Runtime state -------------------------------------------------------
 ## Weapon rows: id -> { check: CheckButton, unlock_btn: Button, cost_label: Label }
@@ -71,9 +76,9 @@ func _ready() -> void:
 	# Wire difficulty selector.
 	if _diff_option:
 		_diff_option.clear()
-		_diff_option.add_item("EASY",   GameState.Difficulty.EASY)
+		_diff_option.add_item("EASY", GameState.Difficulty.EASY)
 		_diff_option.add_item("NORMAL", GameState.Difficulty.NORMAL)
-		_diff_option.add_item("HARD",   GameState.Difficulty.HARD)
+		_diff_option.add_item("HARD", GameState.Difficulty.HARD)
 		_diff_option.selected = GameState.difficulty
 		_diff_option.item_selected.connect(_on_difficulty_selected)
 
@@ -103,7 +108,7 @@ func _build_weapon_rows() -> void:
 		var name_lbl := Label.new()
 		name_lbl.name = "NameLbl"
 		name_lbl.custom_minimum_size = Vector2(90, 0)
-		name_lbl.text = WEAPON_DISPLAY.get(id, id.to_upper())
+		name_lbl.text = tr(WEAPON_DISPLAY.get(id, id.to_upper()))
 		name_lbl.add_theme_color_override("font_color", COL_WHITE)
 		row.add_child(name_lbl)
 
@@ -116,7 +121,7 @@ func _build_weapon_rows() -> void:
 
 		var check := CheckButton.new()
 		check.name = "Check"
-		check.text = "IN LOADOUT"
+		check.text = tr("IN LOADOUT")
 		check.focus_mode = Control.FOCUS_NONE
 		check.toggled.connect(func(pressed: bool) -> void: _on_weapon_toggled(id, pressed))
 		row.add_child(check)
@@ -124,16 +129,16 @@ func _build_weapon_rows() -> void:
 		var unlock_btn := Button.new()
 		unlock_btn.name = "UnlockBtn"
 		unlock_btn.custom_minimum_size = Vector2(90, 32)
-		unlock_btn.text = "UNLOCK"
+		unlock_btn.text = tr("UNLOCK")
 		unlock_btn.pressed.connect(func() -> void: _on_unlock_pressed(id))
 		row.add_child(unlock_btn)
 
 		_weapon_rows.add_child(row)
 		_weapon_ui[id] = {
-			"row":        row,
-			"name_lbl":   name_lbl,
-			"cost_lbl":   cost_lbl,
-			"check":      check,
+			"row": row,
+			"name_lbl": name_lbl,
+			"cost_lbl": cost_lbl,
+			"check": check,
 			"unlock_btn": unlock_btn,
 		}
 
@@ -155,13 +160,13 @@ func _build_upgrade_rows() -> void:
 
 		var title_lbl := Label.new()
 		title_lbl.name = "TitleLbl"
-		title_lbl.text = info["name"]
+		title_lbl.text = tr(info["name"])
 		title_lbl.add_theme_color_override("font_color", COL_WHITE)
 		vname.add_child(title_lbl)
 
 		var desc_lbl := Label.new()
 		desc_lbl.name = "DescLbl"
-		desc_lbl.text = info["desc"]
+		desc_lbl.text = tr(info["desc"])
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
 		desc_lbl.add_theme_font_size_override("font_size", 12)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -187,15 +192,15 @@ func _build_upgrade_rows() -> void:
 		var btn := Button.new()
 		btn.name = "UpgradeBtn"
 		btn.custom_minimum_size = Vector2(90, 32)
-		btn.text = "UPGRADE"
+		btn.text = tr("UPGRADE")
 		btn.pressed.connect(func() -> void: _on_upgrade_pressed(key))
 		row.add_child(btn)
 
 		_upgrade_rows.add_child(row)
 		_upgrade_ui[key] = {
 			"level_lbl": level_lbl,
-			"cost_lbl":  cost_lbl,
-			"btn":       btn,
+			"cost_lbl": cost_lbl,
+			"btn": btn,
 		}
 
 
@@ -212,7 +217,7 @@ func _refresh() -> void:
 func _refresh_currency() -> void:
 	if not _currency_label:
 		return
-	_currency_label.text = "CR %d" % MetaProgression.currency
+	_currency_label.text = tr("CR %d") % MetaProgression.currency
 
 
 func _refresh_weapon_rows() -> void:
@@ -226,12 +231,12 @@ func _refresh_weapon_rows() -> void:
 		var cost: int = MetaProgression.weapon_cost(id)
 		var in_load: bool = id in _selected
 
-		var cost_lbl: Label  = ui["cost_lbl"]
+		var cost_lbl: Label = ui["cost_lbl"]
 		var check: CheckButton = ui["check"]
 		var unlock_btn: Button = ui["unlock_btn"]
 
 		if owned:
-			cost_lbl.text = "OWNED" if not is_free else "FREE"
+			cost_lbl.text = tr("OWNED") if not is_free else tr("FREE")
 			cost_lbl.add_theme_color_override("font_color", COL_DIM)
 			check.visible = true
 			unlock_btn.visible = false
@@ -244,7 +249,7 @@ func _refresh_weapon_rows() -> void:
 			check.button_pressed = in_load
 			check.set_block_signals(false)
 		else:
-			cost_lbl.text = "CR %d" % cost
+			cost_lbl.text = tr("CR %d") % cost
 			var affordable: bool = MetaProgression.currency >= cost
 			cost_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
 			check.visible = false
@@ -257,22 +262,22 @@ func _refresh_upgrade_rows() -> void:
 		var ui: Dictionary = _upgrade_ui[key]
 		if ui.is_empty():
 			continue
-		var lvl: int  = MetaProgression.upgrade_level(key)
+		var lvl: int = MetaProgression.upgrade_level(key)
 		var maxl: int = MetaProgression.upgrade_max(key)
 		var cost: int = MetaProgression.upgrade_cost(key)
 
-		var level_lbl: Label  = ui["level_lbl"]
-		var cost_lbl: Label   = ui["cost_lbl"]
-		var btn: Button       = ui["btn"]
+		var level_lbl: Label = ui["level_lbl"]
+		var cost_lbl: Label = ui["cost_lbl"]
+		var btn: Button = ui["btn"]
 
-		level_lbl.text = "Lv %d / %d" % [lvl, maxl]
+		level_lbl.text = tr("Lv %d / %d") % [lvl, maxl]
 
 		if cost < 0:
-			cost_lbl.text = "MAX"
+			cost_lbl.text = tr("MAX")
 			cost_lbl.add_theme_color_override("font_color", COL_TEAL)
 			btn.disabled = true
 		else:
-			cost_lbl.text = "CR %d" % cost
+			cost_lbl.text = tr("CR %d") % cost
 			var affordable: bool = MetaProgression.currency >= cost
 			cost_lbl.add_theme_color_override("font_color", COL_AMBER if affordable else COL_RED)
 			btn.disabled = not affordable
@@ -285,7 +290,7 @@ func _refresh_difficulty() -> void:
 	_diff_option.selected = GameState.difficulty
 	_diff_option.set_block_signals(false)
 	if _diff_desc:
-		_diff_desc.text = DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)]
+		_diff_desc.text = tr(DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)])
 
 
 # ---------------------------------------------------------------- event handlers

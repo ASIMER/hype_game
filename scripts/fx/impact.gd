@@ -10,21 +10,22 @@ class_name Impact
 ## scorch on the surface below (projected down -Y, the common floor/ground case),
 ## which fades over a few seconds before freeing.
 
-const LIFETIME := 0.7    # outlive the longest burst (smoke 0.6 / debris 0.55)
+const LIFETIME := 0.7  # outlive the longest burst (smoke 0.6 / debris 0.55)
 const DECAL_LIFETIME := 4.0
 
 var _t := 0.0
 var _enemy := false
 var _particles: GPUParticles3D
-var _smoke: GPUParticles3D          # enemy-only oil/smoke puff
-var _debris: GPUParticles3D         # enemy-only chunky metal shards
+var _smoke: GPUParticles3D  # enemy-only oil/smoke puff
+var _debris: GPUParticles3D  # enemy-only chunky metal shards
 var _flash: MeshInstance3D
 var _flash_mat: StandardMaterial3D
-var _decal: Decal                   # world-only scorch mark
+var _decal: Decal  # world-only scorch mark
 var _decal_t := 0.0
 # Surface normal (world space) of the hit, used to orient the burst so sparks
 # spray OUT of the surface rather than always straight up. Vector3.ZERO = unknown.
 var _normal: Vector3 = Vector3.ZERO
+
 
 ## true -> orange/yellow sparks + oil puff (enemy), false -> grey dust + scorch (world).
 func set_enemy_hit(is_enemy: bool) -> void:
@@ -33,12 +34,14 @@ func set_enemy_hit(is_enemy: bool) -> void:
 		_apply_tint()
 		_apply_mode()
 
+
 ## Orient the burst to the hit surface normal (world space). Call before/after
 ## entering the tree; re-applied in _ready. Vector3.ZERO leaves the default (+Y).
 func set_surface_normal(normal: Vector3) -> void:
 	_normal = normal
 	if is_inside_tree():
 		_apply_normal()
+
 
 func _ready() -> void:
 	var tint := _tint()
@@ -87,7 +90,7 @@ func _ready() -> void:
 	sm.spread = 60.0
 	sm.initial_velocity_min = 0.4
 	sm.initial_velocity_max = 1.2
-	sm.gravity = Vector3(0, 0.6, 0)        # smoke drifts up slightly
+	sm.gravity = Vector3(0, 0.6, 0)  # smoke drifts up slightly
 	sm.scale_min = 1.2
 	sm.scale_max = 2.4
 	sm.color = Color(0.08, 0.07, 0.06, 0.7)
@@ -153,8 +156,10 @@ func _ready() -> void:
 	_apply_mode()
 	_apply_normal()
 
+
 func _tint() -> Color:
 	return Color(1.0, 0.7, 0.25) if _enemy else Color(0.7, 0.68, 0.62)
+
 
 func _apply_tint() -> void:
 	var tint := _tint()
@@ -162,6 +167,7 @@ func _apply_tint() -> void:
 		_flash_mat.albedo_color = tint
 	if _particles and _particles.process_material is ParticleProcessMaterial:
 		(_particles.process_material as ParticleProcessMaterial).color = tint
+
 
 ## Re-orient the spark/debris emitters so the burst sprays OUT of the hit surface
 ## (along its normal) instead of always straight up. No-op for an unknown normal.
@@ -174,6 +180,7 @@ func _apply_normal() -> void:
 	if _debris and _debris.process_material is ParticleProcessMaterial:
 		(_debris.process_material as ParticleProcessMaterial).direction = n
 
+
 ## Toggle the enemy oil puff + debris vs the world scorch decal based on _enemy.
 func _apply_mode() -> void:
 	if _smoke:
@@ -183,7 +190,7 @@ func _apply_mode() -> void:
 	# World hits: drop a fading scorch decal projected onto the surface below.
 	if not _enemy and _decal == null:
 		_decal = Decal.new()
-		_decal.size = Vector3(0.8, 0.8, 0.8)   # extents box the projection (bigger puff/scorch)
+		_decal.size = Vector3(0.8, 0.8, 0.8)  # extents box the projection (bigger puff/scorch)
 		_decal.albedo_mix = 1.0
 		_decal.modulate = Color(0.05, 0.05, 0.05, 0.85)
 		_decal.texture_albedo = _scorch_texture()
@@ -192,6 +199,7 @@ func _apply_mode() -> void:
 	elif _enemy and _decal:
 		_decal.queue_free()
 		_decal = null
+
 
 ## A soft radial dark blob used as the scorch albedo. Built once per impact;
 ## cheap (16x16) and good enough for a quick fading mark.
@@ -206,6 +214,7 @@ func _scorch_texture() -> ImageTexture:
 			a = a * a
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	return ImageTexture.create_from_image(img)
+
 
 func _process(delta: float) -> void:
 	_t += delta

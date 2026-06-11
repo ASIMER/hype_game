@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cbheavy01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "bounty_heavy"
+title = "Bounty: Heavy Metal"
+desc = "Heavies are slow and mean. Bring down 4 for the board."
+daily = false
+obj_type = "kill"
+obj_target = "robot_heavy"
+obj_count = 4
+reward_currency = 500
+reward_item_ids = PackedStringArray("loot_cell")
+reward_item_counts = PackedInt32Array(2)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray()
+prereq = PackedStringArray()
+lore = "Someone upstream keeps losing crews to the heavies. They pay to thin them out."
+giver = "Bounty Board"
+questline = ""
+offer_weight = 2
+reward_xp = 60
+reward_rep = 2

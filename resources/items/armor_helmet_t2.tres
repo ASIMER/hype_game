@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ArmorData" load_steps=2 format=3 uid="uid://carmorhelmt2"]
+
+[ext_resource type="Script" path="res://scripts/combat/armor_data.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+id = "armor_helmet_t2"
+display_name = "Assault Helmet"
+kind = 5
+rarity = 2
+weight = 2.0
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Reinforced combat helmet. Blocks 15% of incoming damage and takes more punishment than scrap headgear."
+value = 420
+slot = "helmet"
+mitigation = 0.15
+durability_max = 90.0

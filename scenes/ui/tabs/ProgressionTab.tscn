@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://cprogtab00001"]
+
+[ext_resource type="Script" path="res://scripts/ui/tabs/progression_tab.gd" id="1_progression"]
+
+; Full-rect Control root. Added as a child of the Hub content area, shown/hidden by
+; the Hub (TAB_PROGRESSION = 6 in hub.gd). ALL child nodes are built procedurally
+; in progression_tab.gd.
+[node name="ProgressionTab" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+process_mode = 4
+script = ExtResource("1_progression")

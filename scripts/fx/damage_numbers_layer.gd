@@ -12,12 +12,14 @@ const _JITTER := 0.25
 
 var _scene: PackedScene
 
+
 func _ready() -> void:
 	if ResourceLoader.exists(_DAMAGE_NUMBER_SCENE):
 		_scene = load(_DAMAGE_NUMBER_SCENE)
 	# Events is an autoload, always present; connect once.
 	if not Events.damage_number.is_connected(_on_damage_number):
 		Events.damage_number.connect(_on_damage_number)
+
 
 func _on_damage_number(world_pos: Vector3, amount: float, is_crit: bool) -> void:
 	if _scene == null:
@@ -30,7 +32,8 @@ func _on_damage_number(world_pos: Vector3, amount: float, is_crit: bool) -> void
 		var jitter := Vector3(
 			randf_range(-_JITTER, _JITTER),
 			randf_range(0.0, _JITTER),
-			randf_range(-_JITTER, _JITTER))
+			randf_range(-_JITTER, _JITTER)
+		)
 		(inst as Node3D).global_position = world_pos + Vector3.UP * 0.4 + jitter
 	if inst is DamageNumber:
 		(inst as DamageNumber).setup(amount, is_crit)

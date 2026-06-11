@@ -4,7 +4,7 @@ class_name Tracer
 ## ~0.07s then freeing. Purely visual/local — never networked. Set the endpoints
 ## with setup() BEFORE adding to the tree (or any time after _ready()).
 
-const LIFETIME := 0.07
+const LIFETIME := 0.09
 
 var _t := 0.0
 var _from := Vector3.ZERO
@@ -12,6 +12,7 @@ var _to := Vector3.ZERO
 var _has_endpoints := false
 var _mesh_inst: MeshInstance3D
 var _mat: StandardMaterial3D
+
 
 ## Endpoints in WORLD space. Safe to call before or after _ready().
 func setup(from_world: Vector3, to_world: Vector3) -> void:
@@ -21,10 +22,11 @@ func setup(from_world: Vector3, to_world: Vector3) -> void:
 	if is_inside_tree():
 		_rebuild()
 
+
 func _ready() -> void:
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.012
-	cyl.bottom_radius = 0.012
+	cyl.top_radius = 0.022
+	cyl.bottom_radius = 0.022
 	cyl.height = 1.0
 	cyl.radial_segments = 6
 	cyl.rings = 0
@@ -35,12 +37,16 @@ func _ready() -> void:
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	_mat.albedo_color = Color(1.0, 0.9, 0.6, 1.0)
+	_mat.albedo_color = Color(1.0, 0.92, 0.62, 1.0)
+	_mat.emission_enabled = true
+	_mat.emission = Color(1.0, 0.8, 0.4)
+	_mat.emission_energy_multiplier = 2.0
 	_mat.disable_receive_shadows = true
 	_mesh_inst.material_override = _mat
 	add_child(_mesh_inst)
 	if _has_endpoints:
 		_rebuild()
+
 
 ## Orient and stretch the unit cylinder (default axis +Y) between the two points.
 func _rebuild() -> void:
@@ -61,6 +67,7 @@ func _rebuild() -> void:
 	var basis := Basis(x, up, z)
 	basis = basis.scaled(Vector3(1.0, dist, 1.0))
 	_mesh_inst.global_transform = Transform3D(basis, mid)
+
 
 func _process(delta: float) -> void:
 	_t += delta

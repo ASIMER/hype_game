@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cbscrapper01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "bounty_scrapper"
+title = "Bounty: Scrapper"
+desc = "The crews always need scrap. Pick up 20 pieces in the field."
+daily = false
+obj_type = "pickup"
+obj_target = "loot_scrap"
+obj_count = 20
+reward_currency = 350
+reward_item_ids = PackedStringArray("loot_plastic")
+reward_item_counts = PackedInt32Array(5)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray()
+prereq = PackedStringArray()
+lore = "Scrap is scrap until you need it. Then it's everything."
+giver = "Bounty Board"
+questline = ""
+offer_weight = 4
+reward_xp = 60
+reward_rep = 2

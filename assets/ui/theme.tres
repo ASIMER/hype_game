@@ -1,73 +1,85 @@
-[gd_resource type="Theme" load_steps=14 format=3 uid="uid://c0arcuitheme01"]
+[gd_resource type="Theme" load_steps=18 format=3 uid="uid://c0arcuitheme01"]
 
-; Dark sci-fi / industrial UI theme (Arc Raiders-ish). Dark panels, amber accent,
-; teal progress fills. Set as gui/theme/custom in project.godot so every default
-; Control inherits it. Palette: bg #12181d, panel #1b2228, accent amber #e8a33d,
-; teal #3fb6c9, text #d8dee4.
+; "Military glass" UI theme (Battlefield 2042 / Arc Raiders look). Dark TRANSLUCENT
+; panels over a blurred backdrop, thin light borders, chamfered (asymmetric) corners,
+; amber accent + glow on hover/focus, teal progress fills. Set as gui/theme/custom in
+; project.godot so every default Control inherits it. Body font = Oswald, heading face
+; = Russo One (via the HeaderLarge/HeaderSmall type variations). Both ship Cyrillic for
+; the RU locale. Palette: bg #12181d, glass #10141880, accent amber #e8a33d, teal #3fb6c9.
+; Shared in-code factories mirror this in scripts/ui/ui_style.gd (UIStyle).
+
+[ext_resource type="FontFile" uid="uid://bj8mi55f7gaqi" path="res://assets/fonts/Oswald-Regular.ttf" id="1_oswald"]
+[ext_resource type="FontFile" uid="uid://crfxlthyimj7g" path="res://assets/fonts/RussoOne-Regular.ttf" id="2_russo"]
+
+[sub_resource type="FontVariation" id="FV_header"]
+base_font = ExtResource("2_russo")
+spacing_glyph = 3
 
 [sub_resource type="StyleBoxFlat" id="SB_btn_normal"]
 content_margin_left = 16.0
 content_margin_top = 9.0
 content_margin_right = 16.0
 content_margin_bottom = 9.0
-bg_color = Color(0.137, 0.173, 0.204, 1)
+bg_color = Color(0.12, 0.15, 0.18, 0.55)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.235, 0.3, 0.36, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+border_color = Color(1, 1, 1, 0.1)
+corner_radius_top_left = 8
+corner_radius_top_right = 2
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 2
 
 [sub_resource type="StyleBoxFlat" id="SB_btn_hover"]
 content_margin_left = 16.0
 content_margin_top = 9.0
 content_margin_right = 16.0
 content_margin_bottom = 9.0
-bg_color = Color(0.18, 0.22, 0.26, 1)
+bg_color = Color(0.18, 0.22, 0.26, 0.78)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.91, 0.64, 0.24, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+corner_radius_top_left = 8
+corner_radius_top_right = 2
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 2
+shadow_color = Color(0.91, 0.64, 0.24, 0.28)
+shadow_size = 5
 
 [sub_resource type="StyleBoxFlat" id="SB_btn_pressed"]
 content_margin_left = 16.0
 content_margin_top = 9.0
 content_margin_right = 16.0
 content_margin_bottom = 9.0
-bg_color = Color(0.1, 0.125, 0.15, 1)
+bg_color = Color(0.08, 0.1, 0.12, 0.85)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.91, 0.64, 0.24, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+corner_radius_top_left = 8
+corner_radius_top_right = 2
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 2
 
 [sub_resource type="StyleBoxFlat" id="SB_btn_disabled"]
 content_margin_left = 16.0
 content_margin_top = 9.0
 content_margin_right = 16.0
 content_margin_bottom = 9.0
-bg_color = Color(0.11, 0.13, 0.15, 1)
+bg_color = Color(0.1, 0.12, 0.14, 0.4)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.2, 0.24, 0.28, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+border_color = Color(1, 1, 1, 0.05)
+corner_radius_top_left = 8
+corner_radius_top_right = 2
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 2
 
 [sub_resource type="StyleBoxFlat" id="SB_btn_focus"]
 content_margin_left = 16.0
@@ -80,34 +92,34 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.91, 0.64, 0.24, 0.7)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+corner_radius_top_left = 8
+corner_radius_top_right = 2
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 2
 
 [sub_resource type="StyleBoxFlat" id="SB_panel"]
-content_margin_left = 14.0
+content_margin_left = 16.0
 content_margin_top = 14.0
-content_margin_right = 14.0
+content_margin_right = 16.0
 content_margin_bottom = 14.0
-bg_color = Color(0.106, 0.133, 0.157, 0.97)
+bg_color = Color(0.062, 0.078, 0.094, 0.82)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.235, 0.3, 0.36, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+border_color = Color(1, 1, 1, 0.12)
+corner_radius_top_left = 10
+corner_radius_top_right = 2
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 2
 
 [sub_resource type="StyleBoxFlat" id="SB_panel_plain"]
-bg_color = Color(0.09, 0.11, 0.13, 0.95)
+bg_color = Color(0.05, 0.062, 0.075, 0.8)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.2, 0.26, 0.31, 1)
+border_color = Color(1, 1, 1, 0.08)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -118,12 +130,12 @@ content_margin_left = 10.0
 content_margin_top = 7.0
 content_margin_right = 10.0
 content_margin_bottom = 7.0
-bg_color = Color(0.07, 0.09, 0.11, 1)
+bg_color = Color(0.04, 0.05, 0.06, 0.85)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.235, 0.3, 0.36, 1)
+border_color = Color(1, 1, 1, 0.1)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -134,7 +146,7 @@ content_margin_left = 10.0
 content_margin_top = 7.0
 content_margin_right = 10.0
 content_margin_bottom = 7.0
-bg_color = Color(0.07, 0.09, 0.11, 1)
+bg_color = Color(0.04, 0.05, 0.06, 0.9)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -146,12 +158,12 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="SB_pbar_bg"]
-bg_color = Color(0.07, 0.09, 0.11, 1)
+bg_color = Color(0.04, 0.05, 0.06, 0.85)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.2, 0.26, 0.31, 1)
+border_color = Color(1, 1, 1, 0.1)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -163,14 +175,25 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
+shadow_color = Color(0.247, 0.71, 0.79, 0.4)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="SB_pbar_fill_amber"]
+bg_color = Color(0.91, 0.64, 0.24, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+shadow_color = Color(0.91, 0.64, 0.24, 0.4)
+shadow_size = 5
 
 [sub_resource type="StyleBoxFlat" id="SB_slider"]
-bg_color = Color(0.07, 0.09, 0.11, 1)
+bg_color = Color(0.04, 0.05, 0.06, 0.85)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.2, 0.26, 0.31, 1)
+border_color = Color(1, 1, 1, 0.1)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -182,8 +205,11 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
+shadow_color = Color(0.91, 0.64, 0.24, 0.35)
+shadow_size = 4
 
 [resource]
+default_font = ExtResource("1_oswald")
 default_font_size = 16
 Button/colors/font_color = Color(0.85, 0.88, 0.9, 1)
 Button/colors/font_hover_color = Color(0.97, 0.85, 0.55, 1)
@@ -219,3 +245,14 @@ ProgressBar/styles/fill = SubResource("SB_pbar_fill")
 HSlider/styles/slider = SubResource("SB_slider")
 HSlider/styles/grabber_area = SubResource("SB_slider_grabber_area")
 HSlider/styles/grabber_area_highlight = SubResource("SB_slider_grabber_area")
+HeaderLarge/base_type = &"Label"
+HeaderLarge/colors/font_color = Color(0.93, 0.95, 0.96, 1)
+HeaderLarge/fonts/font = SubResource("FV_header")
+HeaderLarge/font_sizes/font_size = 30
+HeaderSmall/base_type = &"Label"
+HeaderSmall/colors/font_color = Color(0.6, 0.65, 0.7, 1)
+HeaderSmall/fonts/font = SubResource("FV_header")
+HeaderSmall/font_sizes/font_size = 14
+FillAmber/base_type = &"ProgressBar"
+FillAmber/styles/background = SubResource("SB_pbar_bg")
+FillAmber/styles/fill = SubResource("SB_pbar_fill_amber")

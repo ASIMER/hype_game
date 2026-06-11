@@ -53,7 +53,7 @@ Accurate to the current code. Paths are under `res://` (project root `C:\persona
 
 ## 3. Settings (`autoload/Settings.gd`) — values
 
-- **Network**: `DEFAULT_PORT=24565`, `MAX_PLAYERS=8` (ENet listen-server cap), `DEFAULT_IP="127.0.0.1"`, `DISCOVERY_PORT=24566` (LAN-discovery UDP, separate from the game port), `GAME_VERSION="0.1.0"` (stamped into saves), `AGENT_PORT=24700`, `NET_DEBUG=false`
+- **Network**: `DEFAULT_PORT=24565`, `MAX_PLAYERS=8` (ENet listen-server cap), `DEFAULT_IP="127.0.0.1"`, `DISCOVERY_PORT=24566` (LAN-discovery UDP, separate from the game port), `GAME_VERSION="0.2.0"` (stamped into saves), `AGENT_PORT=24700`, `NET_DEBUG=false`
 - **Multi-instance** (parallel agent testing): runtime `agent_port`/`instance_tag` parsed from `--agent-port N` in `_ready()`; `user_path(base,ext)` → `user://<base>.<ext>` (single) or `user://<base>_N.<ext>` (per-instance)
 - **Player**: `PLAYER_MAX_HEALTH=100`, `PLAYER_MOVE_SPEED=5.5`, `PLAYER_SPRINT_SPEED=8.5`, `PLAYER_JUMP_VELOCITY=7.0`, `MOUSE_SENSITIVITY=0.0025`, `CAMERA_PITCH_MIN=-1.2`, `CAMERA_PITCH_MAX=0.6`
 - **Camera/ADS/peek**: `DEFAULT_FOV=60`, `ADS_FOV=42`, `ADS_SENS_SCALE=0.5`, `ADS_SPRING_LENGTH=2.0`, `DEFAULT_SPRING_LENGTH=4.0`, `SHOULDER_OFFSET=0.5`, `AIM_TWEEN_SPEED=10.0`, `PEEK_PROBE=1.4`, `PEEK_SHIFT=0.7`
@@ -150,3 +150,37 @@ Pure client-side convenience — it never touches the authoritative netcode.
 - **Lists**: `favorites` (persisted) + MRU `recents` (capped at `RECENTS_CAP=8`), saved to `favorites.cfg`. API: `parse_addr("ip[:port]")` (blank → `DEFAULT_IP`/`DEFAULT_PORT`; no IPv6 brackets), `get_favorites()/get_recents()`, `is_favorite()`, `add_favorite(name,ip,port)`, `remove_favorite(ip,port)`, `record_connect(ip,port,name)` (called on a successful join). Each mutation emits `Events.favorites_changed`.
 - **LAN discovery** (`_process`): a **host** auto-binds a UDP responder on `Settings.DISCOVERY_PORT=24566` (only while actually hosting and not offline) and answers `HYPE_DISCOVER?` pings with a JSON `{name,port,players,max}`. `scan_lan(timeout=1.5)` broadcasts the ping to `255.255.255.255` AND `127.0.0.1` (so same-machine multi-instance testing works), fires `Events.lan_scan_started`, collects deduped replies into `last_found` for the window, then emits `Events.lan_servers_found(servers)`.
 - **UI**: `scenes/ui/ServerBrowser.tscn` + `scripts/ui/server_browser.gd` (centered overlay; `open()/close()`, `connect_requested(ip,port)`/`closed`). The menu's `main_menu._join(ip,port)` runs the actual ENet connect with success (open the client Hub + `record_connect`) and FAILURE feedback. The SERVERS button lives in `MainMenu.tscn`.
+
+## 11. Quality gates & `scripts/core/` (the audit pass — full report: `docs/AUDIT.md`)
+**`scripts/core/` is the single home for cross-system helpers** (added by the v0.3 audit;
+never copy-paste these between systems — duplicated helpers were the audit's top fragility):
+- **`ProcHash`** (`proc_hash.gd`) — THE deterministic seed hash (`h/hf/hrange`). Every
+  procedural builder (terrain/flora/buildings) derives ALL variation from it + `Settings.TERRAIN_SEED`;
+  any change here changes every world → golden-snapshot-verify before committing.
+- **`WorldBounds`** (`world_bounds.gd`) — the map rectangle (X/Z min/max, SPAN, CX/CZ) +
+  `biome_at(x,z)` (NW urban / NE snow / SW desert / SE rain). Terrain, flora, map UI,
+  atmosphere, the worm's burrow clamp and the biome-exclusive spawner all read it.
+- **`CombatAoe`** (`combat_aoe.gd`) — `damage_players(center, r, dmg, source, falloff_scale,
+  floor_frac, include_downed)`: the ONE radial player-damage loop (worm bite, scarab blast,
+  avalanche slam, pouncer swipe). Server-side callers only.
+- **`Steering`** (`steering.gd`) — `orbit_dir(...)` shared by flyer + strafer (reads/writes the
+  enemy's `_strafe_dir`/`_strafe_flip_t` duck-typed; the randf wobble is server-side flavor).
+- **`Groups`** (`groups.gd`) — group names (`PLAYERS/ENEMIES/EXTRACTION/ARENA/WORLD_EVENTS/PICKUPS`)
+  + load-bearing child-node names (`NODE_HEALTH/NODE_HURTBOX/NODE_WEAKPOINT/NODE_MODEL_ROOT`).
+  CODE must use these consts (a typo is then a compile error, not silently skipped damage);
+  `.tscn` files still hold raw strings → the VALUES are frozen.
+- **`BootValidate`** (`boot_validate.gd`) — debug-build boot checks (deferred from
+  `Settings._ready`): ENEMY_STATS required fields + UNKNOWN-key whitelist (`_STAT_KNOWN` —
+  extend it in the SAME commit that reads a new key), wave-pool scene paths exist,
+  POWERS/UPGRADES/WEAPON_PERKS required fields. `push_error` per finding; release no-op.
+
+**Toolchain:** `gdlintrc` (120 cols; `max-returns 16` for dispatchers; `max-file-lines 1800`
+post-format ceiling — god files must not GROW, see AUDIT §1) + gdformat baseline (whole repo
+formatted once; `scripts/resource_index.gd` exempt — generated) + `ruff.toml` for `tools/`.
+Enforcement: Claude Code PostToolUse hook (`tools/lint/posttool_lint.py`, exit 2 = blocking
+feedback) + `.git/hooks/pre-commit` (versioned at `tools/lint/pre-commit`) + manual
+`pwsh tools/lint/lint.ps1`. **Golden determinism snapshot:** `tools/lint/check_golden.py`
+(vs `golden_world.json`; AgentBridge `golden` cmd) byte-compares terrain heights / water /
+zone pads / placement checksums — required after ANY procedural-pipeline change; `--capture`
+re-baselines only for INTENDED world changes. The harness `state` also exposes `paused`
+(pause-leak debugging — see AUDIT F10's 4-layer pattern).

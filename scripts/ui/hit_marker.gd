@@ -31,10 +31,11 @@ const KILL_WIDTH: float = 3.0
 
 var _local_player: Node = null
 
-var _hit_t: float = 0.0       # white hit-tick timer
-var _kill_t: float = 0.0      # red kill-tick timer
+var _hit_t: float = 0.0  # white hit-tick timer
+var _kill_t: float = 0.0  # red kill-tick timer
 
 var _draw_ctrl: Control = null
+
 
 func _ready() -> void:
 	# Build a full-rect Control that does the drawing, centered marks via get_size.
@@ -55,8 +56,10 @@ func _ready() -> void:
 	if not Events.local_player_spawned.is_connected(_on_local_player_spawned):
 		Events.local_player_spawned.connect(_on_local_player_spawned)
 
+
 func _on_local_player_spawned(player: Node) -> void:
 	_local_player = player
+
 
 ## True if `node` is (or belongs to) the local player. When we don't yet know the
 ## local player, returns true so the marker still shows — robust over silent.
@@ -70,13 +73,15 @@ func _is_local_source(node: Node) -> bool:
 		n = n.get_parent()
 	return false
 
+
 func _is_enemy(node: Node) -> bool:
 	var n := node
 	while n != null:
-		if n.is_in_group("enemies"):
+		if n.is_in_group(Groups.ENEMIES):
 			return true
 		n = n.get_parent()
 	return false
+
 
 func _on_damage_dealt(target: Node, _amount: float, source: Node) -> void:
 	# Only react to the LOCAL player hurting an ENEMY (ignore enemy-on-player, etc).
@@ -88,6 +93,7 @@ func _on_damage_dealt(target: Node, _amount: float, source: Node) -> void:
 	if _draw_ctrl:
 		_draw_ctrl.queue_redraw()
 
+
 func _on_entity_died(entity: Node, killer: Node) -> void:
 	if not _is_enemy(entity):
 		return
@@ -98,6 +104,7 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 		_draw_ctrl.queue_redraw()
 	# A touch of punch on a confirmed kill (existing global signal; cheap, local).
 	Events.screen_shake.emit(0.12)
+
 
 func _process(delta: float) -> void:
 	if _hit_t <= 0.0 and _kill_t <= 0.0:
@@ -112,6 +119,7 @@ func _process(delta: float) -> void:
 	if redraw and _draw_ctrl:
 		_draw_ctrl.queue_redraw()
 
+
 func _on_draw() -> void:
 	if _draw_ctrl == null:
 		return
@@ -125,9 +133,10 @@ func _on_draw() -> void:
 		var ka := clampf(_kill_t / KILL_TIME, 0.0, 1.0)
 		_draw_x(center, KILL_GAP, KILL_LEN, KILL_WIDTH, Color(1.0, 0.2, 0.15, ka))
 
+
 ## Draws a 4-tick "X": four short diagonal strokes leaving a gap at the center.
 func _draw_x(center: Vector2, gap: float, length: float, width: float, col: Color) -> void:
-	var diag := Vector2(0.7071, 0.7071)   # 45° unit
+	var diag := Vector2(0.7071, 0.7071)  # 45° unit
 	var dirs := [
 		Vector2(diag.x, diag.y),
 		Vector2(-diag.x, diag.y),

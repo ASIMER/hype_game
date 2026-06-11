@@ -1,0 +1,10 @@
+# Ruff config — only the Python tooling (tools/agent, tools/audio, tools/lint).
+# GDScript is linted by gdtoolkit (gdlint / gdformat, config in ./gdlintrc).
+line-length = 100
+target-version = "py312"
+
+[lint]
+# E/W pycodestyle, F pyflakes, I import order.
+select = ["E", "F", "W", "I"]
+# E501 long lines in legacy harness scripts are tolerated (comments/docstrings).
+ignore = ["E501"]

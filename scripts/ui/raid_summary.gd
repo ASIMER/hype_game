@@ -15,33 +15,44 @@ extends CanvasLayer
 ##   summary.restart_requested.connect(_on_restart_requested)
 ## The scene starts HIDDEN; show() is called internally on match_won/match_lost.
 
-signal continue_requested()
-signal restart_requested()
+signal continue_requested
+signal restart_requested
 
-# Project theme colours — mirror hub.gd / Workshop.gd.
-const COL_WIN  := Color(0.40, 1.00, 0.60, 1.0)   # green "EXTRACTED"
-const COL_LOSS := Color(1.00, 0.35, 0.35, 1.0)   # red   "KIA"
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
-const COL_DIM   := Color(0.55, 0.60, 0.65, 1.0)
+# Project theme colours via UIStyle palette.
+const COL_WIN := Color(0.40, 1.00, 0.60, 1.0)  # green "EXTRACTED"
+const COL_LOSS := Color(1.00, 0.35, 0.35, 1.0)  # red   "KIA"
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
 
 # ── node refs (all populated in _ready via @onready) ─────────────────────────
-@onready var _panel: PanelContainer       = $Root/Panel
-@onready var _title: Label                = $Root/Panel/VBox/Title
-@onready var _subtitle: Label             = $Root/Panel/VBox/Subtitle
-@onready var _sep_top: HSeparator         = $Root/Panel/VBox/SepTop
-@onready var _loot_section: VBoxContainer = $Root/Panel/VBox/LootSection
-@onready var _loot_header: Label          = $Root/Panel/VBox/LootSection/LootHeader
-@onready var _loot_list: VBoxContainer    = $Root/Panel/VBox/LootSection/LootList
-@onready var _currency_label: Label       = $Root/Panel/VBox/LootSection/CurrencyLabel
-@onready var _bp_section: VBoxContainer   = $Root/Panel/VBox/BpSection
-@onready var _bp_header: Label            = $Root/Panel/VBox/BpSection/BpHeader
-@onready var _bp_list: VBoxContainer      = $Root/Panel/VBox/BpSection/BpList
-@onready var _quest_section: VBoxContainer = $Root/Panel/VBox/QuestSection
-@onready var _quest_header: Label          = $Root/Panel/VBox/QuestSection/QuestHeader
-@onready var _quest_list: VBoxContainer    = $Root/Panel/VBox/QuestSection/QuestList
-@onready var _sep_bot: HSeparator          = $Root/Panel/VBox/SepBot
-@onready var _btn_continue: Button         = $Root/Panel/VBox/Buttons/ContinueBtn
-@onready var _btn_restart: Button          = $Root/Panel/VBox/Buttons/RestartBtn
+@onready var _panel: PanelContainer = $Root/Panel
+@onready var _title: Label = $Root/Panel/VBox/Title
+@onready var _subtitle: Label = $Root/Panel/VBox/Subtitle
+@onready var _sep_top: HSeparator = $Root/Panel/VBox/SepTop
+# The item sections now live inside a bounded ScrollContainer (Scroll/Content) so a big
+# haul scrolls instead of pushing the footer buttons off-screen.
+@onready var _scroll: ScrollContainer = $Root/Panel/VBox/Scroll
+@onready var _content: VBoxContainer = $Root/Panel/VBox/Scroll/Content
+@onready var _loot_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/LootSection
+@onready var _loot_header: Label = $Root/Panel/VBox/Scroll/Content/LootSection/LootHeader
+@onready var _loot_list: VBoxContainer = $Root/Panel/VBox/Scroll/Content/LootSection/LootList
+@onready var _currency_label: Label = $Root/Panel/VBox/Scroll/Content/LootSection/CurrencyLabel
+@onready var _bp_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/BpSection
+@onready var _bp_header: Label = $Root/Panel/VBox/Scroll/Content/BpSection/BpHeader
+@onready var _bp_list: VBoxContainer = $Root/Panel/VBox/Scroll/Content/BpSection/BpList
+@onready var _quest_section: VBoxContainer = $Root/Panel/VBox/Scroll/Content/QuestSection
+@onready var _quest_header: Label = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestHeader
+@onready var _quest_list: VBoxContainer = $Root/Panel/VBox/Scroll/Content/QuestSection/QuestList
+@onready var _sep_bot: HSeparator = $Root/Panel/VBox/SepBot
+@onready var _btn_continue: Button = $Root/Panel/VBox/Buttons/ContinueBtn
+@onready var _btn_restart: Button = $Root/Panel/VBox/Buttons/RestartBtn
+# Set true when WE paused the tree (solo) so we only unpause our own pause.
+var _did_pause: bool = false
+
+# ── Progression section (injected dynamically before _sep_bot in _ready) ─────
+var _prog_section: VBoxContainer = null
+var _prog_list: VBoxContainer = null
 
 # ── per-run accumulators (reset on match_started) ─────────────────────────────
 ## Raw loot deposited this run: id -> count.
@@ -52,6 +63,18 @@ var _loot_bonus: int = 0
 var _blueprints: Array[String] = []
 ## Quest ids completed this run.
 var _quests_done: Array[String] = []
+
+# ── Progression accumulators ──────────────────────────────────────────────────
+## XP earned this run by source: "kill", "extract", "event", "loot".
+var _xp_by_source: Dictionary = {}
+## New raider level reached this run (0 = no level-up).
+var _new_raider_level: int = 0
+## vendor_rep value at match start (to compute delta at show time).
+var _rep_before: int = 0
+## Rep tier at the START of the run (to detect tier-ups).
+var _rep_tier_start: int = 0
+## Weapon ids whose mastery levelled this run.
+var _mastery_leveled: Array[String] = []
 
 
 func _ready() -> void:
@@ -67,21 +90,84 @@ func _ready() -> void:
 	Events.blueprint_learned.connect(_on_blueprint_learned)
 	Events.quest_completed.connect(_on_quest_completed)
 
+	# Progression accumulation.
+	Events.xp_gained.connect(_on_xp_gained)
+	Events.raider_level_up.connect(_on_raider_level_up)
+	Events.reputation_changed.connect(_on_reputation_changed)
+	Events.weapon_mastery_changed.connect(_on_weapon_mastery_changed)
+
 	# Match-end triggers.
 	Events.match_won.connect(_on_match_won)
 	Events.match_lost.connect(_on_match_lost)
+
+	# ── Glass treatment: backdrop + panel + header styling ────────────────────
+	var root_ctrl: Control = get_node_or_null("Root") as Control
+	if root_ctrl != null:
+		var bg := GlassBackdrop.new()
+		root_ctrl.add_child(bg)
+		root_ctrl.move_child(bg, 0)
+
+	if _panel != null:
+		_panel.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.92))
+
+	# Title → Russo One large header.
+	UIStyle.make_header(_title, UIStyle.WHITE, 30, 4)
+	# Subtitle → dimmer, smaller Russo One.
+	UIStyle.make_header(_subtitle, UIStyle.DIM, 14, 2)
+
+	# Section headers → micro_header style.
+	if _loot_header != null:
+		UIStyle.make_header(_loot_header, UIStyle.DIM, 13, 3)
+	if _bp_header != null:
+		UIStyle.make_header(_bp_header, UIStyle.DIM, 13, 3)
+	if _quest_header != null:
+		UIStyle.make_header(_quest_header, UIStyle.DIM, 13, 3)
+
+	# Primary button → hover lift + header style (applied before pop_in).
+	UIStyle.hover_lift(_btn_continue)
+	UIStyle.hover_lift(_btn_restart)
+
+	# ── Inject the progression section at the END of the SCROLLABLE content ──
+	if _content != null:
+		_prog_section = VBoxContainer.new()
+		_prog_section.name = "ProgSection"
+		_prog_section.add_theme_constant_override("separation", 4)
+		_prog_section.visible = false
+
+		var prog_hdr: Label = UIStyle.micro_header("PROGRESSION", UIStyle.DIM, 13)
+		prog_hdr.name = "ProgHeader"
+		_prog_section.add_child(prog_hdr)
+
+		_prog_list = VBoxContainer.new()
+		_prog_list.name = "ProgList"
+		_prog_list.add_theme_constant_override("separation", 3)
+		_prog_section.add_child(_prog_list)
+
+		# Last section inside the scroll (above the fixed footer buttons).
+		_content.add_child(_prog_section)
 
 	hide()
 
 
 # ── Event handlers — accumulate ───────────────────────────────────────────────
 
+
 ## Reset all accumulators when a NEW match begins so each run is clean.
 func _on_match_started() -> void:
+	# SAFETY: a new match can start through paths that bypass our buttons (the harness
+	# `restart` cmd, server-driven redeploys) — if WE paused the tree for the solo
+	# summary, always release it here or the fresh match runs frozen.
+	_unpause_if_ours()
+	hide()
 	_loot_counts.clear()
 	_loot_bonus = 0
 	_blueprints.clear()
 	_quests_done.clear()
+	_xp_by_source.clear()
+	_new_raider_level = 0
+	_rep_before = MetaProgression.vendor_rep
+	_rep_tier_start = MetaProgression.rep_tier()
+	_mastery_leveled.clear()
 
 
 ## payload: [{id: String, count: int}, …], bonus: currency earned this extraction.
@@ -103,34 +189,77 @@ func _on_quest_completed(quest_id: String) -> void:
 		_quests_done.append(quest_id)
 
 
+# ── Progression accumulation ──────────────────────────────────────────────────
+
+
+func _on_xp_gained(amount: int, source: String) -> void:
+	var src: String = source if source != "" else "misc"
+	_xp_by_source[src] = int(_xp_by_source.get(src, 0)) + amount
+
+
+func _on_raider_level_up(new_level: int, _skill_points: int) -> void:
+	_new_raider_level = new_level
+
+
+func _on_reputation_changed(_rep: int, _tier: int) -> void:
+	pass  # Delta computed in _show_summary via the _rep_before snapshot.
+
+
+func _on_weapon_mastery_changed(weapon_id: String, _level: int) -> void:
+	if weapon_id not in _mastery_leveled:
+		_mastery_leveled.append(weapon_id)
+
+
 # ── Match-end display ─────────────────────────────────────────────────────────
 
+
 func _on_match_won() -> void:
+	if not _match_end_plausible():
+		return
 	_show_summary(true)
 
 
 func _on_match_lost() -> void:
+	if not _match_end_plausible():
+		return
 	_show_summary(false)
+
+
+## Guard against STALE/teardown re-fires of match_won/match_lost: during a restart/
+## redeploy the old arena's despawn can re-trigger a win/lose check while GameState is
+## already LOADING the next match — showing (and solo-PAUSING) a ghost summary over the
+## fresh raid. Only a match that is actually running/ending may open the summary.
+func _match_end_plausible() -> bool:
+	return GameState.phase == GameState.Phase.IN_MATCH or GameState.phase == GameState.Phase.RESULTS
+
+
+## SELF-HEALING pause: our solo pause is legitimate ONLY while the summary is on
+## screen. Any path that hides/bypasses us without the buttons (harness restarts,
+## server redeploys, race-y teardown event orders) auto-releases it here, so a stuck
+## frozen world is impossible. Runs while paused (PROCESS_MODE_ALWAYS).
+func _process(_delta: float) -> void:
+	if _did_pause and not visible:
+		_unpause_if_ours()
 
 
 ## Populates all sections and reveals the overlay.
 func _show_summary(won: bool) -> void:
 	# Title + subtitle.
 	if won:
-		_title.text = "EXTRACTED"
+		_title.text = tr("EXTRACTED")
 		_title.add_theme_color_override("font_color", COL_WIN)
-		_subtitle.text = "Gear secured. Head back to the Hub."
+		_subtitle.text = tr("Gear secured. Head back to the Hub.")
 		_subtitle.add_theme_color_override("font_color", COL_WIN)
 	else:
-		_title.text = "KIA"
+		_title.text = tr("KIA")
 		_title.add_theme_color_override("font_color", COL_LOSS)
-		_subtitle.text = "Gear lost. Better luck next time."
+		_subtitle.text = tr("Gear lost. Better luck next time.")
 		_subtitle.add_theme_color_override("font_color", COL_LOSS)
 
 	# Loot section.
 	_clear_children(_loot_list)
 	if _loot_counts.is_empty():
-		var empty_lbl := _make_dim_label("Nothing extracted.")
+		var empty_lbl := _make_dim_label(tr("Nothing extracted."))
 		_loot_list.add_child(empty_lbl)
 	else:
 		for id in _loot_counts:
@@ -139,10 +268,10 @@ func _show_summary(won: bool) -> void:
 
 	# Currency line (always shown on a win; zero on a loss).
 	if _loot_bonus > 0:
-		_currency_label.text = "+CR %d" % _loot_bonus
+		_currency_label.text = tr("+CR %d") % _loot_bonus
 		_currency_label.add_theme_color_override("font_color", COL_AMBER)
 	else:
-		_currency_label.text = "+CR 0"
+		_currency_label.text = tr("+CR 0")
 		_currency_label.add_theme_color_override("font_color", COL_DIM)
 
 	# Blueprints section.
@@ -163,11 +292,118 @@ func _show_summary(won: bool) -> void:
 			title_str = (qd as QuestData).title
 		_quest_list.add_child(_make_dim_label("  %s" % title_str))
 
+	# Progression section.
+	_show_progression_section()
+
+	# Button policy: in CO-OP only the squad leader (host) may RESTART the whole squad —
+	# a client's restart used to no-op and strand the player. Clients see CONTINUE only.
+	# Single-player keeps both. (See main.restart_match — non-leader restarts degrade to
+	# CONTINUE as a safety net regardless.)
+	var coop := multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline
+	if coop and not GameState.is_leader():
+		_btn_restart.visible = false
+	else:
+		_btn_restart.visible = true
+		_btn_restart.text = tr("RESTART SQUAD") if coop else tr("RESTART")
+
+	# Bound the scrollable middle to ~62% of the screen height so the panel (header + scroll +
+	# footer buttons) always fits on-screen and a big haul scrolls instead of pushing the
+	# Continue/Restart buttons out of view.
+	if _scroll != null:
+		var vh: float = get_viewport().get_visible_rect().size.y
+		_scroll.custom_minimum_size.y = clampf(vh * 0.62, 240.0, 760.0)
+	# Pause the world when truly SOLO (offline, or a host with no connected peers) — a real
+	# co-op session with peers can't pause the shared sim, so it stays running there.
+	_did_pause = NetworkManager.is_offline or multiplayer.get_peers().is_empty()
+	if _did_pause:
+		get_tree().paused = true
+
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	show()
+	# Animate the panel in once visible (pop_in requires is_inside_tree).
+	if _panel != null:
+		UIStyle.pop_in(_panel, UIStyle.Dir.DOWN, 16.0, 0.18)
+
+
+func _show_progression_section() -> void:
+	if _prog_section == null or _prog_list == null:
+		return
+	_clear_children(_prog_list)
+
+	var any_line: bool = false
+
+	# ── XP breakdown ─────────────────────────────────────────────────────────
+	var total_xp: int = 0
+	for src in _xp_by_source:
+		total_xp += int(_xp_by_source[src])
+
+	if total_xp > 0:
+		# Build a compact breakdown: "+XP 1440  (kills 900 · extract 500 · loot 40)"
+		var parts: Array[String] = []
+		var kill_xp: int = int(_xp_by_source.get("kill", 0))
+		var ext_xp: int = int(_xp_by_source.get("extract", 0))
+		var event_xp: int = int(_xp_by_source.get("event", 0))
+		var loot_xp: int = int(_xp_by_source.get("loot", 0))
+		if kill_xp > 0:
+			parts.append(tr("kills %d") % kill_xp)
+		if ext_xp > 0:
+			parts.append(tr("extract %d") % ext_xp)
+		if event_xp > 0:
+			parts.append(tr("events %d") % event_xp)
+		if loot_xp > 0:
+			parts.append(tr("loot %d") % loot_xp)
+
+		var xp_lbl := Label.new()
+		xp_lbl.add_theme_font_size_override("font_size", 14)
+		xp_lbl.add_theme_color_override("font_color", COL_AMBER)
+		if parts.is_empty():
+			xp_lbl.text = tr("+XP %d") % total_xp
+		else:
+			xp_lbl.text = tr("+XP %d  (%s)") % [total_xp, "  ·  ".join(parts)]
+		_prog_list.add_child(xp_lbl)
+		any_line = true
+
+	# ── Level-up ─────────────────────────────────────────────────────────────
+	if _new_raider_level > 0:
+		var lvl_lbl := Label.new()
+		lvl_lbl.text = tr("RAIDER LEVEL UP  →  %d") % _new_raider_level
+		lvl_lbl.add_theme_font_size_override("font_size", 15)
+		lvl_lbl.add_theme_color_override("font_color", COL_TEAL)
+		_prog_list.add_child(lvl_lbl)
+		any_line = true
+
+	# ── Rep gained ───────────────────────────────────────────────────────────
+	var rep_gained: int = MetaProgression.vendor_rep - _rep_before
+	if rep_gained > 0:
+		var tier_now: int = MetaProgression.rep_tier()
+		var rep_lbl := Label.new()
+		rep_lbl.add_theme_font_size_override("font_size", 13)
+		rep_lbl.add_theme_color_override("font_color", COL_DIM)
+		if tier_now > _rep_tier_start:
+			rep_lbl.text = (
+				tr("+REP %d  (Tier %d → Tier %d)") % [rep_gained, _rep_tier_start, tier_now]
+			)
+			rep_lbl.add_theme_color_override("font_color", COL_TEAL)
+		else:
+			rep_lbl.text = tr("+REP %d  (Tier %d)") % [rep_gained, tier_now]
+		_prog_list.add_child(rep_lbl)
+		any_line = true
+
+	# ── Weapon mastery level-ups ──────────────────────────────────────────────
+	for wid in _mastery_leveled:
+		var lvl: int = MetaProgression.weapon_mastery_level(String(wid))
+		var m_lbl := Label.new()
+		m_lbl.text = tr("Mastery: %s  Lv%d") % [String(wid).to_upper(), lvl]
+		m_lbl.add_theme_font_size_override("font_size", 13)
+		m_lbl.add_theme_color_override("font_color", COL_AMBER)
+		_prog_list.add_child(m_lbl)
+		any_line = true
+
+	_prog_section.visible = any_line
 
 
 # ── Row builders ──────────────────────────────────────────────────────────────
+
 
 ## Builds a single loot row: [icon?] display_name ×count
 func _make_item_row(id: String, count: int) -> HBoxContainer:
@@ -179,8 +415,11 @@ func _make_item_row(id: String, count: int) -> HBoxContainer:
 	if tex != null:
 		var icon_rect := TextureRect.new()
 		icon_rect.texture = tex
+		# EXPAND_IGNORE_SIZE is REQUIRED — without it the TextureRect adopts the icon's
+		# native 256px size and renders HUGE; with it the icon respects custom_minimum_size.
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon_rect.custom_minimum_size = Vector2(24, 24)
+		icon_rect.custom_minimum_size = Vector2(32, 32)
 		icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(icon_rect)
 	else:
@@ -228,11 +467,31 @@ func _clear_children(container: Control) -> void:
 
 # ── Button handlers ───────────────────────────────────────────────────────────
 
+
 func _on_continue() -> void:
+	_unpause_if_ours()
 	hide()
 	continue_requested.emit()
 
 
 func _on_restart() -> void:
+	_unpause_if_ours()
 	hide()
 	restart_requested.emit()
+
+
+## Clear the tree pause only if WE set it (solo), so we never unpause someone else's pause.
+func _unpause_if_ours() -> void:
+	if _did_pause:
+		_did_pause = false
+		get_tree().paused = false
+
+
+## LIFETIME GUARANTEE (the 4th pause-leak layer): load_arena() rebuilds the UI layer by
+## queue_free'ing its children — including US while we own the solo pause (restart from
+## the KIA screen). The replacement instance never paused (_did_pause=false), so neither
+## its match-start handler nor its watchdog can release the old pause → the fresh match
+## ran frozen forever. Releasing on the way out makes the leak impossible regardless of
+## who frees us or in what order.
+func _exit_tree() -> void:
+	_unpause_if_ours()

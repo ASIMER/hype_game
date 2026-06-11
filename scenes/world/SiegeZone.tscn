@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3 uid="uid://siege_zone"]
+
+[ext_resource type="Script" path="res://scripts/world/siege_zone.gd" id="1_siege"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_1"]
+radius = 10.0
+
+[node name="SiegeZone" type="Area3D"]
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("1_siege")
+
+[node name="Col" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_1")

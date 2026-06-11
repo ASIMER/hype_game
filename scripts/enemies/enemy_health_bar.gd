@@ -12,13 +12,14 @@ class_name EnemyHealthBar
 
 @export var bar_width: float = 1.1
 @export var bar_height: float = 0.14
-@export var bar_y: float = 2.0           # local height above the enemy origin
+@export var bar_y: float = 2.0  # local height above the enemy origin
 
 var _bg: MeshInstance3D
 var _fill: MeshInstance3D
 var _fill_mat: StandardMaterial3D
 var _health: Health = null
 var _ratio: float = 1.0
+
 
 func _ready() -> void:
 	# Build the two quads procedurally so the scene file stays trivial and the
@@ -36,6 +37,7 @@ func _ready() -> void:
 
 	visible = false
 
+
 func _make_quad(size: Vector2, color: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var quad := QuadMesh.new()
@@ -52,6 +54,7 @@ func _make_quad(size: Vector2, color: Color) -> MeshInstance3D:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
+
 ## Bind to a Health component; we mirror its ratio and visibility.
 func setup(health: Health) -> void:
 	_health = health
@@ -63,11 +66,14 @@ func setup(health: Health) -> void:
 		_health.died.connect(_on_died)
 	_apply(_health.current, _health.max_health)
 
+
 func _on_health_changed(current: float, max_health: float) -> void:
 	_apply(current, max_health)
 
+
 func _on_died(_killer: Node) -> void:
 	visible = false
+
 
 func _apply(current: float, max_health: float) -> void:
 	if max_health <= 0.0:
@@ -83,5 +89,8 @@ func _apply(current: float, max_health: float) -> void:
 	_fill.position.x = -bar_width * 0.5 * (1.0 - _ratio)
 	if _fill_mat:
 		# Green -> yellow -> red as it drops.
-		_fill_mat.albedo_color = Color(0.85, 0.85, 0.2).lerp(Color(0.9, 0.2, 0.15), 1.0 - _ratio) \
-			if _ratio > 0.5 else Color(0.9, 0.55, 0.15).lerp(Color(0.9, 0.18, 0.15), (0.5 - _ratio) / 0.5)
+		_fill_mat.albedo_color = (
+			Color(0.85, 0.85, 0.2).lerp(Color(0.9, 0.2, 0.15), 1.0 - _ratio)
+			if _ratio > 0.5
+			else Color(0.9, 0.55, 0.15).lerp(Color(0.9, 0.18, 0.15), (0.5 - _ratio) / 0.5)
+		)

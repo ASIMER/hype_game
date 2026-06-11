@@ -8,11 +8,11 @@ class_name Compass
 const STRIP_W := 360.0
 const STRIP_H := 26.0
 const TOP := 12.0
-const FOV := deg_to_rad(120.0)     # angular span shown across the strip width
-const TICK_COL := Color(0.847, 0.871, 0.894, 0.55)  # dim #d8dee4
-const CARD_COL := Color(0.847, 0.871, 0.894, 0.95)
-const AMBER := Color(0.91, 0.64, 0.24)              # #e8a33d centre marker
-const EXTRACT_COL := Color(0.3, 1.0, 0.5)           # green
+const FOV := deg_to_rad(120.0)  # angular span shown across the strip width
+const TICK_COL := Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.55)
+const CARD_COL := Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.95)
+const AMBER := UIStyle.AMBER  # centre marker
+const EXTRACT_COL := Color(0.3, 1.0, 0.5)  # green
 
 var _player: Node3D = null
 
@@ -45,7 +45,7 @@ func _bind_player(p: Node) -> void:
 
 
 func _find_local_player() -> Node:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if p.has_method("is_multiplayer_authority") and p.is_multiplayer_authority():
 			return p
 	return null
@@ -66,13 +66,19 @@ func _bearing_to_x(world_bearing: float, heading: float) -> Dictionary:
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var cx := STRIP_W * 0.5
-	# Backing strip + frame.
-	draw_rect(Rect2(0, 0, STRIP_W, STRIP_H), Color(0.03, 0.05, 0.07, 0.7), true)
-	draw_rect(Rect2(0, 0, STRIP_W, STRIP_H), Color(AMBER, 0.35), false, 1.0)
+	# Backing strip: glass-toned bg + amber accent border + thin light inner edge.
+	draw_rect(
+		Rect2(0, 0, STRIP_W, STRIP_H),
+		Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.82),
+		true
+	)
+	draw_rect(Rect2(0, 0, STRIP_W, STRIP_H), Color(AMBER.r, AMBER.g, AMBER.b, 0.45), false, 1.0)
+	draw_rect(Rect2(1, 1, STRIP_W - 2, STRIP_H - 2), UIStyle.BORDER_LT, false, 0.5)
 	# Centre marker (the heading you're facing).
 	draw_line(Vector2(cx, 0), Vector2(cx, STRIP_H), AMBER, 1.5)
-	draw_colored_polygon(PackedVector2Array([
-		Vector2(cx - 4, 0), Vector2(cx + 4, 0), Vector2(cx, 5)]), AMBER)
+	draw_colored_polygon(
+		PackedVector2Array([Vector2(cx - 4, 0), Vector2(cx + 4, 0), Vector2(cx, 5)]), AMBER
+	)
 
 	if not is_instance_valid(_player):
 		return
@@ -85,8 +91,10 @@ func _draw() -> void:
 		var info := _bearing_to_x(b, heading)
 		var x: float = info["x"]
 		if x >= 0.0 and x <= STRIP_W:
-			var major := absf(fmod(b + TAU, deg_to_rad(45.0))) < 0.01 \
+			var major := (
+				absf(fmod(b + TAU, deg_to_rad(45.0))) < 0.01
 				or absf(fmod(b + TAU, deg_to_rad(45.0)) - deg_to_rad(45.0)) < 0.01
+			)
 			var h := 9.0 if major else 5.0
 			draw_line(Vector2(x, STRIP_H - h), Vector2(x, STRIP_H), TICK_COL, 1.0)
 		b += step
@@ -96,11 +104,18 @@ func _draw() -> void:
 		var info := _bearing_to_x(card["bearing"], heading)
 		var x: float = info["x"]
 		if x >= 4.0 and x <= STRIP_W - 4.0:
-			draw_string(font, Vector2(x - 5.0, STRIP_H - 11.0),
-				card["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, CARD_COL)
+			draw_string(
+				font,
+				Vector2(x - 5.0, STRIP_H - 11.0),
+				card["label"],
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				13,
+				CARD_COL
+			)
 
 	# Extraction zone markers.
-	for z in get_tree().get_nodes_in_group("extraction"):
+	for z in get_tree().get_nodes_in_group(Groups.EXTRACTION):
 		if not (z is Node3D):
 			continue
 		var pos := (z as Node3D).global_position
@@ -111,12 +126,45 @@ func _draw() -> void:
 		var x: float = clampf(info["x"], 6.0, STRIP_W - 6.0)
 		var y := 6.0
 		# On-strip downward triangle marker.
-		draw_colored_polygon(PackedVector2Array([
-			Vector2(x - 5, y - 4), Vector2(x + 5, y - 4), Vector2(x, y + 4)]), EXTRACT_COL)
+		draw_colored_polygon(
+			PackedVector2Array([Vector2(x - 5, y - 4), Vector2(x + 5, y - 4), Vector2(x, y + 4)]),
+			EXTRACT_COL
+		)
 		# Off-screen: a sideways arrow at the clamped edge.
 		if absf(rel) > FOV * 0.5:
 			var dir := 1.0 if rel > 0.0 else -1.0
 			var ax := x + dir * 8.0
-			draw_colored_polygon(PackedVector2Array([
-				Vector2(ax, y - 4), Vector2(ax, y + 4),
-				Vector2(ax + dir * 5.0, y)]), EXTRACT_COL)
+			draw_colored_polygon(
+				PackedVector2Array(
+					[Vector2(ax, y - 4), Vector2(ax, y + 4), Vector2(ax + dir * 5.0, y)]
+				),
+				EXTRACT_COL
+			)
+
+	# Teammate markers (co-op): small green UPWARD triangles at the BOTTOM of the strip (so they
+	# never collide with the evac triangles at the top). Downed → amber. Empty in single-player.
+	for t in TeammateUtil.list(get_tree()):
+		var tnode: Node3D = t["node"]
+		if not is_instance_valid(tnode):
+			continue
+		var tcol: Color = TeammateUtil.TEAM_DOWN if bool(t["downed"]) else TeammateUtil.TEAM_GREEN
+		var tto := tnode.global_position - _player.global_position
+		var tinfo := _bearing_to_x(atan2(tto.x, -tto.z), heading)
+		var trel: float = tinfo["rel"]
+		var tx: float = clampf(tinfo["x"], 6.0, STRIP_W - 6.0)
+		var ty := STRIP_H - 6.0
+		draw_colored_polygon(
+			PackedVector2Array(
+				[Vector2(tx - 5, ty + 4), Vector2(tx + 5, ty + 4), Vector2(tx, ty - 4)]
+			),
+			tcol
+		)
+		if absf(trel) > FOV * 0.5:
+			var tdir := 1.0 if trel > 0.0 else -1.0
+			var tax := tx + tdir * 8.0
+			draw_colored_polygon(
+				PackedVector2Array(
+					[Vector2(tax, ty - 4), Vector2(tax, ty + 4), Vector2(tax + tdir * 5.0, ty)]
+				),
+				tcol
+			)

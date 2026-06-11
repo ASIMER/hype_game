@@ -17,6 +17,7 @@ class_name InventoryUI
 ## installs at the scene-tree root if not already parented by a HUD.
 
 @onready var _grid: GridContainer = $Panel/Margin/VBox/Grid
+@onready var _header: HBoxContainer = $Panel/Margin/VBox/Header
 @onready var _sort_option: OptionButton = $Panel/Margin/VBox/Header/SortOption
 @onready var _filter_all: Button = $Panel/Margin/VBox/Filters/FilterAll
 @onready var _filter_weapons: Button = $Panel/Margin/VBox/Filters/FilterWeapons
@@ -43,6 +44,11 @@ var _context_menu: PopupMenu = null
 var _context_item: ItemData = null
 var _context_count: int = 0
 
+# Secure-pouch header counter ("SECURE n/2"): a chip Label built at _ready and
+# inserted into the Header HBox. Updated on every refresh.
+var _secure_chip: Label = null
+
+
 func _ready() -> void:
 	visible = false
 	_grid.columns = Settings.INVENTORY_COLS
@@ -55,17 +61,28 @@ func _ready() -> void:
 	_weight_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_weight_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	# Glass panel stylebox on the root Panel node.
+	var root_panel: Panel = get_node_or_null("Panel") as Panel
+	if root_panel != null:
+		root_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.AMBER, 0.92))
+
+	# Weight bar: amber glow fill to match the glass look.
+	_weight_bar.theme_type_variation = "FillAmber"
+
 	_setup_sort_option()
 	_setup_filters()
 	_setup_context_menu()
+	_setup_secure_chip()
 
 	Events.local_player_spawned.connect(_on_local_player_spawned)
 	Events.inventory_changed.connect(_on_inventory_changed)
+	Events.secure_changed.connect(_on_secure_changed)
 
 	# A player may already exist (UI added after spawn) — try to bind now.
 	if _player == null:
 		_bind_to_existing_player()
 	_refresh()
+
 
 func _setup_sort_option() -> void:
 	_sort_option.clear()
@@ -73,17 +90,45 @@ func _setup_sort_option() -> void:
 		_sort_option.add_item(label)
 	_sort_option.item_selected.connect(_on_sort_selected)
 
+
 func _setup_filters() -> void:
 	# Manual radio behavior so exactly one filter is active at a time.
 	_filter_all.pressed.connect(_on_filter_pressed.bind(-1, _filter_all))
 	_filter_weapons.pressed.connect(_on_filter_pressed.bind(ItemData.Kind.WEAPON, _filter_weapons))
-	_filter_materials.pressed.connect(_on_filter_pressed.bind(ItemData.Kind.MATERIAL, _filter_materials))
-	_filter_consumables.pressed.connect(_on_filter_pressed.bind(ItemData.Kind.CONSUMABLE, _filter_consumables))
+	_filter_materials.pressed.connect(
+		_on_filter_pressed.bind(ItemData.Kind.MATERIAL, _filter_materials)
+	)
+	_filter_consumables.pressed.connect(
+		_on_filter_pressed.bind(ItemData.Kind.CONSUMABLE, _filter_consumables)
+	)
+
 
 func _setup_context_menu() -> void:
 	_context_menu = PopupMenu.new()
 	add_child(_context_menu)
 	_context_menu.id_pressed.connect(_on_context_id_pressed)
+
+
+## Builds the "SECURE n/2" header chip (micro_header face inside a glass chip) and
+## inserts it into the Header HBox right after the Title, before the sort controls.
+func _setup_secure_chip() -> void:
+	if _header == null:
+		return
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel", UIStyle.chip(UIStyle.AMBER))
+	wrap.tooltip_text = tr("Secured items survive death (deposited with no bonus)")
+	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_secure_chip = UIStyle.micro_header(_secure_chip_text(0), UIStyle.AMBER, 12)
+	_secure_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	wrap.add_child(_secure_chip)
+	_header.add_child(wrap)
+	# Place the chip just after the Title (index 0), before SortLabel/SortOption.
+	_header.move_child(wrap, 1)
+
+
+func _on_secure_changed(_secure: Dictionary) -> void:
+	_refresh()
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_inventory"):
@@ -92,6 +137,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif visible and event.is_action_pressed("ui_cancel"):
 		_set_open(false)
 		get_viewport().set_input_as_handled()
+
 
 ## Opens/closes the panel and toggles the mouse mode so slots are clickable while
 ## open. Frees the cursor on open; recaptures on close unless the game is paused
@@ -107,11 +153,13 @@ func _set_open(open: bool) -> void:
 		if not get_tree().paused:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
+
 func _on_sort_selected(index: int) -> void:
 	if _inventory == null or index < 0 or index >= SORT_MODES.size():
 		return
 	# sort_stacks emits inventory_changed, which triggers _refresh().
 	_inventory.sort_stacks(SORT_MODES[index])
+
 
 func _on_filter_pressed(kind: int, btn: Button) -> void:
 	_filter_kind = kind
@@ -120,14 +168,17 @@ func _on_filter_pressed(kind: int, btn: Button) -> void:
 		b.button_pressed = (b == btn)
 	_refresh()
 
+
 func _on_local_player_spawned(player: Node) -> void:
 	_bind(player)
 
+
 func _bind_to_existing_player() -> void:
-	for p in get_tree().get_nodes_in_group("players"):
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if _is_local(p):
 			_bind(p)
 			return
+
 
 func _bind(player: Node) -> void:
 	if not is_instance_valid(player):
@@ -136,12 +187,14 @@ func _bind(player: Node) -> void:
 	_inventory = _find_inventory(player)
 	_refresh()
 
+
 func _on_inventory_changed(inv: Node) -> void:
 	# Only react to our own player's inventory; bind lazily if we have none yet.
 	if _inventory == null and _player != null:
 		_inventory = _find_inventory(_player)
 	if inv == _inventory:
 		_refresh()
+
 
 func _refresh() -> void:
 	if not is_inside_tree():
@@ -155,6 +208,8 @@ func _refresh() -> void:
 			continue
 		_grid.add_child(_make_slot(item, cnt))
 	_update_footer()
+	_update_secure_chip()
+
 
 ## The stacks to render given the active kind filter. Footer totals always use
 ## the full inventory, not the filtered view.
@@ -165,16 +220,19 @@ func _visible_stacks() -> Array:
 		return _inventory.stacks
 	return _inventory.filter_by_kind(_filter_kind)
 
+
 func _update_footer() -> void:
 	var weight := _inventory.total_weight() if _inventory != null else 0.0
 	var value := _inventory.total_value() if _inventory != null else 0
 	_weight_bar.value = weight
-	_weight_label.text = "%.1f / %.0f kg" % [weight, Settings.INVENTORY_MAX_WEIGHT]
-	_value_label.text = "Value: %d" % value
+	_weight_label.text = tr("%.1f / %.0f kg") % [weight, Settings.INVENTORY_MAX_WEIGHT]
+	_value_label.text = tr("Value: %d") % value
+
 
 func _clear_grid() -> void:
 	for c in _grid.get_children():
 		c.queue_free()
+
 
 ## Builds one slot: icon texture if present, else a color box; a rarity-colored
 ## border; a count badge for stacks > 1; a rich tooltip; and a right-click
@@ -222,33 +280,75 @@ func _make_slot(item: ItemData, cnt: int) -> Control:
 		badge.add_theme_constant_override("outline_size", 4)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(badge)
+
+	if _secured_count(item.id) > 0:
+		slot.add_child(_secure_badge())
 	return slot
 
-## A dark slot fill with a rarity-colored border.
+
+## A small amber padlock marker for the top-left of a secured slot. Drawn as a
+## shackle + body rect (no glyph-font dependency) so it renders on any platform.
+func _secure_badge() -> Control:
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(14, 16)
+	pad.position = Vector2(4, 3)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.draw.connect(_draw_padlock.bind(pad))
+	return pad
+
+
+## Renders a tiny padlock into `c` (called from its draw signal): a hollow shackle
+## arc above a filled amber body. Kept self-contained so the glyph can't go tofu.
+func _draw_padlock(c: Control) -> void:
+	var amber: Color = UIStyle.AMBER
+	# Body: rounded amber rect in the lower portion.
+	c.draw_rect(Rect2(Vector2(1, 7), Vector2(12, 9)), amber, true)
+	# Keyhole notch (darker) so it reads as a lock.
+	c.draw_rect(Rect2(Vector2(6, 10), Vector2(2, 4)), UIStyle.GLASS_BG, true)
+	# Shackle: an arc of amber above the body.
+	c.draw_arc(Vector2(7, 7), 4.0, PI, TAU, 10, amber, 2.0, true)
+
+
+## A dark slot fill with a rarity-colored border. Secured slots get an amber
+## border tint + a faintly warmer fill so the lock badge reads as "death-proof".
 func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
+	var secured: bool = _secured_count(item.id) > 0
+	if secured:
+		sb.bg_color = Color(0.12, 0.094, 0.05, 0.94)
+	else:
+		sb.bg_color = Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.92)
 	sb.set_border_width_all(2)
-	sb.border_color = item.rarity_color()
+	sb.border_color = UIStyle.AMBER if secured else item.rarity_color()
 	sb.set_corner_radius_all(4)
 	return sb
+
 
 ## Rich tooltip text: name + rarity tier + weight + value + description. The name
 ## line is BBCode-free (Control tooltips are plain), but we still surface rarity.
 func _tooltip_for(item: ItemData) -> String:
-	return "%s\n[%s]\nWeight: %.1f kg\nValue: %d\n\n%s" % [
-		item.display_name,
-		item.rarity_name(),
-		item.weight,
-		item.value,
-		item.description,
-	]
+	return (
+		tr("%s\n[%s]\nWeight: %.1f kg\nValue: %d\n\n%s")
+		% [
+			item.display_name,
+			item.rarity_name(),
+			item.weight,
+			item.value,
+			item.description,
+		]
+	)
+
 
 ## Per-slot input: right-click opens the context menu for that stack.
 func _on_slot_gui_input(event: InputEvent, item: ItemData, cnt: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+	if (
+		event is InputEventMouseButton
+		and event.pressed
+		and event.button_index == MOUSE_BUTTON_RIGHT
+	):
 		_open_context_menu(item, cnt)
 		accept_event()
+
 
 func _open_context_menu(item: ItemData, cnt: int) -> void:
 	_context_item = item
@@ -256,20 +356,45 @@ func _open_context_menu(item: ItemData, cnt: int) -> void:
 	_context_menu.clear()
 	# id 0 = Use (consumables only), id 1 = Drop, id 2 = Split, id 3 = Give.
 	if item.kind == ItemData.Kind.CONSUMABLE:
-		_context_menu.add_item("Use", 0)
-	_context_menu.add_item("Drop", 1)
+		_context_menu.add_item(tr("Use"), 0)
+	_context_menu.add_item(tr("Drop"), 1)
 	# Split: only meaningful when there's more than one to split off.
 	if cnt >= 2:
-		_context_menu.add_item("Split", 2)
+		_context_menu.add_item(tr("Split"), 2)
 	# Give the whole stack to the nearest teammate; disabled (or omitted) when alone.
 	var to: int = NetworkManager.nearest_teammate(GameState.local_peer_id())
 	if to != 0:
 		var mate: Dictionary = GameState.peers.get(to, {})
 		var mate_name: String = mate.get("name", "Raider")
-		_context_menu.add_item("Give to %s" % mate_name, 3)
+		_context_menu.add_item(tr("Give to %s") % mate_name, 3)
+	_add_secure_entry(item)
 	_context_menu.reset_size()
 	_context_menu.position = Vector2i(get_viewport().get_mouse_position())
 	_context_menu.popup()
+
+
+## Appends the secure-pouch context entry for `item`. Only shown when the pouch
+## core is present (inv.request_secure). Already-secured items get tr("Unsecure")
+## (id 5); otherwise an eligible item gets tr("Secure") (id 4). Ineligible items
+## get a DISABLED reason: tr("Too heavy to secure") (per-unit weight over the
+## ceiling) or tr("Pouch full") (all distinct slots taken by other ids).
+func _add_secure_entry(item: ItemData) -> void:
+	if _inventory == null or not _inventory.has_method("request_secure"):
+		return
+	var idx: int = _context_menu.item_count
+	if _secured_count(item.id) > 0:
+		_context_menu.add_item(tr("Unsecure"), 5)
+		return
+	if not _light_enough(item):
+		_context_menu.add_item(tr("Too heavy to secure"), 4)
+		_context_menu.set_item_disabled(idx, true)
+		return
+	if _distinct_secured() >= Settings.SECURE_SLOTS:
+		_context_menu.add_item(tr("Pouch full"), 4)
+		_context_menu.set_item_disabled(idx, true)
+		return
+	_context_menu.add_item(tr("Secure"), 4)
+
 
 func _on_context_id_pressed(id: int) -> void:
 	if _context_item == null:
@@ -283,8 +408,13 @@ func _on_context_id_pressed(id: int) -> void:
 			_split_item(_context_item, _context_count)
 		3:
 			_give_item(_context_item, _context_count)
+		4:
+			_set_secure(_context_item, true)
+		5:
+			_set_secure(_context_item, false)
 	_context_item = null
 	_context_count = 0
+
 
 ## Use one of a consumable: fire the item_use_requested intent so the player's
 ## systems apply the effect, then remove one from the inventory. Guarded to the
@@ -295,6 +425,7 @@ func _use_item(item: ItemData) -> void:
 	Events.item_use_requested.emit(item.id)
 	if _inventory != null:
 		_inventory.remove_item(item.id, 1)
+
 
 ## Drop the whole stack as a world LootPickup near the player, then remove it from
 ## the inventory. Authority-guarded; needs a bound player for the spawn position.
@@ -313,6 +444,7 @@ func _drop_item(item: ItemData, count: int) -> void:
 	if _inventory != null:
 		_inventory.remove_item(item.id, count)
 
+
 ## Split half the stack off into a new separate stack via the server-authoritative
 ## NetworkManager.request_split (works in single-player too). Do not mutate
 ## inv.stacks directly — the owner-mirror fires inventory_changed and we rebuild.
@@ -324,6 +456,7 @@ func _split_item(item: ItemData, count: int) -> void:
 		return
 	NetworkManager.request_split(GameState.local_peer_id(), item.id, half)
 
+
 ## Give the whole stack to the nearest teammate via the server-authoritative
 ## NetworkManager.transfer_item. The server moves the items and re-mirrors both
 ## inventories — do not mutate local stacks here.
@@ -333,18 +466,80 @@ func _give_item(item: ItemData, count: int) -> void:
 		return
 	NetworkManager.transfer_item(GameState.local_peer_id(), to, item.id, count)
 
+
+## Flags/unflags an item id as secure via the owner-side request_secure entry point
+## (works for host AND client). Do not touch inv.secure directly — the server
+## clamps + re-mirrors and fires Events.secure_changed, which rebuilds the grid.
+func _set_secure(item: ItemData, on: bool) -> void:
+	if _inventory == null or not _inventory.has_method("request_secure"):
+		return
+	_inventory.request_secure(item.id, on)
+
+
+# ----------------------------------------------------------------- secure pouch
+## The secured-counts dict on the bound inventory, or an empty dict when the
+## secure-pouch core (other lane) isn't merged yet. Read-only — never mutate here;
+## securing goes through the server-authoritative inv.request_secure().
+func _secure_map() -> Dictionary:
+	if _inventory != null and "secure" in _inventory:
+		var s: Variant = _inventory.secure
+		if s is Dictionary:
+			return s
+	return {}
+
+
+## Number of units of an id currently flagged secure (0 if none / unsupported).
+func _secured_count(id: String) -> int:
+	return int(_secure_map().get(id, 0))
+
+
+## Distinct item ids with at least one secured unit — i.e. occupied pouch slots.
+func _distinct_secured() -> int:
+	var n: int = 0
+	var m: Dictionary = _secure_map()
+	for id: String in m:
+		if int(m[id]) > 0:
+			n += 1
+	return n
+
+
+## Whether `item` is light enough (per-unit weight) to ever go in the pouch.
+func _light_enough(item: ItemData) -> bool:
+	return item.weight <= Settings.SECURE_MAX_WEIGHT
+
+
+## "SECURE n/2" label text for the header chip.
+func _secure_chip_text(n: int) -> String:
+	return tr("SECURE %d/%d") % [n, Settings.SECURE_SLOTS]
+
+
+## Refreshes the header chip count; hidden entirely when the pouch core is absent
+## so the UI shows nothing misleading until the other lane merges.
+func _update_secure_chip() -> void:
+	if _secure_chip == null:
+		return
+	var wrap: Node = _secure_chip.get_parent()
+	var supported: bool = _inventory != null and "secure" in _inventory
+	if wrap is CanvasItem:
+		(wrap as CanvasItem).visible = supported
+	if supported:
+		_secure_chip.text = _secure_chip_text(_distinct_secured())
+
+
 ## Where dropped pickups live. Prefer the same parent existing pickups use
 ## (their group is "pickups"); fall back to the current scene root.
 func _drop_parent() -> Node:
-	for p in get_tree().get_nodes_in_group("pickups"):
+	for p in get_tree().get_nodes_in_group(Groups.PICKUPS):
 		if is_instance_valid(p) and p.get_parent() != null:
 			return p.get_parent()
 	return get_tree().current_scene
+
 
 func _is_local(player: Node) -> bool:
 	if not multiplayer.has_multiplayer_peer():
 		return true
 	return player.get_multiplayer_authority() == multiplayer.get_unique_id()
+
 
 func _find_inventory(player: Node) -> Inventory:
 	var named := player.get_node_or_null("Inventory")
@@ -354,6 +549,7 @@ func _find_inventory(player: Node) -> Inventory:
 		if c is Inventory:
 			return c
 	return null
+
 
 # ----------------------------------------------------------------- install helper
 ## Instantiates InventoryUI and adds it under `host` (e.g. the local player's HUD

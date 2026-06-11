@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestLine" load_steps=2 format=3 uid="uid://cqlforeman01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_line.gd" id="1_ql"]
+
+[resource]
+script = ExtResource("1_ql")
+id = "ql_foreman"
+title = "The Foreman's Ladder"
+intro = "The Foreman runs the salvage crews from a bunker you'll never see. Climb his ladder — patrols, heavies, elites — and the district opens up."
+giver = "The Foreman"
+quest_ids = PackedStringArray("q_cull_grunts", "q_breakers", "q_elite_hunt", "q_warden_fall")
+accent = 0

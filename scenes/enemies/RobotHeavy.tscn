@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://b0arcrobotheavy1"]
+[gd_scene load_steps=7 format=3 uid="uid://b0arcrobotheavy1"]
 
 [ext_resource type="Script" path="res://scripts/enemies/robot_enemy.gd" id="1_robot"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
@@ -7,6 +7,9 @@
 [sub_resource type="CapsuleShape3D" id="Capsule_body"]
 radius = 0.65
 height = 1.9
+
+[sub_resource type="SphereShape3D" id="Sphere_weak"]
+radius = 0.32
 
 [sub_resource type="SceneReplicationConfig" id="ReplConfig_1"]
 properties/0/path = NodePath(".:position")
@@ -54,6 +57,17 @@ health_path = NodePath("../Health")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
 shape = SubResource("Capsule_body")
+
+[node name="WeakPoint" type="Area3D" parent="."]
+collision_layer = 64
+collision_mask = 0
+script = ExtResource("3_hurtbox")
+health_path = NodePath("../Health")
+damage_multiplier = 2.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WeakPoint"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.82, 0)
+shape = SubResource("Sphere_weak")
 
 [node name="LineOfSight" type="RayCast3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)

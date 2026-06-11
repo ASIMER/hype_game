@@ -14,3 +14,4 @@ reward_currency = 400
 reward_item_ids = PackedStringArray("loot_medkit", "loot_ammo")
 reward_item_counts = PackedInt32Array(2, 2)
 reward_blueprints = PackedStringArray("bp_circuit_pack")
+offer_weight = 2

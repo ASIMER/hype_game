@@ -6,14 +6,15 @@ class_name DamageNumber
 ## node at the hit point first. White for normal hits, bold yellow for crits.
 
 const LIFETIME := 0.7
-const RISE := 1.1          # world units the number floats upward over its life
+const RISE := 1.1  # world units the number floats upward over its life
 
 var _t := 0.0
 var _label: Label3D
 var _start_y := 0.0
 var _amount := 0.0
 var _crit := false
-var _pending := false      # setup() was called before _ready built the label
+var _pending := false  # setup() was called before _ready built the label
+
 
 ## amount is shown rounded; is_crit styles it yellow + larger + bold.
 func setup(amount: float, is_crit: bool) -> void:
@@ -23,6 +24,7 @@ func setup(amount: float, is_crit: bool) -> void:
 		_apply()
 	else:
 		_pending = true
+
 
 func _ready() -> void:
 	_label = Label3D.new()
@@ -38,6 +40,7 @@ func _ready() -> void:
 	add_child(_label)
 	_start_y = global_position.y
 	_apply()
+
 
 ## Push the current amount/crit styling onto the label.
 func _apply() -> void:
@@ -56,6 +59,7 @@ func _apply() -> void:
 		_label.pixel_size = 0.001
 		_label.outline_size = 8
 	_pending = false
+
 
 func _process(delta: float) -> void:
 	_t += delta

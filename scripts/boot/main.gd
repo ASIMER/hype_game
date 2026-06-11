@@ -13,9 +13,12 @@ const MAIN_MENU := preload("res://scenes/boot/MainMenu.tscn")
 const ARENA_PATH := "res://scenes/world/Arena.tscn"
 const PAUSE_MENU := "res://scenes/ui/PauseMenu.tscn"
 const HUB_PATH := "res://scenes/ui/Hub.tscn"
-const WORKSHOP_PATH := "res://scenes/ui/Workshop.tscn"   # legacy fallback hub
+const WORKSHOP_PATH := "res://scenes/ui/Workshop.tscn"  # legacy fallback hub
 const RAID_SUMMARY := "res://scenes/ui/RaidSummary.tscn"
 const HAUL_MANAGER := "res://scenes/ui/HaulManager.tscn"
+
+const STATS_OVERLAY := "res://scenes/ui/StatsOverlay.tscn"
+const LOADING_SCREEN := "res://scenes/ui/LoadingScreen.tscn"
 
 @onready var ui_layer: Node = $UILayer
 @onready var world_root: Node = $WorldRoot
@@ -23,13 +26,23 @@ const HAUL_MANAGER := "res://scenes/ui/HaulManager.tscn"
 var _pause_menu: Node = null
 var _raid_summary: Node = null
 var _paused: bool = false
-var _deploy_mode: String = "solo"   # "solo" | "host" | "client" — set when opening the hub
+var _deploy_mode: String = "solo"  # "solo" | "host" | "client" — set when opening the hub
+# Persistent overlays (children of Main, NOT ui_layer — they must survive the ui_layer
+# wipe on every menu/arena transition): the diagnostics overlay + the loading screen.
+var _stats_overlay: Node = null
+var _loading: Node = null
+
 
 func _ready() -> void:
 	# Main + the UI layer keep processing while the tree is paused; the WORLD pauses.
 	# This lets the pause/HUD UI stay live without the engine running gameplay.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	world_root.process_mode = Node.PROCESS_MODE_PAUSABLE
+	# Stamp the window title with this instance's identity (worktree branch + ports) so
+	# parallel instances are tellable apart in the OS task manager / window list.
+	if DisplayServer.get_name() != "headless":
+		get_window().title = Settings.window_title()
+	_build_persistent_overlays()
 	Events.match_started.connect(_on_match_started)
 	# Synchronized co-op deploy: the leader's START broadcasts begin_deploy to all
 	# peers, and each runs its local deploy here on the same tick.
@@ -45,7 +58,17 @@ func _ready() -> void:
 	elif "--agent" in all_args:
 		_start_agent("--menu" in all_args)
 	else:
-		_show_menu()
+		# Normal player boot: run the shader/icon prewarm behind the loading screen (visible
+		# progress instead of a first-frame hitch), then show the menu. Async fire-and-forget.
+		_boot_prewarm_then_menu()
+
+
+## Boot prewarm → menu (real player launch only; headless/server/agent/client skip it).
+func _boot_prewarm_then_menu() -> void:
+	if _loading != null and _loading.has_method("prewarm"):
+		await _loading.prewarm()
+	_show_menu()
+
 
 ## Pulls the IP that follows `--client` on the command line, falling back to the
 ## configured default (e.g. for a bare `--client` with no argument).
@@ -58,15 +81,45 @@ func _parse_client_ip(args: PackedStringArray) -> String:
 			return candidate
 	return Settings.DEFAULT_IP
 
+
+## Instance the overlays that must persist across menu↔arena transitions (the ui_layer is
+## wiped on each). Both are CanvasLayers so they render regardless of parent. Skipped on a
+## headless/dedicated server (no rendering). The StatsOverlay reflects the persisted settings
+## immediately; the LoadingScreen drives itself off Events.arena_build_progress.
+func _build_persistent_overlays() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if ResourceLoader.exists(STATS_OVERLAY):
+		_stats_overlay = (load(STATS_OVERLAY) as PackedScene).instantiate()
+		add_child(_stats_overlay)
+		if _stats_overlay.has_method("set_config"):
+			_stats_overlay.set_config(
+				bool(SettingsManager.get_value("show_fps")),
+				bool(SettingsManager.get_value("show_detailed_stats")),
+				int(SettingsManager.get_value("stats_display_mode"))
+			)
+	if ResourceLoader.exists(LOADING_SCREEN):
+		_loading = (load(LOADING_SCREEN) as PackedScene).instantiate()
+		add_child(_loading)
+	# "Military glass" FX veil (scanline/grain/vignette over the shell UI). Script-only
+	# CanvasLayer; self-gates on Settings.ui_fx_enabled + shell-vs-raid state.
+	add_child((load("res://scripts/ui/fx_overlay.gd") as GDScript).new())
+	# Quest reward popup — self-shows on Events.quest_reward_granted (Iter 3). Persistent so it
+	# works from both the QUESTS tab and the QuestDetail modal claim paths.
+	add_child((load("res://scripts/ui/reward_popup.gd") as GDScript).new())
+
+
 func _show_menu() -> void:
 	for c in ui_layer.get_children():
 		c.queue_free()
 	var menu := MAIN_MENU.instantiate()
 	ui_layer.add_child(menu)
 
+
 func _start_dedicated() -> void:
 	NetworkManager.host_game()
 	load_arena()
+
 
 ## Pre-run LOBBY/HUB (stash / loadout / workshop / deploy) over the UI layer. DEPLOY
 ## commits the bring-list and loads the raid; BACK returns to the menu. `mode` is
@@ -88,9 +141,11 @@ func open_hub(mode: String = "solo") -> void:
 	if hub.has_signal("back_requested"):
 		hub.back_requested.connect(_on_hub_back)
 
+
 ## Back-compat alias used by the main menu's Single Player button + the harness.
 func open_workshop() -> void:
 	open_hub("solo")
+
 
 ## The Hub footer button. Solo deploys immediately; in co-op only the LEADER reaches
 ## here (clients' button is a READY toggle) and it kicks off the SYNCHRONIZED deploy —
@@ -100,6 +155,9 @@ func _on_hub_deploy() -> void:
 		if not NetworkManager.is_offline:
 			NetworkManager.start_offline()
 		GameState.reset_match()
+		# Solo bypasses request_start — roll the raid mutator here (same reason as
+		# the offline restart path: reset just cleared it).
+		NetworkManager.roll_raid_mutator()
 		_do_deploy()
 		return
 	# Co-op leader: ask the server to start the squad (gated on all members ready).
@@ -107,6 +165,7 @@ func _on_hub_deploy() -> void:
 	# so just no-op. The actual deploy runs via Events.begin_deploy on every peer.
 	if GameState.is_leader():
 		NetworkManager.request_start()
+
 
 ## The local deploy step — runs on every peer (solo: directly; co-op: on begin_deploy).
 func _do_deploy() -> void:
@@ -116,6 +175,7 @@ func _do_deploy() -> void:
 	RaidManager.deploy()
 	load_arena()
 
+
 func _on_hub_back() -> void:
 	# Leaving the hub in co-op tears down the connection; solo just returns to the menu.
 	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
@@ -123,6 +183,7 @@ func _on_hub_back() -> void:
 		GameState.peers.clear()
 		GameState.set_phase(GameState.Phase.MENU)
 	_show_menu()
+
 
 ## Self-play mode: boot single-player, open the control server, and park the
 ## window off-screen without focus so screenshots render but the desktop is undisturbed.
@@ -136,6 +197,7 @@ func _start_agent(menu_mode := false) -> void:
 	AgentBridge.activate()
 	_park_window_offscreen()
 
+
 func _park_window_offscreen() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
@@ -148,6 +210,7 @@ func _park_window_offscreen() -> void:
 	var slot: int = Settings.agent_port - Settings.AGENT_PORT
 	DisplayServer.window_set_position(Vector2i(-4000 + slot * 700, -4000))
 
+
 ## Dedicated client (mirror of --server): connect to <ip>, then load the arena
 ## once the ENet handshake completes. Used for automated two-process testing.
 func _start_client(ip: String) -> void:
@@ -157,27 +220,53 @@ func _start_client(ip: String) -> void:
 		return
 	if Settings.NET_DEBUG:
 		print("[client] connecting to %s:%d…" % [ip, Settings.DEFAULT_PORT])
-	multiplayer.connected_to_server.connect(func() -> void:
-		if Settings.NET_DEBUG:
-			print("[client] connected to server — loading arena")
-		load_arena(), CONNECT_ONE_SHOT)
-	multiplayer.connection_failed.connect(func() -> void:
-		push_error("[client] connection to %s failed" % ip), CONNECT_ONE_SHOT)
+	multiplayer.connected_to_server.connect(
+		func() -> void:
+			if Settings.NET_DEBUG:
+				print("[client] connected to server — loading arena")
+			load_arena(),
+		CONNECT_ONE_SHOT
+	)
+	multiplayer.connection_failed.connect(
+		func() -> void: push_error("[client] connection to %s failed" % ip), CONNECT_ONE_SHOT
+	)
+
 
 ## Loads the arena under WorldRoot on this peer. Each peer calls this; once the
 ## scene is ready it tells the server via NetworkManager.notify_loaded().
 func load_arena() -> void:
+	# Show the loading screen immediately so raid entry shows progress, not a frozen window.
+	# (The arena's phased build also drives the bar via Events.arena_build_progress; this just
+	# guarantees the screen is up before the first phase emit.)
+	if _loading != null and _loading.has_method("show_screen"):
+		_loading.show_screen("ENTERING RAID…")
 	for c in ui_layer.get_children():
 		c.queue_free()
+	# Remove old world children SYNCHRONOUSLY (remove_child, not just queue_free): a
+	# queue_free'd node lingers in the tree until end-of-frame, so the freshly added Arena
+	# would be auto-renamed ("@Arena@2") to avoid the name clash. On a RE-deploy the host
+	# and client can rename differently → their MultiplayerSpawner paths
+	# (.../Arena/Net/PlayerSpawner) stop matching and NOTHING replicates (client grey
+	# screen / empty arena). Detaching now guarantees the new Arena keeps its canonical name.
 	for c in world_root.get_children():
+		world_root.remove_child(c)
 		c.queue_free()
 	var arena: Node = (load(ARENA_PATH) as PackedScene).instantiate()
+	arena.name = "Arena"  # canonical, identical on every peer (spawner-path parity)
 	world_root.add_child(arena)
 	# World-space floating damage numbers (visual only).
-	if DisplayServer.get_name() != "headless" and ResourceLoader.exists("res://scenes/fx/DamageNumbersLayer.tscn"):
-		world_root.add_child((load("res://scenes/fx/DamageNumbersLayer.tscn") as PackedScene).instantiate())
+	if (
+		DisplayServer.get_name() != "headless"
+		and ResourceLoader.exists("res://scenes/fx/DamageNumbersLayer.tscn")
+	):
+		world_root.add_child(
+			(load("res://scenes/fx/DamageNumbersLayer.tscn") as PackedScene).instantiate()
+		)
 	# Ambient atmosphere (dust/embers + the day→storm transition on the final wave).
-	if DisplayServer.get_name() != "headless" and ResourceLoader.exists("res://scenes/fx/Atmosphere.tscn"):
+	if (
+		DisplayServer.get_name() != "headless"
+		and ResourceLoader.exists("res://scenes/fx/Atmosphere.tscn")
+	):
 		world_root.add_child((load("res://scenes/fx/Atmosphere.tscn") as PackedScene).instantiate())
 	# Renders teammates' shots (tracer/muzzle/impact) from Events.remote_shot so the
 	# whole squad sees each other's combat (co-op FX sync).
@@ -188,18 +277,46 @@ func load_arena() -> void:
 		if ResourceLoader.exists("res://scenes/ui/HUD.tscn"):
 			var hud: Node = (load("res://scenes/ui/HUD.tscn") as PackedScene).instantiate()
 			ui_layer.add_child(hud)
+			# Power-cache reveal reel + active-buff strip (non-blocking, side of the screen).
+			if ResourceLoader.exists("res://scripts/ui/power_reveal.gd"):
+				ui_layer.add_child((load("res://scripts/ui/power_reveal.gd") as GDScript).new())
 		if ResourceLoader.exists("res://scenes/ui/InventoryUI.tscn"):
-			var inv_ui: Node = (load("res://scenes/ui/InventoryUI.tscn") as PackedScene).instantiate()
+			var inv_ui: Node = (
+				(load("res://scenes/ui/InventoryUI.tscn") as PackedScene).instantiate()
+			)
 			ui_layer.add_child(inv_ui)
 		# Full-screen map (M) + crosshair hit-marker overlay.
 		if ResourceLoader.exists("res://scenes/ui/MapUI.tscn"):
 			ui_layer.add_child((load("res://scenes/ui/MapUI.tscn") as PackedScene).instantiate())
 		if ResourceLoader.exists("res://scenes/ui/HitMarker.tscn"):
-			ui_layer.add_child((load("res://scenes/ui/HitMarker.tscn") as PackedScene).instantiate())
+			ui_layer.add_child(
+				(load("res://scenes/ui/HitMarker.tscn") as PackedScene).instantiate()
+			)
+		# Co-op comms: contextual squad pings (middle-mouse) + the radial comms wheel (Z).
+		# Self-bind to the local player/camera; data flows via Events.ping_placed (networked).
+		if ResourceLoader.exists("res://scenes/ui/PingSystem.tscn"):
+			ui_layer.add_child(
+				(load("res://scenes/ui/PingSystem.tscn") as PackedScene).instantiate()
+			)
+		# Co-op teammate indicators (nameplates + off-screen arrows). Script-only overlay;
+		# single-player draws nothing.
+		ui_layer.add_child((load("res://scripts/ui/teammate_markers.gd") as GDScript).new())
+		if ResourceLoader.exists("res://scenes/ui/CommsWheel.tscn"):
+			ui_layer.add_child(
+				(load("res://scenes/ui/CommsWheel.tscn") as PackedScene).instantiate()
+			)
+		# Underwater post-processing overlay (blue-green tint + wobble while the LOCAL
+		# player wades/submerges in the river). Self-shows on Events.water_state_changed.
+		if ResourceLoader.exists("res://scenes/fx/UnderwaterOverlay.tscn"):
+			ui_layer.add_child(
+				(load("res://scenes/fx/UnderwaterOverlay.tscn") as PackedScene).instantiate()
+			)
 		# Co-op TAB leaderboard (synced kills) + teammate trade UI. Self-show on their
 		# own input/Events; harmless in single-player (the table just shows you).
 		if ResourceLoader.exists("res://scenes/ui/Scoreboard.tscn"):
-			ui_layer.add_child((load("res://scenes/ui/Scoreboard.tscn") as PackedScene).instantiate())
+			ui_layer.add_child(
+				(load("res://scenes/ui/Scoreboard.tscn") as PackedScene).instantiate()
+			)
 		if ResourceLoader.exists("res://scenes/ui/TradeUI.tscn"):
 			ui_layer.add_child((load("res://scenes/ui/TradeUI.tscn") as PackedScene).instantiate())
 		if ResourceLoader.exists(PAUSE_MENU):
@@ -223,15 +340,36 @@ func load_arena() -> void:
 		# would exceed capacity on deposit).
 		if ResourceLoader.exists(HAUL_MANAGER):
 			ui_layer.add_child((load(HAUL_MANAGER) as PackedScene).instantiate())
-	# Networked: run the load->ready handshake. Offline (incl. the OfflineMultiplayerPeer
-	# used by single-player/--agent) has a peer but needs no handshake — start directly.
+	# The arena build is now PHASED (an async coroutine). Gate the load→match handshake on
+	# the build reporting complete (arena_build_progress == 1.0), so notify_loaded /
+	# match_started never fire into a half-built world (players/enemies would otherwise spawn
+	# before terrain + navmesh exist). _finish_arena_load runs deferred so the WaveManager
+	# (added at the tail of arena._ready) exists before match_started is emitted.
+	if not Events.arena_build_progress.is_connected(_on_arena_built):
+		Events.arena_build_progress.connect(_on_arena_built)
+
+
+## Fires for every arena build phase; acts only once the build is complete, then detaches.
+func _on_arena_built(frac: float, _label: String) -> void:
+	if frac < 1.0:
+		return
+	Events.arena_build_progress.disconnect(_on_arena_built)
+	_finish_arena_load.call_deferred()
+
+
+## The load→ready handshake, deferred until after arena._ready has fully returned. Offline
+## (incl. the OfflineMultiplayerPeer used by single-player/--agent) has a peer but needs no
+## handshake — start directly; networked tells the server this peer finished loading.
+func _finish_arena_load() -> void:
 	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
 		NetworkManager.notify_loaded.rpc_id(1)
 	else:
 		Events.match_started.emit()
 
+
 func _on_match_started() -> void:
 	GameState.set_phase(GameState.Phase.IN_MATCH)
+
 
 ## Post-raid summary: CONTINUE returns to the Lobby (re-equip / craft / shop / quests
 ## between raids); RESTART reloads a fresh raid directly.
@@ -241,17 +379,32 @@ func _on_summary_continue() -> void:
 		GameState.reset_match()
 	open_hub(_deploy_mode)
 
+
 func _on_summary_restart() -> void:
+	# In co-op only the leader (host) can drive a restart; a client restart would no-op
+	# and strand the player on a dead screen. Degrade a non-leader restart to CONTINUE
+	# (return to the Hub) so nobody ever gets stuck.
+	if (
+		multiplayer.has_multiplayer_peer()
+		and not NetworkManager.is_offline
+		and not multiplayer.is_server()
+	):
+		_on_summary_continue()
+		return
 	_raid_summary = null
 	restart_match()
+
 
 ## Restart on ENTER once the match has ended (won or lost). Reloads the arena with
 ## fresh state. Single-player / host only (clients would need a server-driven reload).
 func _unhandled_input(event: InputEvent) -> void:
 	# ESC pauses during a match (inventory consumes ESC first when it's open, so this
 	# only fires when the inventory is closed).
-	if _pause_menu != null and event.is_action_pressed("ui_cancel") \
-			and (GameState.phase == GameState.Phase.IN_MATCH or _paused):
+	if (
+		_pause_menu != null
+		and event.is_action_pressed("ui_cancel")
+		and (GameState.phase == GameState.Phase.IN_MATCH or _paused)
+	):
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
 		return
@@ -263,12 +416,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			restart_match()
 			get_viewport().set_input_as_handled()
 
+
 # ---------------------------------------------------------------- pause
 func _toggle_pause() -> void:
 	if _paused:
 		_resume()
 	else:
 		_open_pause()
+
 
 func _open_pause() -> void:
 	if _pause_menu == null:
@@ -281,6 +436,7 @@ func _open_pause() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Events.game_paused.emit(true)
 
+
 func _resume() -> void:
 	_paused = false
 	get_tree().paused = false
@@ -288,6 +444,7 @@ func _resume() -> void:
 		_pause_menu.hide_pause()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	Events.game_paused.emit(false)
+
 
 func _on_quit_to_menu() -> void:
 	_paused = false
@@ -299,10 +456,31 @@ func _on_quit_to_menu() -> void:
 		c.queue_free()
 	_show_menu()
 
+
 func restart_match() -> void:
-	# Only the offline player or the host may drive a restart.
-	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline and not multiplayer.is_server():
+	# Only the offline player or the host may drive a restart. A co-op CLIENT can't —
+	# degrade gracefully to CONTINUE (back to the Hub) instead of a no-op that would
+	# leave the player stranded if the summary was already hidden.
+	if (
+		multiplayer.has_multiplayer_peer()
+		and not NetworkManager.is_offline
+		and not multiplayer.is_server()
+	):
+		_on_summary_continue()
 		return
+	# Co-op host: drive a SYNCHRONIZED re-deploy so EVERY peer reloads its arena and
+	# respawns together. A host-local load_arena() here reloads only the host and leaves
+	# clients flipped to IN_MATCH (via begin_match) with no fresh arena → grey screen.
+	if multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline:
+		NetworkManager.request_redeploy()
+		return
+	# Offline / single-player: reload locally. Release any solo pause FIRST (symmetric
+	# with _on_quit_to_menu): a restart from the KIA summary otherwise relies entirely
+	# on the summary's own unpause, and the fresh match must never start frozen.
+	get_tree().paused = false
 	GameState.reset_match()
+	# Solo bypasses request_redeploy, so roll the raid mutator here (reset just cleared
+	# it; without this single-player would never see a mutator on restart).
+	NetworkManager.roll_raid_mutator()
 	GameState.set_phase(GameState.Phase.IN_MATCH)
 	load_arena()

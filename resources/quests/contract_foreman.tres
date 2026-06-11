@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://ccontractforeman01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "contract_foreman"
+title = "The Foreman's Trust"
+desc = "You've earned the Foreman's respect. Prove it: cut down 5 elites and the mark is yours."
+daily = false
+obj_type = "kill"
+obj_target = "robot_elite"
+obj_count = 5
+reward_currency = 1200
+reward_item_ids = PackedStringArray()
+reward_item_counts = PackedInt32Array()
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray("giver_rep.The Foreman>=2")
+prereq = PackedStringArray()
+lore = "Few earn the Foreman's mark. Fewer still live to wear it."
+giver = "The Foreman"
+questline = ""
+offer_weight = 0
+reward_xp = 500
+reward_giver_rep = 4
+reward_skill_points = 1
+reward_cosmetics = PackedStringArray("paint_foreman")

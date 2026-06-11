@@ -93,53 +93,65 @@ text = "Gear secured. Head back to the Hub."
 [node name="SepTop" type="HSeparator" parent="Root/Panel/VBox"]
 layout_mode = 2
 
-[node name="LootSection" type="VBoxContainer" parent="Root/Panel/VBox"]
+[node name="Scroll" type="ScrollContainer" parent="Root/Panel/VBox"]
+custom_minimum_size = Vector2(0, 420)
 layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Root/Panel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="LootSection" type="VBoxContainer" parent="Root/Panel/VBox/Scroll/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="LootHeader" type="Label" parent="Root/Panel/VBox/LootSection"]
+[node name="LootHeader" type="Label" parent="Root/Panel/VBox/Scroll/Content/LootSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.55, 0.60, 0.65, 1.0)
 text = "ITEMS EXTRACTED"
 
-[node name="LootList" type="VBoxContainer" parent="Root/Panel/VBox/LootSection"]
+[node name="LootList" type="VBoxContainer" parent="Root/Panel/VBox/Scroll/Content/LootSection"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="CurrencyLabel" type="Label" parent="Root/Panel/VBox/LootSection"]
+[node name="CurrencyLabel" type="Label" parent="Root/Panel/VBox/Scroll/Content/LootSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 horizontal_alignment = 2
 text = "+CR 0"
 
-[node name="BpSection" type="VBoxContainer" parent="Root/Panel/VBox"]
+[node name="BpSection" type="VBoxContainer" parent="Root/Panel/VBox/Scroll/Content"]
 layout_mode = 2
 theme_override_constants/separation = 6
 visible = false
 
-[node name="BpHeader" type="Label" parent="Root/Panel/VBox/BpSection"]
+[node name="BpHeader" type="Label" parent="Root/Panel/VBox/Scroll/Content/BpSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.55, 0.60, 0.65, 1.0)
 text = "BLUEPRINTS LEARNED"
 
-[node name="BpList" type="VBoxContainer" parent="Root/Panel/VBox/BpSection"]
+[node name="BpList" type="VBoxContainer" parent="Root/Panel/VBox/Scroll/Content/BpSection"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="QuestSection" type="VBoxContainer" parent="Root/Panel/VBox"]
+[node name="QuestSection" type="VBoxContainer" parent="Root/Panel/VBox/Scroll/Content"]
 layout_mode = 2
 theme_override_constants/separation = 6
 visible = false
 
-[node name="QuestHeader" type="Label" parent="Root/Panel/VBox/QuestSection"]
+[node name="QuestHeader" type="Label" parent="Root/Panel/VBox/Scroll/Content/QuestSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.55, 0.60, 0.65, 1.0)
 text = "QUESTS COMPLETED"
 
-[node name="QuestList" type="VBoxContainer" parent="Root/Panel/VBox/QuestSection"]
+[node name="QuestList" type="VBoxContainer" parent="Root/Panel/VBox/Scroll/Content/QuestSection"]
 layout_mode = 2
 theme_override_constants/separation = 4
 

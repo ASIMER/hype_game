@@ -22,16 +22,18 @@ extends Control
 ##   res://scenes/ui/tabs/WorkshopTab.tscn
 ## Each is instantiated once in _ready; missing scenes fall back to a placeholder label.
 
-signal deploy_requested()
-signal back_requested()
+signal deploy_requested
+signal back_requested
 
 # Tab index constants for clarity.
-const TAB_STASH    := 0
-const TAB_LOADOUT  := 1
+const TAB_STASH := 0
+const TAB_LOADOUT := 1
 const TAB_WORKSHOP := 2
-const TAB_SHOP     := 3
-const TAB_QUESTS   := 4
+const TAB_SHOP := 3
+const TAB_QUESTS := 4
 const TAB_GUNSMITH := 5
+const TAB_PROGRESSION := 6
+const TAB_CHARACTER := 7
 
 # Paths to tab scenes (built by other agents — guarded with ResourceLoader.exists).
 const TAB_PATHS := [
@@ -41,6 +43,8 @@ const TAB_PATHS := [
 	"res://scenes/ui/tabs/ShopTab.tscn",
 	"res://scenes/ui/tabs/QuestsTab.tscn",
 	"res://scenes/ui/tabs/GunsmithTab.tscn",
+	"res://scenes/ui/tabs/ProgressionTab.tscn",
+	"res://scenes/ui/tabs/CharacterTab.tscn",
 ]
 
 # Difficulty one-line descriptions (mirrors Workshop.gd).
@@ -49,25 +53,26 @@ const DIFFICULTY_DESCS := [
 	"NORMAL — balanced threat. Recommended for most runs.",
 	"HARD — more enemies, higher damage. Extraction is brutal.",
 ]
+# tr() applied at use-time (in _refresh_difficulty) so the locale is live.
 
 # Project theme colours (match Workshop.gd / MainMenu.tscn).
-const COL_AMBER := Color(0.91, 0.64, 0.24, 1.0)
-const COL_TEAL  := Color(0.247, 0.71, 0.79, 1.0)
-const COL_DIM   := Color(0.45, 0.50, 0.55, 1.0)
+const COL_AMBER := UIStyle.AMBER
+const COL_TEAL := UIStyle.TEAL
+const COL_DIM := UIStyle.DIM
 
 # Squad status-dot colours: amber = leader/host, green = ready, yellow = not ready.
 const DOT_LEADER := Color(0.91, 0.64, 0.24, 1.0)
-const DOT_READY  := Color(0.36, 0.78, 0.42, 1.0)
-const DOT_WAIT   := Color(0.93, 0.82, 0.27, 1.0)
+const DOT_READY := Color(0.36, 0.78, 0.42, 1.0)
+const DOT_WAIT := Color(0.93, 0.82, 0.27, 1.0)
 
 # ── node refs ────────────────────────────────────────────────────────────────
-@onready var _currency_label: Label       = $Layout/Header/HeaderVBox/HRow/CurrencyLabel
-@onready var _tab_buttons: Array          = []  # populated in _ready from TabBar
-@onready var _content_area: Control       = $Layout/Body/ContentArea
-@onready var _diff_option: OptionButton   = $Layout/Footer/FooterRow/DiffOption
-@onready var _diff_desc: Label            = $Layout/Footer/FooterRow/DiffDesc
-@onready var _back_btn: Button            = $Layout/Footer/FooterRow/BackBtn
-@onready var _deploy_btn: Button          = $Layout/Footer/FooterRow/DeployBtn
+@onready var _currency_label: Label = $Layout/Header/HeaderVBox/HRow/CurrencyLabel
+@onready var _tab_buttons: Array = []  # populated in _ready from TabBar
+@onready var _content_area: Control = $Layout/Body/ContentArea
+@onready var _diff_option: OptionButton = $Layout/Footer/FooterRow/DiffVBox/DiffOption
+@onready var _diff_desc: Label = $Layout/Footer/FooterRow/DiffVBox/DiffDesc
+@onready var _back_btn: Button = $Layout/Footer/FooterRow/BackBtn
+@onready var _deploy_btn: Button = $Layout/Footer/FooterRow/DeployBtn
 
 ## Instantiated tab controls (indexed by TAB_* constants). May be Label placeholders.
 var _tabs: Array[Control] = []
@@ -76,11 +81,13 @@ var _active_tab: int = TAB_STASH
 
 # ── Co-op squad lobby ──────────────────────────────────────────────────────────
 var _squad_panel: PanelContainer = null
-var _squad_list: HBoxContainer = null   # horizontal roster strip (bottom of the hub)
-var _self_ready: bool = false   # this client's lobby ready state (clients only)
+var _squad_list: HBoxContainer = null  # horizontal roster strip (bottom of the hub)
+var _self_ready: bool = false  # this client's lobby ready state (clients only)
+
 
 func _is_coop() -> bool:
 	return multiplayer.has_multiplayer_peer() and not NetworkManager.is_offline
+
 
 func _is_host() -> bool:
 	return GameState.is_leader()
@@ -90,19 +97,32 @@ func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
 	# Drop any equipped attachment lost on a failed raid (not in the stash anymore).
 	MetaProgression.reconcile_attachments()
+	# Batch B: same for worn gear (lost armor unequips + its durability entry clears),
+	# then hand back insurance returns that matured while away; a 30s repeat catches
+	# returns maturing while the Hub stays open. Guarded until the gear lane lands.
+	if MetaProgression.has_method("reconcile_gear"):
+		MetaProgression.reconcile_gear()
+	_claim_insurance()
+
+	# ── Frosted-glass backdrop (drawn behind all tab panels) ──────────────────
+	var bg := GlassBackdrop.new()
+	add_child(bg)
+	move_child(bg, 0)
 
 	# ── Wire footer buttons ───────────────────────────────────────────────────
 	if _back_btn:
 		_back_btn.pressed.connect(func() -> void: back_requested.emit())
+		UIStyle.hover_lift(_back_btn)
 	if _deploy_btn:
 		_deploy_btn.pressed.connect(_on_deploy_pressed)
+		UIStyle.hover_lift(_deploy_btn)
 
 	# ── Wire difficulty selector ──────────────────────────────────────────────
 	if _diff_option:
 		_diff_option.clear()
-		_diff_option.add_item("EASY",   GameState.Difficulty.EASY)
+		_diff_option.add_item("EASY", GameState.Difficulty.EASY)
 		_diff_option.add_item("NORMAL", GameState.Difficulty.NORMAL)
-		_diff_option.add_item("HARD",   GameState.Difficulty.HARD)
+		_diff_option.add_item("HARD", GameState.Difficulty.HARD)
 		_diff_option.selected = GameState.difficulty
 		_diff_option.item_selected.connect(_on_difficulty_selected)
 
@@ -117,12 +137,12 @@ func _ready() -> void:
 			else:
 				# Placeholder shown during bringup while the tab agent finishes.
 				var lbl := Label.new()
-				lbl.text = "Coming soon"
+				lbl.text = tr("Coming soon")
 				lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 				lbl.add_theme_color_override("font_color", COL_DIM)
 				lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				lbl.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+				lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 				tab = lbl
 			tab.visible = (i == TAB_STASH)
 			_content_area.add_child(tab)
@@ -137,10 +157,17 @@ func _ready() -> void:
 		# Buttons are in order: STASH, LOADOUT, WORKSHOP.
 		for i in _tab_buttons.size():
 			var idx := i  # capture for lambda
-			(_tab_buttons[i] as Button).pressed.connect(func() -> void: _switch_tab(idx))
+			var tbtn := _tab_buttons[i] as Button
+			tbtn.pressed.connect(func() -> void: _switch_tab(idx))
+			UIStyle.hover_lift(tbtn)
+
+	# ── Apply Russo One face to Hub screen title (CurrencyLabel header row) ───
+	if _currency_label:
+		UIStyle.make_header(_currency_label, UIStyle.AMBER, 18, 2)
 
 	# ── Squad lobby (co-op only) ──────────────────────────────────────────────
 	_build_squad_panel()
+	set_process(true)
 	if not Events.squad_changed.is_connected(_on_squad_changed):
 		Events.squad_changed.connect(_on_squad_changed)
 	if not Events.peer_registered.is_connected(_on_squad_peer):
@@ -155,9 +182,35 @@ func _ready() -> void:
 	_refresh_squad()
 	_refresh_deploy_button()
 
+	# ── Pop-in the content area when the Hub opens ────────────────────────────
+	if _content_area:
+		UIStyle.pop_in(_content_area, UIStyle.Dir.DOWN, 14.0, 0.18)
+
 	# ── Live currency updates (reconnect-safe) ────────────────────────────────
 	if not Events.currency_changed.is_connected(_on_currency_changed):
 		Events.currency_changed.connect(_on_currency_changed)
+
+
+# Insurance maturity poll (batch B): returns can mature WHILE the Hub is open, so
+# re-claim every 30s (delta-accumulated, pause-immune via PROCESS_MODE_ALWAYS).
+var _insurance_accum: float = 0.0
+
+
+func _process(delta: float) -> void:
+	_insurance_accum += delta
+	if _insurance_accum >= 30.0:
+		_insurance_accum = 0.0
+		_claim_insurance()
+
+
+## Hand matured insurance returns back to the stash (guarded until the gear-profile
+## lane lands its MetaProgression API). Notifies once per claimed batch.
+func _claim_insurance() -> void:
+	if not MetaProgression.has_method("claim_matured_insurance"):
+		return
+	var got: Array = MetaProgression.claim_matured_insurance()
+	if not got.is_empty():
+		Events.notify.emit(tr("Insurance returned %d item(s)") % got.size(), 1)
 
 
 func _exit_tree() -> void:
@@ -173,6 +226,7 @@ func _exit_tree() -> void:
 
 # ── Co-op squad lobby ──────────────────────────────────────────────────────────
 
+
 ## The footer button is context-aware:
 ##   solo / host → START RAID (host gated on all members ready; solo always); presses
 ##     deploy_requested so main.gd runs the (synchronized) deploy.
@@ -185,21 +239,23 @@ func _on_deploy_pressed() -> void:
 		return
 	deploy_requested.emit()
 
+
 func _refresh_deploy_button() -> void:
 	if _deploy_btn == null:
 		return
 	if not _is_coop():
-		_deploy_btn.text = "DEPLOY"
+		_deploy_btn.text = tr("DEPLOY")
 		_deploy_btn.disabled = false
 		return
 	if _is_host():
-		_deploy_btn.text = "START RAID"
+		_deploy_btn.text = tr("START RAID")
 		var ready: bool = GameState.squad_all_ready()
 		_deploy_btn.disabled = not ready
-		_deploy_btn.tooltip_text = "" if ready else "Waiting for the squad to ready up…"
+		_deploy_btn.tooltip_text = "" if ready else tr("Waiting for the squad to ready up…")
 	else:
-		_deploy_btn.text = "UNREADY" if _self_ready else "READY"
+		_deploy_btn.text = tr("UNREADY") if _self_ready else tr("READY")
 		_deploy_btn.disabled = false
+
 
 ## Builds the SQUAD roster strip (bottom, left-of-centre) shown only in co-op.
 ## Lays members out horizontally as `● nick` chips with a colour-coded status dot;
@@ -210,20 +266,23 @@ func _build_squad_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "SquadPanel"
 	# Bottom strip: anchored to the bottom edge, stretched across, lifted clear of
-	# the footer row so the DEPLOY/START button stays unobstructed.
+	# the footer row so the DEPLOY/START button stays unobstructed. The footer
+	# ($Layout/Footer PanelContainer in the VBox) is a flow element whose height
+	# grows with the DEPLOY button + wrapped difficulty description (~70–140px at
+	# larger HUD scales); GROW_BEGIN anchors the band's BOTTOM at -148 (clear of a
+	# tall footer) and lets it grow upward so its size is preserved at any scale.
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.offset_left = 24
 	panel.offset_right = -24
-	panel.offset_top = -132
-	panel.offset_bottom = -84
+	panel.offset_top = -184
+	panel.offset_bottom = -148
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.70))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	panel.add_child(row)
-	var title := Label.new()
-	title.text = "SQUAD"
-	title.add_theme_color_override("font_color", COL_TEAL)
-	title.add_theme_font_size_override("font_size", 16)
+	var title := UIStyle.micro_header("SQUAD", UIStyle.TEAL, 14)
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(title)
 	# Scroll horizontally so any number of friends (cap is 8) fit without overflowing.
@@ -238,6 +297,7 @@ func _build_squad_panel() -> void:
 	add_child(panel)
 	_squad_panel = panel
 
+
 func _refresh_squad() -> void:
 	if _squad_list == null:
 		return
@@ -250,7 +310,7 @@ func _refresh_squad() -> void:
 		var info: Dictionary = GameState.peers[id]
 		var nm: String = String(info.get("name", "Raider"))
 		var rdy: bool = bool(info.get("ready", false))
-		var is_leader: bool = (int(id) == 1)
+		var is_leader: bool = int(id) == 1
 		# One chip = a coloured dot + the nick, laid out side by side.
 		var chip := HBoxContainer.new()
 		chip.add_theme_constant_override("separation", 5)
@@ -267,13 +327,16 @@ func _refresh_squad() -> void:
 		chip.add_child(who)
 		_squad_list.add_child(chip)
 
+
 func _on_squad_changed() -> void:
 	_refresh_squad()
 	_refresh_deploy_button()
 
+
 func _on_squad_peer(_id: int, _info: Dictionary) -> void:
 	_refresh_squad()
 	_refresh_deploy_button()
+
 
 func _on_squad_peer_left(_id: int) -> void:
 	_refresh_squad()
@@ -282,12 +345,16 @@ func _on_squad_peer_left(_id: int) -> void:
 
 # ── Tab switching ─────────────────────────────────────────────────────────────
 
+
 ## Show the tab at index `idx`; hide the rest; update button visual states.
 func _switch_tab(idx: int) -> void:
 	_active_tab = clamp(idx, 0, _tabs.size() - 1)
 	for i in _tabs.size():
 		if _tabs[i] != null:
-			_tabs[i].visible = (i == _active_tab)
+			var should_show: bool = i == _active_tab
+			_tabs[i].visible = should_show
+			if should_show:
+				UIStyle.pop_in(_tabs[i], UIStyle.Dir.DOWN, 10.0, 0.14)
 	_update_tab_button_states()
 
 
@@ -305,10 +372,11 @@ func _update_tab_button_states() -> void:
 
 # ── Currency ──────────────────────────────────────────────────────────────────
 
+
 func _refresh_currency() -> void:
 	if not _currency_label:
 		return
-	_currency_label.text = "CR %d" % MetaProgression.currency
+	_currency_label.text = tr("CR %d") % MetaProgression.currency
 
 
 func _on_currency_changed(_amount: int) -> void:
@@ -317,6 +385,7 @@ func _on_currency_changed(_amount: int) -> void:
 
 # ── Difficulty ────────────────────────────────────────────────────────────────
 
+
 func _refresh_difficulty() -> void:
 	if not _diff_option:
 		return
@@ -324,7 +393,7 @@ func _refresh_difficulty() -> void:
 	_diff_option.selected = GameState.difficulty
 	_diff_option.set_block_signals(false)
 	if _diff_desc:
-		_diff_desc.text = DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)]
+		_diff_desc.text = tr(DIFFICULTY_DESCS[clamp(GameState.difficulty, 0, 2)])
 
 
 func _on_difficulty_selected(index: int) -> void:

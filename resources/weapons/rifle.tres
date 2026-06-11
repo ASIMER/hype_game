@@ -18,3 +18,6 @@ reload_time = 2.0
 ads_fov = 40.0
 range = 90.0
 crit_mult = 2.0
+kick = 1.0
+muzzle_scale = 1.0
+sound_class = "rifle"

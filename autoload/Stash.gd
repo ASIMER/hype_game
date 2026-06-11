@@ -9,14 +9,16 @@ extends Node
 ## permanent unlocks in MetaProgression); the stash holds materials / consumables /
 ## valuables — the at-risk economy.
 
-var items: Array = []   # [{ "id": String, "count": int }]
+var items: Array = []  # [{ "id": String, "count": int }]
 
 ## Set once if a save from a NEWER game version was loaded this session (guards the
 ## version-mismatch toast so it fires at most once per file per session).
 var _warned_newer := false
 
+
 func _ready() -> void:
 	load_stash()
+
 
 ## Semantic-version compare: -1 if a<b, 0 if equal, 1 if a>b. Splits on ".",
 ## compares ints positionally; missing/non-numeric parts count as 0.
@@ -33,6 +35,7 @@ func _cmp_version(a: String, b: String) -> int:
 			return 1
 	return 0
 
+
 # ---------------------------------------------------------------- queries
 func count_of(id: String) -> int:
 	for e in items:
@@ -40,14 +43,17 @@ func count_of(id: String) -> int:
 			return int(e["count"])
 	return 0
 
+
 func has(id: String, n: int = 1) -> bool:
 	return count_of(id) >= n
+
 
 func total_value() -> int:
 	var v := 0
 	for e in items:
 		v += ItemCatalog.value_of(e["id"]) * int(e["count"])
 	return v
+
 
 ## Total carried weight (ItemData.weight × count). The stash has a hard capacity
 ## (MetaProgression.stash_capacity, upgradeable) — extracting over it triggers the
@@ -60,24 +66,33 @@ func total_weight() -> float:
 			w += it.weight * int(e["count"])
 	return w
 
+
 func capacity() -> float:
 	return MetaProgression.stash_capacity()
 
+
 func free_weight() -> float:
 	return capacity() - total_weight()
+
 
 ## Weight of a set of {id,count} stacks (e.g. an incoming haul).
 func weight_of_stacks(stacks: Array) -> float:
 	var w := 0.0
 	for s in stacks:
-		var id := String(s.get("id", "")) if s.has("id") else String((s.get("item") as ItemData).id) if s.get("item") else ""
+		var id := (
+			String(s.get("id", ""))
+			if s.has("id")
+			else String((s.get("item") as ItemData).id) if s.get("item") else ""
+		)
 		var it: ItemData = ItemCatalog.get_item(id)
 		if it:
 			w += it.weight * int(s.get("count", 0))
 	return w
 
+
 func is_empty() -> bool:
 	return items.is_empty()
+
 
 # ---------------------------------------------------------------- mutations
 ## Add n of an id (merges into the existing entry). Persists + emits stash_changed.
@@ -86,6 +101,7 @@ func add(id: String, n: int = 1) -> void:
 		return
 	_add_silent(id, n)
 	_changed()
+
 
 ## Add many stacks at once (e.g. an extracted inventory). Each entry may be
 ## { id, count } or { item: ItemData, count }.
@@ -104,12 +120,14 @@ func add_stacks(stacks: Array) -> void:
 	if any:
 		_changed()
 
+
 func _add_silent(id: String, n: int) -> void:
 	for e in items:
 		if e["id"] == id:
 			e["count"] = int(e["count"]) + n
 			return
-	items.append({ "id": id, "count": n })
+	items.append({"id": id, "count": n})
+
 
 ## Remove up to n of an id; returns the amount actually removed. Persists + emits.
 func remove(id: String, n: int = 1) -> int:
@@ -124,23 +142,30 @@ func remove(id: String, n: int = 1) -> int:
 			return take
 	return 0
 
+
 func clear() -> void:
 	items.clear()
 	_changed()
+
 
 func _changed() -> void:
 	save_stash()
 	Events.stash_changed.emit()
 
+
 # ---------------------------------------------------------------- persistence
 func _path() -> String:
 	return Settings.user_path("stash", "cfg")
 
+
 func save_stash() -> void:
+	if Settings.ephemeral_save:
+		return  # --no-save test run: stash is not persisted
 	var cfg := ConfigFile.new()
 	cfg.set_value("stash", "save_version", Settings.GAME_VERSION)
 	cfg.set_value("stash", "items", items)
 	cfg.save(_path())
+
 
 func load_stash() -> void:
 	var cfg := ConfigFile.new()
@@ -152,18 +177,25 @@ func load_stash() -> void:
 	if save_ver != "" and _cmp_version(save_ver, Settings.GAME_VERSION) > 0:
 		if not _warned_newer:
 			_warned_newer = true
-			push_warning("[Stash] stash.cfg is from a newer game version (v%s > v%s) — loading what we can." % [save_ver, Settings.GAME_VERSION])
-			Events.notify.emit("Save is from a newer game version (v%s) — loading what we can." % save_ver, 2)
+			push_warning(
+				(
+					"[Stash] stash.cfg is from a newer game version (v%s > v%s) — loading what we can."
+					% [save_ver, Settings.GAME_VERSION]
+				)
+			)
+			Events.notify.emit(
+				"Save is from a newer game version (v%s) — loading what we can." % save_ver, 2
+			)
 	var raw: Variant = cfg.get_value("stash", "items", [])
 	items.clear()
 	if not (raw is Array):
 		return
 	# Skip/repair malformed entries (wrong type, missing id, bad count) so a single bad
 	# stack can't abort the whole load.
-	for e in (raw as Array):
+	for e in raw as Array:
 		if not (e is Dictionary) or not e.has("id"):
 			continue
 		var n := int(e.get("count", 1))
 		if n <= 0:
 			continue
-		items.append({ "id": String(e["id"]), "count": n })
+		items.append({"id": String(e["id"]), "count": n})

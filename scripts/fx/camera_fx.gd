@@ -18,36 +18,37 @@ class_name CameraFX
 ## so the restore fires in real time even while Engine.time_scale is near zero.
 
 # --- Shake constants ----------------------------------------------------------
-const TRAUMA_DECAY      := 1.5        # trauma/sec drain rate
-const SHAKE_ROT_MAX_DEG := 2.8        # max rotation offset (each axis) at full shake
-const SHAKE_POS_MAX     := 0.012      # max positional jitter at full shake (metres)
+const TRAUMA_DECAY := 1.5  # trauma/sec drain rate
+const SHAKE_ROT_MAX_DEG := 2.8  # max rotation offset (each axis) at full shake
+const SHAKE_POS_MAX := 0.012  # max positional jitter at full shake (metres)
 
-# --- Recoil constants ---------------------------------------------------------
-const RECOIL_PITCH_BASE := 0.045      # base upward pitch radians per recoil unit
-const RECOIL_YAW_RANGE  := 0.018      # ± random yaw radians per recoil unit
-const RECOIL_SPRING     := 12.0       # spring constant: how fast recoil lerps to zero
-const RECOIL_TRAUMA_ADD := 0.08       # trauma added per shot (pre-scaled by recoil)
+# --- Recoil constants (punchy but RECOVERS — the spring returns aim to centre) ----
+const RECOIL_PITCH_BASE := 0.062  # base upward pitch radians per recoil unit
+const RECOIL_YAW_RANGE := 0.022  # ± random yaw radians per recoil unit
+const RECOIL_SPRING := 13.0  # spring constant: how fast recoil lerps to zero
+const RECOIL_TRAUMA_ADD := 0.11  # trauma added per shot (pre-scaled by recoil)
+const FOV_PUNCH_FIRE := 0.7  # degrees of FOV kick per recoil unit on each shot
 
 # --- FOV punch constants ------------------------------------------------------
-const FOV_PUNCH_NEAR_SCALE := 5.0     # degrees added per recoil unit on grenade nearby
-const FOV_PUNCH_HIT_ADD    := 3.0     # degrees added on local heavy damage
-const FOV_PUNCH_DECAY      := 8.0     # degrees/sec decay
+const FOV_PUNCH_NEAR_SCALE := 5.0  # degrees added per recoil unit on grenade nearby
+const FOV_PUNCH_HIT_ADD := 3.0  # degrees added on local heavy damage
+const FOV_PUNCH_DECAY := 8.0  # degrees/sec decay
 
 # --- Hit-stop constants -------------------------------------------------------
-const HIT_STOP_SCALE := 0.08          # Engine.time_scale during a hit-stop
+const HIT_STOP_SCALE := 0.08  # Engine.time_scale during a hit-stop
 
 # --- Runtime state ------------------------------------------------------------
 var _camera: Camera3D = null
-var _player: Node    = null
+var _player: Node = null
 
-var _trauma: float    = 0.0           # 0..1 shake trauma (decays over time)
-var _noise: FastNoiseLite             # smooth random source for shake
+var _trauma: float = 0.0  # 0..1 shake trauma (decays over time)
+var _noise: FastNoiseLite  # smooth random source for shake
 
 var _recoil_offset: Vector2 = Vector2.ZERO  # x = yaw, y = pitch (radians), springs to 0
 
-var _fov_punch: float  = 0.0          # current extra FOV degrees (decays to 0)
+var _fov_punch: float = 0.0  # current extra FOV degrees (decays to 0)
 
-var _hit_stop_active: bool = false    # guard against stacked hit-stops
+var _hit_stop_active: bool = false  # guard against stacked hit-stops
 
 
 func _ready() -> void:
@@ -66,8 +67,8 @@ func _ready() -> void:
 	# Smooth noise for the shake rotation (no visible repeats at normal play).
 	_noise = FastNoiseLite.new()
 	_noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	_noise.frequency  = 0.8
-	_noise.seed       = randi()
+	_noise.frequency = 0.8
+	_noise.seed = randi()
 
 	# Wire Events bus signals.
 	Events.weapon_fired.connect(_on_weapon_fired)
@@ -85,12 +86,14 @@ func fov_offset() -> float:
 
 # --- Public API ---------------------------------------------------------------
 
+
 ## Add shake trauma clamped to [0, 1]. Called by Events.screen_shake and internally.
 func add_trauma(amount: float) -> void:
 	_trauma = clampf(_trauma + amount, 0.0, 1.0)
 
 
 # --- _process: apply all offsets each frame -----------------------------------
+
 
 func _process(delta: float) -> void:
 	if _camera == null or not _camera.current:
@@ -101,7 +104,7 @@ func _process(delta: float) -> void:
 
 	# 1. Decay trauma.
 	_trauma = maxf(0.0, _trauma - TRAUMA_DECAY * delta)
-	var shake := _trauma * _trauma   # quadratic feel
+	var shake := _trauma * _trauma  # quadratic feel
 
 	# 2. Decay recoil spring toward zero.
 	var spring_factor := clampf(1.0 - RECOIL_SPRING * delta, 0.0, 1.0)
@@ -117,7 +120,7 @@ func _process(delta: float) -> void:
 
 	# 4. Build the combined local transform offset.
 	#    player.gd does NOT touch Camera3D's own position/rotation — this is free.
-	var t := Time.get_ticks_msec() * 0.001   # seconds for noise input
+	var t := Time.get_ticks_msec() * 0.001  # seconds for noise input
 
 	# Shake rotation: sample three noise slices offset in time so x/y/z are uncorrelated.
 	var rot_x := 0.0
@@ -127,15 +130,15 @@ func _process(delta: float) -> void:
 	var pos_y := 0.0
 	if shake > 0.001:
 		var max_r := deg_to_rad(SHAKE_ROT_MAX_DEG) * shake
-		rot_x = _noise.get_noise_2d(t,         0.0) * max_r
+		rot_x = _noise.get_noise_2d(t, 0.0) * max_r
 		rot_y = _noise.get_noise_2d(t + 100.0, 0.0) * max_r
 		rot_z = _noise.get_noise_2d(t + 200.0, 0.0) * max_r
 		pos_x = _noise.get_noise_2d(t + 300.0, 0.0) * SHAKE_POS_MAX * shake
 		pos_y = _noise.get_noise_2d(t + 400.0, 0.0) * SHAKE_POS_MAX * shake
 
 	# Recoil: upward pitch + lateral yaw spring offset (local camera space).
-	rot_x += _recoil_offset.y   # pitch up (negative x in Godot camera = look up)
-	rot_y += _recoil_offset.x   # yaw
+	rot_x += _recoil_offset.y  # pitch up (negative x in Godot camera = look up)
+	rot_y += _recoil_offset.x  # yaw
 
 	# Write combined local transform. player.gd owns SpringArm/CameraPivot rotation
 	# but NOT Camera3D's local position or rotation — safe to set directly here.
@@ -144,6 +147,7 @@ func _process(delta: float) -> void:
 
 
 # --- Event handlers -----------------------------------------------------------
+
 
 func _on_weapon_fired(shooter: Node, _weapon_id: String) -> void:
 	if _camera == null or not _camera.current:
@@ -159,11 +163,13 @@ func _on_weapon_fired(shooter: Node, _weapon_id: String) -> void:
 			recoil = float(wc.current_recoil())
 
 	# Recoil kick: pitch up + small random yaw.
-	_recoil_offset.y -= RECOIL_PITCH_BASE * recoil            # negative = look up
+	_recoil_offset.y -= RECOIL_PITCH_BASE * recoil  # negative = look up
 	_recoil_offset.x += randf_range(-RECOIL_YAW_RANGE, RECOIL_YAW_RANGE) * recoil
 
 	# Small trauma per shot for micro-shake feel.
 	add_trauma(RECOIL_TRAUMA_ADD * recoil)
+	# Tiny FOV kick per shot for "weight" (decays back via FOV_PUNCH_DECAY).
+	_fov_punch += FOV_PUNCH_FIRE * recoil
 
 
 func _on_damage_dealt(target: Node, amount: float, _source: Node) -> void:
@@ -218,10 +224,11 @@ func _on_screen_shake(amount: float) -> void:
 
 # --- Helpers ------------------------------------------------------------------
 
+
 func _find_player() -> Node:
 	var n: Node = self
 	while n != null:
-		if n.is_in_group("players"):
+		if n.is_in_group(Groups.PLAYERS):
 			return n
 		n = n.get_parent()
 	return null

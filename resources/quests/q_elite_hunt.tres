@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqelitehunt01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_elite_hunt"
+title = "Elite Hunt"
+desc = "The elites are the warden's enforcers. Put down 3 and the district is yours."
+daily = false
+obj_type = "kill"
+obj_target = "robot_elite"
+obj_count = 3
+reward_currency = 900
+reward_item_ids = PackedStringArray("loot_artifact")
+reward_item_counts = PackedInt32Array(1)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray()
+prereq = PackedStringArray("q_breakers")
+lore = "You broke the patrols, then the heavies. Now the warden sends its best. Finish this."
+giver = "The Foreman"
+questline = "ql_foreman"
+reward_xp = 300
+reward_giver_rep = 2
+reward_skill_points = 1

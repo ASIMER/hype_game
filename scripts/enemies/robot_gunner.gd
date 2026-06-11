@@ -24,12 +24,14 @@ var _burst_just_ended: bool = false
 # on Y and its weak-point dome pulses. Cached in _cache_proc_parts (OVERRIDE).
 var _proc_turret: Node3D = null
 
+
 func _ready() -> void:
 	super._ready()
 	var stats: Dictionary = Settings.ENEMY_STATS.get(enemy_id, {})
 	if stats.get("burst", false):
 		burst_count = max(burst_count, 3)
 	_shots_left_in_burst = burst_count
+
 
 ## OVERRIDE: fire a hitscan shot instead of melee. Burst-aware: shots within a
 ## burst use the (short) stat cooldown; after the last shot we flag a longer
@@ -44,6 +46,7 @@ func _strike(target: Node) -> void:
 		_shots_left_in_burst = burst_count
 		_burst_just_ended = true
 
+
 ## OVERRIDE: short gap between shots in a burst, longer recovery after the last.
 ## With burst_count == 1 there is no intra-burst gap, so every shot just uses the
 ## archetype's stat cooldown (the wasp case).
@@ -52,6 +55,7 @@ func _next_cooldown() -> float:
 		_burst_just_ended = false
 		return burst_recovery
 	return _stat_cooldown
+
 
 ## OVERRIDE: cache the bastion's TurretHead pivot + glowing weak-point dome.
 func _cache_proc_parts() -> void:
@@ -67,12 +71,14 @@ func _cache_proc_parts() -> void:
 		_pulse_base_energy = _read_emission_energy(dome as MeshInstance3D)
 	_has_proc_anim = _proc_turret != null or _pulse_part != null
 
+
 ## OVERRIDE: slowly yaw the turret head to face the nearest player + pulse the weak
 ## point (brighter/faster while attacking) so the bastion reads as alive + aiming.
 func _animate_visual(delta: float) -> void:
 	_track_player_yaw(_proc_turret, delta, 2.5)
 	var atk := current_state == State.ATTACK
 	_pulse_emission(0.6, 1.4, 5.0 if atk else 2.5)
+
 
 ## Resolve a straight shot from our muzzle to the target centre. If the LOS ray
 ## is clear to the target we deal damage through its Hurtbox; otherwise the shot
@@ -83,14 +89,15 @@ func _fire_hitscan(target: Node3D) -> void:
 	# Reuse the LOS check we already ran this frame conceptually; re-test to be safe.
 	if not _check_line_of_sight(target):
 		return
-	var hb := target.get_node_or_null("Hurtbox")
+	var hb := target.get_node_or_null(Groups.NODE_HURTBOX)
 	if hb and hb.has_method("apply_hit"):
 		hb.apply_hit(_stat_damage, self)
 	else:
-		var hp := target.get_node_or_null("Health")
+		var hp := target.get_node_or_null(Groups.NODE_HEALTH)
 		if hp and hp.has_method("take_damage"):
 			hp.take_damage(_stat_damage, self)
 	_spawn_tracer(muzzle, aim)
+
 
 func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	if not ResourceLoader.exists(TRACER_SCENE):

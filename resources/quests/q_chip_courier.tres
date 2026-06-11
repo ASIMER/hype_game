@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqchipcourier01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_chip_courier"
+title = "Chip Courier"
+desc = "Data chips are the district's memory. Extract 2 of them for Vex's broker."
+daily = false
+obj_type = "extract_item"
+obj_target = "loot_data_chip"
+obj_count = 2
+reward_currency = 800
+reward_item_ids = PackedStringArray("loot_cell")
+reward_item_counts = PackedInt32Array(6)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray()
+prereq = PackedStringArray("q_rare_pull")
+lore = "\"Whatever's on these chips, someone upstream wants it bad. Don't read them.\" — Vex"
+giver = "Quartermaster Vex"
+questline = "ql_salvage"
+offer_weight = 0
+reward_xp = 300
+reward_giver_rep = 3
+reward_skill_points = 1
+reward_cosmetics = PackedStringArray("paint_salvage")
