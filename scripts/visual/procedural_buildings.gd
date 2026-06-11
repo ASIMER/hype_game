@@ -101,12 +101,18 @@ static var _glass_seq: int = 0
 
 static func glass_pool() -> Array[StandardMaterial3D]:
 	if _glass_pool.is_empty():
+		# TRANSPARENT glass (interactivity overhaul): alpha rides the albedo's 4th
+		# channel; metallic 0.4 + low roughness keeps the specular sky reflection that
+		# sells "glass" through the transparency. Panes are small → default alpha
+		# sorting is fine (fallback if shimmer vs water shows: ALPHA_DEPTH_PRE_PASS).
 		var warm := Color(1.0, 0.78, 0.5)
-		var dark := ProceduralModels._mat(Color(0.30, 0.39, 0.48), 0.4, 0.1)
-		var dim := ProceduralModels._mat(Color(0.32, 0.40, 0.47), 0.4, 0.12, warm, 0.001)
-		var lit := ProceduralModels._mat(Color(0.32, 0.40, 0.47), 0.4, 0.12, warm, 0.001)
+		var dark := ProceduralModels._mat(Color(0.30, 0.39, 0.48, 0.42), 0.4, 0.08)
+		var dim := ProceduralModels._mat(Color(0.32, 0.40, 0.47, 0.34), 0.4, 0.10, warm, 0.001)
+		var lit := ProceduralModels._mat(Color(0.32, 0.40, 0.47, 0.30), 0.4, 0.10, warm, 0.001)
 		dim.emission_energy_multiplier = 0.0
 		lit.emission_energy_multiplier = 0.0
+		for m: StandardMaterial3D in [dark, dim, lit]:
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_glass_pool = [dark, dim, lit]
 	return _glass_pool
 
@@ -409,13 +415,32 @@ static func wall(
 				mat,
 				Vector3((length - pier) * 0.5, sill_h + win_h * 0.5, 0.0)
 			)
-		# Glass pane filling the opening (decorative, thin, no collision).
-		_decor(
-			root,
-			Vector3(ww, win_h, thickness * 0.4),
-			glass,
-			Vector3(0.0, sill_h + win_h * 0.5, 0.0)
-		)
+		# Glass pane filling the opening: a BREAKABLE solid (layer 1 — stops bullets
+		# and enemy LOS until shattered). Deterministic index from _glass_seq so the
+		# break replicates by id across peers (see BreakableGlass).
+		var pane_size := Vector3(ww, win_h, thickness * 0.4)
+		var pane := BreakableGlass.new()
+		pane.name = "Glass_%d" % _glass_seq
+		pane.index = _glass_seq
+		pane.pane_size = pane_size
+		pane.collision_layer = 1
+		pane.collision_mask = 0
+		pane.position = Vector3(0.0, sill_h + win_h * 0.5, 0.0)
+		var pane_mesh := MeshInstance3D.new()
+		pane_mesh.name = "Pane"
+		pane_mesh.mesh = ProceduralModels._box(pane_size)
+		pane_mesh.material_override = glass
+		# Sun must shine THROUGH glass (a transparent material still casts an opaque
+		# shadow unless casting is off).
+		pane_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pane.add_child(pane_mesh)
+		var pane_col := CollisionShape3D.new()
+		pane_col.name = "CollisionShape3D"
+		var pane_shape := BoxShape3D.new()
+		pane_shape.size = pane_size
+		pane_col.shape = pane_shape
+		pane.add_child(pane_col)
+		root.add_child(pane)
 		# Protruding sill ledge under the window (cheap silhouette detail; render-only).
 		var ledge := mat_concrete_dark(int(length * 17.0))
 		_decor(

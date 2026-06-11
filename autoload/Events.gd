@@ -37,6 +37,8 @@ signal zipline_ride_started(player: Node, zipline: Node)
 ## A locked annex door was opened (fires on EVERY peer via the door's call_local RPC —
 ## UI/SFX hook; the door panel itself animates locally).
 signal door_opened(door: Node)
+## A window pane shattered (fires on EVERY peer, post-replication — audio/QA hook).
+signal glass_broken(pane: Node)
 ## The raid mutator for THIS match ("" = none). Re-emitted on every sync so late HUD
 ## instances catch it; drives the HUD banner + map label.
 signal raid_mutator_changed(mutator: String)

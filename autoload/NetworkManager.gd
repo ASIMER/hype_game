@@ -374,6 +374,41 @@ func _noise_rpc(world_pos: Vector3, loudness: float, kind: int) -> void:
 	Events.noise_emitted.emit(world_pos, loudness, kind)
 
 
+# =========================================================== breakable window glass
+## A pane was hit — route the break to the SERVER (authoritative), which validates and
+## broadcasts so every peer shatters the SAME pane. Panes are addressed by their
+## deterministic build index (wall roots are anonymous → node-path RPCs can't target
+## them; the index registry lives in BreakableGlass). The break is also a small noise
+## the server AI investigates.
+func request_break_glass(index: int) -> void:
+	if GameState.is_local_authority_server():
+		_server_break_glass(index)
+	else:
+		_break_glass_request_rpc.rpc_id(1, index)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _break_glass_request_rpc(index: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_break_glass(index)
+
+
+func _server_break_glass(index: int) -> void:
+	var pane: BreakableGlass = BreakableGlass.by_index(index)
+	if pane == null or pane.broken:
+		return
+	report_noise(pane.global_position, BreakableGlass.NOISE_LOUDNESS, 1)
+	_glass_broken_rpc.rpc(index)
+
+
+@rpc("authority", "call_local", "reliable")
+func _glass_broken_rpc(index: int) -> void:
+	var pane: BreakableGlass = BreakableGlass.by_index(index)
+	if pane != null:
+		pane.shatter()
+
+
 # ============================================== server-spawned throwables / gadgets
 ## ALL grenade throws + gadget placements spawn on the SERVER under Arena/Net/Gadgets
 ## (a MultiplayerSpawner with NetThrowables.spawn as its custom spawn_function), so

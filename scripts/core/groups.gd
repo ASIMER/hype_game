@@ -17,6 +17,7 @@ const DOMES := "shield_domes"  # active shield-dome gadgets (damage-mult test)
 const WAVE_MANAGER := "wave_manager"  # the per-match WaveManager registers itself
 const LOCKED_DOORS := "locked_doors"  # key-gated annex doors (batch C)
 const NIGHT_LIGHTS := "night_lights"  # street-lamp OmniLights driven by the day-night ramp
+const BREAKABLE_GLASS := "breakable_glass"  # window panes a bullet/blast can shatter
 
 # Load-bearing child-node names (get_node_or_null targets on players/enemies).
 const NODE_HEALTH := "Health"

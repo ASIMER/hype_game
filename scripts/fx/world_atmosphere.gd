@@ -748,8 +748,10 @@ func _apply_sun_ambient(s: float) -> void:
 	var night: float = 1.0 - s
 	var pool: Array[StandardMaterial3D] = ProceduralBuildings.glass_pool()
 	if pool.size() == 3:
-		pool[1].emission_energy_multiplier = 1.2 * night
-		pool[2].emission_energy_multiplier = 2.6 * night
+		# Glass is now TRANSPARENT (alpha-blended) — the blend scales perceived
+		# emission down ~×0.3, so the night multipliers compensate (was 1.2 / 2.6).
+		pool[1].emission_energy_multiplier = 3.5 * night
+		pool[2].emission_energy_multiplier = 7.5 * night
 	for ln in get_tree().get_nodes_in_group(Groups.NIGHT_LIGHTS):
 		var lamp := ln as OmniLight3D
 		if lamp == null:

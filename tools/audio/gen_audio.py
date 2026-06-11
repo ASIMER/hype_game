@@ -531,6 +531,33 @@ def gen_music() -> list[float]:
     return _fade(mixed, 0.25, 0.25)
 
 
+def gen_glass_break() -> list[float]:
+    """Window shatter: a bright high-passed noise CRACK followed by 4-6 staggered
+    decaying sine 'tinkles' (falling shards). ~0.55 s total."""
+    total = 0.55
+    n = int(SAMPLE_RATE * total)
+    # The crack: short bright noise burst, high-passed hard.
+    crack = _noise(0.08, amp=1.0, seed=300)
+    crack = _highpass(crack, 2500)
+    crack = _adsr(crack, 0.001, 0.02, 0.2, 0.05)
+    out = crack + [0.0] * (n - len(crack))
+    # Shard tinkles: staggered short decaying sines at glassy frequencies.
+    rng_seed = 301
+    offsets = [0.05, 0.10, 0.16, 0.24, 0.31, 0.40]
+    freqs = [2600.0, 3400.0, 4200.0, 5100.0, 3000.0, 5800.0]
+    for k in range(len(offsets)):
+        dur = 0.06 + 0.03 * ((rng_seed + k * 7) % 4)
+        tink = _sine(freqs[k], dur, amp=0.35)
+        tink = _adsr(tink, 0.001, dur * 0.25, 0.0, dur * 0.7)
+        start = int(offsets[k] * SAMPLE_RATE)
+        for i in range(len(tink)):
+            if start + i < n:
+                out[start + i] += tink[i]
+    # Clamp + fade.
+    out = [max(-1.0, min(1.0, s)) for s in out]
+    return _fade(out, 0.001, 0.06)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -564,6 +591,8 @@ def main() -> None:
         # Water immersion (Lane B)
         ("water_splash.wav",   gen_water_splash),
         ("underwater.wav",     gen_underwater),
+        # Breakable windows
+        ("glass_break.wav",    gen_glass_break),
     ]
 
     generated = 0

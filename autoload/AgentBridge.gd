@@ -286,6 +286,16 @@ func _handle_line(line: String) -> void:
 			# QA: NavigationServer visibility (maps/regions/per-enemy agent path state)
 			# for diagnosing ground-enemy pathing failures. Read-only.
 			_send(NavDebug.capture(get_tree()))
+		"glass":
+			# QA: breakable windows. No args = registry summary; {break:true, index:N}
+			# or {break:true, nearest:true} = server-gated shatter (logic in the class).
+			if bool(json.get("break", false)) and GameState.is_local_authority_server():
+				var gi: int = int(json.get("index", -1))
+				var gpl3: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+				if bool(json.get("nearest", false)) and gpl3 is Node3D:
+					gi = BreakableGlass.nearest_unbroken((gpl3 as Node3D).global_position)
+				NetworkManager.request_break_glass(gi)
+			_send(BreakableGlass.debug_summary())
 		"perf":
 			# QA: frame-time sampling window for perf A/B ({window: seconds}) — fps,
 			# frame_ms p95, script/physics ms, draw calls, node counts, world_children.

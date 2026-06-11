@@ -47,6 +47,8 @@ const SOUNDS := {
 	# Water immersion (Lane B): entry splash + looping submerged ambience.
 	"water_splash": "res://assets/audio/water_splash.ogg",
 	"underwater": "res://assets/audio/underwater.ogg",
+	# Breakable windows (interactivity overhaul).
+	"glass_break": "res://assets/audio/glass_break.wav",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -75,6 +77,7 @@ const SOUND_DB := {
 	"music": -20.0,
 	"water_splash": -5.0,
 	"underwater": -12.0,
+	"glass_break": -6.0,
 }
 
 ## Master toggle + trim.  Public so a settings menu can drive them later.
@@ -187,6 +190,7 @@ func _ready() -> void:
 	Events.local_player_spawned.connect(_on_local_player_spawned)
 	Events.player_health_changed.connect(_on_player_health_changed)
 	Events.water_state_changed.connect(_on_water_state_changed)
+	Events.glass_broken.connect(_on_glass_broken)
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
@@ -232,6 +236,14 @@ func _process(delta: float) -> void:
 
 func _on_grenade_exploded(_world_pos: Vector3, _damage: float, _radius: float) -> void:
 	_play("explosion")
+
+
+## A window pane shattered (fires on every peer) — positional tinkle at the pane.
+func _on_glass_broken(pane: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if pane is Node3D:
+		_play_at("glass_break", pane)
 
 
 ## Per-weapon-class gunfire trim. Each class now has its OWN recorded firearm

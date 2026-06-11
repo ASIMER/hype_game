@@ -261,6 +261,10 @@ func _shoot(
 			# Lifesteal buff: heal the shooter for a fraction of damage dealt to an enemy.
 			if shooter != null and shooter.has_method("on_dealt_damage") and _is_enemy(hit_node):
 				shooter.on_dealt_damage(dealt * hb.damage_multiplier)
+		elif hit_node is BreakableGlass:
+			# Window pane: the bullet correctly STOPS on this (breaking) shot — the
+			# impact FX already targets the pane point; the server shatters + replicates.
+			NetworkManager.request_break_glass((hit_node as BreakableGlass).index)
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)

@@ -18,6 +18,7 @@ const _KINDS := {
 	"muzzle_flash": {"scene": "res://scenes/fx/MuzzleFlash.tscn", "count": 8},
 	"muzzle_smoke": {"script": "res://scripts/fx/muzzle_smoke.gd", "count": 48},
 	"shells": {"script": "res://scripts/fx/shell_casings.gd", "count": 64},
+	"glass_shatter": {"script": "res://scripts/fx/glass_shatter.gd", "count": 8},
 }
 
 var _free: Dictionary = {}  # kind -> Array[Node]
