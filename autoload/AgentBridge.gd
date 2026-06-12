@@ -286,6 +286,13 @@ func _handle_line(line: String) -> void:
 			# QA: NavigationServer visibility (maps/regions/per-enemy agent path state)
 			# for diagnosing ground-enemy pathing failures. Read-only.
 			_send(NavDebug.capture(get_tree()))
+		"probe":
+			# QA (read-only): first layer-1 surface below {x,y,z} — drives loot_audit.py.
+			var ppos := Vector3(
+				float(json.get("x", 0.0)), float(json.get("y", 0.0)), float(json.get("z", 0.0))
+			)
+			var snapped: Vector3 = LootPickup.snap_to_surface(get_tree().current_scene, ppos)
+			_send({"ok": true, "hit": [snapped.x, snapped.y, snapped.z]})
 		"glass":
 			# QA: breakable windows. No args = registry summary; {break:true, index:N}
 			# or {break:true, nearest:true} = server-gated shatter (logic in the class).

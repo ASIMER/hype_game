@@ -457,16 +457,60 @@ static func wall(
 
 ## A horizontal floor/ceiling slab w(X) × d(Z), 0.3 thick, top face at local y=0
 ## (so place its node at the storey height you want the walking surface).
-static func floor_slab(w: float, d: float, mat: StandardMaterial3D) -> Node3D:
+## `hole` (slab-local XZ rect) cuts a STAIRWELL opening: zero-size = the exact old
+## single box (byte-identical golden for untouched callers), else up to 4 strips.
+static func floor_slab(
+	w: float, d: float, mat: StandardMaterial3D, hole: Rect2 = Rect2()
+) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+	if hole.size == Vector2.ZERO:
+		_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+	else:
+		_slab_strips(root, w, d, mat, hole)
 	return root
 
 
+## Emit the 4 strip boxes of a holed slab deck (N/S full-width, W/E beside the hole).
+static func _slab_strips(
+	root: Node3D, w: float, d: float, mat: StandardMaterial3D, hole: Rect2
+) -> void:
+	var hx0: float = clampf(hole.position.x, -w * 0.5, w * 0.5)
+	var hx1: float = clampf(hole.end.x, -w * 0.5, w * 0.5)
+	var hz0: float = clampf(hole.position.y, -d * 0.5, d * 0.5)
+	var hz1: float = clampf(hole.end.y, -d * 0.5, d * 0.5)
+	var n_d: float = hz0 - (-d * 0.5)
+	if n_d > 0.05:
+		_solid(root, Vector3(w, 0.3, n_d), mat, Vector3(0.0, -0.15, -d * 0.5 + n_d * 0.5))
+	var s_d: float = d * 0.5 - hz1
+	if s_d > 0.05:
+		_solid(root, Vector3(w, 0.3, s_d), mat, Vector3(0.0, -0.15, d * 0.5 - s_d * 0.5))
+	var band_d: float = hz1 - hz0
+	var w_w: float = hx0 - (-w * 0.5)
+	if w_w > 0.05 and band_d > 0.05:
+		_solid(
+			root,
+			Vector3(w_w, 0.3, band_d),
+			mat,
+			Vector3(-w * 0.5 + w_w * 0.5, -0.15, hz0 + band_d * 0.5)
+		)
+	var e_w: float = w * 0.5 - hx1
+	if e_w > 0.05 and band_d > 0.05:
+		_solid(
+			root,
+			Vector3(e_w, 0.3, band_d),
+			mat,
+			Vector3(w * 0.5 - e_w * 0.5, -0.15, hz0 + band_d * 0.5)
+		)
+
+
 ## A flat roof slab (same as a floor but tinted, with a small parapet lip).
-static func roof(w: float, d: float, mat: StandardMaterial3D) -> Node3D:
+## `hole` cuts a roof-access opening exactly like floor_slab.
+static func roof(w: float, d: float, mat: StandardMaterial3D, hole: Rect2 = Rect2()) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+	if hole.size == Vector2.ZERO:
+		_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+	else:
+		_slab_strips(root, w, d, mat, hole)
 	# Low parapet around the edges (knee height) so a roof reads as a roof.
 	var ph: float = 0.5
 	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, d * 0.5 - 0.12))
@@ -559,6 +603,17 @@ static func build_tower(footprint: Vector2) -> Node3D:
 	var sh: float = 3.0  # storey height
 	# Ground slab.
 	_place(root, floor_slab(w, d, conc_d), Vector3(0, 0.0, 0))
+	# Interior STAIRWELL (vertical-access overhaul): one flight per storey stacked
+	# along the west wall — rise 3.0 over run 4.2 (~35.5°); every floor slab AND the
+	# roof are pierced by the same opening so the run continues to the rooftop.
+	var stair_x: float = -w * 0.5 + th + 1.05
+	var stair_z: float = -5.6
+	var stair_run: float = 4.2
+	var stair_hole: Rect2 = ProceduralStairs.hole_rect(
+		Vector2(stair_x, stair_z), Vector2(0, 1), stair_run, sh, 2.0
+	)
+	var stair_mat := mat_metal(17)
+	var tread_mat := mat_metal_dark(19)
 	for s in range(storeys):
 		var y: float = s * sh
 		# Every storey (incl. the ground floor) gets windows now → daylight reaches the
@@ -573,13 +628,19 @@ static func build_tower(footprint: Vector2) -> Node3D:
 		_place_wall(root, d, sh, th, conc, Vector3(w * 0.5 - th * 0.5, y, 0), 90.0, win, false)
 		# Warm ceiling lamp per storey, centered just under this storey's ceiling slab.
 		_light_fixture(root, Vector3(0.0, y + sh - 0.35, 0.0), 100 + s)
-		# Floor slab above each storey (the next storey's floor / final roof handled after).
+		# Stair flight up from this storey (the top one exits onto the roof).
+		ProceduralStairs.flight(
+			root, Vector3(stair_x, y, stair_z), stair_run, sh, 2.0, 0.0, stair_mat, tread_mat
+		)
+		# Floor slab above each storey, pierced by the stairwell opening.
 		if s < storeys - 1:
-			_place(root, floor_slab(w - 0.4, d - 0.4, conc_d), Vector3(0, (s + 1) * sh, 0))
+			_place(
+				root, floor_slab(w - 0.4, d - 0.4, conc_d, stair_hole), Vector3(0, (s + 1) * sh, 0)
+			)
 	var top: float = storeys * sh
 	root.set_meta("roof_h", top)  # ProceduralBuildingDetail rooftop-kit anchor
-	# Roof + small rooftop utility housing.
-	_place(root, roof(w, d, conc_d), Vector3(0, top, 0))
+	# Roof (with the stairwell exit opening) + small rooftop utility housing.
+	_place(root, roof(w, d, conc_d, stair_hole), Vector3(0, top, 0))
 	_place(
 		root, container(w * 0.35, 2.0, d * 0.35, mat_metal(2)), Vector3(w * 0.18, top, -d * 0.15)
 	)
@@ -608,6 +669,18 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 	var th: float = 0.4
 	var h: float = 5.0
 	root.set_meta("roof_h", h)  # ProceduralBuildingDetail rooftop-kit anchor
+	# Roof-access STAIR (vertical-access overhaul): one 5.0 m flight along the back
+	# wall in BOTH modes, running +X; the (wing-)roof gets the matching exit opening.
+	# Base sits +8 from the west wall: at +4 the low end was pocketed between the
+	# back-corner cover container and the rising lip — unenterable (live climb QA).
+	var stair_base := Vector3(-w * 0.5 + 8.0, 0.0, -d * 0.5 + th + 1.05)
+	var stair_run: float = 7.0
+	var stair_hole: Rect2 = ProceduralStairs.hole_rect(
+		Vector2(stair_base.x, stair_base.z), Vector2(1, 0), stair_run, h, 2.0
+	)
+	ProceduralStairs.flight(
+		root, stair_base, stair_run, h, 2.0, 90.0, mat_metal(23), mat_metal_dark(29)
+	)
 	# Back wall (north, -Z) + two side walls always; front wall only if NOT courtyard.
 	_place_wall(root, w, h, th, conc, Vector3(0, 0, -d * 0.5 + th * 0.5), 0.0, true, false)
 	# Side walls — if courtyard, only the OUTER halves (skip the inner span near origin).
@@ -621,11 +694,13 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 			_place_wall(
 				root, seg, h, th, conc, Vector3(w * 0.5 - th * 0.5, 0, cz), 90.0, true, false
 			)
-			# Roof wing only over the closed (north) portion, leaving center open.
+			# Roof wing only over the closed (north) portion, leaving center open. The
+			# stair hole is converted into the wing slab's LOCAL frame (offset wing_cz).
 			var wing_cz: float = -COURT_CLEAR - (d * 0.5 - COURT_CLEAR) * 0.5 + 0.25
+			var wing_hole := Rect2(stair_hole.position - Vector2(0.0, wing_cz), stair_hole.size)
 			_place(
 				root,
-				roof(w, d * 0.5 - COURT_CLEAR + 0.5, mat_metal_dark(int(w))),
+				roof(w, d * 0.5 - COURT_CLEAR + 0.5, mat_metal_dark(int(w)), wing_hole),
 				Vector3(0, h, wing_cz)
 			)
 			# Two hanging warm lamps under the roof wing (thin rod + fixture) so the
@@ -647,12 +722,17 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 			container(3.0, 2.6, 6.0, mat_container(11)),
 			Vector3(w * 0.5 - 2.0, 0, -d * 0.5 + 4.0)
 		)
+		# Mantle step-crates onto each cover container (their courtyard-facing +Z face).
+		ProceduralStairs.crate_steps(root, Vector3(-w * 0.5 + 2.0, 0.0, -d * 0.5 + 7.55), 0.0, 31)
+		ProceduralStairs.crate_steps(root, Vector3(w * 0.5 - 2.0, 0.0, -d * 0.5 + 7.55), 0.0, 37)
 	else:
 		_place_wall(root, d, h, th, conc, Vector3(-w * 0.5 + th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, d, h, th, conc, Vector3(w * 0.5 - th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, w, h, th, conc, Vector3(0, 0, d * 0.5 - th * 0.5), 0.0, false, true)
-		_place(root, roof(w, d, mat_metal_dark(int(w + d))), Vector3(0, h, 0))
+		_place(root, roof(w, d, mat_metal_dark(int(w + d)), stair_hole), Vector3(0, h, 0))
 		_place(root, container(3.0, 2.6, 6.0, mat_container(7)), Vector3(-w * 0.5 + 2.5, 0, 0))
+		# Mantle step-crates onto the lone cover container (its interior +X face).
+		ProceduralStairs.crate_steps(root, Vector3(-w * 0.5 + 4.55, 0.0, 0.0), 90.0, 33)
 	return root
 
 
@@ -683,10 +763,31 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 			_place_wall(
 				root, seg, sh, th, brick, Vector3(w * 0.5 - th * 0.5, 0, cz), 90.0, true, false
 			)
-			# Upper floor + walls only over the closed (back) wing.
+			# Upper floor + walls only over the closed (back) wing. Vertical access:
+			# ONE flight (ground→wing floor, +X) along the back wall; the wing slab
+			# gets the matching opening (hole rect converted into the wing pieces'
+			# LOCAL frame via wing_cz). NO second flight: a same-lane switchback
+			# converges into a headroom wedge that jams the climber, and the 3 m wing
+			# strip has no room for a parallel lane (live climb QA) — the wing ROOF
+			# stays decorative. Base +4.5 from the west wall: at +1.0 the low end was
+			# pocketed against the wall, unenterable.
 			var wing_d: float = d * 0.5 - COURT_CLEAR + 0.5
 			var wing_cz: float = -COURT_CLEAR - (d * 0.5 - COURT_CLEAR) * 0.5 + 0.25
-			_place(root, floor_slab(w - 0.2, wing_d, conc_d), Vector3(0, sh, wing_cz))
+			var hs_z: float = -d * 0.5 + th + 1.05
+			var hs_base1 := Vector2(-w * 0.5 + 4.5, hs_z)
+			var hole1: Rect2 = ProceduralStairs.hole_rect(hs_base1, Vector2(1, 0), 4.2, sh, 2.0)
+			ProceduralStairs.flight(
+				root,
+				Vector3(hs_base1.x, 0.0, hs_z),
+				4.2,
+				sh,
+				2.0,
+				90.0,
+				mat_metal(43),
+				mat_metal_dark(47)
+			)
+			var wing_hole1 := Rect2(hole1.position - Vector2(0.0, wing_cz), hole1.size)
+			_place(root, floor_slab(w - 0.2, wing_d, conc_d, wing_hole1), Vector3(0, sh, wing_cz))
 			_place_wall(
 				root, w, sh, th, brick, Vector3(0, sh, -d * 0.5 + th * 0.5), 0.0, true, false
 			)
@@ -699,14 +800,34 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 		_place_wall(root, d, sh, th, brick, Vector3(-w * 0.5 + th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, d, sh, th, brick, Vector3(w * 0.5 - th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, w, sh, th, brick, Vector3(0, 0, d * 0.5 - th * 0.5), 0.0, false, true)
+		# Vertical access: two stacked +X flights along the north wall — ground→upper
+		# storey→roof; the upper slab + main roof share the opening (the decorative
+		# stepped cap is verified clear of the exit band in z).
+		var nstair_base := Vector3(-w * 0.5 + 1.0, 0.0, -d * 0.5 + th + 1.05)
+		var nhole: Rect2 = ProceduralStairs.hole_rect(
+			Vector2(nstair_base.x, nstair_base.z), Vector2(1, 0), 4.2, sh, 2.0
+		)
+		ProceduralStairs.flight(
+			root, nstair_base, 4.2, sh, 2.0, 90.0, mat_metal(43), mat_metal_dark(47)
+		)
+		ProceduralStairs.flight(
+			root,
+			Vector3(nstair_base.x, sh, nstair_base.z),
+			4.2,
+			sh,
+			2.0,
+			90.0,
+			mat_metal(43),
+			mat_metal_dark(47)
+		)
 		# Upper storey.
-		_place(root, floor_slab(w - 0.2, d - 0.2, conc_d), Vector3(0, sh, 0))
+		_place(root, floor_slab(w - 0.2, d - 0.2, conc_d, nhole), Vector3(0, sh, 0))
 		_place_wall(root, w, sh, th, brick, Vector3(0, sh, -d * 0.5 + th * 0.5), 0.0, true, false)
 		_place_wall(root, w, sh, th, brick, Vector3(0, sh, d * 0.5 - th * 0.5), 0.0, true, false)
 		_place_wall(root, d, sh, th, brick, Vector3(-w * 0.5 + th * 0.5, sh, 0), 90.0, true, false)
 		_place_wall(root, d, sh, th, brick, Vector3(w * 0.5 - th * 0.5, sh, 0), 90.0, true, false)
-		# Stepped roof (pitched look).
-		_place(root, roof(w, d, conc_d), Vector3(0, sh * 2.0, 0))
+		# Stepped roof (pitched look) — the main deck gets the stair exit opening.
+		_place(root, roof(w, d, conc_d, nhole), Vector3(0, sh * 2.0, 0))
 		_place(root, roof(w * 0.6, d * 0.6, conc_d), Vector3(0, sh * 2.0 + 0.4, 0))
 		# One warm lamp per floor (ground + upper).
 		_light_fixture(root, Vector3(0.0, sh - 0.35, 0.0), 222)
@@ -784,6 +905,18 @@ static func build_container_yard(footprint: Vector2, courtyard: bool = true) -> 
 				container(sx, ch, sz, mat_container(sd + lv)),
 				Vector3(cx + jitter, lv * ch, cz)
 			)
+		# Vertical access (only when the spot actually built — the intrusion skip above
+		# covers the attachment too): the 2-level south stack gets a welded ramp along
+		# its OUTER long face up to the 5.2 m top; the 1-level SW stack gets mantle
+		# step-crates at its outer face.
+		if sd == 8:
+			# EAST approach (-X run): the western corridor at this z band is occupied by
+			# the spot-4 crate chain (live climb QA jammed the player against crate C).
+			ProceduralStairs.yard_ramp(
+				root, Vector3(6.9, 0.0, cz + sz * 0.5 + 1.0), -90.0, float(levels) * ch, 53
+			)
+		elif sd == 4:
+			ProceduralStairs.crate_steps(root, Vector3(cx, 0.0, cz + sz * 0.5 + 0.55), 0.0, 59)
 	# A couple of rubble piles in open corners for ground detail (clear of center).
 	_place(root, rubble_pile(sd_seed(1)), Vector3(-ed_x * 0.4, 0, ed_z * 0.6))
 	# A pole lamp lighting the container area (3 m pole + fixture), placed just OUTSIDE

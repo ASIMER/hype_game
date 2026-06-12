@@ -275,12 +275,39 @@ func _get_player_inventory(player: Node) -> Inventory:
 
 
 # ----------------------------------------------------------------- spawn helper
+## SNAP a spawn position onto the first layer-1 surface below it (pickups are static
+## Area3D — they never fall, so loot spawned above a roof edge / container gap / a
+## flyer's death point floated unreachably forever). Runs ON THE SERVER before the
+## position travels as replicated spawn data, so every peer builds the same snapped
+## pickup. Falls back to the pure terrain height when no collider is below (or when
+## physics isn't reachable, e.g. unit tests).
+static func snap_to_surface(reference: Node, pos: Vector3) -> Vector3:
+	if reference == null or not reference.is_inside_tree():
+		return pos
+	var world: World3D = (
+		reference.get_viewport().find_world_3d() if reference.get_viewport() else null
+	)
+	if world == null or world.direct_space_state == null:
+		return Vector3(pos.x, ProceduralTerrain.height_at(pos.x, pos.z), pos.z)
+	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP * 0.5, pos + Vector3.DOWN * 80.0)
+	q.collision_mask = 1
+	var hit: Dictionary = world.direct_space_state.intersect_ray(q)
+	if hit.is_empty():
+		return Vector3(pos.x, ProceduralTerrain.height_at(pos.x, pos.z), pos.z)
+	return hit["position"]
+
+
 ## Spawns a LootPickup of `id`/`count` at `pos` under `parent`. Used by enemy
 ## death drops and the wave reward system. Returns the spawned pickup (or null).
 ## Call on the server; the LootSpawner (MultiplayerSpawner) replicates it to peers.
-static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> LootPickup:
+## `snap` grounds the position on the first surface below (see snap_to_surface).
+static func spawn_at(
+	parent: Node, pos: Vector3, id: String, count: int = 1, snap: bool = true
+) -> LootPickup:
 	if parent == null:
 		return null
+	if snap:
+		pos = snap_to_surface(parent, pos)
 	# Preferred path: route through the Net/LootSpawner's custom spawn_function so the
 	# id/count/pos travel as REPLICATED spawn data (clients build the correct pickup).
 	# `parent` is the Net/Loot node; the spawner is its sibling Net/LootSpawner.

@@ -1379,25 +1379,25 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 205, 1.0, 205)
 
 [node name="LootCacheMarkers" type="Node3D" parent="."]
 [node name="L0" type="Marker3D" parent="LootCacheMarkers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 6.5, -45)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -43.5, 9.6, -45)
 [node name="L1" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -43.2, 0.6, -47.8)
 [node name="L2" type="Marker3D" parent="LootCacheMarkers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 3.5, -28)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49, 5.6, -34)
 [node name="L3" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.6, 0.6, -31.2)
 [node name="L4" type="Marker3D" parent="LootCacheMarkers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 6.5, 30)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -49, 3.6, 24)
 [node name="L5" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54.8, 0.6, 27.2)
 [node name="L6" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 [node name="L7" type="Marker3D" parent="LootCacheMarkers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 5.4, 51.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 5.8, 56.5)
 [node name="L8" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0.6, 50)
 [node name="L9" type="Marker3D" parent="LootCacheMarkers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 5.4, 42)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 5.8, 48.5)
 [node name="L10" type="Marker3D" parent="LootCacheMarkers"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.6, 42)
 [node name="L11" type="Marker3D" parent="LootCacheMarkers"]
