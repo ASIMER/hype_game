@@ -35,13 +35,13 @@
     "semantic_hash": ""
   },
   "tools/audio/gen_audio.py": {
-    "mtime": 1781219233.9769292,
-    "ast_hash": "a46fdc2918c57d06b61d2f233e69420c",
+    "mtime": 1781172117.7892623,
+    "ast_hash": "05072b574f8665c8bd179aaaec2eb6c8",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1781225886.1399033,
-    "ast_hash": "3d9e84bc36e7b446d614c4d137950cc0",
+    "mtime": 1781206342.3735023,
+    "ast_hash": "45f288de8e5d0de8ed7303c35538147e",
     "semantic_hash": ""
   },
   "README.md": {
@@ -985,8 +985,8 @@
     "semantic_hash": ""
   },
   "tools/lint/golden_world.json": {
-    "mtime": 1781225255.1275358,
-    "ast_hash": "8082a087e28d41dc31495dad84d312c2",
+    "mtime": 1781205999.4801319,
+    "ast_hash": "5c7d4dcfedbfe403c0f0de53ced1c6ab",
     "semantic_hash": ""
   },
   "docs/AUDIT.md": {
@@ -1047,16 +1047,6 @@
   "assets/textures/ground/Gravel022_Roughness.jpg": {
     "mtime": 1759953632.0,
     "ast_hash": "297321f65ece4742cfb5e333b1e17a3a",
-    "semantic_hash": ""
-  },
-  "tools/agent/loot_audit.py": {
-    "mtime": 1781224953.8353066,
-    "ast_hash": "f6e58631a2eb0edb79a346b7ceaf0e03",
-    "semantic_hash": ""
-  },
-  "assets/audio/glass_break.wav": {
-    "mtime": 1781219244.1809082,
-    "ast_hash": "ef4e4c13d9e16c40be24b5d19b984bcb",
     "semantic_hash": ""
   }
 }

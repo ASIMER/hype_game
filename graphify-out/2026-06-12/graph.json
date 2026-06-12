@@ -408,132 +408,6 @@
       "norm_label": "lighting qa suite: screenshots at fixed spots x fixed in-game hours (+ storm)."
     },
     {
-      "label": "loot_audit.py",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L1",
-      "id": "agent_loot_audit",
-      "community": 79,
-      "norm_label": "loot_audit.py"
-    },
-    {
-      "label": "send()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L18",
-      "id": "agent_loot_audit_send",
-      "community": 79,
-      "norm_label": "send()"
-    },
-    {
-      "label": "wait_drivable()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L31",
-      "id": "agent_loot_audit_wait_drivable",
-      "community": 79,
-      "norm_label": "wait_drivable()"
-    },
-    {
-      "label": "player_y()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L43",
-      "id": "agent_loot_audit_player_y",
-      "community": 79,
-      "norm_label": "player_y()"
-    },
-    {
-      "label": "check()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L47",
-      "id": "agent_loot_audit_check",
-      "community": 79,
-      "norm_label": "check()"
-    },
-    {
-      "label": "walk_to()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L54",
-      "id": "agent_loot_audit_walk_to",
-      "community": 79,
-      "norm_label": "walk_to()"
-    },
-    {
-      "label": "climb_flight()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L67",
-      "id": "agent_loot_audit_climb_flight",
-      "community": 79,
-      "norm_label": "climb_flight()"
-    },
-    {
-      "label": "clear_enemies()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L78",
-      "id": "agent_loot_audit_clear_enemies",
-      "community": 79,
-      "norm_label": "clear_enemies()"
-    },
-    {
-      "label": "mantle_chain()",
-      "file_type": "code",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L88",
-      "id": "agent_loot_audit_mantle_chain",
-      "community": 79,
-      "norm_label": "mantle_chain()"
-    },
-    {
-      "label": "Loot reachability audit: every pickup must SIT on a surface (no floaters), and t",
-      "file_type": "rationale",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L1",
-      "id": "agent_loot_audit_rationale_1",
-      "community": 79,
-      "norm_label": "loot reachability audit: every pickup must sit on a surface (no floaters), and t"
-    },
-    {
-      "label": "True point-to-point movement: short re-faced hops, stop within tol. A bare     g",
-      "file_type": "rationale",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L55",
-      "id": "agent_loot_audit_rationale_55",
-      "community": 79,
-      "norm_label": "true point-to-point movement: short re-faced hops, stop within tol. a bare     g"
-    },
-    {
-      "label": "Walk toward (x,z) in short telemetry steps until the player has RISEN by     min",
-      "file_type": "rationale",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L68",
-      "id": "agent_loot_audit_rationale_68",
-      "community": 79,
-      "norm_label": "walk toward (x,z) in short telemetry steps until the player has risen by     min"
-    },
-    {
-      "label": "Kill every live enemy \u2014 they path upstairs now and a chasing body parked in a",
-      "file_type": "rationale",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L79",
-      "id": "agent_loot_audit_rationale_79",
-      "community": 79,
-      "norm_label": "kill every live enemy \u2014 they path upstairs now and a chasing body parked in a"
-    },
-    {
-      "label": "Walk into the chain and mantle hop by hop. NOTE: the goto verb BLOCKS its     re",
-      "file_type": "rationale",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L89",
-      "id": "agent_loot_audit_rationale_89",
-      "community": 79,
-      "norm_label": "walk into the chain and mantle hop by hop. note: the goto verb blocks its     re"
-    },
-    {
       "label": "mcp_server.py",
       "file_type": "code",
       "source_file": "tools/agent/mcp_server.py",
@@ -1290,19 +1164,10 @@
       "norm_label": "gen_music()"
     },
     {
-      "label": "gen_glass_break()",
-      "file_type": "code",
-      "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L534",
-      "id": "audio_gen_audio_gen_glass_break",
-      "community": 0,
-      "norm_label": "gen_glass_break()"
-    },
-    {
       "label": "main()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L565",
+      "source_location": "L538",
       "id": "audio_gen_audio_main",
       "community": 0,
       "norm_label": "main()"
@@ -1549,15 +1414,6 @@
       "id": "audio_gen_audio_rationale_497",
       "community": 0,
       "norm_label": "slow low-tension pad/pulse loop (a few seconds, loopable).     layered detuned"
-    },
-    {
-      "label": "Window shatter: a bright high-passed noise CRACK followed by 4-6 staggered",
-      "file_type": "rationale",
-      "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L535",
-      "id": "audio_gen_audio_rationale_535",
-      "community": 0,
-      "norm_label": "window shatter: a bright high-passed noise crack followed by 4-6 staggered"
     },
     {
       "label": "trim_shots.py",
@@ -1887,7 +1743,7 @@
       "label": "Run / test / validate (most important for a new session)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L16",
+      "source_location": "L14",
       "id": "claude_run_test_validate_most_important_for_a_new_session",
       "community": 59,
       "norm_label": "run / test / validate (most important for a new session)"
@@ -1896,7 +1752,7 @@
       "label": "Quality gates (linters, hooks, golden snapshot \u2014 docs/AUDIT.md is the full audit)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L40",
+      "source_location": "L38",
       "id": "claude_quality_gates_linters_hooks_golden_snapshot_docs_audit_md_is_the_full_audit",
       "community": 59,
       "norm_label": "quality gates (linters, hooks, golden snapshot \u2014 docs/audit.md is the full audit)"
@@ -1905,7 +1761,7 @@
       "label": "Release / packaging (portable Windows + macOS builds)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L46",
+      "source_location": "L44",
       "id": "claude_release_packaging_portable_windows_macos_builds",
       "community": 59,
       "norm_label": "release / packaging (portable windows + macos builds)"
@@ -1914,7 +1770,7 @@
       "label": "Self-play harness in 6 lines (how to actually test gameplay)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L49",
+      "source_location": "L47",
       "id": "claude_self_play_harness_in_6_lines_how_to_actually_test_gameplay",
       "community": 59,
       "norm_label": "self-play harness in 6 lines (how to actually test gameplay)"
@@ -1923,7 +1779,7 @@
       "label": "Architecture at a glance",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L59",
+      "source_location": "L57",
       "id": "claude_architecture_at_a_glance",
       "community": 59,
       "norm_label": "architecture at a glance"
@@ -1932,7 +1788,7 @@
       "label": "Localization (en base + ru; scalable)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L97",
+      "source_location": "L95",
       "id": "claude_localization_en_base_ru_scalable",
       "community": 59,
       "norm_label": "localization (en base + ru; scalable)"
@@ -1941,7 +1797,7 @@
       "label": "UI look (\"military glass\" \u2014 theme-first)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L100",
+      "source_location": "L98",
       "id": "claude_ui_look_military_glass_theme_first",
       "community": 59,
       "norm_label": "ui look (\"military glass\" \u2014 theme-first)"
@@ -1950,7 +1806,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L106",
+      "source_location": "L104",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1959,7 +1815,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L120",
+      "source_location": "L118",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1968,7 +1824,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L123",
+      "source_location": "L121",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -3057,7 +2913,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "agentbridge._handle_line (command dispatch)",
       "id": "agentbridge_handle_line"
     },
@@ -3070,7 +2926,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -3083,7 +2939,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "agentbridge._aim_at (converging camera aim)",
       "id": "agentbridge_aim_at"
     },
@@ -3096,7 +2952,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 1,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -3122,7 +2978,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "agentbridge._ui_action (menu open/close)",
       "id": "agentbridge_ui_action"
     },
@@ -3200,7 +3056,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 1,
       "norm_label": "guarded-fallback resolution (glb to procedural to primitive)",
       "id": "assetregistry_fallback_chain"
     },
@@ -3213,7 +3069,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 1,
       "norm_label": "audiomanager (events-driven sfx)",
       "id": "audiomanager_audiomanager"
     },
@@ -3226,7 +3082,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 1,
       "norm_label": "audiomanager._play / _play_at",
       "id": "audiomanager_play"
     },
@@ -3317,7 +3173,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 1,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -3356,7 +3212,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 1,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -3564,7 +3420,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -3668,7 +3524,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -3798,7 +3654,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -3837,7 +3693,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "serverbrowser.add_favorite / record_connect",
       "id": "serverbrowser_add_favorite"
     },
@@ -3967,7 +3823,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "settingsmanager.load_config",
       "id": "settingsmanager_load_config"
     },
@@ -3980,7 +3836,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "settingsmanager._cmp_version",
       "id": "settingsmanager_cmp_version"
     },
@@ -4006,7 +3862,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "stash.total_weight",
       "id": "stash_total_weight"
     },
@@ -4045,7 +3901,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "stash.load_stash",
       "id": "stash_load_stash"
     },
@@ -4227,7 +4083,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "weaponcontroller._load_weapons",
       "id": "combat_weapon_controller_load_weapons"
     },
@@ -4253,7 +4109,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "weaponcontroller._apply_attachments",
       "id": "combat_weapon_controller_apply_attachments"
     },
@@ -4331,7 +4187,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "attachmentdata.apply_to",
       "id": "combat_attachment_data_apply_to"
     },
@@ -4344,7 +4200,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "weapondata resource",
       "id": "combat_weapon_data_weapondata"
     },
@@ -4357,7 +4213,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "craftrecipe resource",
       "id": "crafting_craft_recipe_craftrecipe"
     },
@@ -4487,7 +4343,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "resourceindex (generated paths)",
       "id": "resource_index_resourceindex"
     },
@@ -4591,7 +4447,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "version-safe configfile saves",
       "id": "docs_architecture_persistence_versioning"
     },
@@ -4669,7 +4525,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "robotgunner._fire_hitscan",
       "id": "enemies_robot_gunner_fire_hitscan"
     },
@@ -4682,7 +4538,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "robotgunner._strike",
       "id": "enemies_robot_gunner_strike"
     },
@@ -4695,7 +4551,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "robotgunner._spawn_tracer",
       "id": "enemies_robot_gunner_spawn_tracer"
     },
@@ -4721,7 +4577,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -4734,7 +4590,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -4877,7 +4733,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "impact",
       "id": "fx_impact_impact"
     },
@@ -4890,7 +4746,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "muzzleflash",
       "id": "fx_muzzle_flash_muzzleflash"
     },
@@ -4916,7 +4772,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "remoteshotfx._on_remote_shot",
       "id": "fx_remote_shot_fx_on_remote_shot"
     },
@@ -4929,7 +4785,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "robotdebris",
       "id": "fx_robot_debris_robotdebris"
     },
@@ -4942,7 +4798,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "tracer",
       "id": "fx_tracer_tracer"
     },
@@ -5293,7 +5149,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "local visual-only fx",
       "id": "concept_local_visual_fx"
     },
@@ -5922,7 +5778,7 @@
       "label": "ProceduralBuildings._solid",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "proceduralbuildings._solid",
       "id": "visual_procedural_buildings_solid"
     },
@@ -5930,7 +5786,7 @@
       "label": "ProceduralBuildings.build_tower",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_tower",
       "id": "visual_procedural_buildings_build_tower"
     },
@@ -5938,7 +5794,7 @@
       "label": "ProceduralBuildings.build_warehouse",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_warehouse",
       "id": "visual_procedural_buildings_build_warehouse"
     },
@@ -5946,7 +5802,7 @@
       "label": "ProceduralBuildings.build_house",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_house",
       "id": "visual_procedural_buildings_build_house"
     },
@@ -5954,7 +5810,7 @@
       "label": "ProceduralBuildings.build_container_yard",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "proceduralbuildings.build_container_yard",
       "id": "visual_procedural_buildings_build_container_yard"
     },
@@ -5970,7 +5826,7 @@
       "label": "ProceduralModels.build",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "proceduralmodels.build",
       "id": "visual_procedural_models_build"
     },
@@ -5978,7 +5834,7 @@
       "label": "ProceduralModels._part",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "proceduralmodels._part",
       "id": "visual_procedural_models_part"
     },
@@ -6058,7 +5914,7 @@
       "label": "Arena._build_poi_structures",
       "file_type": "code",
       "source_file": "scripts/world/arena.gd",
-      "community": 85,
+      "community": 2,
       "norm_label": "arena._build_poi_structures",
       "id": "world_arena_build_poi_structures"
     },
@@ -6389,224 +6245,6 @@
       "confidence_score": 1.0,
       "source": "agent_lighting_qa_wait_drivable",
       "target": "agent_lighting_qa_send"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L47",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_check",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L78",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_clear_enemies",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L67",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_climb_flight",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L88",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_mantle_chain",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L43",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_player_y",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L18",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_send",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L31",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_wait_drivable",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L54",
-      "weight": 1.0,
-      "source": "agent_loot_audit",
-      "target": "agent_loot_audit_walk_to",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "agent_loot_audit_rationale_1",
-      "target": "agent_loot_audit",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L82",
-      "weight": 1.0,
-      "source": "agent_loot_audit_clear_enemies",
-      "target": "agent_loot_audit_send",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L72",
-      "weight": 1.0,
-      "source": "agent_loot_audit_climb_flight",
-      "target": "agent_loot_audit_send",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L94",
-      "weight": 1.0,
-      "source": "agent_loot_audit_mantle_chain",
-      "target": "agent_loot_audit_send",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L44",
-      "weight": 1.0,
-      "source": "agent_loot_audit_player_y",
-      "target": "agent_loot_audit_send",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L35",
-      "weight": 1.0,
-      "source": "agent_loot_audit_wait_drivable",
-      "target": "agent_loot_audit_send",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L60",
-      "weight": 1.0,
-      "source": "agent_loot_audit_walk_to",
-      "target": "agent_loot_audit_send",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L70",
-      "weight": 1.0,
-      "source": "agent_loot_audit_climb_flight",
-      "target": "agent_loot_audit_player_y",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L109",
-      "weight": 1.0,
-      "source": "agent_loot_audit_mantle_chain",
-      "target": "agent_loot_audit_player_y",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L55",
-      "weight": 1.0,
-      "source": "agent_loot_audit_rationale_55",
-      "target": "agent_loot_audit_walk_to",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L68",
-      "weight": 1.0,
-      "source": "agent_loot_audit_rationale_68",
-      "target": "agent_loot_audit_climb_flight",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L79",
-      "weight": 1.0,
-      "source": "agent_loot_audit_rationale_79",
-      "target": "agent_loot_audit_clear_enemies",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/agent/loot_audit.py",
-      "source_location": "L89",
-      "weight": 1.0,
-      "source": "agent_loot_audit_rationale_89",
-      "target": "agent_loot_audit_mantle_chain",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -7493,16 +7131,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L534",
-      "weight": 1.0,
-      "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_glass_break",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L393",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -7908,17 +7536,6 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L534",
-      "weight": 1.0,
-      "source": "audio_gen_audio_gen_glass_break",
-      "target": "float",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "context": "generic_arg",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L393",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -8238,17 +7855,6 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L550",
-      "weight": 1.0,
-      "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_sine",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L215",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -8364,17 +7970,6 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_footstep",
       "target": "audio_gen_audio_noise"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L540",
-      "weight": 1.0,
-      "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -8551,17 +8146,6 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_footstep",
       "target": "audio_gen_audio_adsr"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L542",
-      "weight": 1.0,
-      "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_adsr",
-      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9026,17 +8610,6 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L541",
-      "weight": 1.0,
-      "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L213",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9162,17 +8735,6 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_footstep",
       "target": "audio_gen_audio_fade"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L558",
-      "weight": 1.0,
-      "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9558,16 +9120,6 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_497",
       "target": "audio_gen_audio_gen_music"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L535",
-      "weight": 1.0,
-      "source": "audio_gen_audio_rationale_535",
-      "target": "audio_gen_audio_gen_glass_break",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -13940,5 +13492,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "241def74659f6323c9a69560c78be36a02a8a1a7"
+  "built_at_commit": "0b0a2a4f061248ac1a2e8640501cff2c5c663b13"
 }
