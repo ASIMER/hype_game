@@ -1887,7 +1887,7 @@
       "label": "Run / test / validate (most important for a new session)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L18",
+      "source_location": "L20",
       "id": "claude_run_test_validate_most_important_for_a_new_session",
       "community": 59,
       "norm_label": "run / test / validate (most important for a new session)"
@@ -1896,7 +1896,7 @@
       "label": "Quality gates (linters, hooks, golden snapshot \u2014 docs/AUDIT.md is the full audit)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L42",
+      "source_location": "L44",
       "id": "claude_quality_gates_linters_hooks_golden_snapshot_docs_audit_md_is_the_full_audit",
       "community": 59,
       "norm_label": "quality gates (linters, hooks, golden snapshot \u2014 docs/audit.md is the full audit)"
@@ -1905,7 +1905,7 @@
       "label": "Release / packaging (portable Windows + macOS builds)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L48",
+      "source_location": "L50",
       "id": "claude_release_packaging_portable_windows_macos_builds",
       "community": 59,
       "norm_label": "release / packaging (portable windows + macos builds)"
@@ -1914,7 +1914,7 @@
       "label": "Self-play harness in 6 lines (how to actually test gameplay)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L51",
+      "source_location": "L53",
       "id": "claude_self_play_harness_in_6_lines_how_to_actually_test_gameplay",
       "community": 59,
       "norm_label": "self-play harness in 6 lines (how to actually test gameplay)"
@@ -1923,7 +1923,7 @@
       "label": "Architecture at a glance",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L61",
+      "source_location": "L63",
       "id": "claude_architecture_at_a_glance",
       "community": 59,
       "norm_label": "architecture at a glance"
@@ -1932,7 +1932,7 @@
       "label": "Localization (en base + ru; scalable)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L99",
+      "source_location": "L101",
       "id": "claude_localization_en_base_ru_scalable",
       "community": 59,
       "norm_label": "localization (en base + ru; scalable)"
@@ -1941,7 +1941,7 @@
       "label": "UI look (\"military glass\" \u2014 theme-first)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L102",
+      "source_location": "L104",
       "id": "claude_ui_look_military_glass_theme_first",
       "community": 59,
       "norm_label": "ui look (\"military glass\" \u2014 theme-first)"
@@ -1950,7 +1950,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L108",
+      "source_location": "L110",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1959,7 +1959,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L122",
+      "source_location": "L124",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1968,7 +1968,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L125",
+      "source_location": "L127",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -3057,7 +3057,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "agentbridge._handle_line (command dispatch)",
       "id": "agentbridge_handle_line"
     },
@@ -3070,7 +3070,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -3083,7 +3083,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "agentbridge._aim_at (converging camera aim)",
       "id": "agentbridge_aim_at"
     },
@@ -3096,7 +3096,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 1,
       "norm_label": "agentbridge._debug_spawn",
       "id": "agentbridge_debug_spawn"
     },
@@ -3122,7 +3122,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "agentbridge._ui_action (menu open/close)",
       "id": "agentbridge_ui_action"
     },
@@ -3317,7 +3317,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 1,
       "norm_label": "extractiondirector (timed evac windows)",
       "id": "extractiondirector_extractiondirector"
     },
@@ -3356,7 +3356,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 1,
       "norm_label": "gamestate.is_local_authority_server",
       "id": "gamestate_is_local_authority_server"
     },
@@ -3564,7 +3564,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -3668,7 +3668,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -3798,7 +3798,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 71,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -3837,7 +3837,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 71,
       "norm_label": "serverbrowser.add_favorite / record_connect",
       "id": "serverbrowser_add_favorite"
     },
@@ -4721,7 +4721,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -4734,7 +4734,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -13940,5 +13940,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "abe340b2055c91e1873ee88f6b73ba15ebec98a3"
+  "built_at_commit": "3a15863993b054129a02f5a42bd65a84880a660d"
 }
