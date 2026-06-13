@@ -28,6 +28,8 @@ func _ready() -> void:
 		Events.nemesis_born.connect(_on_changed)
 	if not Events.nemesis_defeated.is_connected(_on_defeated):
 		Events.nemesis_defeated.connect(_on_defeated)
+	if not Events.nemesis_codex_synced.is_connected(_refresh):
+		Events.nemesis_codex_synced.connect(_refresh)  # client mirror updated
 
 
 func _exit_tree() -> void:
@@ -35,6 +37,8 @@ func _exit_tree() -> void:
 		Events.nemesis_born.disconnect(_on_changed)
 	if Events.nemesis_defeated.is_connected(_on_defeated):
 		Events.nemesis_defeated.disconnect(_on_defeated)
+	if Events.nemesis_codex_synced.is_connected(_refresh):
+		Events.nemesis_codex_synced.disconnect(_refresh)
 
 
 func _on_changed(_serial: String, _title: String) -> void:
@@ -77,12 +81,18 @@ func _refresh() -> void:
 	)
 	_list.add_child(intro)
 
-	var data: Dictionary = {}
-	var dir: Node = get_node_or_null("/root/NemesisDirector")
-	if dir != null:
-		data = dir.call("codex_data")
-	var active: Variant = data.get("active")
-	var history: Array = data.get("history", []) if data.get("history") is Array else []
+	# Host reads the director directly; a co-op CLIENT reads the synced GameState mirror
+	# (nemesis.cfg is host-only — pushed via NetworkManager.sync_nemesis_codex).
+	var active: Variant = null
+	var history: Array = []
+	if GameState.is_local_authority_server():
+		var dir: Node = get_node_or_null("/root/NemesisDirector")
+		var data: Dictionary = dir.call("codex_data") if dir != null else {}
+		active = data.get("active")
+		history = data.get("history", []) if data.get("history") is Array else []
+	else:
+		active = GameState.nemesis_active if not GameState.nemesis_active.is_empty() else null
+		history = GameState.nemesis_history
 
 	# Active rival.
 	_list.add_child(UIStyle.micro_header(tr("ACTIVE RIVAL"), COL_RED, 15))

@@ -576,6 +576,44 @@ func _record_nemesis_loss(ids: Array) -> void:
 		dir.call("record_lost_gear", ids)
 
 
+# ===================================================== Phase 4 synergy layers
+## Server-side: reward the carrier `peer` who EXTRACTED with the Power-Core (currency + rep +
+## the core item in their stash). Routed to that peer's own machine like the kill credit.
+func grant_power_core(peer: int) -> void:
+	if not GameState.is_local_authority_server() or peer <= 0:
+		return
+	if peer == _peer_of_local():
+		_award_power_core()
+	else:
+		_grant_power_core_rpc.rpc_id(peer)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _grant_power_core_rpc() -> void:
+	_award_power_core()
+
+
+func _award_power_core() -> void:
+	MetaProgression.earn(Settings.POWER_CORE_BOUNTY)
+	MetaProgression.grant_rep(Settings.POWER_CORE_REP)
+	Stash.add("loot_power_core", 1)
+
+
+## Host → clients: push the Machine Nemesis codex (active rival + retired history) so a co-op
+## client's Hub "Rivals" tab can display it (the host owns nemesis.cfg). Called by the
+## NemesisDirector on birth/level/defeat + match start (catch-up for late joiners).
+func sync_nemesis_codex(active: Dictionary, history: Array) -> void:
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		_rpc_nemesis_codex.rpc(active, history)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_nemesis_codex(active: Dictionary, history: Array) -> void:
+	GameState.nemesis_active = active
+	GameState.nemesis_history = history
+	Events.nemesis_codex_synced.emit()
+
+
 ## Walk up from a node (hurtbox/weapon/player) to the owning player and return its
 ## peer id (the player node is named str(peer_id)). 0 = no player owner.
 func _peer_of(node: Node) -> int:

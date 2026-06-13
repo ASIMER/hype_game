@@ -58,6 +58,10 @@ func _ready() -> void:
 	Events.nemesis_returned.connect(_on_nemesis_returned)
 	Events.nemesis_defeated.connect(_on_nemesis_defeated)
 
+	# Power-Core Beacon (Phase 4) — reuses the red banner widget.
+	Events.power_core_spawned.connect(_on_power_core_spawned)
+	Events.power_core_extracted.connect(_on_power_core_extracted)
+
 	# Raid mutator chip (batch C) — set before deploy, re-synced at match start.
 	Events.raid_mutator_changed.connect(_on_mutator_changed)
 
@@ -650,6 +654,10 @@ func _exit_tree() -> void:
 		Events.nemesis_returned.disconnect(_on_nemesis_returned)
 	if Events.nemesis_defeated.is_connected(_on_nemesis_defeated):
 		Events.nemesis_defeated.disconnect(_on_nemesis_defeated)
+	if Events.power_core_spawned.is_connected(_on_power_core_spawned):
+		Events.power_core_spawned.disconnect(_on_power_core_spawned)
+	if Events.power_core_extracted.is_connected(_on_power_core_extracted):
+		Events.power_core_extracted.disconnect(_on_power_core_extracted)
 
 
 # --- Match timer / storm warning -------------------------------------------
@@ -706,6 +714,14 @@ func _on_nemesis_returned(serial: String, title: String, _node: Node) -> void:
 
 func _on_nemesis_defeated(serial: String) -> void:
 	_flash_nemesis_banner(tr("%s IS SCRAP") % serial, 4.0)
+
+
+func _on_power_core_spawned(_node: Node) -> void:
+	_flash_nemesis_banner(tr("⚡ POWER CORE DROPPED — CARRY IT OUT"), 4.0)
+
+
+func _on_power_core_extracted(_peer: int) -> void:
+	Events.notify.emit(tr("Power Core extracted!"), 1)
 	if _timer_label:
 		_timer_label.text = tr("⚠ FINAL WAVE")
 		_timer_label.add_theme_color_override("font_color", UIStyle.RED)

@@ -213,6 +213,11 @@ func _draw() -> void:
 			var pr: float = 5.0 + 1.5 * (0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.006))
 			draw_arc(c + npos, pr, 0.0, TAU, 20, Color(0.95, 0.12, 0.12, 0.95), 2.0)
 			_blip(c, npos, Color(0.95, 0.12, 0.12), 3.0)
+	# Power-Core Beacon: amber blip (the prize to carry out).
+	for pc in get_tree().get_nodes_in_group(Groups.POWER_CORE):
+		if pc is Node3D:
+			var pcpos := _to_radar((pc as Node3D).global_position, _player.global_position, yaw)
+			_blip(c, pcpos, Color(1.0, 0.68, 0.18), 4.0)
 	# World-event blips (supply cache / miniboss / contested / surge).
 	_draw_event_blips(c, yaw)
 	# Teammates (co-op): green dots; clamped to the rim as an outward chevron when out of range,

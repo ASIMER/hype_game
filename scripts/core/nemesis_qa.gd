@@ -60,6 +60,15 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 			)
 		"codex":
 			return _ok({"codex": dir.call("codex_data")})
+		"core_spawn":
+			# Phase 4: drop a Power-Core near the local player (no boss kill needed).
+			var pcd: Node = tree.root.get_node_or_null("PowerCoreDirector")
+			if pcd == null:
+				return {"ok": false, "error": "no PowerCoreDirector"}
+			return _ok(pcd.call("debug_spawn", _local_player_pos(tree)))
+		"core_state":
+			var pcd2: Node = tree.root.get_node_or_null("PowerCoreDirector")
+			return _ok(pcd2.call("debug_state") if pcd2 != null else {})
 		_:
 			return _ok(dir.call("debug_state"))
 
@@ -67,3 +76,10 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 static func _ok(d: Dictionary) -> Dictionary:
 	d["ok"] = true
 	return d
+
+
+static func _local_player_pos(tree: SceneTree) -> Vector3:
+	for pl in tree.get_nodes_in_group(Groups.PLAYERS):
+		if pl is Node3D and pl.is_multiplayer_authority():
+			return (pl as Node3D).global_position
+	return Vector3.ZERO

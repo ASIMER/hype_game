@@ -386,6 +386,12 @@ class MapDraw:
 				var npos := owner_ui.world_to_panel((n as Node3D).global_position, panel)
 				draw_arc(npos, 7.0, 0.0, TAU, 24, Color(0.95, 0.12, 0.12, 0.95), 2.0)
 				draw_circle(npos, 4.0, Color(0.95, 0.12, 0.12, 0.95))
+		# --- Power-Core Beacon: an amber diamond/core (the prize to carry out).
+		for pc in owner_ui.get_tree().get_nodes_in_group(Groups.POWER_CORE):
+			if pc is Node3D:
+				var cpos := owner_ui.world_to_panel((pc as Node3D).global_position, panel)
+				draw_arc(cpos, 6.0, 0.0, TAU, 20, Color(1.0, 0.62, 0.12, 0.95), 2.0)
+				draw_circle(cpos, 3.5, Color(1.0, 0.72, 0.2, 0.95))
 		# --- Player arrow.
 		_draw_player(panel)
 		# --- Title + match timer + legend.

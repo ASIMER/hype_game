@@ -140,6 +140,14 @@ signal nemesis_born(serial: String, title: String)
 signal nemesis_returned(serial: String, title: String, node: Node)
 ## The active nemesis was finally KILLED. Drives the defeat banner + (Phase 3) the payoff.
 signal nemesis_defeated(serial: String)
+## The host pushed the Rivals codex (active + history) to clients (Phase 4). The Hub tab
+## re-reads GameState.nemesis_active/nemesis_history on this.
+signal nemesis_codex_synced
+## Power-Core Beacon (Phase 4). A boss/miniboss dropped a carriable core (`node`);
+## a player picked it up (`peer`); a carrier extracted with it (`peer`). HUD banner + SFX.
+signal power_core_spawned(node: Node)
+signal power_core_picked(peer: int)
+signal power_core_extracted(peer: int)
 
 # --- Dynamic world events (Batch 3 "Live raid") ---
 ## A mid-raid world event began (server-auth, synced). `kind`: 0 supply_cache,

@@ -19,6 +19,7 @@ const LOCKED_DOORS := "locked_doors"  # key-gated annex doors (batch C)
 const NIGHT_LIGHTS := "night_lights"  # street-lamp OmniLights driven by the day-night ramp
 const BREAKABLE_GLASS := "breakable_glass"  # window panes a bullet/blast can shatter
 const NEMESIS := "nemesis"  # the active Machine Nemesis (map marker + kill-payoff lookup)
+const POWER_CORE := "power_core"  # a boss/miniboss-dropped carriable beacon (map marker)
 
 # Load-bearing child-node names (get_node_or_null targets on players/enemies).
 const NODE_HEALTH := "Health"

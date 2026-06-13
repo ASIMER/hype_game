@@ -35,6 +35,7 @@ const ITEMS: PackedStringArray = [
 	"res://resources/items/loot_painkiller.tres",
 	"res://resources/items/loot_splint.tres",
 	"res://resources/items/medkit.tres",
+	"res://resources/items/nemesis_core.tres",
 	"res://resources/items/plastic.tres",
 	"res://resources/items/rifle.tres",
 	"res://resources/items/schematic_ammo.tres",

@@ -1448,6 +1448,13 @@ func _snapshot() -> Dictionary:
 		"deaths": GameState.deaths,
 		"mobs_killed": GameState.mobs_killed,
 	}
+	# Synced Nemesis codex mirror (populated on CLIENTS by NetworkManager._rpc_nemesis_codex;
+	# the host reads codex_data() directly so this stays {} there). Lets the harness confirm
+	# the host→client codex sync without opening the Hub UI.
+	d["nemesis_codex"] = {
+		"active": GameState.nemesis_active,
+		"history": GameState.nemesis_history,
+	}
 	var p: Node = _local_player(players)
 	if p == null:
 		d["player"] = null

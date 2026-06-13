@@ -912,6 +912,21 @@ const NEMESIS_BOUNTY_XP: int = 200  # raider XP to the killer
 const NEMESIS_LOST_GEAR_CAP: int = 8  # max at-risk items the rival "wears" + drops on defeat
 const NEMESIS_FAVORITE_MIN: int = 2  # extractions at a zone before it counts as "favorite"
 const NEMESIS_HISTORY_CAP: int = 10  # retired rivals kept for the Hub codex
+# Phase 4 — successor: on a rival's defeat a nearby lieutenant inherits a weakened grudge.
+const NEMESIS_SUCCESSOR_ENABLED: bool = true
+const NEMESIS_HEIR_RADIUS: float = 35.0  # m around the death to find an heir
+
+# --- Power-Core Beacon (Phase 4) ---------------------------------------------
+## A boss/miniboss drops a glowing core the squad must CARRY to extract for a big reward —
+## but carrying pings every machine to your position (a growing beacon) + occupies hands
+## (no ADS, slower; firing still allowed). Power = exposure (Hunt-style).
+const POWER_CORE_BOUNTY: int = 600  # credits to the carrier on extract-with-core
+const POWER_CORE_REP: int = 120  # vendor reputation to the carrier
+const POWER_CORE_NOISE_MIN: float = 8.0  # beacon noise radius (m) at pickup
+const POWER_CORE_NOISE_MAX: float = 30.0  # …ramped to this
+const POWER_CORE_RAMP: float = 20.0  # s to ramp the beacon from MIN to MAX
+const POWER_CORE_NOISE_CD: float = 1.5  # s between beacon noise pulses
+const POWER_CORE_PICKUP_RADIUS: float = 2.5  # m — walk this close (server-checked) to grab it
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
 ## "weakpoint_armored" sets the WeakPoint Hurtbox damage_multiplier to an ABSOLUTE armor_mult

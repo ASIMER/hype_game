@@ -431,8 +431,8 @@ func _physics_process(delta: float) -> void:
 			# Wading/swimming slows movement (sluggish in water).
 			if _water_state != Water.DRY:
 				speed *= WATER_SLOW
-			# Carrying a downed buddy is slow + heavy (sidearm only).
-			if is_carrying():
+			# Carrying a downed buddy OR the Power-Core is slow + heavy.
+			if is_carrying() or _carrying_core():
 				speed *= Settings.CARRY_SPEED_MULT
 			# Active power-cache buff (Swift / Frenzy).
 			speed *= buff_speed_mult()
@@ -491,8 +491,8 @@ func _fire_current() -> void:
 ## shoulder side — so the player can see/aim around building corners.
 func _update_camera(delta: float) -> void:
 	var want_ads: bool
-	if is_carrying():
-		want_ads = false  # carrying a buddy can't ADS
+	if is_carrying() or _carrying_core():
+		want_ads = false  # carrying a buddy / the Power-Core can't ADS (hands full)
 	elif AgentBridge.active:
 		want_ads = AgentBridge.ads
 	elif Settings.ads_toggle:
@@ -1759,6 +1759,12 @@ func noise_radius() -> float:
 ## True if the local player can only use a sidearm / can't ADS (carrying a buddy).
 func is_carrying() -> bool:
 	return _carry_target != null
+
+
+## Carrying the Phase-4 Power-Core (state owned by PowerCoreDirector). Blocks ADS + slows
+## (NOT fire — unlike buddy-carry, you can still shoot your way to evac). Read-only here.
+func _carrying_core() -> bool:
+	return PowerCoreDirector.is_carried_by(str(name).to_int())
 
 
 ## Client -> server: "my player died". Server-only resolution below.

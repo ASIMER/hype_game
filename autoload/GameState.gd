@@ -26,6 +26,12 @@ var final_wave: bool = false
 ## NetworkManager.sync_mutator. Read-only everywhere else.
 var raid_mutator: String = ""
 
+## Machine Nemesis codex mirror (Phase 4) — the HOST owns nemesis.cfg, so it pushes the
+## active rival + retired history here via NetworkManager.sync_nemesis_codex so the co-op
+## CLIENT's Hub "Rivals" tab can display them. `nemesis_active` = a profile dict or {}.
+var nemesis_active: Dictionary = {}
+var nemesis_history: Array = []
+
 
 func match_timer_ratio() -> float:
 	if match_duration <= 0.0:

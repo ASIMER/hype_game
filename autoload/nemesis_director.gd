@@ -104,6 +104,7 @@ func _on_match_started() -> void:
 	_profile = _load()
 	if _profile != null:
 		_inject_timer = Settings.NEMESIS_RETURN_DELAY  # schedule the rival's return
+	_sync_codex()  # catch-up so a late-joining client's Hub codex isn't empty
 
 
 func _try_inject() -> void:
@@ -199,14 +200,63 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 			_history.push_front(_profile.to_dict())
 			while _history.size() > Settings.NEMESIS_HISTORY_CAP:
 				_history.pop_back()
-		_profile = null
+		# A nearby lieutenant inherits a WEAKENED grudge (the rivalry never fully ends);
+		# else the slot clears for a fresh candidate. Reads _profile BEFORE we reassign it.
+		var heir: NemesisProfile = _seed_successor(death_pos)
 		_active = null
 		_tracked = null
-		_save()  # writes no "active" section → cleared
+		_profile = heir  # null when no heir → cleared
+		_save()
+		_sync_codex()
 	elif entity == _tracked:
 		# The candidate died (you finished it) — no grudge born from it.
 		_tracked = null
 		_reset_telemetry()
+
+
+## On a rival's defeat, promote the nearest living qualifying enemy into a SUCCESSOR profile
+## (one tier lower, minus its last-learned trait) so it returns next raid. Returns null if
+## disabled / no profile / no heir in range. Reuses the same birth machinery + name-token.
+func _seed_successor(death_pos: Vector3) -> NemesisProfile:
+	if not Settings.NEMESIS_SUCCESSOR_ENABLED or _profile == null:
+		return null
+	var heir: Node = _pick_heir(death_pos)
+	if heir == null:
+		return null
+	var p := NemesisProfile.new()
+	p.archetype = String(heir.get("enemy_id")) if "enemy_id" in heir else "robot_grunt"
+	p.scene_path = heir.scene_file_path
+	p.tier = maxi(1, _profile.tier - 1)
+	p.created_version = Settings.GAME_VERSION
+	p.scar_seed = _scar_seed_for(heir)
+	p.serial = NemesisProfile.make_serial(p.scar_seed)
+	var inherited: Array[String] = []
+	for i in maxi(0, _profile.traits.size() - 1):
+		inherited.append(_profile.traits[i])
+	p.traits = inherited
+	p.title = NemesisProfile.make_title(p.tier)
+	Events.notify.emit(tr("Another machine takes up the grudge."), 2)
+	return p
+
+
+## Nearest living, qualifying enemy within NEMESIS_HEIR_RADIUS of the death (not the rival).
+func _pick_heir(death_pos: Vector3) -> Node:
+	var best: Node = null
+	var best_d: float = Settings.NEMESIS_HEIR_RADIUS
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if e == _active or not _qualifies(e) or not _node_alive(e):
+			continue
+		var d: float = (e as Node3D).global_position.distance_to(death_pos)
+		if d <= best_d:
+			best_d = d
+			best = e
+	return best
+
+
+## Push the codex (active + history) to co-op clients for the Hub "Rivals" tab.
+func _sync_codex() -> void:
+	var active: Dictionary = _profile.to_dict() if _profile != null else {}
+	NetworkManager.sync_nemesis_codex(active, _history)
 
 
 ## Drop the trophy core + the squad's reclaimed lost gear at `death_pos`, and grant the
@@ -257,6 +307,7 @@ func _birth_or_level(node: Node) -> void:
 	p.grudge_peer = _top_damager()
 	_profile = p
 	_save()
+	_sync_codex()
 	Events.nemesis_born.emit(p.serial, p.title)
 	Events.notify.emit(tr("%s escaped. It will remember.") % _nemesis_name(p), 2)
 
