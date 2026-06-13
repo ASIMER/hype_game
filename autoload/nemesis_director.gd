@@ -38,6 +38,7 @@ var _tracked_emp: int = 0  # EMP stuns landed → emp_hard
 var _tracked_weakpoint: int = 0  # weak-point hits → weakpoint_armored
 var _tracked_blast: int = 0  # grenade detonations near it → blast_hard
 var _tracked_stealth: float = 0.0  # s it stayed UN-chased (snuck past) → keen
+var _tracked_chemistry: int = 0  # chemistry statuses applied to it → chemistry_resist (Phase 6)
 
 ## The rival node injected this raid (if any) — death of it = DEFEAT.
 var _active: Node = null
@@ -57,6 +58,7 @@ func _ready() -> void:
 	Events.match_started.connect(_on_match_started)
 	Events.damage_dealt.connect(_on_damage_dealt)
 	Events.enemy_stunned.connect(_on_enemy_stunned)
+	Events.enemy_chemistry_applied.connect(_on_enemy_chemistry_applied)
 	Events.weak_point_hit.connect(_on_weak_point_hit)
 	Events.grenade_exploded.connect(_on_grenade_exploded)
 	Events.entity_died.connect(_on_entity_died)
@@ -163,6 +165,13 @@ func _on_enemy_stunned(enemy: Node, _duration: float) -> void:
 		_tracked_emp += 1  # the squad keeps EMP-locking it → it learns "emp_hard"
 
 
+## Machine Chemistry (Phase 5): count each status turned ON on the tracked candidate. The
+## data accrues now; the "chemistry_resist" learned trait lands in Phase 6 (see _pick_learned_trait).
+func _on_enemy_chemistry_applied(enemy: Node, _kind: String, active: bool) -> void:
+	if active and GameState.is_local_authority_server() and enemy == _tracked:
+		_tracked_chemistry += 1
+
+
 func _on_weak_point_hit(enemy: Node, _damage: float) -> void:
 	if GameState.is_local_authority_server() and enemy == _tracked:
 		_tracked_weakpoint += 1  # the squad snipes its weak spot → it learns "weakpoint_armored"
@@ -181,6 +190,7 @@ func _reset_telemetry() -> void:
 	_tracked_weakpoint = 0
 	_tracked_blast = 0
 	_tracked_stealth = 0.0
+	_tracked_chemistry = 0
 	_tracked_dmg = {}
 
 
@@ -502,11 +512,14 @@ func debug_force_birth(archetype: String, scene_path: String, traits: Array) -> 
 ## Inject the damage-type histogram directly (harness) so the learning/argmax/leveling logic
 ## is testable without depending on landing live grenades on a moving target. Targets the
 ## current _tracked candidate's counters. Returns the state dict.
-func debug_set_telemetry(emp: int, weakpoint: int, blast: int, stealth: float) -> Dictionary:
+func debug_set_telemetry(
+	emp: int, weakpoint: int, blast: int, stealth: float, chem: int = 0
+) -> Dictionary:
 	_tracked_emp = emp
 	_tracked_weakpoint = weakpoint
 	_tracked_blast = blast
 	_tracked_stealth = stealth
+	_tracked_chemistry = chem
 	return debug_state()
 
 
@@ -540,6 +553,7 @@ func debug_state() -> Dictionary:
 		"tracked_weakpoint": _tracked_weakpoint,
 		"tracked_blast": _tracked_blast,
 		"tracked_stealth": _tracked_stealth,
+		"tracked_chemistry": _tracked_chemistry,
 		"birth_done": _birth_done,
 		"wave_mgr": is_instance_valid(_wave_mgr),
 		"last_err": _last_err,

@@ -48,7 +48,8 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 					int(json.get("emp", 0)),
 					int(json.get("weakpoint", 0)),
 					int(json.get("blast", 0)),
-					float(json.get("stealth", 0.0))
+					float(json.get("stealth", 0.0)),
+					int(json.get("chem", 0))
 				)
 			)
 		"set_lost":

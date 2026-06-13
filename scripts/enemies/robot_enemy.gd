@@ -203,6 +203,14 @@ var nemesis_tier: int = 0
 var nemesis_traits: Array[String] = []
 var scar_seed: int = 0
 
+# --- Machine Chemistry (Phase 5) — the per-enemy status component (code-instantiated,
+# authority-local logic; brittle hooks Health.damage_filter, slow scales _apply_movement).
+# _status_flags_visual is the last flag set received via sync_chemistry_flags (every peer)
+# and drives the per-status FX nodes in _chem_fx (render-only).
+var _status: EnemyStatus = null
+var _status_flags_visual: int = 0
+var _chem_fx: Dictionary = {}
+
 
 func _ready() -> void:
 	# Parse elite modifiers FIRST (every peer) — wave_manager name-encoded them before
@@ -251,6 +259,14 @@ func _ready() -> void:
 		_health.died.connect(_on_died)
 	if not _health.health_changed.is_connected(_on_health_changed):
 		_health.health_changed.connect(_on_health_changed)
+
+	# Machine Chemistry (Phase 5): the status component (no scene edit — built here). The
+	# brittle status amplifies incoming damage via Health.damage_filter, which enemies
+	# otherwise leave unset; the burn tick exempts itself via _status.is_dot_tick().
+	_status = EnemyStatus.new()
+	add_child(_status)
+	_status.setup(self)
+	_health.damage_filter = _chemistry_damage_filter
 
 	_setup_health_bar()
 	_setup_collision_and_avoidance()
@@ -923,7 +939,83 @@ func apply_stun(duration: float) -> void:
 	# Nemesis "emp_hard" learned counter: a rival you kept EMP-locking shrugs most of it off.
 	if "emp_hard" in nemesis_traits:
 		d *= Settings.NEMESIS_EMP_STUN_MULT
-	_stunned_until_ms = Time.get_ticks_msec() + int(d * 1000.0)
+	# maxi so a short chemistry SHOCK can never cut a long EMP stun short (and vice-versa).
+	_stunned_until_ms = maxi(_stunned_until_ms, Time.get_ticks_msec() + int(d * 1000.0))
+
+
+## Machine Chemistry (Phase 5) — the raw duck-typed status setter, called by
+## MachineChemistry.apply() (which has already resolved climate + fires reactions) and by
+## the chain/freeze reactions. Server-side only; the result replicates via HP/position and
+## the visual flag-sync RPC. Identity-safe to call on any enemy.
+func apply_chemistry(kind: String, dur: float, mag: float) -> void:
+	if not GameState.is_local_authority_server() or _status == null:
+		return
+	_status.apply(kind, dur, mag)
+
+
+## Active status for the harness (state.enemies[].status). On the authority: remaining
+## seconds per kind. On a CLIENT (the status logic is server-only): the synced visual flags
+## as active-kind bools — so co-op parity is verifiable even though clients don't simulate it.
+func chemistry_status() -> Dictionary:
+	if _status != null and is_multiplayer_authority():
+		return _status.status_dict()
+	var out: Dictionary = {}
+	for kind in ["shock", "burn", "slow", "brittle"]:
+		if (_status_flags_visual & MachineChemistry.bit_for(kind)) != 0:
+			out[kind] = true
+	return out
+
+
+## Broadcast the active-status flag set to every peer (call_local runs it here too) so each
+## builds the identical per-status FX. The authority is the only writer; clients are visual.
+@rpc("authority", "call_local", "reliable")
+func sync_chemistry_flags(flags: int) -> void:
+	var changed: int = flags ^ _status_flags_visual
+	_status_flags_visual = flags
+	if DisplayServer.get_name() == "headless":
+		return
+	for kind in ["shock", "burn", "slow", "brittle"]:
+		var bit: int = MachineChemistry.bit_for(kind)
+		if (changed & bit) != 0:
+			apply_chemistry_fx(kind, (flags & bit) != 0)
+
+
+## Add (active) / free (inactive) the per-status FX aura. Distance-gated on spawn (cheap
+## like the idle-anim gate); render-only, every peer. Frees all on death via the flags=0 sync.
+func apply_chemistry_fx(kind: String, active: bool) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if not active:
+		var old: Node = _chem_fx.get(kind)
+		if old != null and is_instance_valid(old):
+			old.queue_free()
+		_chem_fx.erase(kind)
+		return
+	if _chem_fx.has(kind):
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var dd: float = cam.global_position.distance_squared_to(global_position)
+	if dd > Settings.CHEM_FX_DIST * Settings.CHEM_FX_DIST:
+		return
+	var fx := MachineChemistry.make_fx(kind)
+	if fx != null:
+		add_child(fx)
+		_chem_fx[kind] = fx
+
+
+## Health.damage_filter hook for BRITTLE: amplify incoming damage while brittle is active.
+## Exempts our own burn DoT (is_dot_tick) so burn never compounds. The amplified value flows
+## on through Events.damage_dealt (correct — the grudge telemetry should see real damage).
+func _chemistry_damage_filter(amount: float, _source: Node) -> float:
+	if _status == null or _status.is_dot_tick():
+		return amount
+	var amplified: float = amount * _status.incoming_damage_mult()
+	# SHATTER flavor: a brittle machine this hit will kill (server-side notify on the host).
+	if _status.has("brittle") and amplified > amount and _health.current - amplified <= 0.0:
+		Events.notify.emit(tr("SHATTER!"), 1)
+	return amplified
 
 
 ## Public cascading-alert entry point. Another enemy (or the caller) tells this
@@ -1083,6 +1175,10 @@ func _update_stuck(delta: float) -> void:
 		_stuck_time = 0.0
 		_recover_count = 0
 		return
+	# A cryo-SLOWED machine makes slow progress legitimately — don't count it as stuck
+	# (else the recovery re-seat would fire falsely and teleport it).
+	if _status != null and _status.speed_mult() < 0.99:
+		return
 	_stuck_time += delta
 	if _stuck_time >= STUCK_LIMIT:
 		_recover_unstuck()
@@ -1187,7 +1283,9 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	var move := dir + sep
 	if move.length() > 1.0:
 		move = move.normalized()
-	var speed: float = _stat_speed
+	# Machine Chemistry: a cryo SLOW scales movement (authority-local; the slowed body
+	# replicates via position, so clients see it without extra state).
+	var speed: float = _stat_speed * (_status.speed_mult() if _status != null else 1.0)
 	velocity.x = move.x * speed + _knockback.x
 	velocity.z = move.z * speed + _knockback.z
 	# Bleed off the hit knockback nudge.

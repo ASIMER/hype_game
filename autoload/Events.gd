@@ -31,6 +31,10 @@ signal gadget_placed(player: Node, type: String, world_pos: Vector3)
 signal gadget_expired(type: String, world_pos: Vector3)
 ## A robot was EMP-stunned for `duration` seconds (FX/SFX hook; server-side gameplay).
 signal enemy_stunned(enemy: Node, duration: float)
+## Machine Chemistry (Phase 5): a status effect turned ON/OFF on a machine (server-side;
+## drives the nemesis chemistry telemetry + HUD). Visuals are driven separately by the
+## per-enemy flag-sync RPC so they show on every peer. kind ∈ {shock,burn,slow,brittle}.
+signal enemy_chemistry_applied(enemy: Node, kind: String, active: bool)
 
 # --- Movement (batch A) ---
 signal player_rolled(player: Node)

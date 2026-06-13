@@ -1104,15 +1104,16 @@ func _on_item_use(item_id: String) -> void:
 			if int(_grenade_counts.get("frag", 0)) <= 0:
 				_grenade_counts["frag"] = 1
 			_gear.throw_selected()
-		"loot_grenade_smoke", "loot_grenade_emp", "loot_grenade_decoy":
-			var gtype := item_id.trim_prefix("loot_grenade_")
-			_grenade_sel = gtype
-			if int(_grenade_counts.get(gtype, 0)) <= 0:
-				_grenade_counts[gtype] = 1
-			_gear.throw_selected()
 		Settings.SELF_REVIVE_ITEM, "self_revive":
 			if downed:
 				_self_revive()
+		_:
+			# Any utility grenade id (smoke/emp/decoy/incendiary/cryo) selects + throws its type.
+			if item_id.begins_with("loot_grenade_"):
+				_grenade_sel = item_id.trim_prefix("loot_grenade_")
+				if int(_grenade_counts.get(_grenade_sel, 0)) <= 0:
+					_grenade_counts[_grenade_sel] = 1
+				_gear.throw_selected()
 
 
 # --- Active power-cache buffs ------------------------------------------------

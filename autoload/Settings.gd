@@ -538,13 +538,15 @@ const GRENADE_THROW_FORCE: float = 15.0
 
 # --- Grenade types (batch A): the synced per-type counts dict uses these ids. "frag"
 # is the classic damage grenade; the others are utility (see scripts/items/grenade_*.gd).
-const GRENADE_TYPES := ["frag", "smoke", "emp", "decoy"]
+const GRENADE_TYPES := ["frag", "smoke", "emp", "decoy", "incendiary", "cryo"]
 # Maps a grenade type to its consumable item id (bring-list / loot / stash economy).
 const GRENADE_ITEM_IDS := {
 	"frag": "loot_grenade",
 	"smoke": "loot_grenade_smoke",
 	"emp": "loot_grenade_emp",
 	"decoy": "loot_grenade_decoy",
+	"incendiary": "loot_grenade_incendiary",
+	"cryo": "loot_grenade_cryo",
 }
 const SMOKE_DURATION: float = 10.0  # smoke cloud lifetime (s)
 const SMOKE_RADIUS: float = 5.0  # LOS-blocking sphere radius (m)
@@ -554,6 +556,46 @@ const EMP_BOSS_STUN_MULT: float = 0.4  # bosses shrug most of the stun off
 const DECOY_DURATION: float = 8.0  # noise-beacon lifetime (s)
 const DECOY_PULSE: float = 1.5  # s between noise pulses
 const DECOY_LOUDNESS: float = NOISE_GRENADE * 0.8
+
+# --- MACHINE CHEMISTRY (Phase 5): enemy status-effect framework -----------------
+# Machines react to elemental/electro effects like NO human enemy can (the signature
+# "un-copyable machine lever"). 4 statuses, bit-packed for the visual-sync RPC.
+# Logic is authority-local (mirrors apply_stun); HP/position replicate the result.
+const CHEM_SHOCK: int = 1  # electric: stun + chains to nearby WET machines
+const CHEM_BURN: int = 2  # thermal DoT: amplified in desert, doused when wet
+const CHEM_SLOW: int = 4  # cryo: movement slow; longer in snow → freeze→shatter window
+const CHEM_BRITTLE: int = 8  # incoming-damage amplifier (a frozen machine shatters)
+# Shock / chain discharge.
+const CHEM_SHOCK_STUN: float = 1.0  # base stun seconds (reuses _stunned_until_ms)
+const CHEM_SHOCK_FX: float = 0.5  # arc-VFX window (independent of stun length)
+const CHEM_CHAIN_RADIUS: float = 6.0  # jump reach to the next wet machine (m)
+const CHEM_CHAIN_JUMPS: int = 3  # max extra machines per discharge
+const CHEM_CHAIN_FALLOFF: float = 0.75  # stun ×this per hop
+# Burn (DoT).
+const CHEM_BURN_TICK: float = 1.0  # seconds between burn ticks
+const CHEM_BURN_DESERT_MULT: float = 1.5  # desert heat amplifies burn dps
+const CHEM_BURN_RAIN_MULT: float = 0.0  # rain/wet douses burn (0 = extinguish)
+# Slow (cryo).
+const CHEM_SLOW_MIN_MULT: float = 0.2  # never freeze below this via slow
+const CHEM_SLOW_SNOW_MULT: float = 1.5  # snow lengthens the slow
+const CHEM_FREEZE_THRESHOLD: float = 0.5  # slow mult <= this latches BRITTLE (shatter combo)
+# Brittle.
+const CHEM_BRITTLE_DUR: float = 4.0  # seconds the amplifier lasts (auto-latched by deep slow)
+const CHEM_BRITTLE_MULT: float = 1.5  # incoming damage ×this while brittle
+# Visual gate.
+const CHEM_FX_DIST: float = 45.0  # status FX spawns only within this range of the camera (m)
+
+# --- Source: Incendiary grenade (Phase 5) — applies BURN in radius.
+const INCENDIARY_RADIUS: float = 5.0
+const INCENDIARY_BURN_DUR: float = 5.0
+const INCENDIARY_BURN_DPS: float = 8.0
+# --- Source: Cryo grenade (Phase 5) — applies SLOW (deep slow primes BRITTLE) in radius.
+const CRYO_RADIUS: float = 5.0
+const CRYO_SLOW_DUR: float = 4.0
+const CRYO_SLOW_MULT: float = 0.45
+# --- Source: the EMP grenade ALSO tags SHOCK (the only player-side shock → enables the rain chain).
+const EMP_SHOCK_DUR: float = 1.5
+const EMP_SHOCK_MAG: float = 1.0
 
 # --- Deployable gadgets (batch A): brought from the stash, placed with keys 6/7/8,
 # server-spawned under Arena/Net/Gadgets so every peer sees them.

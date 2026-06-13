@@ -10,6 +10,8 @@ const GRENADE_SCENES := {
 	"smoke": "res://scenes/items/GrenadeSmoke.tscn",
 	"emp": "res://scenes/items/GrenadeEmp.tscn",
 	"decoy": "res://scenes/items/GrenadeDecoy.tscn",
+	"incendiary": "res://scenes/items/GrenadeIncendiary.tscn",
+	"cryo": "res://scenes/items/GrenadeCryo.tscn",
 }
 
 

@@ -307,6 +307,8 @@ func _handle_line(line: String) -> void:
 			# QA: Machine Nemesis. {action:"state"|"force_birth"|"inject"} — logic in NemesisQA
 			# (kept out of this file — it's at the 1800-line ceiling).
 			_send(NemesisQA.run(get_tree(), json))
+		"chemistry":  # QA: Machine Chemistry (Phase 5) — logic in ChemistryQA (file at the ceiling).
+			_send(ChemistryQA.run(get_tree(), json))
 		"perf":
 			# QA: frame-time sampling window for perf A/B ({window: seconds}) — fps,
 			# frame_ms p95, script/physics ms, draw calls, node counts, world_children.
@@ -1593,6 +1595,10 @@ func _snapshot() -> Dictionary:
 		# EMP stun (server-side window; duck-typed so this works pre-feature too).
 		var stun_ms: Variant = e.get("_stunned_until_ms")
 		erec["stunned"] = stun_ms != null and int(stun_ms) > Time.get_ticks_msec()
+		# Machine Chemistry (Phase 5): remaining seconds per active status (duck-typed).
+		var cstat: Dictionary = e.chemistry_status() if e.has_method("chemistry_status") else {}
+		if not cstat.is_empty():
+			erec["status"] = cstat
 		# Elite modifiers (batch D) + the recon drone's channel progress (duck-typed).
 		var emods: Variant = e.get("modifiers")
 		if emods is Array and not (emods as Array).is_empty():

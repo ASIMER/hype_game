@@ -25,6 +25,8 @@ const ITEM_PATHS := {
 	"loot_grenade_smoke": "res://resources/items/grenade_smoke.tres",
 	"loot_grenade_emp": "res://resources/items/grenade_emp.tres",
 	"loot_grenade_decoy": "res://resources/items/grenade_decoy.tres",
+	"loot_grenade_incendiary": "res://resources/items/grenade_incendiary.tres",
+	"loot_grenade_cryo": "res://resources/items/grenade_cryo.tres",
 	"gadget_turret": "res://resources/items/gadget_turret.tres",
 	"gadget_dome": "res://resources/items/gadget_dome.tres",
 	"gadget_sensor": "res://resources/items/gadget_sensor.tres",

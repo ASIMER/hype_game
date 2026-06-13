@@ -23,6 +23,10 @@ func _detonate_effect(pos: Vector3) -> void:
 			if e.has_method("apply_stun"):
 				e.apply_stun(Settings.EMP_STUN_TIME)
 				Events.enemy_stunned.emit(e, Settings.EMP_STUN_TIME)
+			# Machine Chemistry: the EMP also tags SHOCK (the player's only shock source) so
+			# it CHAINS to nearby machines when the target is wet (in the rain / over water).
+			if e.has_method("apply_chemistry"):
+				MachineChemistry.apply(e, "shock", Settings.EMP_SHOCK_DUR, Settings.EMP_SHOCK_MAG)
 
 	# Local FX on EVERY peer: a sky-blue shock-ring + a spark burst on each robot
 	# caught in the pulse.
