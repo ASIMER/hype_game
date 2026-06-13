@@ -894,6 +894,21 @@ const ELITE_MOD_COLORS := {
 	"regenerating": Color(0.35, 0.9, 0.45),
 }
 
+# --- Machine Nemesis (signature mechanic) ------------------------------------
+## A robot that SURVIVES a fight with the squad persists across raids, adapts to how it
+## was fought (learned counters), wears scars, and hunts the squad. Server-authoritative;
+## traits + scars ride the node NAME (the EnemyModifiers channel) so co-op replicates free.
+const NEMESIS_MIN_SCORE: int = 25  # only "substantial" archetypes (heavy/bastion/elite+) qualify
+const NEMESIS_MAX_TIER: int = 5  # leveling cap (each survival = +1 tier)
+const NEMESIS_TIER_HEALTH: float = 0.35  # health_mult = 1 + tier * this (a returning rival is tankier)
+const NEMESIS_RETURN_DELAY: float = 25.0  # s after match start before the rival is injected
+const NEMESIS_EMP_STUN_MULT: float = 0.35  # "emp_hard" trait: EMP stun lasts this fraction
+## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
+## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
+const NEMESIS_TRAIT_STATS := {
+	"keen": {"detect_mult": 1.4},
+}
+
 # --- Recon drone (robot_specter) ---------------------------------------------
 const RECON_RETREAT_TIME: float = 6.0  # flee duration after a successful call
 const RECON_RECHANNEL_CD: float = 10.0  # s before it may channel again

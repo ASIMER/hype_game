@@ -127,6 +127,16 @@ signal noise_emitted(world_pos: Vector3, loudness: float, kind: int)
 ## summon reinforcements toward `world_pos`. `level` scales the response (1.0 = normal).
 signal enemy_alerted(world_pos: Vector3, level: float)
 
+# --- Machine Nemesis (signature mechanic) ---
+## A robot SURVIVED a fight with the squad and became their persistent rival (server-auth,
+## fired once at raid end). `serial`/`title` = its generated identity. Drives the intro banner.
+signal nemesis_born(serial: String, title: String)
+## A persisted nemesis RETURNED in this raid (injected by NemesisDirector). `node` = the
+## spawned enemy. Drives the return banner + the M-map marker (Groups.NEMESIS).
+signal nemesis_returned(serial: String, title: String, node: Node)
+## The active nemesis was finally KILLED. Drives the defeat banner + (Phase 3) the payoff.
+signal nemesis_defeated(serial: String)
+
 # --- Dynamic world events (Batch 3 "Live raid") ---
 ## A mid-raid world event began (server-auth, synced). `kind`: 0 supply_cache,
 ## 1 miniboss, 2 contested_poi, 3 surge. `world_pos` = marker location; `label` = HUD text.

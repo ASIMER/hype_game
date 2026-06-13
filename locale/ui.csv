@@ -782,3 +782,6 @@ CR %d","%s
 "Stops bleeding.","Останавливает кровотечение."
 "Sets a fractured limb so you can run and sprint again.","Фиксирует перелом — снова можно бегать и спринтовать."
 "Masks injury penalties for a while. The injury itself remains.","На время маскирует штрафы от травм. Сама травма остаётся."
+"%s escaped. It will remember.","%s ушёл. Он запомнит."
+"%s has found you.","%s нашёл тебя."
+"%s is scrap.","%s — металлолом."

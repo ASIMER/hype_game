@@ -303,6 +303,10 @@ func _handle_line(line: String) -> void:
 					gi = BreakableGlass.nearest_unbroken((gpl3 as Node3D).global_position)
 				NetworkManager.request_break_glass(gi)
 			_send(BreakableGlass.debug_summary())
+		"nemesis":
+			# QA: Machine Nemesis. {action:"state"|"force_birth"|"inject"} — logic in NemesisQA
+			# (kept out of this file — it's at the 1800-line ceiling).
+			_send(NemesisQA.run(get_tree(), json))
 		"perf":
 			# QA: frame-time sampling window for perf A/B ({window: seconds}) — fps,
 			# frame_ms p95, script/physics ms, draw calls, node counts, world_children.
@@ -1587,6 +1591,13 @@ func _snapshot() -> Dictionary:
 		var chan: Variant = e.get("_channel_t")
 		if chan != null:
 			erec["channel"] = float(chan)
+		# Machine Nemesis (duck-typed so this is safe pre-feature).
+		var is_nem: bool = bool(e.get("is_nemesis")) if "is_nemesis" in e else false
+		if is_nem:
+			erec["is_nemesis"] = true
+			erec["nemesis_tier"] = int(e.get("nemesis_tier"))
+			erec["nemesis_traits"] = e.get("nemesis_traits")
+			erec["scar_seed"] = int(e.get("scar_seed"))
 		enemies.append(erec)
 	d["enemies"] = enemies
 

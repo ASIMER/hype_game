@@ -238,6 +238,54 @@ static func _part(
 	return mi
 
 
+# ----------------------------------------------------------------- nemesis scars
+## Signature parts a scar must NEVER touch (hiding the eye/core/head reads as broken, not
+## battle-worn; legs animate). Any MeshInstance3D whose name starts with one of these is
+## protected — scars land on the anonymous plating parts (`_part` leaves them auto-named).
+const _SCAR_PROTECTED := [
+	"Eye", "Core", "Head", "Body", "Torso", "ChestCore", "WeakDome", "TurretHead", "Leg"
+]
+
+
+## Pick `count` distinct, deterministically-seeded plating MeshInstance3D under `root` (a
+## procedural enemy assembly) for the Machine Nemesis scar deltas (caller hides / bends /
+## chars them). Deterministic in `seed` so every co-op peer scars the SAME parts (the seed
+## rides the node name). Returns [] for .glb / single-primitive bodies (no enumerable parts).
+static func scar_parts(root: Node3D, seed: int, count: int) -> Array:
+	var parts: Array = []
+	_collect_scar_candidates(root, parts)
+	if parts.is_empty():
+		return []
+	var picked: Array = []
+	var used := {}
+	var n := parts.size()
+	var s := absi(seed)
+	for _i in mini(count, n):
+		s = (s * 1103515245 + 12345) & 0x7fffffff  # LCG — deterministic, no Math.random
+		var idx := s % n
+		var tries := 0
+		while used.has(idx) and tries < n:
+			idx = (idx + 1) % n
+			tries += 1
+		used[idx] = true
+		picked.append(parts[idx])
+	return picked
+
+
+static func _collect_scar_candidates(node: Node, out: Array) -> void:
+	if node is MeshInstance3D:
+		var nm := str(node.name)
+		var protected := false
+		for p in _SCAR_PROTECTED:
+			if nm.begins_with(p):
+				protected = true
+				break
+		if not protected:
+			out.append(node)
+	for c in node.get_children():
+		_collect_scar_candidates(c, out)
+
+
 ## A cylinder strut spanning points a→b (its local +Y aligned to the span). The
 ## backbone for legs, limbs and frames — define a mech by its endpoints.
 static func _strut(

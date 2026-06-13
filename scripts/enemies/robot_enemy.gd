@@ -195,17 +195,32 @@ var modifiers: Array[String] = []
 # Cached HP/s for the regenerating mod (0 = not regenerating); read each physics tick.
 var _regen_rate: float = 0.0
 
+# --- Machine Nemesis (signature) — parsed from the _NEM name token on EVERY peer, so a
+# returning rival rebuilds the IDENTICAL scarred/buffed body everywhere. is_nemesis gates the
+# tier health scalar, the learned-counter resists (emp_hard in apply_stun), and the scars.
+var is_nemesis: bool = false
+var nemesis_tier: int = 0
+var nemesis_traits: Array[String] = []
+var scar_seed: int = 0
+
 
 func _ready() -> void:
 	# Parse elite modifiers FIRST (every peer) — wave_manager name-encoded them before
 	# add_child, so the name is already correct here and replicates to clients.
 	_parse_modifiers_from_name()
+	# Machine Nemesis: parse the _NEM token (every peer) right after the elite mods so the
+	# rival's tier/traits/scars are known before stats + visuals are built.
+	_parse_nemesis_from_name()
 	add_to_group(Groups.ENEMIES)
+	if is_nemesis:
+		add_to_group(Groups.NEMESIS)  # map marker + kill-payoff lookup (server + clients)
 	_home = global_position
 	_load_stats()
 	# Apply modifier stat multipliers onto the resolved _stat_* BEFORE the health refill
 	# + collision/avoidance setup, so armored reaches max_health and swift reaches max_speed.
 	_apply_modifier_stats()
+	# Nemesis tier/trait stat counters layer on top of the elite mults (same pre-refill window).
+	_apply_nemesis_stats()
 
 	# Populate the visual model from the registry (CC0 art or primitive).
 	var model := AssetRegistry.get_model(enemy_id)
@@ -225,6 +240,8 @@ func _ready() -> void:
 	# Elite modifier visuals (tint + feet glow ring). Runs on every peer; tints the
 	# already-duplicated _flash_mats so it never bleeds onto other instances. Headless-guarded.
 	_apply_modifier_visuals()
+	# Nemesis scars (deterministic in scar_seed → identical on every peer; render-only).
+	_apply_nemesis_scars()
 
 	# Health is configured via the scene export; ensure max matches stats even if
 	# the scene drifts, then refill. Only the authority should own its state.
@@ -903,6 +920,9 @@ func apply_stun(duration: float) -> void:
 		return
 	# Explicit typed local — an inferred `:=` on this ternary trips the Variant parse trap.
 	var d: float = duration * (Settings.EMP_BOSS_STUN_MULT if _is_boss() else 1.0)
+	# Nemesis "emp_hard" learned counter: a rival you kept EMP-locking shrugs most of it off.
+	if "emp_hard" in nemesis_traits:
+		d *= Settings.NEMESIS_EMP_STUN_MULT
 	_stunned_until_ms = Time.get_ticks_msec() + int(d * 1000.0)
 
 
@@ -1522,6 +1542,61 @@ func _apply_modifier_visuals() -> void:
 	var color := EnemyModifiers.primary_color(modifiers)
 	EnemyModifiers.tint_materials(_flash_mats, color, 0.45)
 	EnemyModifiers.build_glow_ring(_model_root, color)
+
+
+## Parse the Machine Nemesis `_NEM` token off the node name (every peer). Sets is_nemesis +
+## tier/traits/scar_seed so the appliers below can rebuild the rival's body identically.
+func _parse_nemesis_from_name() -> void:
+	var info := NemesisProfile.parse_token(str(name))
+	if info.is_empty():
+		return
+	is_nemesis = true
+	nemesis_tier = int(info.get("tier", 1))
+	scar_seed = int(info.get("scar_seed", 0))
+	var raw: Array = info.get("traits", [])
+	var typed: Array[String] = []
+	for t in raw:
+		typed.append(String(t))
+	nemesis_traits = typed
+
+
+## Nemesis tier/trait stat counters, layered after the elite mults (same pre-refill window).
+## Tier makes a returning rival tankier; "keen" sharpens its senses. EMP/blast resists are
+## read at their own resist sites (apply_stun), not here. Harmless to compute on every peer.
+func _apply_nemesis_stats() -> void:
+	if not is_nemesis:
+		return
+	_stat_health *= 1.0 + float(nemesis_tier) * Settings.NEMESIS_TIER_HEALTH
+	if "keen" in nemesis_traits:
+		_stat_detect *= float(Settings.NEMESIS_TRAIT_STATS.get("keen", {}).get("detect_mult", 1.0))
+
+
+## Render the rival's scars: a universal charred tint (reads as battle-worn on .glb bodies
+## too) + deterministic part deltas on procedural bodies (blown-off plates / bent panels).
+## Deterministic in scar_seed → every peer scars identically. Render-only, skipped headless.
+func _apply_nemesis_scars() -> void:
+	if not is_nemesis or DisplayServer.get_name() == "headless":
+		return
+	# Charred wash on the (already per-instance duplicated) flash mats — never bleeds to others.
+	EnemyModifiers.tint_materials(_flash_mats, Color(0.16, 0.14, 0.13), 0.42)
+	# A menacing blood-red under-foot ring so the rival is unmistakable from across the map
+	# (reuses the elite-ring helper; render-only). "The red-ringed one is hunting you."
+	EnemyModifiers.build_glow_ring(_model_root, Color(0.92, 0.10, 0.10))
+	var root := _proc_root()
+	if root == null:
+		return  # .glb / single-primitive body: the charred tint is the whole scar
+	var count: int = mini(nemesis_tier + 1, 4)
+	var parts: Array = ProceduralModels.scar_parts(root, scar_seed, count)
+	var s := absi(scar_seed)
+	for part in parts:
+		if not (part is Node3D):
+			continue
+		s = (s * 1103515245 + 12345) & 0x7fffffff
+		if s % 2 == 0:
+			(part as Node3D).visible = false  # blown-off plate
+		else:
+			(part as Node3D).position += Vector3(0.04, -0.03, 0.0)  # bent / dented
+			(part as Node3D).rotation_degrees += Vector3(8.0, 0.0, 6.0)
 
 
 ## Armored elites get a larger (×1.3) and brighter (×3 emission) weak-point marker so the

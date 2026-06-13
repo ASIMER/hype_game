@@ -199,12 +199,19 @@ func _ready() -> void:
 	var director: Node = get_node_or_null("/root/AIDirector")
 	if director != null:
 		director.call("set_wave_manager", self)
+	# Same registration for the NemesisDirector so it can inject the persistent rival.
+	var nem: Node = get_node_or_null("/root/NemesisDirector")
+	if nem != null:
+		nem.call("set_wave_manager", self)
 
 
 func _exit_tree() -> void:
 	var director: Node = get_node_or_null("/root/AIDirector")
 	if director != null:
 		director.call("set_wave_manager", null)
+	var nem: Node = get_node_or_null("/root/NemesisDirector")
+	if nem != null:
+		nem.call("set_wave_manager", null)
 
 
 func _resolve_arena() -> Node3D:
@@ -786,6 +793,56 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 	# Reinforcements count toward alive enemies (wave-clear accounting).
 	_alive_enemies.append(enemy)
 	Events.enemy_spawned.emit(enemy)
+
+
+## Inject the persistent Machine Nemesis (server-only). A thin variant of the reinforcement
+## spawn: the scene comes from the SAVED profile (not a biome roll), the rival is a forced
+## hunter, and the `_NEM` token is appended to the node NAME before add_child so the rival's
+## tier/traits/scars replicate to every co-op client for free. Returns the spawned node (or
+## null if capacity/scene/arena is unavailable). Placement is the nearest marker to `near_pos`
+## (the grudge target), reusing the river-safe de-stack jitter.
+func spawn_nemesis(profile: NemesisProfile, near_pos: Vector3) -> Node:
+	if not GameState.is_local_authority_server():
+		return null
+	if _enemies_container == null or _arena == null or profile == null:
+		return null
+	# NOTE: deliberately NOT gated on reinforcement_capacity() — the nemesis is the SIGNATURE
+	# rival and exactly ONE node, so it must always return when scheduled (one body over the
+	# alive-cap is harmless; the squad has to kill it anyway).
+	var scene_path: String = profile.scene_path
+	if not ResourceLoader.exists(scene_path):
+		push_warning("WaveManager: nemesis scene %s missing — skipping" % scene_path)
+		return null
+	var xform: Transform3D = _xform_near(near_pos)
+	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
+	if not enemy.is_in_group(Groups.ENEMIES):
+		enemy.add_to_group(Groups.ENEMIES)
+	if "hunter" in enemy:
+		enemy.hunter = true  # the rival force-CHASEs the squad (existing hunter AI)
+	enemy.name = "%s%s" % [enemy.name, profile.to_name_token()]
+	_enemies_container.add_child(enemy, true)
+	if enemy is Node3D:
+		(enemy as Node3D).global_transform = xform
+	_alive_enemies.append(enemy)
+	Events.enemy_spawned.emit(enemy)
+	return enemy
+
+
+## Nearest enemy marker to `near_pos`, re-jittered (river-safe + de-stack). Mirrors the
+## marker-sampling in spawn_reinforcements but for a single pinned spawn.
+func _xform_near(near_pos: Vector3) -> Transform3D:
+	if _arena == null or not _arena.has_method("get_enemy_spawn_point"):
+		return Transform3D.IDENTITY
+	var best_i: int = 0
+	var best_d: float = INF
+	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 16
+	for i in maxi(1, n):
+		var origin: Vector3 = _arena.get_enemy_spawn_point(i).origin
+		var dd: float = origin.distance_to(near_pos)
+		if dd < best_d:
+			best_d = dd
+			best_i = i
+	return _jittered_spawn(_arena.get_enemy_spawn_point(best_i))
 
 
 # ---------------------------------------------------------------------------
