@@ -286,6 +286,50 @@ static func _collect_scar_candidates(node: Node, out: Array) -> void:
 		_collect_scar_candidates(c, out)
 
 
+## The full Machine Nemesis scar look, shared by the in-world enemy AND the Hub codex
+## portrait: a charred wash on the body's StandardMaterial3D, a blood-red under-foot glow
+## ring, and deterministic blown-off/bent plating (scar count scales with tier). `model_root`
+## carries the tint + ring; `proc_root` (the assembly) carries the part-scars — for the enemy
+## they differ (ModelRoot vs its child); for the codex pass the same built model for both.
+## Deterministic in `scar_seed`. Render-only; caller guards headless.
+static func apply_nemesis_scars(
+	model_root: Node3D, proc_root: Node3D, scar_seed: int, tier: int
+) -> void:
+	if model_root == null:
+		return
+	var mats: Array[StandardMaterial3D] = []
+	_collect_std_materials(model_root, mats)
+	EnemyModifiers.tint_materials(mats, Color(0.16, 0.14, 0.13), 0.42)
+	EnemyModifiers.build_glow_ring(model_root, Color(0.92, 0.10, 0.10))
+	if proc_root == null:
+		return  # .glb / single-primitive body: the charred tint + ring is the whole scar
+	var parts: Array = scar_parts(proc_root, scar_seed, mini(tier + 1, 4))
+	var s := absi(scar_seed)
+	for part in parts:
+		if not (part is Node3D):
+			continue
+		s = (s * 1103515245 + 12345) & 0x7fffffff
+		if s % 2 == 0:
+			(part as Node3D).visible = false  # blown-off plate
+		else:
+			(part as Node3D).position += Vector3(0.04, -0.03, 0.0)  # bent / dented
+			(part as Node3D).rotation_degrees += Vector3(8.0, 0.0, 6.0)
+
+
+## Collect the active StandardMaterial3D off every MeshInstance3D under `node` (recursive).
+static func _collect_std_materials(node: Node, out: Array[StandardMaterial3D]) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		var mesh := mi.mesh
+		if mesh != null:
+			for si in mesh.get_surface_count():
+				var mat := mi.get_active_material(si)
+				if mat is StandardMaterial3D and not out.has(mat):
+					out.append(mat)
+	for c in node.get_children():
+		_collect_std_materials(c, out)
+
+
 ## A cylinder strut spanning points a→b (its local +Y aligned to the span). The
 ## backbone for legs, limbs and frames — define a mech by its endpoints.
 static func _strut(

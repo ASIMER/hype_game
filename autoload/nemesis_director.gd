@@ -47,6 +47,10 @@ var _inject_attempts: int = 0
 var _injected: bool = false
 var _birth_done: bool = false
 var _last_err: String = ""  # QA: why the last injection produced no node
+# Phase 3: at-risk gear the squad LOST this raid (pushed by dying peers) → snapshot into the
+# rival's profile at birth/level → dropped on its defeat. _history = retired rivals for codex.
+var _lost_this_raid: Array[String] = []
+var _history: Array = []  # Array of NemesisProfile.to_dict(), newest first (cap NEMESIS_HISTORY_CAP)
 
 
 func _ready() -> void:
@@ -56,9 +60,11 @@ func _ready() -> void:
 	Events.weak_point_hit.connect(_on_weak_point_hit)
 	Events.grenade_exploded.connect(_on_grenade_exploded)
 	Events.entity_died.connect(_on_entity_died)
+	Events.extraction_started.connect(_on_extraction_started)
 	Events.extraction_completed.connect(_on_raid_over.unbind(1))
 	Events.match_lost.connect(_on_raid_over)
 	Events.match_won.connect(_on_raid_over)
+	_history = _load_history()
 
 
 func _process(delta: float) -> void:
@@ -86,6 +92,7 @@ func _on_match_started() -> void:
 	# Reset per-raid state, then load the saved rival (server-side only).
 	_tracked = null
 	_reset_telemetry()
+	_lost_this_raid = []
 	_active = null
 	_injected = false
 	_inject_attempts = 0
@@ -107,7 +114,9 @@ func _try_inject() -> void:
 	if not is_instance_valid(_wave_mgr):
 		_last_err = "no wave_mgr"
 		return
-	var node: Node = _wave_mgr.spawn_nemesis(_profile, _grudge_pos())
+	# Ambush bias: spawn at the squad's FAVORITE extraction zone if known ("it was waiting at
+	# your evac"), else near the grudge target.
+	var node: Node = _wave_mgr.spawn_nemesis(_profile, _ambush_pos())
 	if node == null:
 		_last_err = "spawn null (cap=%d)" % int(_wave_mgr.call("reinforcement_capacity"))
 		# Alive-cap full — retry shortly (capped so it can't spin forever).
@@ -140,8 +149,7 @@ func _on_damage_dealt(target: Node, amount: float, source: Node) -> void:
 	# Flag a fresh candidate only when no rival is in play this raid (one nemesis per squad).
 	if _tracked == null and _profile == null and _active == null and _qualifies(target):
 		_tracked = target
-		_tracked_emp = 0
-		_tracked_dmg = {}
+		_reset_telemetry()
 	if target != _tracked:
 		return
 	var peer: int = NetworkManager._peer_of(source)
@@ -179,10 +187,18 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 	if not GameState.is_local_authority_server():
 		return
 	if entity == _active:
-		# DEFEAT — the rivalry is settled. Retire the profile; a new candidate can be born.
+		# DEFEAT — the rivalry is settled. Payoff, retire to history, free a new candidate.
 		var serial: String = _profile.serial if _profile != null else ""
+		var death_pos: Vector3 = (
+			(entity as Node3D).global_position if entity is Node3D else Vector3.ZERO
+		)
+		_payoff_on_defeat(death_pos, _killer)
 		Events.nemesis_defeated.emit(serial)
 		Events.notify.emit(tr("%s is scrap.") % serial, 1)
+		if _profile != null:
+			_history.push_front(_profile.to_dict())
+			while _history.size() > Settings.NEMESIS_HISTORY_CAP:
+				_history.pop_back()
 		_profile = null
 		_active = null
 		_tracked = null
@@ -190,8 +206,28 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 	elif entity == _tracked:
 		# The candidate died (you finished it) — no grudge born from it.
 		_tracked = null
-		_tracked_emp = 0
-		_tracked_dmg = {}
+		_reset_telemetry()
+
+
+## Drop the trophy core + the squad's reclaimed lost gear at `death_pos`, and grant the
+## killer the bounty (currency + rep + XP, co-op-routed to that peer's own machine).
+func _payoff_on_defeat(death_pos: Vector3, killer: Node) -> void:
+	var container: Node = _loot_container()
+	if container != null:
+		LootPickup.spawn_at(container, death_pos, "loot_nemesis_core", 1)
+		if _profile != null:
+			for gid in _profile.lost_gear:
+				LootPickup.spawn_at(container, death_pos, String(gid), 1)
+	NetworkManager.grant_nemesis_bounty(NetworkManager._peer_of(killer))
+
+
+## The Net/Loot container the enemy loot spawns into (reuse robot_enemy's resolver, else
+## walk the arena). Server-only spawns replicate via the MultiplayerSpawner.
+func _loot_container() -> Node:
+	if is_instance_valid(_active) and _active.has_method("_loot_container"):
+		return _active.call("_loot_container")
+	var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
+	return arena.get_node_or_null("Net/Loot") if arena != null else null
 
 
 # ----------------------------------------------------------------- birth / level
@@ -212,6 +248,11 @@ func _birth_or_level(node: Node) -> void:
 	var learned: String = _pick_learned_trait(p.traits)
 	if learned != "":
 		p.traits.append(learned)
+	# Claim the at-risk gear the squad lost this raid ("it wears the armor it killed you in"),
+	# appended + deduped + capped so a leveling rival hoards across raids.
+	for gid in _lost_this_raid:
+		if gid not in p.lost_gear and p.lost_gear.size() < Settings.NEMESIS_LOST_GEAR_CAP:
+			p.lost_gear.append(gid)
 	p.title = NemesisProfile.make_title(p.tier)
 	p.grudge_peer = _top_damager()
 	_profile = p
@@ -294,6 +335,61 @@ func _grudge_pos() -> Vector3:
 	return fallback
 
 
+# ----------------------------------------------------------------- extraction ambush
+## A dying peer pushes its at-risk gear (NetworkManager routes it here on the host) so the
+## surviving rival can wear + drop it on defeat. Capped; dedup happens at the birth snapshot.
+func record_lost_gear(ids: Array) -> void:
+	if not GameState.is_local_authority_server():
+		return
+	for id in ids:
+		var sid: String = String(id)
+		if (
+			sid != ""
+			and sid not in _lost_this_raid
+			and _lost_this_raid.size() < Settings.NEMESIS_LOST_GEAR_CAP
+		):
+			_lost_this_raid.append(sid)
+
+
+## Track where the squad extracts so the rival learns to ambush their favorite evac. If the
+## rival is alive, not yet injected, and the squad starts extracting at that favorite zone,
+## force the injection NOW at the zone — "it was waiting at your evac."
+func _on_extraction_started(_player: Node, zone: Node) -> void:
+	if not GameState.is_local_authority_server() or _profile == null or zone == null:
+		return
+	var zname: String = str(zone.name)
+	_profile.zone_counts[zname] = int(_profile.zone_counts.get(zname, 0)) + 1
+	_save()
+	if _active == null and not _injected and zname == _favorite_zone():
+		_inject_timer = 0.0
+		_injected = false
+		_try_inject()
+
+
+## The squad's most-used extraction zone name (needs >= NEMESIS_FAVORITE_MIN visits), else "".
+func _favorite_zone() -> String:
+	if _profile == null:
+		return ""
+	var best: String = ""
+	var best_n: int = 0
+	for zname in _profile.zone_counts:
+		var n: int = int(_profile.zone_counts[zname])
+		if n > best_n:
+			best_n = n
+			best = String(zname)
+	return best if best_n >= Settings.NEMESIS_FAVORITE_MIN else ""
+
+
+## Injection placement: the favorite extraction zone (if established) else the grudge target.
+func _ambush_pos() -> Vector3:
+	var fav: String = _favorite_zone()
+	if fav != "":
+		for z in get_tree().get_nodes_in_group(Groups.EXTRACTION):
+			if z is Node3D and str(z.name) == fav:
+				return (z as Node3D).global_position
+	return _grudge_pos()
+
+
 func _nemesis_name(p: NemesisProfile) -> String:
 	if p.title == "":
 		return p.serial
@@ -312,7 +408,17 @@ func _save() -> void:
 	cfg.set_value("meta", "save_version", Settings.GAME_VERSION)
 	if _profile != null:
 		_profile.to_cfg(cfg, CFG_SECTION)
+	cfg.set_value("history", "rivals", _history)  # retired rivals for the Hub codex
 	cfg.save(_cfg_path())
+
+
+## Retired-rivals history (Array of NemesisProfile.to_dict(), newest first) for the codex.
+func _load_history() -> Array:
+	var cfg := ConfigFile.new()
+	if cfg.load(_cfg_path()) != OK:
+		return []
+	var raw: Variant = cfg.get_value("history", "rivals", [])
+	return raw if raw is Array else []
 
 
 func _load() -> NemesisProfile:
@@ -387,6 +493,9 @@ func debug_state() -> Dictionary:
 		"wave_mgr": is_instance_valid(_wave_mgr),
 		"last_err": _last_err,
 	}
+	out["lost_this_raid"] = _lost_this_raid
+	out["favorite_zone"] = _favorite_zone()
+	out["history"] = _history.size()
 	if _profile != null:
 		out["serial"] = _profile.serial
 		out["title"] = _profile.title
@@ -395,6 +504,37 @@ func debug_state() -> Dictionary:
 		out["traits"] = _profile.traits
 		out["scar_seed"] = _profile.scar_seed
 		out["name_token"] = _profile.to_name_token()
+		out["lost_gear"] = _profile.lost_gear
+		out["zone_counts"] = _profile.zone_counts
 	if is_instance_valid(_active):
 		out["active_name"] = str(_active.name)
 	return out
+
+
+## Codex feed for the Hub "Rivals" tab — the active rival (if any) + retired history, each as
+## a NemesisProfile.to_dict(). Read on the HOST (clients never save a profile).
+func codex_data() -> Dictionary:
+	var active: Variant = _profile.to_dict() if _profile != null else null
+	if active == null:
+		# Hub may open between raids when _profile isn't loaded — read the saved active slot.
+		var cfg := ConfigFile.new()
+		if cfg.load(_cfg_path()) == OK:
+			var saved: NemesisProfile = NemesisProfile.from_cfg(cfg, CFG_SECTION)
+			if saved != null:
+				active = saved.to_dict()
+	return {"active": active, "history": _history if not _history.is_empty() else _load_history()}
+
+
+## QA: directly set this raid's lost-gear list (deterministic reclaim test).
+func debug_set_lost(ids: Array) -> Dictionary:
+	_lost_this_raid = []
+	record_lost_gear(ids)
+	return debug_state()
+
+
+## QA: credit an extraction zone N times so it becomes the favorite (ambush test).
+func debug_set_zone(zone_name: String, count: int) -> Dictionary:
+	if _profile != null:
+		_profile.zone_counts[zone_name] = count
+		_save()
+	return debug_state()

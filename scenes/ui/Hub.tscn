@@ -215,6 +215,11 @@ custom_minimum_size = Vector2(140, 36)
 layout_mode = 2
 text = "CHARACTER"
 
+[node name="RivalsBtn" type="Button" parent="Layout/Header/HeaderVBox/TabBar"]
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "RIVALS"
+
 ; ── BODY (content area — hub.gd adds tab scenes here) ────────────────────────
 [node name="Body" type="MarginContainer" parent="Layout"]
 layout_mode = 2

@@ -53,6 +53,11 @@ func _ready() -> void:
 	Events.world_event_started.connect(_on_world_event_started)
 	Events.environmental_surge_changed.connect(_on_surge_changed)
 
+	# Machine Nemesis — the rival's story beats (born / returns / defeated).
+	Events.nemesis_born.connect(_on_nemesis_born)
+	Events.nemesis_returned.connect(_on_nemesis_returned)
+	Events.nemesis_defeated.connect(_on_nemesis_defeated)
+
 	# Raid mutator chip (batch C) — set before deploy, re-synced at match start.
 	Events.raid_mutator_changed.connect(_on_mutator_changed)
 
@@ -93,6 +98,9 @@ var _storm_banner_t: float = 0.0
 # World-event banner — stacked 44px below the storm banner (offset_top -76 vs -120).
 var _event_banner: Label
 var _event_banner_t: float = 0.0
+
+var _nemesis_banner: Label  # Machine Nemesis born/returns/defeated (red, above the others)
+var _nemesis_banner_t: float = 0.0
 # Surge vignette — a subtle colour-rect pulse while a sensor-blackout surge is active.
 var _surge_vignette: ColorRect
 var _surge_active: bool = false
@@ -215,6 +223,23 @@ func _build_hud_widgets() -> void:
 	_event_banner.text = ""
 	_event_banner.visible = false
 	$Root.add_child(_event_banner)
+
+	# Machine Nemesis banner — highest of the three (offset_top -160 so it never overlaps the
+	# storm/event banners), blood-red to match the rival's signature ring.
+	_nemesis_banner = Label.new()
+	_nemesis_banner.set_anchors_preset(Control.PRESET_CENTER)
+	_nemesis_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_nemesis_banner.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_nemesis_banner.offset_top = -160.0
+	_nemesis_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_nemesis_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_nemesis_banner.add_theme_font_size_override("font_size", 26)
+	_nemesis_banner.add_theme_color_override("font_color", Color(0.95, 0.16, 0.16))
+	_nemesis_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_nemesis_banner.add_theme_constant_override("outline_size", 5)
+	_nemesis_banner.text = ""
+	_nemesis_banner.visible = false
+	$Root.add_child(_nemesis_banner)
 
 	# Sensor-surge vignette — a very faint orange/green tint at the screen edges while
 	# the blackout is active. Kept subtle (max alpha 0.12) so it reads as ambience
@@ -522,6 +547,14 @@ func _process(delta: float) -> void:
 		)
 		if _event_banner_t <= 0.0:
 			_event_banner.visible = false
+
+	if _nemesis_banner and _nemesis_banner.visible:
+		_nemesis_banner_t -= delta
+		_nemesis_banner.modulate.a = (
+			clampf(_nemesis_banner_t / 1.0, 0.0, 1.0) if _nemesis_banner_t < 1.0 else 1.0
+		)
+		if _nemesis_banner_t <= 0.0:
+			_nemesis_banner.visible = false
 	# Pulse the surge vignette while active.
 	if _surge_active and _surge_vignette != null:
 		_surge_pulse += delta
@@ -611,6 +644,12 @@ func _exit_tree() -> void:
 		Events.world_event_started.disconnect(_on_world_event_started)
 	if Events.environmental_surge_changed.is_connected(_on_surge_changed):
 		Events.environmental_surge_changed.disconnect(_on_surge_changed)
+	if Events.nemesis_born.is_connected(_on_nemesis_born):
+		Events.nemesis_born.disconnect(_on_nemesis_born)
+	if Events.nemesis_returned.is_connected(_on_nemesis_returned):
+		Events.nemesis_returned.disconnect(_on_nemesis_returned)
+	if Events.nemesis_defeated.is_connected(_on_nemesis_defeated):
+		Events.nemesis_defeated.disconnect(_on_nemesis_defeated)
 
 
 # --- Match timer / storm warning -------------------------------------------
@@ -645,6 +684,28 @@ func _on_final_wave_started() -> void:
 		_storm_banner.visible = true
 		_storm_banner.modulate.a = 1.0
 		_storm_banner_t = 4.0  # lingers ~4s, then fades in the final second
+
+
+func _flash_nemesis_banner(text: String, secs: float) -> void:
+	if _nemesis_banner == null:
+		return
+	_nemesis_banner.text = text
+	_nemesis_banner.visible = true
+	_nemesis_banner.modulate.a = 1.0
+	_nemesis_banner_t = secs
+
+
+func _on_nemesis_born(serial: String, _title: String) -> void:
+	_flash_nemesis_banner(tr("%s ESCAPED — IT WILL REMEMBER") % serial, 4.0)
+
+
+func _on_nemesis_returned(serial: String, title: String, _node: Node) -> void:
+	var who: String = "%s, %s" % [serial, title] if title != "" else serial
+	_flash_nemesis_banner(tr("%s — HUNTING YOU") % who.to_upper(), 5.0)
+
+
+func _on_nemesis_defeated(serial: String) -> void:
+	_flash_nemesis_banner(tr("%s IS SCRAP") % serial, 4.0)
 	if _timer_label:
 		_timer_label.text = tr("⚠ FINAL WAVE")
 		_timer_label.add_theme_color_override("font_color", UIStyle.RED)

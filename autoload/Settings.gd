@@ -905,6 +905,13 @@ const NEMESIS_RETURN_DELAY: float = 25.0  # s after match start before the rival
 const NEMESIS_EMP_STUN_MULT: float = 0.35  # "emp_hard" trait: EMP stun lasts this fraction
 const NEMESIS_BLAST_MULT: float = 0.5  # "blast_hard" trait: incoming grenade/AoE damage fraction
 const NEMESIS_KEEN_THRESHOLD: float = 8.0  # s a candidate must stay UN-chased to teach "keen"
+# Phase 3 — defeat payoff (bounty to the killer) + caps.
+const NEMESIS_BOUNTY_CURRENCY: int = 400  # credits to the killer peer on a rival's defeat
+const NEMESIS_BOUNTY_REP: int = 80  # vendor reputation to the killer
+const NEMESIS_BOUNTY_XP: int = 200  # raider XP to the killer
+const NEMESIS_LOST_GEAR_CAP: int = 8  # max at-risk items the rival "wears" + drops on defeat
+const NEMESIS_FAVORITE_MIN: int = 2  # extractions at a zone before it counts as "favorite"
+const NEMESIS_HISTORY_CAP: int = 10  # retired rivals kept for the Hub codex
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
 ## "weakpoint_armored" sets the WeakPoint Hurtbox damage_multiplier to an ABSOLUTE armor_mult

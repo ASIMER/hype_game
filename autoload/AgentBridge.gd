@@ -1279,11 +1279,9 @@ func _ui_action(action: String) -> bool:
 				return true
 			Events.map_toggled.emit(action == "open_map")
 			return true
-		"hub_stash", "hub_loadout", "hub_workshop", "hub_shop", "hub_quests", "hub_gunsmith", "hub_raider", "hub_character":
-			# Switch the open Hub's active tab (screenshot QA of each tab).
-			var hub := scene.find_child("Hub", true, false)
-			if hub == null or not hub.has_method("_switch_tab"):
-				return false
+		_:
+			# Switch the open Hub's active tab (screenshot QA of each tab). Unknown actions
+			# fall through to `return false` below.
 			var idx: int = (
 				{
 					"hub_stash": 0,
@@ -1293,12 +1291,16 @@ func _ui_action(action: String) -> bool:
 					"hub_quests": 4,
 					"hub_gunsmith": 5,
 					"hub_raider": 6,
-					"hub_character": 7
+					"hub_character": 7,
+					"hub_rivals": 8
 				}
-				. get(action, 0)
+				. get(action, -1)
 			)
-			hub._switch_tab(idx)
-			return true
+			if idx >= 0:
+				var hub := scene.find_child("Hub", true, false)
+				if hub != null and hub.has_method("_switch_tab"):
+					hub._switch_tab(idx)
+					return true
 	return false
 
 

@@ -55,6 +55,11 @@ var traits: Array[String] = []
 var scar_seed: int = 0
 var grudge_peer: int = 0  # peer who dealt the crippling blow (placement hint; 0 = any)
 var created_version: String = ""
+# Phase 3: gear the squad LOST in the raid(s) that birthed/leveled this rival — dropped on
+# its defeat ("reclaim your armor"). zone_counts tracks where the squad extracts → the
+# rival ambushes its favorite zone. Both saved host-only; neither rides the node name.
+var lost_gear: Array[String] = []
+var zone_counts: Dictionary = {}  # extraction zone node name -> times the squad went there
 
 
 ## The node-name suffix carrying tier/scar_seed/traits to every peer. Appended to the base
@@ -125,37 +130,65 @@ static func make_title(t: int) -> String:
 
 
 # ----------------------------------------------------------------- persistence
+## Plain-Dictionary serialization — the single source the cfg + the codex history reuse.
+func to_dict() -> Dictionary:
+	return {
+		"serial": serial,
+		"title": title,
+		"archetype": archetype,
+		"scene_path": scene_path,
+		"tier": tier,
+		"traits": traits,
+		"scar_seed": scar_seed,
+		"grudge_peer": grudge_peer,
+		"lost_gear": lost_gear,
+		"zone_counts": zone_counts,
+		"created_version": created_version,
+	}
+
+
+## Build a profile from a to_dict() Dictionary (codex history). Returns null if no serial.
+static func from_dict(d: Dictionary) -> NemesisProfile:
+	if String(d.get("serial", "")) == "":
+		return null
+	var p := NemesisProfile.new()
+	p.serial = String(d.get("serial", ""))
+	p.title = String(d.get("title", ""))
+	p.archetype = String(d.get("archetype", "robot_grunt"))
+	p.scene_path = String(d.get("scene_path", ""))
+	p.tier = int(d.get("tier", 1))
+	p.scar_seed = int(d.get("scar_seed", 0))
+	p.grudge_peer = int(d.get("grudge_peer", 0))
+	p.created_version = String(d.get("created_version", ""))
+	p.zone_counts = d.get("zone_counts", {}) if d.get("zone_counts") is Dictionary else {}
+	p.traits = _typed_strings(d.get("traits", []))
+	p.lost_gear = _typed_strings(d.get("lost_gear", []))
+	return p
+
+
 ## Write every field into `cfg`'s `section` (the host-only nemesis.cfg).
 func to_cfg(cfg: ConfigFile, section: String) -> void:
-	cfg.set_value(section, "serial", serial)
-	cfg.set_value(section, "title", title)
-	cfg.set_value(section, "archetype", archetype)
-	cfg.set_value(section, "scene_path", scene_path)
-	cfg.set_value(section, "tier", tier)
-	cfg.set_value(section, "traits", traits)
-	cfg.set_value(section, "scar_seed", scar_seed)
-	cfg.set_value(section, "grudge_peer", grudge_peer)
-	cfg.set_value(section, "created_version", created_version)
+	for key in to_dict():
+		cfg.set_value(section, key, to_dict()[key])
 
 
-## Reconstruct a profile from `cfg`'s `section`, or null if the section is absent/empty.
+## Reconstruct a profile from `cfg`'s `section`, or null if absent / missing serial+scene.
 static func from_cfg(cfg: ConfigFile, section: String) -> NemesisProfile:
 	if not cfg.has_section(section):
 		return null
-	var p := NemesisProfile.new()
-	p.serial = String(cfg.get_value(section, "serial", ""))
-	p.title = String(cfg.get_value(section, "title", ""))
-	p.archetype = String(cfg.get_value(section, "archetype", "robot_grunt"))
-	p.scene_path = String(cfg.get_value(section, "scene_path", ""))
-	p.tier = int(cfg.get_value(section, "tier", 1))
-	p.scar_seed = int(cfg.get_value(section, "scar_seed", 0))
-	p.grudge_peer = int(cfg.get_value(section, "grudge_peer", 0))
-	p.created_version = String(cfg.get_value(section, "created_version", ""))
-	var raw: Array = cfg.get_value(section, "traits", [])
-	var typed: Array[String] = []
-	for t in raw:
-		typed.append(String(t))
-	p.traits = typed
-	if p.serial == "" or p.scene_path == "":
+	var d := {}
+	for key in cfg.get_section_keys(section):
+		d[key] = cfg.get_value(section, key)
+	var p := from_dict(d)
+	if p == null or p.scene_path == "":
 		return null
 	return p
+
+
+## Coerce a raw Array into a typed Array[String] (the inferred-Variant parse trap otherwise).
+static func _typed_strings(raw_val: Variant) -> Array[String]:
+	var out: Array[String] = []
+	if raw_val is Array:
+		for v in raw_val as Array:
+			out.append(String(v))
+	return out

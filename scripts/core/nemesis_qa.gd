@@ -51,6 +51,15 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 					float(json.get("stealth", 0.0))
 				)
 			)
+		"set_lost":
+			var ids: Array = json.get("ids", []) if json.get("ids") is Array else []
+			return _ok(dir.call("debug_set_lost", ids))
+		"set_zone":
+			return _ok(
+				dir.call("debug_set_zone", String(json.get("zone", "")), int(json.get("count", 2)))
+			)
+		"codex":
+			return _ok({"codex": dir.call("codex_data")})
 		_:
 			return _ok(dir.call("debug_state"))
 

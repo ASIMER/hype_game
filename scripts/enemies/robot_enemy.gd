@@ -1590,32 +1590,13 @@ func filter_blast(dmg: float) -> float:
 	return dmg
 
 
-## Render the rival's scars: a universal charred tint (reads as battle-worn on .glb bodies
-## too) + deterministic part deltas on procedural bodies (blown-off plates / bent panels).
-## Deterministic in scar_seed → every peer scars identically. Render-only, skipped headless.
+## Render the rival's scars (charred wash + blood-red ring + blown/bent plating) via the
+## shared static so the Hub codex portrait gets the IDENTICAL look. Deterministic in
+## scar_seed → every peer scars identically. Render-only, skipped headless.
 func _apply_nemesis_scars() -> void:
 	if not is_nemesis or DisplayServer.get_name() == "headless":
 		return
-	# Charred wash on the (already per-instance duplicated) flash mats — never bleeds to others.
-	EnemyModifiers.tint_materials(_flash_mats, Color(0.16, 0.14, 0.13), 0.42)
-	# A menacing blood-red under-foot ring so the rival is unmistakable from across the map
-	# (reuses the elite-ring helper; render-only). "The red-ringed one is hunting you."
-	EnemyModifiers.build_glow_ring(_model_root, Color(0.92, 0.10, 0.10))
-	var root := _proc_root()
-	if root == null:
-		return  # .glb / single-primitive body: the charred tint is the whole scar
-	var count: int = mini(nemesis_tier + 1, 4)
-	var parts: Array = ProceduralModels.scar_parts(root, scar_seed, count)
-	var s := absi(scar_seed)
-	for part in parts:
-		if not (part is Node3D):
-			continue
-		s = (s * 1103515245 + 12345) & 0x7fffffff
-		if s % 2 == 0:
-			(part as Node3D).visible = false  # blown-off plate
-		else:
-			(part as Node3D).position += Vector3(0.04, -0.03, 0.0)  # bent / dented
-			(part as Node3D).rotation_degrees += Vector3(8.0, 0.0, 6.0)
+	ProceduralModels.apply_nemesis_scars(_model_root, _proc_root(), scar_seed, nemesis_tier)
 
 
 ## Armored elites get a larger (×1.3) and brighter (×3 emission) weak-point marker so the

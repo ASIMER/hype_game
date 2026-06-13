@@ -380,6 +380,12 @@ class MapDraw:
 			if e is Node3D:
 				var ep := owner_ui.world_to_panel((e as Node3D).global_position, panel)
 				draw_circle(ep, 3.0, Color(1.0, 0.32, 0.32, 0.95))
+		# --- Machine Nemesis (the rival): a bigger blood-red ring + core so it stands out.
+		for n in owner_ui.get_tree().get_nodes_in_group(Groups.NEMESIS):
+			if n is Node3D:
+				var npos := owner_ui.world_to_panel((n as Node3D).global_position, panel)
+				draw_arc(npos, 7.0, 0.0, TAU, 24, Color(0.95, 0.12, 0.12, 0.95), 2.0)
+				draw_circle(npos, 4.0, Color(0.95, 0.12, 0.12, 0.95))
 		# --- Player arrow.
 		_draw_player(panel)
 		# --- Title + match timer + legend.

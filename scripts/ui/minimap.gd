@@ -206,6 +206,13 @@ func _draw() -> void:
 				Color(1.0, 0.3, 0.3),
 				3.0
 			)
+	# Machine Nemesis (the rival): a pulsing blood-red ring so it reads apart from grunts.
+	for n in get_tree().get_nodes_in_group(Groups.NEMESIS):
+		if n is Node3D:
+			var npos := _to_radar((n as Node3D).global_position, _player.global_position, yaw)
+			var pr: float = 5.0 + 1.5 * (0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.006))
+			draw_arc(c + npos, pr, 0.0, TAU, 20, Color(0.95, 0.12, 0.12, 0.95), 2.0)
+			_blip(c, npos, Color(0.95, 0.12, 0.12), 3.0)
 	# World-event blips (supply cache / miniboss / contested / surge).
 	_draw_event_blips(c, yaw)
 	# Teammates (co-op): green dots; clamped to the rim as an outward chevron when out of range,

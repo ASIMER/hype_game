@@ -1369,6 +1369,10 @@ func _true_death() -> void:
 	# gear-profile lane lands).
 	if is_multiplayer_authority() and MetaProgression.has_method("convert_insured_to_pending"):
 		MetaProgression.convert_insured_to_pending()
+	# Machine Nemesis (Phase 3): the owner reports its at-risk gear to the host so a
+	# surviving rival "wears" + drops it on defeat ("reclaim your armor").
+	if is_multiplayer_authority():
+		NetworkManager.report_nemesis_loss(RaidManager.committed_item_ids())
 	var pid := str(name).to_int()
 	if GameState.is_local_authority_server():
 		_server_handle_death(pid)

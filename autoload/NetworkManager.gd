@@ -528,6 +528,54 @@ func _credit_kill_rpc(enemy_id: String = "") -> void:
 	Progression.credit_kill(enemy_id)
 
 
+# ===================================================== Machine Nemesis (Phase 3)
+## Server-side: grant the Machine Nemesis defeat BOUNTY to `peer` (currency + vendor rep +
+## XP). Routed like the kill credit — the host grants itself directly, a remote killer gets
+## it on ITS OWN machine via rpc_id so its profile/HUD update correctly.
+func grant_nemesis_bounty(peer: int) -> void:
+	if not GameState.is_local_authority_server() or peer <= 0:
+		return
+	if peer == _peer_of_local():
+		_award_nemesis_bounty()
+	else:
+		_grant_nemesis_bounty_rpc.rpc_id(peer)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _grant_nemesis_bounty_rpc() -> void:
+	_award_nemesis_bounty()
+
+
+func _award_nemesis_bounty() -> void:
+	MetaProgression.earn(Settings.NEMESIS_BOUNTY_CURRENCY)
+	MetaProgression.grant_rep(Settings.NEMESIS_BOUNTY_REP)
+	MetaProgression.add_xp(Settings.NEMESIS_BOUNTY_XP, "nemesis_kill")
+
+
+## A peer whose player just truly DIED reports its at-risk (committed) gear ids to the HOST
+## so the NemesisDirector can have the surviving rival "wear" + drop it on defeat ("reclaim
+## your armor"). The host applies directly; a client routes to the host via rpc_id(1).
+func report_nemesis_loss(ids: Array) -> void:
+	if ids.is_empty():
+		return
+	if GameState.is_local_authority_server():
+		_record_nemesis_loss(ids)
+	else:
+		_report_loss_rpc.rpc_id(1, ids)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _report_loss_rpc(ids: Array) -> void:
+	if GameState.is_local_authority_server():
+		_record_nemesis_loss(ids)
+
+
+func _record_nemesis_loss(ids: Array) -> void:
+	var dir: Node = get_node_or_null("/root/NemesisDirector")
+	if dir != null:
+		dir.call("record_lost_gear", ids)
+
+
 ## Walk up from a node (hurtbox/weapon/player) to the owning player and return its
 ## peer id (the player node is named str(peer_id)). 0 = no player owner.
 func _peer_of(node: Node) -> int:
