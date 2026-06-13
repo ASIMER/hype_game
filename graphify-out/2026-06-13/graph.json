@@ -1887,7 +1887,7 @@
       "label": "Run / test / validate (most important for a new session)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L18",
+      "source_location": "L16",
       "id": "claude_run_test_validate_most_important_for_a_new_session",
       "community": 59,
       "norm_label": "run / test / validate (most important for a new session)"
@@ -1896,7 +1896,7 @@
       "label": "Quality gates (linters, hooks, golden snapshot \u2014 docs/AUDIT.md is the full audit)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L42",
+      "source_location": "L40",
       "id": "claude_quality_gates_linters_hooks_golden_snapshot_docs_audit_md_is_the_full_audit",
       "community": 59,
       "norm_label": "quality gates (linters, hooks, golden snapshot \u2014 docs/audit.md is the full audit)"
@@ -1905,7 +1905,7 @@
       "label": "Release / packaging (portable Windows + macOS builds)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L48",
+      "source_location": "L46",
       "id": "claude_release_packaging_portable_windows_macos_builds",
       "community": 59,
       "norm_label": "release / packaging (portable windows + macos builds)"
@@ -1914,7 +1914,7 @@
       "label": "Self-play harness in 6 lines (how to actually test gameplay)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L51",
+      "source_location": "L49",
       "id": "claude_self_play_harness_in_6_lines_how_to_actually_test_gameplay",
       "community": 59,
       "norm_label": "self-play harness in 6 lines (how to actually test gameplay)"
@@ -1923,7 +1923,7 @@
       "label": "Architecture at a glance",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L61",
+      "source_location": "L59",
       "id": "claude_architecture_at_a_glance",
       "community": 59,
       "norm_label": "architecture at a glance"
@@ -1932,7 +1932,7 @@
       "label": "Localization (en base + ru; scalable)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L99",
+      "source_location": "L97",
       "id": "claude_localization_en_base_ru_scalable",
       "community": 59,
       "norm_label": "localization (en base + ru; scalable)"
@@ -1941,7 +1941,7 @@
       "label": "UI look (\"military glass\" \u2014 theme-first)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L102",
+      "source_location": "L100",
       "id": "claude_ui_look_military_glass_theme_first",
       "community": 59,
       "norm_label": "ui look (\"military glass\" \u2014 theme-first)"
@@ -1950,7 +1950,7 @@
       "label": "Top conventions & gotchas",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L108",
+      "source_location": "L106",
       "id": "claude_top_conventions_gotchas",
       "community": 59,
       "norm_label": "top conventions & gotchas"
@@ -1959,7 +1959,7 @@
       "label": "Parallel work with agent teams",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L122",
+      "source_location": "L120",
       "id": "claude_parallel_work_with_agent_teams",
       "community": 59,
       "norm_label": "parallel work with agent teams"
@@ -1968,7 +1968,7 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L125",
+      "source_location": "L123",
       "id": "claude_graphify",
       "community": 59,
       "norm_label": "graphify"
@@ -6396,9 +6396,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L47",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_check"
+      "target": "agent_loot_audit_check",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6406,9 +6406,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L78",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_clear_enemies"
+      "target": "agent_loot_audit_clear_enemies",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6416,9 +6416,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L67",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_climb_flight"
+      "target": "agent_loot_audit_climb_flight",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6426,9 +6426,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L88",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_mantle_chain"
+      "target": "agent_loot_audit_mantle_chain",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6436,9 +6436,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L43",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_player_y"
+      "target": "agent_loot_audit_player_y",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6446,9 +6446,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L18",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_send"
+      "target": "agent_loot_audit_send",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6456,9 +6456,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L31",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_wait_drivable"
+      "target": "agent_loot_audit_wait_drivable",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -6466,9 +6466,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L54",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit",
-      "target": "agent_loot_audit_walk_to"
+      "target": "agent_loot_audit_walk_to",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -6476,9 +6476,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L1",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_rationale_1",
-      "target": "agent_loot_audit"
+      "target": "agent_loot_audit",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6487,9 +6487,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L82",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_clear_enemies",
-      "target": "agent_loot_audit_send"
+      "target": "agent_loot_audit_send",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6498,9 +6498,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L72",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_climb_flight",
-      "target": "agent_loot_audit_send"
+      "target": "agent_loot_audit_send",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6509,9 +6509,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L94",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_mantle_chain",
-      "target": "agent_loot_audit_send"
+      "target": "agent_loot_audit_send",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6520,9 +6520,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L44",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_player_y",
-      "target": "agent_loot_audit_send"
+      "target": "agent_loot_audit_send",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6531,9 +6531,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L35",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_wait_drivable",
-      "target": "agent_loot_audit_send"
+      "target": "agent_loot_audit_send",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6542,9 +6542,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L60",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_walk_to",
-      "target": "agent_loot_audit_send"
+      "target": "agent_loot_audit_send",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6553,9 +6553,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L70",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_climb_flight",
-      "target": "agent_loot_audit_player_y"
+      "target": "agent_loot_audit_player_y",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -6564,9 +6564,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L109",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_mantle_chain",
-      "target": "agent_loot_audit_player_y"
+      "target": "agent_loot_audit_player_y",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -6574,9 +6574,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L55",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_rationale_55",
-      "target": "agent_loot_audit_walk_to"
+      "target": "agent_loot_audit_walk_to",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -6584,9 +6584,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L68",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_rationale_68",
-      "target": "agent_loot_audit_climb_flight"
+      "target": "agent_loot_audit_climb_flight",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -6594,9 +6594,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L79",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_rationale_79",
-      "target": "agent_loot_audit_clear_enemies"
+      "target": "agent_loot_audit_clear_enemies",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -6604,9 +6604,9 @@
       "source_file": "tools/agent/loot_audit.py",
       "source_location": "L89",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agent_loot_audit_rationale_89",
-      "target": "agent_loot_audit_mantle_chain"
+      "target": "agent_loot_audit_mantle_chain",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -7495,9 +7495,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L534",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_glass_break"
+      "target": "audio_gen_audio_gen_glass_break",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -7910,9 +7910,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L534",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_glass_break",
-      "target": "float"
+      "target": "float",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -8240,9 +8240,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L550",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_sine"
+      "target": "audio_gen_audio_sine",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -8372,9 +8372,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L540",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_noise"
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -8559,9 +8559,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L542",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_adsr"
+      "target": "audio_gen_audio_adsr",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9028,9 +9028,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L541",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_highpass"
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9170,9 +9170,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L558",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_glass_break",
-      "target": "audio_gen_audio_fade"
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9565,9 +9565,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L535",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_535",
-      "target": "audio_gen_audio_gen_glass_break"
+      "target": "audio_gen_audio_gen_glass_break",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -13940,5 +13940,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "abe340b2055c91e1873ee88f6b73ba15ebec98a3"
+  "built_at_commit": "241def74659f6323c9a69560c78be36a02a8a1a7"
 }
