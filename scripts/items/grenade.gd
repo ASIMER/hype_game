@@ -133,7 +133,12 @@ func _apply_radial_damage(center: Vector3, damage: float, radius: float) -> void
 			continue
 		# Linear falloff from 1.0 at centre to 0.25 at the rim.
 		var falloff := lerpf(1.0, 0.25, clampf(dist / radius, 0.0, 1.0))
-		health.take_damage(damage * falloff, _thrower)
+		var dmg := damage * falloff
+		# Machine Nemesis "blast_hard" learned counter shrugs off explosives (duck-typed; a
+		# non-nemesis returns dmg unchanged). Source stays _thrower → kill-attribution intact.
+		if e.has_method("filter_blast"):
+			dmg = e.filter_blast(dmg)
+		health.take_damage(dmg, _thrower)
 
 
 ## Where to parent the explosion FX so it lives in the world, not under us

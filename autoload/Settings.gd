@@ -903,9 +903,15 @@ const NEMESIS_MAX_TIER: int = 5  # leveling cap (each survival = +1 tier)
 const NEMESIS_TIER_HEALTH: float = 0.35  # health_mult = 1 + tier * this (a returning rival is tankier)
 const NEMESIS_RETURN_DELAY: float = 25.0  # s after match start before the rival is injected
 const NEMESIS_EMP_STUN_MULT: float = 0.35  # "emp_hard" trait: EMP stun lasts this fraction
+const NEMESIS_BLAST_MULT: float = 0.5  # "blast_hard" trait: incoming grenade/AoE damage fraction
+const NEMESIS_KEEN_THRESHOLD: float = 8.0  # s a candidate must stay UN-chased to teach "keen"
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
+## "weakpoint_armored" sets the WeakPoint Hurtbox damage_multiplier to an ABSOLUTE armor_mult
+## (the former weak spot is now armored, ~0.8× body — works for any base 2.0/2.5/×3).
 const NEMESIS_TRAIT_STATS := {
+	"weakpoint_armored": {"armor_mult": 0.8},
+	"blast_hard": {"blast_mult": 0.5},
 	"keen": {"detect_mult": 1.4},
 }
 

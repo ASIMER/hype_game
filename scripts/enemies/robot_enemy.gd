@@ -1561,14 +1561,33 @@ func _parse_nemesis_from_name() -> void:
 
 
 ## Nemesis tier/trait stat counters, layered after the elite mults (same pre-refill window).
-## Tier makes a returning rival tankier; "keen" sharpens its senses. EMP/blast resists are
-## read at their own resist sites (apply_stun), not here. Harmless to compute on every peer.
+## Tier makes a returning rival tankier; "keen" sharpens its senses; "weakpoint_armored"
+## armors the former weak spot. EMP/blast resists are read at their own sites (apply_stun /
+## filter_blast), not here. Harmless to compute on every peer (the WeakPoint Hurtbox is a
+## scene child, already _ready by the time this runs in the parent's _ready).
 func _apply_nemesis_stats() -> void:
 	if not is_nemesis:
 		return
 	_stat_health *= 1.0 + float(nemesis_tier) * Settings.NEMESIS_TIER_HEALTH
 	if "keen" in nemesis_traits:
 		_stat_detect *= float(Settings.NEMESIS_TRAIT_STATS.get("keen", {}).get("detect_mult", 1.0))
+	if "weakpoint_armored" in nemesis_traits:
+		var wp := get_node_or_null(Groups.NODE_WEAKPOINT)
+		if wp != null and "damage_multiplier" in wp:
+			# ABSOLUTE armor value (not a base mult) — works for any 2.0/2.5/×3 weak-point.
+			wp.damage_multiplier = float(
+				Settings.NEMESIS_TRAIT_STATS.get("weakpoint_armored", {}).get("armor_mult", 0.8)
+			)
+
+
+## Blast/AoE resist hook for the "blast_hard" learned counter — called duck-typed by the
+## grenade's radial-damage loop BEFORE Health.take_damage (the grenade's damage source is the
+## thrower, not the grenade, so this can't live in Health.damage_filter). Identity on a
+## non-blast-hard enemy, so it's safe to call on every enemy.
+func filter_blast(dmg: float) -> float:
+	if "blast_hard" in nemesis_traits:
+		return dmg * Settings.NEMESIS_BLAST_MULT
+	return dmg
 
 
 ## Render the rival's scars: a universal charred tint (reads as battle-worn on .glb bodies

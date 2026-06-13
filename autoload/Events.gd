@@ -5,6 +5,10 @@ extends Node
 # --- Combat ---
 signal damage_dealt(target: Node, amount: float, source: Node)
 signal entity_died(entity: Node, killer: Node)
+## A weak-point Hurtbox (damage_multiplier > 1) was hit — fires on the AUTHORITY (the side
+## that applies the damage), so server-side listeners (the Machine Nemesis adaptation) can
+## tell a precision hit from a body hit. `damage` is the post-multiplier amount.
+signal weak_point_hit(enemy: Node, damage: float)
 signal weapon_fired(shooter: Node, weapon_id: String)
 ## Floating damage feedback (world position of the hit). is_crit styles it.
 signal damage_number(world_pos: Vector3, amount: float, is_crit: bool)

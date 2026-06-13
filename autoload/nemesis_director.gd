@@ -11,8 +11,9 @@ extends Node
 ## node NAME (NemesisProfile token), so co-op clients rebuild the IDENTICAL body for free —
 ## the director never sends a bespoke RPC, and clients never own/save a profile.
 ##
-## MVP scope: ONE learned trait end-to-end (emp_hard), birth on extraction, one return with
-## scars + tier health. No extraction ambush / lost-gear-core drop / codex yet (Phases 2-3).
+## Phase 2 scope: FOUR learned counters via a damage-type histogram + argmax (emp_hard /
+## weakpoint_armored / blast_hard / keen), tier-leveling that adds one new counter + scars
+## per survival. No extraction ambush / lost-gear-core drop / codex yet (Phase 3).
 ##
 ## Registered in project.godot as autoload "NemesisDirector". The WaveManager registers
 ## itself here on _ready (parallel to AIDirector). (No class_name — the singleton name would
@@ -31,8 +32,12 @@ var _profile: NemesisProfile = null
 ## The node we're accumulating survival telemetry for this raid — a fresh candidate OR the
 ## returned rival (_active). At raid end, if it's still alive, it births/levels the profile.
 var _tracked: Node = null
-var _tracked_emp: int = 0
 var _tracked_dmg: Dictionary = {}  # peer_id -> cumulative damage (grudge attribution)
+# Damage-type histogram for THIS raid → argmax picks the next learned counter at birth/level.
+var _tracked_emp: int = 0  # EMP stuns landed → emp_hard
+var _tracked_weakpoint: int = 0  # weak-point hits → weakpoint_armored
+var _tracked_blast: int = 0  # grenade detonations near it → blast_hard
+var _tracked_stealth: float = 0.0  # s it stayed UN-chased (snuck past) → keen
 
 ## The rival node injected this raid (if any) — death of it = DEFEAT.
 var _active: Node = null
@@ -48,6 +53,8 @@ func _ready() -> void:
 	Events.match_started.connect(_on_match_started)
 	Events.damage_dealt.connect(_on_damage_dealt)
 	Events.enemy_stunned.connect(_on_enemy_stunned)
+	Events.weak_point_hit.connect(_on_weak_point_hit)
+	Events.grenade_exploded.connect(_on_grenade_exploded)
 	Events.entity_died.connect(_on_entity_died)
 	Events.extraction_completed.connect(_on_raid_over.unbind(1))
 	Events.match_lost.connect(_on_raid_over)
@@ -57,6 +64,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not GameState.is_local_authority_server():
 		return
+	# "keen" telemetry: accumulate time the candidate stays UN-chased (the squad sneaks past).
+	if is_instance_valid(_tracked) and "current_state" in _tracked:
+		var st: int = int(_tracked.current_state)
+		if st == 0 or st == 3:  # PATROL / INVESTIGATE (not CHASE=1 / ATTACK=2)
+			_tracked_stealth += delta
 	if _inject_timer <= 0.0:
 		return
 	_inject_timer -= delta
@@ -73,8 +85,7 @@ func set_wave_manager(wm) -> void:
 func _on_match_started() -> void:
 	# Reset per-raid state, then load the saved rival (server-side only).
 	_tracked = null
-	_tracked_emp = 0
-	_tracked_dmg = {}
+	_reset_telemetry()
 	_active = null
 	_injected = false
 	_inject_attempts = 0
@@ -107,8 +118,7 @@ func _try_inject() -> void:
 		return
 	_active = node
 	_tracked = node  # fighting the returned rival can LEVEL it if it survives again
-	_tracked_emp = 0
-	_tracked_dmg = {}
+	_reset_telemetry()
 	Events.nemesis_returned.emit(_profile.serial, _profile.title, node)
 	Events.notify.emit(tr("%s has found you.") % _nemesis_name(_profile), 2)
 
@@ -144,6 +154,27 @@ func _on_enemy_stunned(enemy: Node, _duration: float) -> void:
 		_tracked_emp += 1  # the squad keeps EMP-locking it → it learns "emp_hard"
 
 
+func _on_weak_point_hit(enemy: Node, _damage: float) -> void:
+	if GameState.is_local_authority_server() and enemy == _tracked:
+		_tracked_weakpoint += 1  # the squad snipes its weak spot → it learns "weakpoint_armored"
+
+
+func _on_grenade_exploded(world_pos: Vector3, _damage: float, radius: float) -> void:
+	if not GameState.is_local_authority_server() or not is_instance_valid(_tracked):
+		return
+	if (_tracked as Node3D).global_position.distance_to(world_pos) <= radius:
+		_tracked_blast += 1  # the squad grenades it → it learns "blast_hard"
+
+
+## Zero the per-raid damage-type histogram (called wherever the tracked candidate changes).
+func _reset_telemetry() -> void:
+	_tracked_emp = 0
+	_tracked_weakpoint = 0
+	_tracked_blast = 0
+	_tracked_stealth = 0.0
+	_tracked_dmg = {}
+
+
 func _on_entity_died(entity: Node, _killer: Node) -> void:
 	if not GameState.is_local_authority_server():
 		return
@@ -177,14 +208,37 @@ func _birth_or_level(node: Node) -> void:
 	else:
 		p.tier = mini(p.tier + 1, Settings.NEMESIS_MAX_TIER)
 		p.scar_seed = absi(p.scar_seed * 1103515245 + 12345) & 0x7fffffff  # new scar per level
-	if _tracked_emp > 0 and "emp_hard" not in p.traits:
-		p.traits.append("emp_hard")  # learned counter (MVP: EMP)
+	# Learn ONE new counter this survival — the argmax of how the squad fought it this raid.
+	var learned: String = _pick_learned_trait(p.traits)
+	if learned != "":
+		p.traits.append(learned)
 	p.title = NemesisProfile.make_title(p.tier)
 	p.grudge_peer = _top_damager()
 	_profile = p
 	_save()
 	Events.nemesis_born.emit(p.serial, p.title)
 	Events.notify.emit(tr("%s escaped. It will remember.") % _nemesis_name(p), 2)
+
+
+## Argmax over this raid's damage-type histogram → the dominant tactic's counter trait, if
+## not already owned. Keen's seconds are normalized by the threshold so they're comparable to
+## the hit COUNTS (a single hit-type ≈ score 1; keen only out-scores it if the squad avoided
+## the rival for well past the threshold). Returns "" if nothing new to learn.
+func _pick_learned_trait(owned: Array) -> String:
+	var scored: Array = []
+	if _tracked_emp > 0:
+		scored.append(["emp_hard", float(_tracked_emp)])
+	if _tracked_weakpoint > 0:
+		scored.append(["weakpoint_armored", float(_tracked_weakpoint)])
+	if _tracked_blast > 0:
+		scored.append(["blast_hard", float(_tracked_blast)])
+	if _tracked_stealth >= Settings.NEMESIS_KEEN_THRESHOLD:
+		scored.append(["keen", _tracked_stealth / Settings.NEMESIS_KEEN_THRESHOLD])
+	scored.sort_custom(func(a, b): return float(a[1]) > float(b[1]))
+	for entry in scored:
+		if String(entry[0]) not in owned:
+			return String(entry[0])
+	return ""
 
 
 func _scar_seed_for(node: Node) -> int:
@@ -288,6 +342,17 @@ func debug_force_birth(archetype: String, scene_path: String, traits: Array) -> 
 	return debug_state()
 
 
+## Inject the damage-type histogram directly (harness) so the learning/argmax/leveling logic
+## is testable without depending on landing live grenades on a moving target. Targets the
+## current _tracked candidate's counters. Returns the state dict.
+func debug_set_telemetry(emp: int, weakpoint: int, blast: int, stealth: float) -> Dictionary:
+	_tracked_emp = emp
+	_tracked_weakpoint = weakpoint
+	_tracked_blast = blast
+	_tracked_stealth = stealth
+	return debug_state()
+
+
 ## Simulate raid-end (harness): births/levels from the live tracked candidate, exactly the
 ## organic extraction path — so the candidate→telemetry→birth chain is testable without
 ## scripting a full extraction hold. Returns the state dict.
@@ -315,6 +380,9 @@ func debug_state() -> Dictionary:
 		"tracked": is_instance_valid(_tracked),
 		"tracked_name": str(_tracked.name) if is_instance_valid(_tracked) else "",
 		"tracked_emp": _tracked_emp,
+		"tracked_weakpoint": _tracked_weakpoint,
+		"tracked_blast": _tracked_blast,
+		"tracked_stealth": _tracked_stealth,
 		"birth_done": _birth_done,
 		"wave_mgr": is_instance_valid(_wave_mgr),
 		"last_err": _last_err,

@@ -29,7 +29,7 @@ func apply_hit(amount: float, source: Node = null) -> void:
 			# Forward the hit to the authority instead of applying locally.
 			_request_authority_hit.rpc_id(owner_node.get_multiplayer_authority(), amount)
 			return
-	_health.take_damage(amount * damage_multiplier, source)
+	_apply(amount, source)
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -37,4 +37,14 @@ func _request_authority_hit(amount: float) -> void:
 	var owner_node := _health.get_parent()
 	if owner_node and not owner_node.is_multiplayer_authority():
 		return
-	_health.take_damage(amount * damage_multiplier, null)
+	_apply(amount, null)
+
+
+## Apply the (multiplied) damage on the authority. A weak-point hurtbox (damage_multiplier
+## > 1) also emits Events.weak_point_hit so server-side listeners (the Machine Nemesis
+## adaptation) can tell a precision hit from a body hit. Single site → no double-count.
+func _apply(amount: float, source: Node) -> void:
+	var dealt := amount * damage_multiplier
+	if damage_multiplier > 1.0:
+		Events.weak_point_hit.emit(_health.get_parent(), dealt)
+	_health.take_damage(dealt, source)

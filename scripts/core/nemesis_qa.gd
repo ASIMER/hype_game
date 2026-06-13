@@ -41,6 +41,16 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 			return _ok(dir.call("debug_inject"))
 		"raid_over":
 			return _ok(dir.call("debug_raid_over"))
+		"set_telemetry":
+			return _ok(
+				dir.call(
+					"debug_set_telemetry",
+					int(json.get("emp", 0)),
+					int(json.get("weakpoint", 0)),
+					int(json.get("blast", 0)),
+					float(json.get("stealth", 0.0))
+				)
+			)
 		_:
 			return _ok(dir.call("debug_state"))
 
