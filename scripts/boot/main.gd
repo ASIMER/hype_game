@@ -104,6 +104,8 @@ func _build_persistent_overlays() -> void:
 	# "Military glass" FX veil (scanline/grain/vignette over the shell UI). Script-only
 	# CanvasLayer; self-gates on Settings.ui_fx_enabled + shell-vs-raid state.
 	add_child((load("res://scripts/ui/fx_overlay.gd") as GDScript).new())
+	# Cinematic raid vignette (dark cool edges) — the grade cue, shown only DURING a raid.
+	add_child((load("res://scripts/ui/raid_vignette.gd") as GDScript).new())
 	# Quest reward popup — self-shows on Events.quest_reward_granted (Iter 3). Persistent so it
 	# works from both the QUESTS tab and the QuestDetail modal claim paths.
 	add_child((load("res://scripts/ui/reward_popup.gd") as GDScript).new())

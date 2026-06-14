@@ -72,16 +72,16 @@ var _captured := false
 # back to these whenever a NEW match begins, so a raid never inherits the previous
 # raid's storm darkness after a restart. Capture then scales the storm tween from
 # the live values, but these are the source-of-truth fallbacks/resets.
-const DAY_AMBIENT := 0.95
-const DAY_FOG_DENSITY := 0.0008
-const DAY_FOG_COLOR := Color(0.62, 0.66, 0.72, 1.0)
+const DAY_AMBIENT := 0.6
+const DAY_FOG_DENSITY := 0.001
+const DAY_FOG_COLOR := Color(0.54, 0.59, 0.67, 1.0)
 const DAY_GLOW := 0.5
 const DAY_SUN_ENERGY := 1.35
-const DAY_CUMULUS_COVERAGE := 0.55
-const DAY_CUMULUS_THICKNESS := 0.0243
-const DAY_CUMULUS_INTENSITY := 0.7
-const DAY_ATM_DARKNESS := 0.45
-const DAY_SKYDOME_EXPOSURE := 1.0
+const DAY_CUMULUS_COVERAGE := 0.66
+const DAY_CUMULUS_THICKNESS := 0.04
+const DAY_CUMULUS_INTENSITY := 0.42
+const DAY_ATM_DARKNESS := 0.72
+const DAY_SKYDOME_EXPOSURE := 0.8
 
 # Day-night drive (per-frame, from DayNight.sun_ratio). The sun energy + ambient + sun pitch
 # lerp between a NIGHT floor (sun_ratio 0) and the bright-DAY top (sun_ratio 1) — DAY_SUN_ENERGY

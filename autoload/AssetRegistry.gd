@@ -46,6 +46,7 @@ const CATALOG := {
 		"prim": Prim.CAPSULE,
 		"size": Vector3(0.9, 1.6, 0.9),
 		"color": Color(0.85, 0.25, 0.2),
+		"reskin_machine": true,
 		"model_scale": 0.33,
 		"model_rot_deg": Vector3(0, 180, 0),
 		"model_offset": Vector3(0, -0.7, 0)
@@ -58,6 +59,7 @@ const CATALOG := {
 		"prim": Prim.BOX,
 		"size": Vector3(1.4, 1.8, 1.4),
 		"color": Color(0.6, 0.15, 0.15),
+		"reskin_machine": true,
 		"model_scale": 0.36,
 		"model_rot_deg": Vector3(0, 180, 0),
 		"model_offset": Vector3(0, -0.9, 0)
@@ -194,12 +196,13 @@ const CATALOG := {
 	},
 	"robot_elite":
 	{
-		# Elite — a bigger, gold-trimmed variant of the RobotExpressive grunt model (like heavy).
+		# Elite — a bigger variant of the RobotExpressive grunt model (like heavy), de-toyed.
 		"model": "res://assets/models/robots/grunt.glb",
 		"icon": "",
 		"prim": Prim.BOX,
 		"size": Vector3(1.0, 1.7, 1.0),
 		"color": Color(0.92, 0.72, 0.18),
+		"reskin_machine": true,
 		"model_scale": 0.42,
 		"model_rot_deg": Vector3(0, 180, 0),
 		"model_offset": Vector3(0, -0.85, 0)
@@ -688,6 +691,9 @@ func _fit_model(glb: Node, entry: Dictionary) -> Node3D:
 	var albedo: Variant = entry.get("model_albedo", null)
 	if albedo is Color:
 		_retint_untextured(glb, albedo)
+	# De-toy pass: the orange RobotExpressive mascot (grunt/heavy) → dark gunmetal machine.
+	if bool(entry.get("reskin_machine", false)):
+		_machine_reskin(glb, entry.get("color", Color(0.6, 0.6, 0.6)))
 	return root
 
 
@@ -707,6 +713,45 @@ func _retint_untextured(node: Node, albedo: Color) -> void:
 					mi.set_surface_override_material(s, tinted)
 	for c in node.get_children():
 		_retint_untextured(c, albedo)
+
+
+## Re-skin a "toy" robot GLB (the orange Godot RobotExpressive mascot, used by grunt/heavy)
+## into a menacing dark MACHINE: dark desaturated gunmetal on the body (faint identity tint +
+## real metallic/roughness), HOT emissive accent on any eye/emissive surface (the "cold world +
+## one hot accent" signature). Per-surface overrides (the _retint_untextured pattern) so the
+## hit-flash still collects + duplicates them per instance. Visual only.
+func _machine_reskin(node: Node, ident: Color) -> void:
+	if node is MeshInstance3D:
+		# material_override (not surface overrides) — the RobotExpressive parts carry their own
+		# material_override which outranks surface overrides, so only this beats the toy colormap.
+		# It's also exactly what the hit-flash collects + duplicates per instance.
+		(node as MeshInstance3D).material_override = _machine_mat(ident)
+	for c in node.get_children():
+		_machine_reskin(c, ident)
+
+
+## The dark gunmetal MACHINE material: a cool desaturated steel faintly tinted toward the
+## enemy's identity hue, with real metallic/roughness so it reads as worn metal (not flat toy
+## plastic). One fresh instance per part per enemy (the hit-flash duplicate contract).
+func _machine_mat(ident: Color) -> StandardMaterial3D:
+	var d := StandardMaterial3D.new()
+	# MID-value desaturated steel (not near-black): the flat-dark version read as a featureless
+	# "black blob" that blended into the dark ground — keep it gunmetal but bright enough to
+	# read as metal + contrast against terrain. Faintly tinted toward the identity hue.
+	var steel := Color(0.4, 0.43, 0.48)
+	d.albedo_color = steel.lerp(
+		Color(0.5 + ident.r * 0.3, 0.45 + ident.g * 0.25, 0.4 + ident.b * 0.25), 0.3
+	)
+	# Matte painted metal, not chrome: moderate metallic + high roughness so curved domes read
+	# as worn metal instead of mirroring the bright sky.
+	d.metallic = 0.45
+	d.roughness = 0.72
+	d.metallic_specular = 0.3
+	# A faint hot self-glow so a dark machine never collapses into a pure black silhouette.
+	d.emission_enabled = true
+	d.emission = Color(1.0, 0.45, 0.15)
+	d.emission_energy_multiplier = 0.18
+	return d
 
 
 # Merged-static-model cache: id -> ArrayMesh (or null when the model can't merge).
