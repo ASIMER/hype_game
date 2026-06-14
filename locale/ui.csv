@@ -804,3 +804,5 @@ CR %d","%s
 "⚡ POWER CORE DROPPED — CARRY IT OUT","⚡ ВЫПАЛО ЯДРО — ВЫНЕСИ ЕГО"
 "Power Core extracted!","Ядро вынесено!"
 "Another machine takes up the grudge.","Другая машина принимает обиду."
+"ABSORB","ПОГЛОЩЕНИЕ"
+"ABSORB BURST READY [%s]","ВЫБРОС ГОТОВ [%s]"

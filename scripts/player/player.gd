@@ -90,6 +90,9 @@ var stance: int = Stance.STAND
 ## so remotes render this player's chosen look. The body is (re)built whenever it changes.
 var cosmetics: Dictionary = {}
 var _built_cos_str: String = ""  # signature of the cosmetics the body was last built from
+## Absorbed enemy parts {enemy_id: count} — owner-replicated trophy; the Absorb node owns all
+## logic (this lives here only so the SceneReplicationConfig can sync it). See player_absorb.gd.
+var absorbed: Dictionary = {}
 var _slide_timer: float = 0.0  # counts down during a SLIDE
 var _slide_dir: Vector3 = Vector3.ZERO  # locked horizontal entry direction of the slide
 # Dodge-roll (Stance.ROLL) — authority-local except the replicated stance int itself.

@@ -969,6 +969,46 @@ const POWER_CORE_NOISE_MAX: float = 30.0  # …ramped to this
 const POWER_CORE_RAMP: float = 20.0  # s to ramp the beacon from MIN to MAX
 const POWER_CORE_NOISE_CD: float = 1.5  # s between beacon noise pulses
 const POWER_CORE_PICKUP_RADIUS: float = 2.5  # m — walk this close (server-checked) to grab it
+
+# --- Absorption mechanic (signature: consume a dead enemy's part) -------------
+## On a kill the killer ABSORBS the dead enemy's signature part — a homing FX flies from the
+## corpse onto a growing trophy CLUSTER on the player's BACK (deterministic, replicated via the
+## owner-authoritative `absorbed` dict; every peer rebuilds the identical cluster). Parts cap PER
+## TYPE and also fill a CHARGE meter → a burst AoE. Keyed on enemy_id (robot_enemy.enemy_id); the
+## `part` token selects a shape in ProceduralAbsorbed; colors are SATURATED so they pop under the
+## cold cinematic grade. cap = max of that part on the back (the user's "max 8 spider legs").
+const ABSORB_PARTS := {
+	"robot_sandworm": {"part": "maw", "color": Color(1.0, 0.62, 0.18), "cap": 4},
+	"robot_scarab": {"part": "shell", "color": Color(0.95, 0.32, 0.14), "cap": 6},
+	"robot_dustdevil": {"part": "vane", "color": Color(0.95, 0.62, 0.22), "cap": 6},
+	"robot_frosthound": {"part": "fin", "color": Color(0.70, 0.88, 0.98), "cap": 8},
+	"robot_kappa": {"part": "claw", "color": Color(0.45, 0.95, 0.55), "cap": 6},
+	"robot_raiju": {"part": "blade", "color": Color(0.40, 0.90, 1.0), "cap": 8},
+	"robot_oni": {"part": "horn", "color": Color(0.92, 0.74, 0.30), "cap": 3},
+	"robot_avalanche": {"part": "fist", "color": Color(0.45, 0.74, 1.0), "cap": 2},
+	"robot_cryomortar": {"part": "barrel", "color": Color(0.55, 0.85, 1.0), "cap": 3},
+	"robot_snow_golem": {"part": "spike", "color": Color(0.62, 0.88, 1.0), "cap": 2},
+	"robot_dune_warden": {"part": "barrel", "color": Color(0.95, 0.62, 0.22), "cap": 2},
+	"robot_oni_chief": {"part": "spike", "color": Color(0.95, 0.22, 0.18), "cap": 2},
+	"robot_specter": {"part": "rotor", "color": Color(0.40, 0.90, 1.0), "cap": 4},
+	"robot_caller": {"part": "antenna", "color": Color(0.95, 0.58, 0.20), "cap": 6},
+	"robot_wasp": {"part": "rotor", "color": Color(1.0, 0.55, 0.18), "cap": 4},
+	"robot_bastion": {"part": "barrel", "color": Color(1.0, 0.55, 0.18), "cap": 3},
+	"robot_grunt": {"part": "spike", "color": Color(0.80, 0.50, 1.0), "cap": 6},
+	"robot_heavy": {"part": "fist", "color": Color(0.78, 0.45, 1.0), "cap": 3},
+	"robot_tick": {"part": "claw", "color": Color(0.75, 0.82, 0.55), "cap": 6},
+	"robot_elite": {"part": "blade", "color": Color(0.85, 0.40, 1.0), "cap": 4},
+	"robot_boss": {"part": "horn", "color": Color(0.92, 0.22, 0.95), "cap": 3},
+}
+const ABSORB_FALLBACK := {"part": "scrap", "color": Color(0.62, 0.64, 0.70), "cap": 5}
+const ABSORB_CLUSTER_MAX: int = 28  # hard cap on parts rendered on the back (perf + tidy)
+const ABSORB_CHARGE_PER_PART: float = 8.0  # meter fill per kill (a capped type still charges)
+const ABSORB_CHARGE_MAX: float = 100.0  # full meter → burst ready (~13 kills)
+const ABSORB_ULT_RADIUS: float = 7.0  # m — burst AoE (bigger than the avalanche slam = ultimate)
+const ABSORB_ULT_DAMAGE: float = 60.0  # centre damage (0.4 falloff to the rim)
+const ABSORB_ULT_STAGGER: float = 1.6  # s stun on caught enemies (apply_stun)
+const ABSORB_FX_DIST: float = 70.0  # m — skip the homing streak FX beyond this (perf)
+
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
 ## "weakpoint_armored" sets the WeakPoint Hurtbox damage_multiplier to an ABSOLUTE armor_mult
