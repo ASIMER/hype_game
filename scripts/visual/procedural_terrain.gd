@@ -868,6 +868,26 @@ void fragment() {
 	vec3 ng = tri_normal_world(texg_normal, v_wpos, wn, bw, scaleg, dom, duv);
 	vec3 worldN = normalize(mix(mix(mix(n0, n1, dirt_w), ng, gravel_w), n2, rock_w));
 
+	// ---- PER-BIOME GROUND COLOUR (golden-safe: albedo only, heights untouched) -------------
+	// The 4 quadrants split at world (80, 80) — matches WorldBounds.biome_at. Recolour the
+	// ground per biome so biomes read as DIFFERENT places (urban grey-concrete / desert ochre /
+	// snow cool off-white / rain dark wet-slate), smooth-blended ~16 m across the seams. The
+	// recolour is by LUMINANCE (keeps the texture's relief/variation) toward each biome's hue.
+	float bx = smoothstep(72.0, 88.0, v_wpos.x);
+	float bz = smoothstep(72.0, 88.0, v_wpos.z);
+	// Saturated/distinct biome hues so each biome survives the global cold grade (desert must
+	// still read WARM ochre, snow cold-bright — the grade pulls everything cool otherwise).
+	vec3 bc_urban = vec3(0.32, 0.33, 0.36);
+	vec3 bc_desert = vec3(0.70, 0.48, 0.20);
+	vec3 bc_snow = vec3(0.74, 0.80, 0.92);
+	vec3 bc_rain = vec3(0.24, 0.29, 0.37);
+	vec3 biome_col = mix(mix(bc_urban, bc_desert, bz), mix(bc_snow, bc_rain, bz), bx);
+	float bl = dot(base, vec3(0.299, 0.587, 0.114));
+	base = mix(base, biome_col * bl * 2.0, 0.8);
+	// Wet sheen for the rain quadrant: lower the floor roughness so it reads glossy/wet.
+	float wet = bx * bz;
+	rough = mix(rough, rough * 0.55, wet * 0.6);
+
 	ALBEDO = base;
 	ROUGHNESS = clamp(rough, 0.04, 1.0);
 	METALLIC = 0.0;

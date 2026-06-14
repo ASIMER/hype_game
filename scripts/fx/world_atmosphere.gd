@@ -72,7 +72,7 @@ var _captured := false
 # back to these whenever a NEW match begins, so a raid never inherits the previous
 # raid's storm darkness after a restart. Capture then scales the storm tween from
 # the live values, but these are the source-of-truth fallbacks/resets.
-const DAY_AMBIENT := 0.6
+const DAY_AMBIENT := 0.48
 const DAY_FOG_DENSITY := 0.001
 const DAY_FOG_COLOR := Color(0.54, 0.59, 0.67, 1.0)
 const DAY_GLOW := 0.5
@@ -89,8 +89,8 @@ const DAY_SKYDOME_EXPOSURE := 0.8
 # dawn/dusk to steep at noon (the sun rides high mid-day), yaw/roll kept from the captured base.
 const NIGHT_SUN_ENERGY := 0.15
 const NIGHT_AMBIENT := 0.4
-const DAYNIGHT_PITCH_LOW := -15.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0)
-const DAYNIGHT_PITCH_HIGH := -55.0  # sun pitch (deg) at noon (sun_ratio 1)
+const DAYNIGHT_PITCH_LOW := -8.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0) — low golden-hour rake
+const DAYNIGHT_PITCH_HIGH := -42.0  # sun pitch (deg) at noon — kept low so shadows stay long/dramatic
 
 # Storm look targets for the SkyDome.
 const STORM_CUMULUS_COVERAGE := 0.92
