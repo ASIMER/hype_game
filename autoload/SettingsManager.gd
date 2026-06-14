@@ -63,7 +63,7 @@ const DEFAULTS := {
 	"hud_scale": 1.0,  # 0.8..1.4 global UI scale (Window.content_scale_factor)
 	# Camera (third-person rig — also in the Interface tab).
 	"camera_distance": 1.0,  # 0.6..1.4 × default third-person spring length
-	"camera_shoulder": 1.0,  # 0.0..1.0 × over-the-shoulder side offset
+	"camera_shoulder": 0.0,  # 0.0..1.0 × over-the-shoulder side offset (0 = centered behind-back)
 	"default_view": 0,  # 0 third-person, 1 first-person (on spawn)
 	# Audio (linear 0..1)
 	"master_volume": 0.9,
