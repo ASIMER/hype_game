@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "docs/ASSETS.md": {
-    "mtime": 1781560246.5236099,
-    "ast_hash": "60ef2632215b7d52b0fcddd014a3ddfd",
+    "mtime": 1781200396.8791072,
+    "ast_hash": "f8392a2b9f14db14b09ab5ea7a3a6ed1",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/SkyIcon.png": {
@@ -985,8 +985,8 @@
     "semantic_hash": ""
   },
   "tools/lint/golden_world.json": {
-    "mtime": 1781558138.5707676,
-    "ast_hash": "b5fc9df0a57c5cfe3024589e6569a1f2",
+    "mtime": 1781225255.1275358,
+    "ast_hash": "8082a087e28d41dc31495dad84d312c2",
     "semantic_hash": ""
   },
   "docs/AUDIT.md": {
@@ -1057,61 +1057,6 @@
   "assets/audio/glass_break.wav": {
     "mtime": 1781219244.1809082,
     "ast_hash": "ef4e4c13d9e16c40be24b5d19b984bcb",
-    "semantic_hash": ""
-  },
-  "tools/art/fetch_skill_icons.ps1": {
-    "mtime": 1781560095.858821,
-    "ast_hash": "9945a1c0fafe87bac7949c7f9122f960",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/bite.svg": {
-    "mtime": 1781560109.1822815,
-    "ast_hash": "f9a28ca9051e029d03a9ef9d092f5f09",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/blink.svg": {
-    "mtime": 1781560106.6690364,
-    "ast_hash": "317ac15edf08bfa78af47e5cd3bd846d",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/chainshock.svg": {
-    "mtime": 1781560108.7473192,
-    "ast_hash": "cefa5b45a2d938cb1f9e23302d8a8a3f",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/leap.svg": {
-    "mtime": 1781560105.7526278,
-    "ast_hash": "23231b991dba62ef711414d5a7ef12e0",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/mortar.svg": {
-    "mtime": 1781560107.1003463,
-    "ast_hash": "2b2f8a04be1aed64a041b9c9e0dd53e6",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/ram.svg": {
-    "mtime": 1781560108.153435,
-    "ast_hash": "b09546b9bc7db1c05b5405f0c01aa27b",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/recon.svg": {
-    "mtime": 1781560110.2706594,
-    "ast_hash": "0bcfbeb77cd50c0c32e40a7d532380fd",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/shield.svg": {
-    "mtime": 1781560107.7185626,
-    "ast_hash": "0ab0fdd9f36f91389e54590c3a586eb7",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/slam.svg": {
-    "mtime": 1781560106.4633179,
-    "ast_hash": "43d3f3e91e93cbcec4bd6720761c94ea",
-    "semantic_hash": ""
-  },
-  "assets/ui/icons/skills/whirlwind.svg": {
-    "mtime": 1781560109.384187,
-    "ast_hash": "e1b198faa1233603c0ebc127ac8dc139",
     "semantic_hash": ""
   }
 }

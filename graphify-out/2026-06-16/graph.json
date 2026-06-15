@@ -930,24 +930,6 @@
       "norm_label": "strip-bg()"
     },
     {
-      "label": "fetch_skill_icons.ps1",
-      "file_type": "code",
-      "source_file": "tools/art/fetch_skill_icons.ps1",
-      "source_location": "L1",
-      "id": "art_fetch_skill_icons",
-      "community": 86,
-      "norm_label": "fetch_skill_icons.ps1"
-    },
-    {
-      "label": "Strip-Bg()",
-      "file_type": "code",
-      "source_file": "tools/art/fetch_skill_icons.ps1",
-      "source_location": "L27",
-      "id": "art_fetch_skill_icons_strip_bg",
-      "community": 86,
-      "norm_label": "strip-bg()"
-    },
-    {
       "label": "fetch_upgrade_icons.ps1",
       "file_type": "code",
       "source_file": "tools/art/fetch_upgrade_icons.ps1",
@@ -2373,7 +2355,7 @@
       "label": "Deferred (planned, not this batch)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L39",
+      "source_location": "L38",
       "id": "docs_assets_deferred_planned_not_this_batch",
       "community": 60,
       "norm_label": "deferred (planned, not this batch)"
@@ -2382,7 +2364,7 @@
       "label": "Rejected",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L50",
+      "source_location": "L49",
       "id": "docs_assets_rejected",
       "community": 60,
       "norm_label": "rejected"
@@ -2391,7 +2373,7 @@
       "label": "Other vetted sources (for future searches)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L62",
+      "source_location": "L61",
       "id": "docs_assets_other_vetted_sources_for_future_searches",
       "community": 60,
       "norm_label": "other vetted sources (for future searches)"
@@ -2400,7 +2382,7 @@
       "label": "Credits",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L78",
+      "source_location": "L77",
       "id": "docs_assets_credits",
       "community": 60,
       "norm_label": "credits"
@@ -3192,7 +3174,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 56,
       "norm_label": "assetregistry.get_icon",
       "id": "assetregistry_get_icon"
     },
@@ -3348,7 +3330,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 10,
       "norm_label": "extractiondirector._apply_windows",
       "id": "extractiondirector_apply_windows"
     },
@@ -3452,7 +3434,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 56,
       "norm_label": "iconrenderer.render_icon (sync cache)",
       "id": "iconrenderer_render_icon"
     },
@@ -3621,7 +3603,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 56,
       "norm_label": "metaprogression.player_mods",
       "id": "metaprogression_player_mods"
     },
@@ -3829,7 +3811,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 10,
       "norm_label": "serverbrowser.scan_lan",
       "id": "serverbrowser_scan_lan"
     },
@@ -3881,7 +3863,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 10,
       "norm_label": "settings (tunable constants)",
       "id": "settings_settings"
     },
@@ -4726,7 +4708,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "extractionzone",
       "id": "extraction_extraction_zone_extractionzone"
     },
@@ -4804,7 +4786,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "camerafx",
       "id": "fx_camera_fx_camerafx"
     },
@@ -4830,7 +4812,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "camerafx._on_hit_stop",
       "id": "fx_camera_fx_on_hit_stop"
     },
@@ -4856,7 +4838,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "damagenumber",
       "id": "fx_damage_number_damagenumber"
     },
@@ -4869,7 +4851,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "damagenumberslayer",
       "id": "fx_damage_numbers_layer_damagenumberslayer"
     },
@@ -4882,7 +4864,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "explosion",
       "id": "fx_explosion_explosion"
     },
@@ -4986,7 +4968,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "worldatmosphere._on_final_wave",
       "id": "fx_world_atmosphere_on_final_wave"
     },
@@ -4999,7 +4981,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 56,
       "norm_label": "inventory",
       "id": "inventory_inventory_inventory"
     },
@@ -5051,7 +5033,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 56,
       "norm_label": "inventoryui",
       "id": "inventory_inventory_ui_inventoryui"
     },
@@ -5103,7 +5085,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 56,
       "norm_label": "itemdata",
       "id": "inventory_item_data_itemdata"
     },
@@ -5129,7 +5111,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 84,
+      "community": 56,
       "norm_label": "grenade._explode",
       "id": "items_grenade_explode"
     },
@@ -5155,7 +5137,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 56,
       "norm_label": "lootpickup._on_pickup_requested",
       "id": "loot_loot_pickup_on_pickup_requested"
     },
@@ -5194,7 +5176,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "player",
       "id": "player_player_player"
     },
@@ -5272,7 +5254,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "playeranimator",
       "id": "player_player_animator_playeranimator"
     },
@@ -5285,7 +5267,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 10,
+      "community": 56,
       "norm_label": "events bus",
       "id": "concept_events_bus"
     },
@@ -5324,7 +5306,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 56,
       "norm_label": "server-authoritative inventory owner-mirror",
       "id": "concept_inventory_owner_mirror"
     },
@@ -5940,7 +5922,7 @@
       "label": "ProceduralBuildings._solid",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "proceduralbuildings._solid",
       "id": "visual_procedural_buildings_solid"
     },
@@ -5948,7 +5930,7 @@
       "label": "ProceduralBuildings.build_tower",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "proceduralbuildings.build_tower",
       "id": "visual_procedural_buildings_build_tower"
     },
@@ -5956,7 +5938,7 @@
       "label": "ProceduralBuildings.build_warehouse",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "proceduralbuildings.build_warehouse",
       "id": "visual_procedural_buildings_build_warehouse"
     },
@@ -5964,7 +5946,7 @@
       "label": "ProceduralBuildings.build_house",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "proceduralbuildings.build_house",
       "id": "visual_procedural_buildings_build_house"
     },
@@ -5972,7 +5954,7 @@
       "label": "ProceduralBuildings.build_container_yard",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_buildings.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "proceduralbuildings.build_container_yard",
       "id": "visual_procedural_buildings_build_container_yard"
     },
@@ -5988,7 +5970,7 @@
       "label": "ProceduralModels.build",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "proceduralmodels.build",
       "id": "visual_procedural_models_build"
     },
@@ -5996,7 +5978,7 @@
       "label": "ProceduralModels._part",
       "file_type": "code",
       "source_file": "scripts/visual/procedural_models.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "proceduralmodels._part",
       "id": "visual_procedural_models_part"
     },
@@ -6076,7 +6058,7 @@
       "label": "Arena._build_poi_structures",
       "file_type": "code",
       "source_file": "scripts/world/arena.gd",
-      "community": 2,
+      "community": 85,
       "norm_label": "arena._build_poi_structures",
       "id": "world_arena_build_poi_structures"
     },
@@ -7386,16 +7368,6 @@
       "confidence_score": 1.0,
       "source": "art_fetch_power_icons",
       "target": "art_fetch_power_icons_strip_bg"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tools/art/fetch_skill_icons.ps1",
-      "source_location": "L27",
-      "weight": 1.0,
-      "source": "art_fetch_skill_icons",
-      "target": "art_fetch_skill_icons_strip_bg",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -13968,5 +13940,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "ae5c173434e259648bdf67d1b6a289acfd5919a4"
+  "built_at_commit": "3a15863993b054129a02f5a42bd65a84880a660d"
 }
