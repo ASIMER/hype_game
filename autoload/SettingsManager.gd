@@ -281,6 +281,17 @@ func load_config() -> void:
 	# the zones invisible — coerce anything in the old range to the 1.0 default.
 	if float(_values.get("volumetric_fog_density", 1.0)) <= 0.081:
 		_values["volumetric_fog_density"] = 1.0
+	# ONE-TIME CAMERA MIGRATION (centered behind-the-back default): a save written before the
+	# centered camera shipped carries the OLD over-the-shoulder value (camera_shoulder=1.0, maybe
+	# default_view=1) which would OVERRIDE the new 0.0 default — so an existing player never sees
+	# the behind-back framing. Force the centered third-person framing ONCE so they actually get
+	# it (they can re-pick shoulder/view in Settings after). Stamp keyed in "_meta" (NOT a version
+	# compare — GAME_VERSION wasn't bumped when the camera changed, so a save_ver test can't tell
+	# pre/post-centered saves apart); absence-of-flag is the signal, so it fires exactly once.
+	if not bool(cfg.get_value("_meta", "camera_centered_migrated", false)):
+		_values["camera_shoulder"] = 0.0
+		_values["default_view"] = 0
+		save()
 	# ONE-TIME PRESET MIGRATION (fairness rework): saves stamped before the threshold
 	# carry the OLD preset matrix (fog/weather off on Low-High, the old Ultra default) —
 	# re-apply the new Ultra+RT default so every player lands on the fair table once
@@ -299,6 +310,8 @@ func save() -> void:
 	# Stamp the one-time preset migration (see load_config) — any save written by this
 	# build is already on the fair matrix, so the migration must never re-fire on it.
 	cfg.set_value("_meta", "presets_migrated", true)
+	# Stamp the one-time centered-camera migration (see load_config) likewise.
+	cfg.set_value("_meta", "camera_centered_migrated", true)
 	for key in _values:
 		cfg.set_value("settings", key, _values[key])
 	cfg.save(_path())

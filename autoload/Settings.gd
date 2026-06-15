@@ -11,7 +11,7 @@ const DEFAULT_IP: String = "127.0.0.1"
 const DISCOVERY_PORT: int = 24566
 ## Game build version (canonical = the VERSION file at the repo root). Stamped into
 ## save files so loads survive game updates (see MetaProgression/Stash version checks).
-const GAME_VERSION: String = "0.4.0"
+const GAME_VERSION: String = "0.4.1"
 ## Max number of non-daily contracts the player can have ACTIVE (accepted) at once.
 ## Manual-accept enforces it; dailies are exempt.
 const ACTIVE_QUEST_CAP: int = 6

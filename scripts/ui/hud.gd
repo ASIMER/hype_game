@@ -16,6 +16,7 @@ class_name HUD
 @onready var banner: Label = $Root/Banner
 
 var _local_player: Node = null
+static var _view_tip_shown: bool = false  # one-shot per session: V-toggle / appearance tip
 
 
 func _ready() -> void:
@@ -347,7 +348,7 @@ func _build_hud_widgets() -> void:
 	# This long string is a LOCALIZATION KEY (locale/ui.csv) — splitting it would break
 	# the translation lookup, so it stays one line.
 	hints.text = tr(
-		"WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"  # gdlint: ignore=max-line-length
+		"WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   V View 1/3\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"  # gdlint: ignore=max-line-length
 	)
 	$Root.add_child(hints)
 
@@ -1017,6 +1018,13 @@ func _on_local_player_spawned(player: Node) -> void:
 	var hp: Node = player.get_node_or_null(Groups.NODE_HEALTH)
 	if hp and "current" in hp and "max_health" in hp:
 		_set_health(hp.current, hp.max_health)
+	# One-shot tip: how to toggle the camera + where to change appearance (the user couldn't
+	# find either). Static flag → shows once per session, not every raid.
+	if not _view_tip_shown:
+		_view_tip_shown = true
+		Events.notify.emit(
+			tr("V toggles 1st/3rd person — change your look in the Hub CHARACTER tab"), 0
+		)
 
 
 func _on_player_health_changed(player: Node, current: float, max_health: float) -> void:
