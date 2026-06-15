@@ -153,16 +153,17 @@ signal power_core_spawned(node: Node)
 signal power_core_picked(peer: int)
 signal power_core_extracted(peer: int)
 
-# --- Absorption (signature: consume a dead enemy's part) ---
-## A kill's signature part is flying from `world_pos` to `player`'s back (the homing streak FX).
-## Fires on EVERY peer (broadcast by AbsorbDirector) so everyone sees the absorb. `enemy_id`
-## picks the part shape/color.
-signal enemy_absorbed(enemy_id: String, world_pos: Vector3, player: Node)
-## The LOCAL player's absorption charge meter changed (HUD bar + the BURST-READY flash). Fires
-## on the owner only. `value`/`max_value` in charge units.
-signal absorb_charge_changed(value: float, max_value: float)
-## The local player cast the absorption BURST (AoE shockwave at `world_pos`) — local FX/SFX hook.
-signal absorb_burst_cast(world_pos: Vector3)
+# --- Mutant Harvest: body-part SKILLS (signature mechanic) ---
+## A body-part skill was picked up / upgraded (the owner). `level` = the new level. Drives the
+## pickup toast + the hotbar.
+signal skill_acquired(skill_id: String, level: int)
+## A skill was cast (a hotbar key). Drives SFX/hooks; `level` is 0 on the VFX broadcast.
+signal skill_cast(skill_id: String, level: int)
+## A skill's cooldown changed (owner only). `remaining` seconds (0 = ready). Drives the hotbar
+## cooldown radial.
+signal skill_cooldown_changed(skill_id: String, remaining: float)
+## The owner's skill set changed (acquire / per-raid reset) — the hotbar rebuilds.
+signal skill_changed
 
 # --- Dynamic world events (Batch 3 "Live raid") ---
 ## A mid-raid world event began (server-auth, synced). `kind`: 0 supply_cache,

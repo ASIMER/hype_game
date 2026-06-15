@@ -1647,7 +1647,7 @@ func _snapshot() -> Dictionary:
 						else false
 					),
 					"cosmetics": pl.get("cosmetics") if "cosmetics" in pl else {},
-					"absorbed": pl.get("absorbed") if "absorbed" in pl else {},
+					"skills": pl.get("skills") if "skills" in pl else {},
 					"downed": pl.is_downed() if pl.has_method("is_downed") else false,
 				}
 			)

@@ -515,9 +515,6 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 			Progression.credit_kill(eid)
 		else:
 			_credit_kill_rpc.rpc_id(peer, eid)
-		# Signature absorption: the killer consumes the dead enemy's part (homing FX +
-		# back-cluster + charge meter), routed to the killer's machine like the kill credit.
-		AbsorbDirector.grant_absorb(peer, eid, (entity as Node3D).global_position)
 	else:
 		GameState.mobs_killed += 1  # unattributed (environment/explosion) still counts to the team
 	_sync_scores.rpc(GameState.kills, GameState.deaths, GameState.mobs_killed, GameState.revives)

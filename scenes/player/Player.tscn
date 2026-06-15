@@ -8,7 +8,7 @@
 [ext_resource type="Script" path="res://scripts/player/player_animator.gd" id="6_animator"]
 [ext_resource type="Script" path="res://scripts/fx/camera_fx.gd" id="7_camfx"]
 [ext_resource type="Script" path="res://scripts/player/player_status.gd" id="8_status"]
-[ext_resource type="Script" path="res://scripts/player/player_absorb.gd" id="9_absorb"]
+[ext_resource type="Script" path="res://scripts/player/player_skills.gd" id="9_skills"]
 
 [sub_resource type="CapsuleShape3D" id="Capsule_body"]
 radius = 0.4
@@ -72,7 +72,7 @@ properties/17/replication_mode = 1
 properties/18/path = NodePath(".:_painkillers")
 properties/18/spawn = true
 properties/18/replication_mode = 1
-properties/19/path = NodePath(".:absorbed")
+properties/19/path = NodePath(".:skills")
 properties/19/spawn = true
 properties/19/replication_mode = 1
 
@@ -119,8 +119,8 @@ script = ExtResource("7_camfx")
 [node name="Status" type="Node" parent="."]
 script = ExtResource("8_status")
 
-[node name="Absorb" type="Node" parent="."]
-script = ExtResource("9_absorb")
+[node name="Skills" type="Node" parent="."]
+script = ExtResource("9_skills")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2_health")

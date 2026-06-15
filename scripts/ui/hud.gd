@@ -63,9 +63,6 @@ func _ready() -> void:
 	Events.power_core_spawned.connect(_on_power_core_spawned)
 	Events.power_core_extracted.connect(_on_power_core_extracted)
 
-	# Signature absorption charge meter (bottom-left).
-	Events.absorb_charge_changed.connect(_on_absorb_charge)
-
 	# Raid mutator chip (batch C) — set before deploy, re-synced at match start.
 	Events.raid_mutator_changed.connect(_on_mutator_changed)
 
@@ -109,11 +106,6 @@ var _event_banner_t: float = 0.0
 
 var _nemesis_banner: Label  # Machine Nemesis born/returns/defeated (red, above the others)
 var _nemesis_banner_t: float = 0.0
-# Signature absorption charge meter (bottom-left) + the BURST-READY pulse.
-var _absorb_bar: ProgressBar
-var _absorb_label: Label
-var _absorb_ready: bool = false
-var _absorb_pulse: float = 0.0
 # Surge vignette — a subtle colour-rect pulse while a sensor-blackout surge is active.
 var _surge_vignette: ColorRect
 var _surge_active: bool = false
@@ -192,38 +184,6 @@ func _build_hud_widgets() -> void:
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_status_row.add_child(chip)
 		_status_chips[String(effect[0])] = chip
-
-	# Signature absorption charge meter, bottom-left above the status row: a teal bar that fills
-	# as you absorb enemy parts, with a "BURST READY [Q]" pulse when full.
-	_absorb_label = Label.new()
-	_absorb_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_absorb_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_absorb_label.offset_left = 24.0
-	_absorb_label.offset_top = -142.0
-	_absorb_label.offset_bottom = -126.0
-	_absorb_label.add_theme_font_size_override("font_size", 12)
-	_absorb_label.add_theme_color_override("font_color", UIStyle.TEAL)
-	_absorb_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_absorb_label.add_theme_constant_override("outline_size", 4)
-	_absorb_label.text = tr("ABSORB")
-	_absorb_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$Root.add_child(_absorb_label)
-	_absorb_bar = ProgressBar.new()
-	_absorb_bar.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_absorb_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_absorb_bar.offset_left = 24.0
-	_absorb_bar.offset_right = 220.0
-	_absorb_bar.offset_top = -124.0
-	_absorb_bar.offset_bottom = -112.0
-	_absorb_bar.min_value = 0.0
-	_absorb_bar.max_value = Settings.ABSORB_CHARGE_MAX
-	_absorb_bar.value = 0.0
-	_absorb_bar.show_percentage = false
-	_absorb_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(UIStyle.TEAL))
-	_absorb_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$Root.add_child(_absorb_bar)
-	_register_inset(_absorb_label, "lb")
-	_register_inset(_absorb_bar, "lb")
 
 	# Make the wave counter PROMINENT — it was a small grey label tucked behind the
 	# compass strip (easy to miss). Russo One amber, clear of the compass, above the timer.
@@ -548,27 +508,9 @@ func _build_downed_overlay() -> void:
 	$Root.add_child(_team_label)
 
 
-## Drive the absorption charge bar + the BURST-READY label (local player only).
-func _on_absorb_charge(value: float, max_value: float) -> void:
-	if _absorb_bar == null:
-		return
-	_absorb_bar.max_value = max_value
-	_absorb_bar.value = value
-	_absorb_ready = value >= max_value
-	if _absorb_ready:
-		_absorb_label.text = tr("ABSORB BURST READY [%s]") % "Q"
-	else:
-		_absorb_label.text = tr("ABSORB")
-		_absorb_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
-
-
 func _process(delta: float) -> void:
 	if _hurt_flash and _hurt_flash.color.a > 0.0:
 		_hurt_flash.color.a = maxf(0.0, _hurt_flash.color.a - delta * 2.4)
-	# Pulse the absorb meter label while the burst is ready.
-	if _absorb_ready and _absorb_label != null:
-		_absorb_pulse += delta * 6.0
-		_absorb_label.modulate.a = 0.55 + 0.45 * absf(sin(_absorb_pulse))
 	if _hit_marker and _hit_marker.visible:
 		_hit_marker_t -= delta
 		if _hit_marker_t <= 0.0:

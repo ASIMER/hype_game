@@ -970,44 +970,165 @@ const POWER_CORE_RAMP: float = 20.0  # s to ramp the beacon from MIN to MAX
 const POWER_CORE_NOISE_CD: float = 1.5  # s between beacon noise pulses
 const POWER_CORE_PICKUP_RADIUS: float = 2.5  # m — walk this close (server-checked) to grab it
 
-# --- Absorption mechanic (signature: consume a dead enemy's part) -------------
-## On a kill the killer ABSORBS the dead enemy's signature part — a homing FX flies from the
-## corpse onto a growing trophy CLUSTER on the player's BACK (deterministic, replicated via the
-## owner-authoritative `absorbed` dict; every peer rebuilds the identical cluster). Parts cap PER
-## TYPE and also fill a CHARGE meter → a burst AoE. Keyed on enemy_id (robot_enemy.enemy_id); the
-## `part` token selects a shape in ProceduralAbsorbed; colors are SATURATED so they pop under the
-## cold cinematic grade. cap = max of that part on the back (the user's "max 8 spider legs").
-const ABSORB_PARTS := {
-	"robot_sandworm": {"part": "maw", "color": Color(1.0, 0.62, 0.18), "cap": 4},
-	"robot_scarab": {"part": "shell", "color": Color(0.95, 0.32, 0.14), "cap": 6},
-	"robot_dustdevil": {"part": "vane", "color": Color(0.95, 0.62, 0.22), "cap": 6},
-	"robot_frosthound": {"part": "fin", "color": Color(0.70, 0.88, 0.98), "cap": 8},
-	"robot_kappa": {"part": "claw", "color": Color(0.45, 0.95, 0.55), "cap": 6},
-	"robot_raiju": {"part": "blade", "color": Color(0.40, 0.90, 1.0), "cap": 8},
-	"robot_oni": {"part": "horn", "color": Color(0.92, 0.74, 0.30), "cap": 3},
-	"robot_avalanche": {"part": "fist", "color": Color(0.45, 0.74, 1.0), "cap": 2},
-	"robot_cryomortar": {"part": "barrel", "color": Color(0.55, 0.85, 1.0), "cap": 3},
-	"robot_snow_golem": {"part": "spike", "color": Color(0.62, 0.88, 1.0), "cap": 2},
-	"robot_dune_warden": {"part": "barrel", "color": Color(0.95, 0.62, 0.22), "cap": 2},
-	"robot_oni_chief": {"part": "spike", "color": Color(0.95, 0.22, 0.18), "cap": 2},
-	"robot_specter": {"part": "rotor", "color": Color(0.40, 0.90, 1.0), "cap": 4},
-	"robot_caller": {"part": "antenna", "color": Color(0.95, 0.58, 0.20), "cap": 6},
-	"robot_wasp": {"part": "rotor", "color": Color(1.0, 0.55, 0.18), "cap": 4},
-	"robot_bastion": {"part": "barrel", "color": Color(1.0, 0.55, 0.18), "cap": 3},
-	"robot_grunt": {"part": "spike", "color": Color(0.80, 0.50, 1.0), "cap": 6},
-	"robot_heavy": {"part": "fist", "color": Color(0.78, 0.45, 1.0), "cap": 3},
-	"robot_tick": {"part": "claw", "color": Color(0.75, 0.82, 0.55), "cap": 6},
-	"robot_elite": {"part": "blade", "color": Color(0.85, 0.40, 1.0), "cap": 4},
-	"robot_boss": {"part": "horn", "color": Color(0.92, 0.22, 0.95), "cap": 3},
+# --- Mutant Harvest: body-part SKILLS (signature mechanic) -------------------
+## Every enemy drops a UNIQUE body-part as world loot; the player chooses to pick it up (E) → it
+## becomes an ACTIVE SKILL on the bottom hotbar AND a visible LIMB on the body (Frankenstein).
+## Max 5 distinct skills; a duplicate UPGRADES (level↑) up to max_level (the user's "8 spider
+## legs"); per-raid. ENEMY_SKILLS maps each enemy archetype to a skill FAMILY; SKILL_DEFS carries
+## per-skill data (part token for ProceduralAbsorbed, signature color, name, active ability,
+## cooldown, max level). Colors are SATURATED so the limb/icon pops under the cold grade.
+const ENEMY_SKILLS := {
+	"robot_frosthound": "leap",
+	"robot_kappa": "leap",
+	"robot_tick": "leap",
+	"robot_avalanche": "slam",
+	"robot_heavy": "slam",
+	"robot_raiju": "blink",
+	"robot_cryomortar": "mortar",
+	"robot_dune_warden": "mortar",
+	"robot_bastion": "mortar",
+	"robot_scarab": "shield",
+	"robot_snow_golem": "shield",
+	"robot_oni": "ram",
+	"robot_oni_chief": "ram",
+	"robot_caller": "chainshock",
+	"robot_sandworm": "bite",
+	"robot_dustdevil": "whirlwind",
+	"robot_wasp": "whirlwind",
+	"robot_specter": "recon",
+	"robot_grunt": "recon",
+	"robot_elite": "recon",
+	"robot_boss": "recon",
 }
-const ABSORB_FALLBACK := {"part": "scrap", "color": Color(0.62, 0.64, 0.70), "cap": 5}
-const ABSORB_CLUSTER_MAX: int = 28  # hard cap on parts rendered on the back (perf + tidy)
-const ABSORB_CHARGE_PER_PART: float = 8.0  # meter fill per kill (a capped type still charges)
-const ABSORB_CHARGE_MAX: float = 100.0  # full meter → burst ready (~13 kills)
-const ABSORB_ULT_RADIUS: float = 7.0  # m — burst AoE (bigger than the avalanche slam = ultimate)
-const ABSORB_ULT_DAMAGE: float = 60.0  # centre damage (0.4 falloff to the rim)
-const ABSORB_ULT_STAGGER: float = 1.6  # s stun on caught enemies (apply_stun)
-const ABSORB_FX_DIST: float = 70.0  # m — skip the homing streak FX beyond this (perf)
+const SKILL_FALLBACK_ID := "recon"
+const SKILL_DEFS := {
+	"leap":
+	{
+		"part": "claw",
+		"color": Color(0.55, 0.95, 0.55),
+		"name_key": "LEAP",
+		"ability": "dash",
+		"cooldown": 6.0,
+		"max_level": 8
+	},
+	"slam":
+	{
+		"part": "fist",
+		"color": Color(0.45, 0.74, 1.0),
+		"name_key": "SLAM",
+		"ability": "aoe_stagger",
+		"cooldown": 9.0,
+		"max_level": 5
+	},
+	"blink":
+	{
+		"part": "blade",
+		"color": Color(0.40, 0.90, 1.0),
+		"name_key": "BLINK",
+		"ability": "blink",
+		"cooldown": 8.0,
+		"max_level": 6
+	},
+	"mortar":
+	{
+		"part": "barrel",
+		"color": Color(0.95, 0.62, 0.22),
+		"name_key": "MORTAR",
+		"ability": "mortar",
+		"cooldown": 11.0,
+		"max_level": 5
+	},
+	"shield":
+	{
+		"part": "shell",
+		"color": Color(0.95, 0.32, 0.14),
+		"name_key": "SHIELD",
+		"ability": "shield",
+		"cooldown": 14.0,
+		"max_level": 5
+	},
+	"ram":
+	{
+		"part": "horn",
+		"color": Color(0.92, 0.74, 0.30),
+		"name_key": "RAM",
+		"ability": "ram_charge",
+		"cooldown": 10.0,
+		"max_level": 4
+	},
+	"chainshock":
+	{
+		"part": "antenna",
+		"color": Color(0.95, 0.58, 0.20),
+		"name_key": "CHAIN SHOCK",
+		"ability": "chain",
+		"cooldown": 9.0,
+		"max_level": 6
+	},
+	"bite":
+	{
+		"part": "maw",
+		"color": Color(1.0, 0.62, 0.18),
+		"name_key": "BITE",
+		"ability": "bite_cone",
+		"cooldown": 7.0,
+		"max_level": 5
+	},
+	"whirlwind":
+	{
+		"part": "vane",
+		"color": Color(0.95, 0.62, 0.22),
+		"name_key": "WHIRLWIND",
+		"ability": "whirlwind",
+		"cooldown": 10.0,
+		"max_level": 5
+	},
+	"recon":
+	{
+		"part": "rotor",
+		"color": Color(0.40, 0.90, 1.0),
+		"name_key": "RECON",
+		"ability": "recon_dash",
+		"cooldown": 8.0,
+		"max_level": 6
+	},
+}
+
+
+## The skill definition (part/color/name/ability/cooldown/max_level) for `id`, or the fallback.
+func skill_def(id: String) -> Dictionary:
+	return SKILL_DEFS.get(id, SKILL_DEFS[SKILL_FALLBACK_ID])
+
+
+## Which skill family an enemy archetype drops (by enemy_id), or the fallback skill.
+func skill_for_enemy(enemy_id: String) -> String:
+	return String(ENEMY_SKILLS.get(enemy_id, SKILL_FALLBACK_ID))
+
+
+const SKILL_MAX_SLOTS: int = 5  # max distinct skills held (6th refused; can only upgrade)
+const SKILL_DROP_GUARANTEED: bool = true  # every enemy drops its body-part skill
+const SKILL_FX_DIST: float = 70.0  # m — skip cast/pickup FX beyond this (perf)
+const LIMB_CLUSTER_MAX: int = 24  # hard cap on limbs rendered on the body (perf + tidy)
+# Active-ability base tuning (skill level scales these — applied in SkillDirector):
+const SKILL_DASH_IMPULSE: float = 14.0  # forward+up leap velocity
+const SKILL_SLAM_RADIUS: float = 5.0
+const SKILL_SLAM_DAMAGE: float = 45.0
+const SKILL_SLAM_STAGGER: float = 1.4
+const SKILL_BLINK_RANGE: float = 9.0
+const SKILL_MORTAR_RADIUS: float = 4.0
+const SKILL_MORTAR_DAMAGE: float = 55.0
+const SKILL_SHIELD_AMOUNT: float = 60.0
+const SKILL_SHIELD_TIME: float = 5.0
+const SKILL_RAM_RANGE: float = 8.0
+const SKILL_RAM_DAMAGE: float = 50.0
+const SKILL_CHAIN_JUMPS: int = 2
+const SKILL_CHAIN_DAMAGE: float = 30.0
+const SKILL_BITE_RANGE: float = 5.0
+const SKILL_BITE_ANGLE: float = 50.0  # degrees half-angle of the bite cone
+const SKILL_BITE_DAMAGE: float = 50.0
+const SKILL_WHIRL_RADIUS: float = 4.5
+const SKILL_WHIRL_DAMAGE: float = 35.0
+const SKILL_RECON_RADIUS: float = 22.0
 
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.

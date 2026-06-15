@@ -1,8 +1,8 @@
 class_name ProceduralAbsorbed
 extends RefCounted
-## The visual side of the ABSORPTION mechanic: a deterministic trophy CLUSTER of absorbed
+## The visual side of the Mutant-Harvest mechanic: deterministic LIMBS of harvested
 ## enemy parts welded onto the player's back, plus the single-part nodes the homing streak FX
-## reuses. Every enemy archetype donates a recognizable signature part (Settings.ABSORB_PARTS):
+## reuses. Every enemy archetype donates a recognizable signature part (Settings.SKILL_DEFS):
 ## spider→legs, oni→horn, scarab→shell, … capped PER TYPE (the user's "max 8 spider legs").
 ##
 ## Built from `absorbed` ({enemy_id: count}) — the owner-authoritative replicated dict — and a
@@ -51,7 +51,7 @@ static func _pmat(color: Color) -> StandardMaterial3D:
 
 # --- one signature part (shared by the cluster + the homing streak) ----------
 ## Build a single signature part (the shape extends +Y from its local origin). `token` is the
-## part id from Settings.ABSORB_PARTS; `color` is its signature tint.
+## part id from Settings.SKILL_DEFS; `color` is its signature tint.
 static func build_part_node(token: String, color: Color) -> Node3D:
 	var n := Node3D.new()
 	n.name = "Part"
@@ -108,47 +108,66 @@ static func build_part_node(token: String, color: Color) -> Node3D:
 	return n
 
 
-# --- the back cluster --------------------------------------------------------
-## Flatten `absorbed` to a capped, SORTED list of part defs (deterministic order across peers).
-static func _flatten(absorbed: Dictionary) -> Array:
-	var keys: Array = absorbed.keys()
-	keys.sort()
-	var parts: Array = []
-	for eid in keys:
-		var def: Dictionary = Settings.ABSORB_PARTS.get(eid, Settings.ABSORB_FALLBACK)
-		var n: int = mini(int(absorbed[eid]), int(def["cap"]))
-		for _i in n:
-			parts.append(def)
-			if parts.size() >= Settings.ABSORB_CLUSTER_MAX:
-				return parts
-	return parts
-
-
-## Build the "AbsorbCluster" node: every absorbed part fanned across the upper back, climbing a
-## new row every 6, splayed outward (legs/fins "leg out"). Deterministic in `seed_val` (peer id).
-static func build_absorbed_cluster(absorbed: Dictionary, seed_val: int) -> Node3D:
+# --- visible LIMBS on the body (Frankenstein) --------------------------------
+## Build the "LimbCluster": every held skill's level → that many signature parts attached at a
+## BODY anchor (horns on the head, fists on the shoulders, legs/claws marching down the torso
+## sides, blades on the forearms, the rest fanned on the back). The body frame is FROZEN
+## (procedural_player.gd) so the anchors are constants. Deterministic in `seed_val` (peer id) +
+## SORTED keys → every co-op peer builds byte-identical limbs. Mounts under the animated body so
+## the limbs ride PlayerAnimator. `skills` = {skill_id: level}.
+static func build_limbs(skills: Dictionary, seed_val: int) -> Node3D:
 	var root := Node3D.new()
-	root.name = "AbsorbCluster"
-	var parts: Array = _flatten(absorbed)
-	var total: int = parts.size()
-	if total == 0:
-		return root
-	# Bigger so the glowing trophy reads from behind; shrink a touch as the haul grows (tidy).
-	var pscale: float = clampf(1.0 - 0.012 * float(total), 0.7, 1.0) * 1.3
+	root.name = "LimbCluster"
+	var keys: Array = skills.keys()
+	keys.sort()
 	var s: int = absi(seed_val)
-	for i in total:
-		var def: Dictionary = parts[i]
-		s = (s * 1103515245 + 12345) & 0x7fffffff  # LCG — deterministic, no Math.random
-		var jitter: float = float(s % 1000) / 1000.0 - 0.5
-		var row: int = i / 6
-		var col: int = i % 6
-		var ang: float = -0.75 + 1.5 * (float(col) / 5.0) + jitter * 0.12
-		var y: float = 1.18 + float(row) * 0.20 + jitter * 0.04
-		var node := build_part_node(String(def["part"]), def["color"])
-		node.position = Vector3(sin(ang) * 0.30, y, 0.18 + cos(ang) * 0.06)
-		node.scale = Vector3.ONE * pscale
-		node.rotation_degrees = Vector3(
-			-28.0 + float(row) * 6.0, rad_to_deg(ang) * 0.6, sin(ang) * 32.0
-		)
-		root.add_child(node)
+	var total: int = 0
+	for sid in keys:
+		var def: Dictionary = Settings.skill_def(String(sid))
+		var lvl: int = mini(int(skills[sid]), int(def["max_level"]))
+		var part: String = String(def["part"])
+		var color: Color = def["color"]
+		for i in lvl:
+			if total >= Settings.LIMB_CLUSTER_MAX:
+				return root
+			s = (s * 1103515245 + 12345) & 0x7fffffff  # LCG — deterministic, no Math.random
+			_place_limb(root, part, color, i, s)
+			total += 1
 	return root
+
+
+## Attach the i-th instance of `part` at its body anchor, fanning out by index (deterministic
+## jitter from `s`). Sides alternate L/R; legs/blades march down, horns ring the head.
+static func _place_limb(root: Node3D, part: String, color: Color, i: int, s: int) -> void:
+	var node := build_part_node(part, color)
+	var jitter: float = float(s % 1000) / 1000.0 - 0.5
+	var side: float = -1.0 if i % 2 == 0 else 1.0
+	var tier: int = i / 2
+	var pos: Vector3
+	var rot: Vector3
+	var scl: float = 0.85
+	match part:
+		"horn", "spike":  # head-top, ringing outward
+			pos = Vector3(side * (0.10 + 0.05 * float(tier)), 1.74 + 0.02 * jitter, 0.02)
+			rot = Vector3(-18.0, 0.0, side * 28.0)
+		"fist":  # shoulders
+			pos = Vector3(side * 0.36, 1.40 - 0.12 * float(tier), 0.0)
+			rot = Vector3(0.0, 0.0, side * 92.0)
+			scl = 0.95
+		"claw":  # torso sides — legs marching DOWN (the spider legs)
+			pos = Vector3(side * (0.28 + 0.03 * jitter), 1.16 - float(tier) * 0.16, 0.04)
+			rot = Vector3(90.0, side * 18.0, side * 62.0)
+		"blade":  # forearms
+			pos = Vector3(side * 0.34, 0.80 - float(tier) * 0.12, 0.06)
+			rot = Vector3(20.0, 0.0, side * 40.0)
+		"maw":  # chest front
+			pos = Vector3(side * 0.12 * float(tier), 1.20 + 0.06 * jitter, -0.20)
+			rot = Vector3(-90.0, 0.0, 0.0)
+		_:  # shell/vane/barrel/rotor/antenna/scrap → fanned on the back
+			var ang: float = side * (0.4 + 0.25 * float(tier)) + jitter * 0.1
+			pos = Vector3(sin(ang) * 0.26, 1.30 + float(tier) * 0.16, 0.20 + cos(ang) * 0.05)
+			rot = Vector3(-24.0, rad_to_deg(ang) * 0.5, sin(ang) * 28.0)
+	node.position = pos
+	node.scale = Vector3.ONE * scl
+	node.rotation_degrees = rot
+	root.add_child(node)

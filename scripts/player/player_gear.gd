@@ -54,10 +54,10 @@ func apply_loadout() -> void:
 	# validates pickups against carry capacity + remotes see the speed effect).
 	_p.carry_bonus = MetaProgression.gear_carry_bonus()
 	_p.gear_speed_mult = MetaProgression.gear_speed_mult()
-	# Signature absorption: fresh trophy cluster + charge meter each raid.
-	var ab := _p.get_node_or_null("Absorb")
-	if ab != null and ab.has_method("reset"):
-		ab.reset()
+	# Mutant Harvest: fresh skill set + visible limbs each raid.
+	var sk := _p.get_node_or_null("Skills")
+	if sk != null and sk.has_method("reset"):
+		sk.reset()
 
 
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
