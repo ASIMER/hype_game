@@ -126,6 +126,8 @@ func _build_hud_widgets() -> void:
 	$Root.add_child(_crosshair)
 	_minimap = (load("res://scripts/ui/minimap.gd") as Script).new()
 	$Root.add_child(_minimap)
+	# Skill hotbar (Mutant Harvest) — bottom-center, fills as the player harvests skills.
+	$Root.add_child((load("res://scripts/ui/skill_hotbar.gd") as Script).new())
 
 	# Match-timer readout (mm:ss), top-centre just under the wave label. Goes red as
 	# the storm approaches. Polls GameState as a fallback so it shows even before the
