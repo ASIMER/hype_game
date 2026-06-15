@@ -77,14 +77,16 @@ func _apply_owner_effect(
 		return
 	var body := me as CharacterBody3D
 	match ability:
-		"dash":
-			var imp: float = Settings.SKILL_DASH_IMPULSE * (1.0 + 0.08 * float(lvl - 1))
-			body.velocity = facing * imp + Vector3.UP * (imp * 0.45)
+		"dash":  # leap — reuse the dodge-roll dash (survives the move loop) + a jump arc
+			if me.has_method("_begin_roll"):
+				me.call("_begin_roll", facing)
+				body.velocity.y = Settings.SKILL_DASH_IMPULSE * 0.5
 		"recon_dash":
-			body.velocity = facing * (Settings.SKILL_DASH_IMPULSE * 0.8) + Vector3.UP * 2.0
+			if me.has_method("_begin_roll"):
+				me.call("_begin_roll", facing)
 		"ram_charge":
-			var rimp: float = Settings.SKILL_DASH_IMPULSE * 1.2
-			body.velocity = facing * rimp
+			if me.has_method("_begin_roll"):
+				me.call("_begin_roll", facing)
 		"blink":
 			var rng: float = Settings.SKILL_BLINK_RANGE + float(lvl - 1)
 			_blink(body, body.global_position + facing * rng)
