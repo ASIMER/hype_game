@@ -1085,11 +1085,7 @@ func _update_interaction() -> void:
 	_interact_target = best
 	if best:
 		var item_id := str(best.get("item_id")) if "item_id" in best else "item"
-		if item_id == "power_cache":
-			Events.interaction_available.emit(tr("Open Power Cache"), best)
-		else:
-			var nice := item_id.replace("loot_", "").capitalize()
-			Events.interaction_available.emit(tr("Pick up %s") % nice, best)
+		Events.interaction_available.emit(Settings.loot_prompt(item_id), best)
 	else:
 		Events.interaction_cleared.emit()
 

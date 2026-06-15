@@ -68,7 +68,14 @@ func _ready() -> void:
 
 	# Merged static model: one MeshInstance3D per pickup instead of ~4 part draws —
 	# the map carries ~100 pickups, so this saves a few hundred draw calls.
-	var model := AssetRegistry.get_model_merged(item_id)
+	var model: Node3D
+	if item_id.begins_with("bodypart_"):
+		# Mutant-Harvest body-part: build the signature part shape (no ItemData/catalog entry).
+		var sdef: Dictionary = Settings.skill_def(item_id.substr(9))
+		model = ProceduralAbsorbed.build_part_node(String(sdef["part"]), sdef["color"])
+		model.scale = Vector3.ONE * 1.6
+	else:
+		model = AssetRegistry.get_model_merged(item_id)
 	model.name = "ModelRoot"
 	add_child(model)
 	_model_root = model
@@ -98,7 +105,11 @@ func _process(delta: float) -> void:
 func _apply_loot_glow() -> void:
 	var rarity: int
 	var col: Color
-	if item_id == "power_cache":
+	if item_id.begins_with("bodypart_"):
+		# Body-part: glow in the skill's signature colour + a pillar so it reads as a skill drop.
+		rarity = 2
+		col = Settings.skill_def(item_id.substr(9))["color"]
+	elif item_id == "power_cache":
 		# Power caches always glow brightly (gold) with a tall pillar so they're findable.
 		rarity = 2
 		col = Color(0.98, 0.80, 0.30)
@@ -208,6 +219,12 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 	if not GameState.is_local_authority_server():
 		return
 	if not is_instance_valid(player):
+		return
+	# Mutant Harvest: a body-part is NOT inventory loot — grant the skill to the picker (routed
+	# to its own machine) and despawn. Goes BEFORE the inventory logic (like power_cache).
+	if item_id.begins_with("bodypart_"):
+		SkillDirector.grant_skill(player.get_multiplayer_authority(), item_id.substr(9))
+		queue_free()
 		return
 	# Power cache: NOT inventory loot — consume it and trigger the opener's non-blocking
 	# reveal (the buff applies on THEIR client after the reveal animation finishes).

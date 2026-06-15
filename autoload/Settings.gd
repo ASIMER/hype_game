@@ -1105,6 +1105,15 @@ func skill_for_enemy(enemy_id: String) -> String:
 	return String(ENEMY_SKILLS.get(enemy_id, SKILL_FALLBACK_ID))
 
 
+## The "[E]" interaction-prompt text for a world pickup id (power cache / body-part skill / loot).
+func loot_prompt(item_id: String) -> String:
+	if item_id == "power_cache":
+		return tr("Open Power Cache")
+	if item_id.begins_with("bodypart_"):
+		return tr("Pick up skill: %s") % tr(String(skill_def(item_id.substr(9))["name_key"]))
+	return tr("Pick up %s") % item_id.replace("loot_", "").capitalize()
+
+
 const SKILL_MAX_SLOTS: int = 5  # max distinct skills held (6th refused; can only upgrade)
 const SKILL_DROP_GUARANTEED: bool = true  # every enemy drops its body-part skill
 const SKILL_FX_DIST: float = 70.0  # m — skip cast/pickup FX beyond this (perf)

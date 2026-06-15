@@ -1580,6 +1580,10 @@ func _spawn_loot() -> void:
 	# add_child here was auto-spawned with the scene's default item_id, so clients
 	# saw the wrong model (or nothing) for every enemy drop.
 	LootPickup.spawn_at(container, global_position, loot_id, 1)
+	# Mutant Harvest: every enemy ALSO drops its signature body-part as a pickup-able skill.
+	if Settings.SKILL_DROP_GUARANTEED:
+		var part_id: String = "bodypart_" + Settings.skill_for_enemy(enemy_id)
+		LootPickup.spawn_at(container, global_position + Vector3(-0.6, 0.0, 0.0), part_id, 1)
 	# Batch C: elites/minibosses may ALSO drop a biome-matched annex key — an extra
 	# independent roll (LootTables gates it on this enemy's modifiers/enemy_id).
 	var key_id: String = LootTables.roll_key_drop(self, global_position)
