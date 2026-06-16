@@ -292,6 +292,14 @@ func load_config() -> void:
 		_values["camera_shoulder"] = 0.0
 		_values["default_view"] = 0
 		save()
+	# ONE-TIME CAMERA MIGRATION v2: the v1 flag above already stamped on most saves, so v1 can't
+	# re-fire — but users report STILL spawning in first-person ("from the head"), i.e. a saved
+	# default_view=1 the one-shot v1 never overrode. Re-force the behind-back third-person view ONCE
+	# more (separate flag so it fires exactly once on existing saves). The V key still toggles after.
+	if not bool(cfg.get_value("_meta", "camera_centered_v2", false)):
+		_values["camera_shoulder"] = 0.0
+		_values["default_view"] = 0
+		save()
 	# ONE-TIME PRESET MIGRATION (fairness rework): saves stamped before the threshold
 	# carry the OLD preset matrix (fog/weather off on Low-High, the old Ultra default) —
 	# re-apply the new Ultra+RT default so every player lands on the fair table once
@@ -310,8 +318,9 @@ func save() -> void:
 	# Stamp the one-time preset migration (see load_config) — any save written by this
 	# build is already on the fair matrix, so the migration must never re-fire on it.
 	cfg.set_value("_meta", "presets_migrated", true)
-	# Stamp the one-time centered-camera migration (see load_config) likewise.
+	# Stamp the one-time centered-camera migrations (v1 + v2, see load_config) likewise.
 	cfg.set_value("_meta", "camera_centered_migrated", true)
+	cfg.set_value("_meta", "camera_centered_v2", true)
 	for key in _values:
 		cfg.set_value("settings", key, _values[key])
 	cfg.save(_path())

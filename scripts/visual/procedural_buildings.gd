@@ -320,6 +320,59 @@ static func _breakable_wall(
 			_solid(parent, cell, mat, offset + rp, rot_y_deg, true)
 
 
+## Generalized breakable: split ANY box (floors/ceilings/containers/pillars, not just walls) into a
+## grid of BreakableChunk cells so it crumbles where you hit. The THINNEST axis is kept whole (the
+## slab/box "thickness"); the other two are gridded at `cell_size` (default coarse for big flat slabs
+## so "break everything" doesn't explode node counts). Gated on CHUNK_BREAK_FLOORS — when off (or
+## destruction off) one plain _solid is emitted (byte-identical → golden unaffected). `_chunk_seq`
+## increments in loop order → co-op byte-identical, exactly like _breakable_wall.
+static func _breakable_part(
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	rot_y_deg: float = 0.0,
+	cell_size: float = 0.0
+) -> void:
+	if not (Settings.CHUNK_DESTRUCTION_ENABLED and Settings.CHUNK_BREAK_FLOORS):
+		_solid(parent, size, mat, offset, rot_y_deg, false)
+		return
+	var cs: float = cell_size if cell_size > 0.0 else Settings.CHUNK_CELL_SIZE
+	# Thinnest axis kept whole; the other two are the gridded extents (ua, ub).
+	var ax: int = 0
+	if size.y <= size.x and size.y <= size.z:
+		ax = 1
+	elif size.z <= size.x and size.z <= size.y:
+		ax = 2
+	var ua: float = size.y if ax == 0 else size.x
+	var ub: float = size.z if ax != 2 else size.y
+	if maxf(ua, ub) <= Settings.CHUNK_GRID_MIN:
+		_solid(parent, size, mat, offset, rot_y_deg, true)  # small part — one breakable cell
+		return
+	var na: int = maxi(1, int(ceil(ua / cs)))
+	var nb: int = maxi(1, int(ceil(ub / cs)))
+	var ca: float = ua / float(na)
+	var cb: float = ub / float(nb)
+	var rot: float = deg_to_rad(rot_y_deg)
+	for ia in na:
+		var la: float = -ua * 0.5 + (float(ia) + 0.5) * ca
+		for ib in nb:
+			var lb: float = -ub * 0.5 + (float(ib) + 0.5) * cb
+			var cell: Vector3
+			var lpos: Vector3
+			if ax == 0:
+				cell = Vector3(size.x, ca, cb)
+				lpos = Vector3(0.0, la, lb)
+			elif ax == 1:
+				cell = Vector3(ca, size.y, cb)
+				lpos = Vector3(la, 0.0, lb)
+			else:
+				cell = Vector3(ca, cb, size.z)
+				lpos = Vector3(la, lb, 0.0)
+			var rp: Vector3 = lpos.rotated(Vector3.UP, rot) if rot != 0.0 else lpos
+			_solid(parent, cell, mat, offset + rp, rot_y_deg, true)
+
+
 ## Render-only decorative box (no collision) — for window glass, trim, signage that
 ## should not block navigation/raycasts.
 static func _decor(
@@ -526,13 +579,22 @@ static func floor_slab(
 ) -> Node3D:
 	var root := Node3D.new()
 	if hole.size == Vector2.ZERO:
-		_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+		_breakable_slab(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
 	else:
 		_slab_strips(root, w, d, mat, hole)
 	return root
 
 
-## Emit the 4 strip boxes of a holed slab deck (N/S full-width, W/E beside the hole).
+## A big flat slab / container body broken at the COARSE cell size (floors/ceilings/cargo). A const
+## can't reference the Settings autoload, so the coarse size is fetched at call time here.
+static func _breakable_slab(
+	parent: Node3D, size: Vector3, mat: StandardMaterial3D, offset: Vector3
+) -> void:
+	_breakable_part(parent, size, mat, offset, 0.0, Settings.CHUNK_CELL_SIZE_BIG)
+
+
+## Emit the 4 strip boxes of a holed slab deck (N/S full-width, W/E beside the hole). Each strip is
+## a breakable part so a holed floor/roof crumbles too.
 static func _slab_strips(
 	root: Node3D, w: float, d: float, mat: StandardMaterial3D, hole: Rect2
 ) -> void:
@@ -542,14 +604,14 @@ static func _slab_strips(
 	var hz1: float = clampf(hole.end.y, -d * 0.5, d * 0.5)
 	var n_d: float = hz0 - (-d * 0.5)
 	if n_d > 0.05:
-		_solid(root, Vector3(w, 0.3, n_d), mat, Vector3(0.0, -0.15, -d * 0.5 + n_d * 0.5))
+		_breakable_slab(root, Vector3(w, 0.3, n_d), mat, Vector3(0.0, -0.15, -d * 0.5 + n_d * 0.5))
 	var s_d: float = d * 0.5 - hz1
 	if s_d > 0.05:
-		_solid(root, Vector3(w, 0.3, s_d), mat, Vector3(0.0, -0.15, d * 0.5 - s_d * 0.5))
+		_breakable_slab(root, Vector3(w, 0.3, s_d), mat, Vector3(0.0, -0.15, d * 0.5 - s_d * 0.5))
 	var band_d: float = hz1 - hz0
 	var w_w: float = hx0 - (-w * 0.5)
 	if w_w > 0.05 and band_d > 0.05:
-		_solid(
+		_breakable_slab(
 			root,
 			Vector3(w_w, 0.3, band_d),
 			mat,
@@ -557,7 +619,7 @@ static func _slab_strips(
 		)
 	var e_w: float = w * 0.5 - hx1
 	if e_w > 0.05 and band_d > 0.05:
-		_solid(
+		_breakable_slab(
 			root,
 			Vector3(e_w, 0.3, band_d),
 			mat,
@@ -570,7 +632,7 @@ static func _slab_strips(
 static func roof(w: float, d: float, mat: StandardMaterial3D, hole: Rect2 = Rect2()) -> Node3D:
 	var root := Node3D.new()
 	if hole.size == Vector2.ZERO:
-		_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+		_breakable_slab(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
 	else:
 		_slab_strips(root, w, d, mat, hole)
 	# Low parapet around the edges (knee height) so a roof reads as a roof.
@@ -592,10 +654,12 @@ static func roof(w: float, d: float, mat: StandardMaterial3D, hole: Rect2 = Rect
 	return root
 
 
-## A square pillar of height h, radius r (box-section), base at local y=0.
+## A square pillar of height h, radius r (box-section), base at local y=0. Breakable: shoot the base
+## and the column crumbles into falling chunks (it does NOT structurally drop what it holds — Godot
+## 4.6.3 has no load-propagation solver, documented limitation).
 static func pillar(h: float, r: float, mat: StandardMaterial3D) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(r * 2.0, h, r * 2.0), mat, Vector3(0.0, h * 0.5, 0.0))
+	_breakable_slab(root, Vector3(r * 2.0, h, r * 2.0), mat, Vector3(0.0, h * 0.5, 0.0))
 	return root
 
 
@@ -628,7 +692,7 @@ static func rubble_pile(sid: int) -> Node3D:
 ## local y=0. Solid (blocks pathing) — read as crates/cargo.
 static func container(w: float, h: float, d: float, mat: StandardMaterial3D) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0))
+	_breakable_slab(root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0))
 	# Corrugation ribs + a darker door end (decorative only).
 	var ribs := mat_metal_dark(int(w * 41.0 + d))
 	var n: int = int(d / 0.8)

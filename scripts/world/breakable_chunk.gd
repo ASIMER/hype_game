@@ -57,8 +57,10 @@ static func break_in_radius(center: Vector3, radius: float) -> void:
 
 
 ## Runs on EVERY peer (post-replication). Idempotent: collision off (deferred — may land
-## mid-physics-step), the intact box hidden, a rubble pile + dust burst left behind.
-func crumble() -> void:
+## mid-physics-step), the intact box hidden, FALLING physics debris + a dust burst left behind.
+## `hit_normal` points OUT of the broken face toward the shooter so the shards spray the right way
+## (Vector3.ZERO = a radial grenade blast). The debris is local/visual only — never networked.
+func crumble(hit_normal: Vector3 = Vector3.ZERO) -> void:
 	if broken:
 		return
 	broken = true
@@ -68,45 +70,22 @@ func crumble() -> void:
 	var mesh := get_node_or_null("Mesh")
 	if mesh != null:
 		(mesh as MeshInstance3D).visible = false
-	_spawn_rubble()
+	# Falling rigid-body shards (the "обломки падают" fix) + a dust puff at the broken cell.
+	ChunkDebris.burst(self, global_position, chunk_color, chunk_size, hit_normal, index)
+	_spawn_dust()
 	Events.chunk_broken.emit(self)
 
 
-## A low pile of fallen debris (in the wall's colour) + a dust burst at the segment base.
-## Render-only; skipped on headless. Deterministic in `index` so co-op peers match.
-func _spawn_rubble() -> void:
+## A dust burst at the broken cell (the fallen debris is now real falling RigidBody shards via
+## ChunkDebris). Render-only; skipped on headless. Deterministic enough — purely cosmetic.
+func _spawn_dust() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
 	var pile := Node3D.new()
-	pile.name = "Rubble"
+	pile.name = "Dust"
 	add_child(pile)
-	var s: int = absi(index)
-	var rmat := StandardMaterial3D.new()
-	rmat.albedo_color = chunk_color.darkened(0.15)
-	rmat.roughness = 0.95
 	var w: float = maxf(0.3, chunk_size.x)
 	var d: float = maxf(0.3, chunk_size.z)
-	var hgt: float = maxf(0.3, chunk_size.y)
-	var base_y: float = -chunk_size.y * 0.5  # bottom of the segment (origin is its centre)
-	# Rubble count + chunk size scale to the cell so a big hole reads with substantial debris.
-	var span: float = maxf(maxf(w, d), hgt)
-	var count: int = clampi(int(span * 5.0) + 4, 6, 22)
-	var szmul: float = clampf(span * 0.45, 0.7, 1.8)
-	for _i in count:
-		s = (s * 1103515245 + 12345) & 0x7fffffff
-		var fx: float = (float(s % 1000) / 1000.0 - 0.5) * w
-		s = (s * 1103515245 + 12345) & 0x7fffffff
-		var fz: float = (float(s % 1000) / 1000.0 - 0.5) * d
-		s = (s * 1103515245 + 12345) & 0x7fffffff
-		var fy: float = float(s % 1000) / 1000.0 * hgt * 0.45  # spread up the broken face a touch
-		s = (s * 1103515245 + 12345) & 0x7fffffff
-		var sz: float = (0.16 + float(s % 1000) / 1000.0 * 0.22) * szmul
-		var box := MeshInstance3D.new()
-		box.mesh = ProceduralModels._box(Vector3(sz, sz * 0.7, sz))
-		box.material_override = rmat
-		box.position = Vector3(fx, base_y + sz * 0.35 + fy, fz)
-		box.rotation = Vector3(0.0, deg_to_rad(float(s % 360)), 0.0)
-		pile.add_child(box)
 	var p := GPUParticles3D.new()
 	p.amount = 20
 	p.lifetime = 1.0

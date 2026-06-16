@@ -25,6 +25,8 @@ class_name RobotEnemy
 
 const LOOT_SCENE := "res://scenes/items/LootPickup.tscn"
 const LOOT_IDS := ["loot_scrap", "loot_cell"]
+# Throttle for the "body-part dropped" toast so a wave of kills doesn't spam the feed (UI-only).
+static var _last_part_toast_ms: int = 0
 const HP_BAR_SCENE := "res://scenes/enemies/EnemyHealthBar.tscn"
 const DEBRIS_SCENE := "res://scenes/fx/RobotDebris.tscn"
 const IMPACT_SCENE := "res://scenes/fx/Impact.tscn"
@@ -1582,8 +1584,17 @@ func _spawn_loot() -> void:
 	LootPickup.spawn_at(container, global_position, loot_id, 1)
 	# Mutant Harvest: every enemy ALSO drops its signature body-part as a pickup-able skill.
 	if Settings.SKILL_DROP_GUARANTEED:
-		var part_id: String = "bodypart_" + Settings.skill_for_enemy(enemy_id)
-		LootPickup.spawn_at(container, global_position + Vector3(-0.6, 0.0, 0.0), part_id, 1)
+		var skill_id: String = Settings.skill_for_enemy(enemy_id)
+		LootPickup.spawn_at(
+			container, global_position + Vector3(-0.6, 0.0, 0.0), "bodypart_" + skill_id, 1
+		)
+		# Loud on-screen toast so the drop is unmissable (the floating part + beam can be easy to miss).
+		# Throttled so a full wave of kills doesn't spam the feed (UI-only — not a deterministic path).
+		var now_ms: int = Time.get_ticks_msec()
+		if now_ms - _last_part_toast_ms > 2500:
+			_last_part_toast_ms = now_ms
+			var sname: String = String(Settings.skill_def(skill_id).get("name", skill_id))
+			Events.notify.emit(tr("⚙ %s part dropped — press E") % sname, 1)
 	# Batch C: elites/minibosses may ALSO drop a biome-matched annex key — an extra
 	# independent roll (LootTables gates it on this enemy's modifiers/enemy_id).
 	var key_id: String = LootTables.roll_key_drop(self, global_position)

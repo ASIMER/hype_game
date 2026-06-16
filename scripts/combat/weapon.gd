@@ -272,8 +272,11 @@ func _shoot(
 			NetworkManager.request_break_glass((hit_node as BreakableGlass).index)
 		elif hit_node is BreakableChunk:
 			# Building wall segment: route this shot's damage to the SERVER, which tracks HP
-			# and broadcasts the crumble once depleted (index-keyed, like glass).
-			NetworkManager.request_damage_chunk((hit_node as BreakableChunk).index, dmg)
+			# and broadcasts the crumble once depleted (index-keyed, like glass). The surface
+			# normal rides along so the falling debris sprays toward the shooter.
+			NetworkManager.request_damage_chunk(
+				(hit_node as BreakableChunk).index, dmg, _last_hit_normal
+			)
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)

@@ -1199,6 +1199,17 @@ const CHUNK_HP: float = 30.0  # HP per wall CELL — a short burst breaks it (~2
 const CHUNK_NOISE: float = 14.0  # how loud a crumbling cell is to enemy hearing (m)
 const CHUNK_CELL_SIZE: float = 1.8  # target grid-cell edge (m) — bigger = fewer nodes (perf)
 const CHUNK_GRID_MIN: float = 2.4  # walls whose wide/height ≤ this stay ONE cell (no grid)
+# Big flat slabs (floors/roofs/containers) grid at a COARSER cell so "break everything" doesn't
+# explode node/draw-call counts — a 10×10 floor → ~16 cells at 2.8 m vs ~36 at 1.8 m.
+const CHUNK_CELL_SIZE_BIG: float = 2.8  # coarse grid edge (m) for floors/roofs/containers
+const CHUNK_BREAK_FLOORS: bool = true  # floors/roofs/containers/pillars also crumble (user's pick)
+# Falling physics DEBRIS on crumble (RigidBody shards that fall + tumble, then fade). Purely
+# local/visual (collision_layer 0, mask 1 = world only) so it never desyncs co-op or the navmesh.
+const CHUNK_DEBRIS_ENABLED: bool = true  # spawn falling RigidBody shards (vs static rubble)
+const CHUNK_DEBRIS_PER_CELL: int = 7  # shards per crumbled cell (scaled down near the global cap)
+const CHUNK_DEBRIS_CAP: int = 160  # global concurrent live shards — over this, cells drop fewer
+const CHUNK_DEBRIS_LIFETIME: float = 3.6  # seconds a shard lives before it fades + frees
+const CHUNK_DEBRIS_FADE: float = 2.4  # shard age (s) at which the fade-out starts
 
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
