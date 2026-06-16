@@ -240,6 +240,11 @@ func _shoot(
 			# Active power-cache damage buff (Berserk / Frenzy) on the firing player.
 			if shooter != null and shooter.has_method("buff_damage_mult"):
 				dealt *= float(shooter.buff_damage_mult())
+			# Mutant-Harvest limb DAMAGE passive (melee/ranged limbs + set bonus) on the shooter.
+			if shooter != null:
+				var sk: Node = shooter.get_node_or_null("Skills")
+				if sk != null and sk.has_method("passive_damage_mult"):
+					dealt *= float(sk.passive_damage_mult())
 			# Server-authoritative damage: the host applies directly; a CLIENT routes
 			# the hit to the server (its local apply_hit would only damage its OWN copy
 			# of the enemy, never the authoritative one → the enemy never dies in co-op).

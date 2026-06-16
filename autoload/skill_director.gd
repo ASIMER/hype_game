@@ -40,37 +40,61 @@ func _do_grant(skill_id: String) -> void:
 # ------------------------------------------------------------ cast (owner → server)
 ## Called by the OWNER (PlayerSkills.cast). Owner movement/buff applies immediately; the enemy
 ## effect routes to the server; the VFX is broadcast by the server.
-func request_cast(skill_id: String, lvl: int, pos: Vector3, aim: Vector3, facing: Vector3) -> void:
+## `dmg_power` folds in the caster's limb-passive damage × combo × evolution (the owner computes
+## it — it knows its own passives). `big` = empowered (combo) OR evolved (max level) → +radius/FX.
+func request_cast(
+	skill_id: String,
+	lvl: int,
+	pos: Vector3,
+	aim: Vector3,
+	facing: Vector3,
+	dmg_power: float = 1.0,
+	big: bool = false
+) -> void:
 	var ability: String = String(Settings.skill_def(skill_id)["ability"])
-	_apply_owner_effect(ability, lvl, pos, aim, facing)
+	_apply_owner_effect(ability, lvl, pos, aim, facing, big)
 	if GameState.is_local_authority_server():
-		_server_cast(_local_peer(), skill_id, lvl, pos, aim, facing)
+		_server_cast(_local_peer(), skill_id, lvl, pos, aim, facing, dmg_power, big)
 	else:
-		_request_cast_rpc.rpc_id(1, skill_id, lvl, pos, aim, facing)
+		_request_cast_rpc.rpc_id(1, skill_id, lvl, pos, aim, facing, dmg_power, big)
 
 
 @rpc("any_peer", "call_remote", "reliable")
 func _request_cast_rpc(
-	skill_id: String, lvl: int, pos: Vector3, aim: Vector3, facing: Vector3
+	skill_id: String,
+	lvl: int,
+	pos: Vector3,
+	aim: Vector3,
+	facing: Vector3,
+	dmg_power: float,
+	big: bool
 ) -> void:
 	if not multiplayer.is_server():
 		return
-	_server_cast(multiplayer.get_remote_sender_id(), skill_id, lvl, pos, aim, facing)
+	var peer: int = multiplayer.get_remote_sender_id()
+	_server_cast(peer, skill_id, lvl, pos, aim, facing, dmg_power, big)
 
 
 func _server_cast(
-	peer: int, skill_id: String, lvl: int, pos: Vector3, aim: Vector3, facing: Vector3
+	peer: int,
+	skill_id: String,
+	lvl: int,
+	pos: Vector3,
+	aim: Vector3,
+	facing: Vector3,
+	dmg_power: float,
+	big: bool
 ) -> void:
 	if not GameState.is_local_authority_server():
 		return
 	var ability: String = String(Settings.skill_def(skill_id)["ability"])
-	_apply_server_effect(ability, lvl, _player_by_peer(peer), pos, aim, facing)
-	_cast_vfx.rpc(skill_id, pos, aim, facing)
+	_apply_server_effect(ability, lvl, _player_by_peer(peer), pos, aim, facing, dmg_power, big)
+	_cast_vfx.rpc(skill_id, pos, aim, facing, big)
 
 
 # ------------------------------------------------------------ owner-local effects (caster machine)
 func _apply_owner_effect(
-	ability: String, lvl: int, _pos: Vector3, aim: Vector3, facing: Vector3
+	ability: String, lvl: int, _pos: Vector3, aim: Vector3, facing: Vector3, big: bool = false
 ) -> void:
 	var me: Node = _local_player()
 	if not (me is CharacterBody3D):
@@ -80,7 +104,7 @@ func _apply_owner_effect(
 		"dash":  # leap — reuse the dodge-roll dash (survives the move loop) + a jump arc
 			if me.has_method("_begin_roll"):
 				me.call("_begin_roll", facing)
-				body.velocity.y = Settings.SKILL_DASH_IMPULSE * 0.5
+				body.velocity.y = Settings.SKILL_DASH_IMPULSE * (0.75 if big else 0.5)
 		"recon_dash":
 			if me.has_method("_begin_roll"):
 				me.call("_begin_roll", facing)
@@ -88,10 +112,11 @@ func _apply_owner_effect(
 			if me.has_method("_begin_roll"):
 				me.call("_begin_roll", facing)
 		"blink":
-			var rng: float = Settings.SKILL_BLINK_RANGE + float(lvl - 1)
+			var rng: float = Settings.SKILL_BLINK_RANGE + float(lvl - 1) + (4.0 if big else 0.0)
 			_blink(body, body.global_position + facing * rng)
 		"shield":
-			_grant_shield(body, Settings.SKILL_SHIELD_TIME + 0.5 * float(lvl - 1))
+			var secs: float = Settings.SKILL_SHIELD_TIME + 0.5 * float(lvl - 1)
+			_grant_shield(body, secs * 1.5 if big else secs)
 		_:
 			pass
 	# Mortar/bite/whirlwind/slam/chain have no owner-local effect (server-only); aim used there.
@@ -124,34 +149,43 @@ func _grant_shield(body: Node, secs: float) -> void:
 
 # ------------------------------------------------------------ server effects (enemies)
 func _apply_server_effect(
-	ability: String, lvl: int, caster: Node, _pos: Vector3, aim: Vector3, _facing: Vector3
+	ability: String,
+	lvl: int,
+	caster: Node,
+	_pos: Vector3,
+	aim: Vector3,
+	_facing: Vector3,
+	dmg_power: float = 1.0,
+	big: bool = false
 ) -> void:
 	var me: Node3D = caster as Node3D
 	if me == null:
 		return
 	var center: Vector3 = me.global_position
+	var rmul: float = 1.25 if big else 1.0  # evolved/combo casts hit a wider area
 	match ability:
 		"aoe_stagger":
-			var rad: float = Settings.SKILL_SLAM_RADIUS + 0.4 * float(lvl - 1)
-			var dmg: float = Settings.SKILL_SLAM_DAMAGE + 12.0 * float(lvl - 1)
+			var rad: float = (Settings.SKILL_SLAM_RADIUS + 0.4 * float(lvl - 1)) * rmul
+			var dmg: float = (Settings.SKILL_SLAM_DAMAGE + 12.0 * float(lvl - 1)) * dmg_power
 			var stun: float = Settings.SKILL_SLAM_STAGGER + 0.15 * float(lvl - 1)
 			_radial(center, rad, dmg, stun, caster)
 		"mortar":
-			var mr: float = Settings.SKILL_MORTAR_RADIUS + 0.3 * float(lvl - 1)
-			var md: float = Settings.SKILL_MORTAR_DAMAGE + 15.0 * float(lvl - 1)
+			var mr: float = (Settings.SKILL_MORTAR_RADIUS + 0.3 * float(lvl - 1)) * rmul
+			var md: float = (Settings.SKILL_MORTAR_DAMAGE + 15.0 * float(lvl - 1)) * dmg_power
 			_radial(aim, mr, md, 0.8, caster)
 		"whirlwind":
-			var wr: float = Settings.SKILL_WHIRL_RADIUS + 0.3 * float(lvl - 1)
-			var wd: float = Settings.SKILL_WHIRL_DAMAGE + 8.0 * float(lvl - 1)
+			var wr: float = (Settings.SKILL_WHIRL_RADIUS + 0.3 * float(lvl - 1)) * rmul
+			var wd: float = (Settings.SKILL_WHIRL_DAMAGE + 8.0 * float(lvl - 1)) * dmg_power
 			_radial(center, wr, wd, 0.6, caster)
 		"ram_charge":
 			var rr: float = Settings.SKILL_RAM_RANGE
-			var rd: float = Settings.SKILL_RAM_DAMAGE + 12.0 * float(lvl - 1)
-			_radial(center + (aim - center).normalized() * (rr * 0.5), rr * 0.5, rd, 1.0, caster)
+			var rd: float = (Settings.SKILL_RAM_DAMAGE + 12.0 * float(lvl - 1)) * dmg_power
+			var rc: Vector3 = center + (aim - center).normalized() * (rr * 0.5)
+			_radial(rc, rr * 0.5 * rmul, rd, 1.0, caster)
 		"bite_cone":
-			_cone(me, lvl, caster)
+			_cone(me, lvl, caster, dmg_power, rmul)
 		"chain":
-			_chain(center, lvl)
+			_chain(center, lvl, big)
 		_:
 			pass
 
@@ -181,12 +215,12 @@ func _radial(center: Vector3, radius: float, damage: float, stagger: float, cast
 
 
 ## Forward cone (bite): enemies within range AND the half-angle of the caster's facing.
-func _cone(me: Node3D, lvl: int, caster: Node) -> void:
+func _cone(me: Node3D, lvl: int, caster: Node, dmg_power: float = 1.0, rmul: float = 1.0) -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
-	var rng: float = Settings.SKILL_BITE_RANGE + 0.3 * float(lvl - 1)
-	var dmg: float = Settings.SKILL_BITE_DAMAGE + 14.0 * float(lvl - 1)
+	var rng: float = (Settings.SKILL_BITE_RANGE + 0.3 * float(lvl - 1)) * rmul
+	var dmg: float = (Settings.SKILL_BITE_DAMAGE + 14.0 * float(lvl - 1)) * dmg_power
 	var half: float = deg_to_rad(Settings.SKILL_BITE_ANGLE + 5.0 * float(lvl - 1))
 	var fwd: Vector3 = -me.global_transform.basis.z
 	fwd.y = 0.0
@@ -209,11 +243,11 @@ func _cone(me: Node3D, lvl: int, caster: Node) -> void:
 
 
 ## Chain shock: shock the nearest enemy + arc to nearby ones (reuse MachineChemistry).
-func _chain(center: Vector3, lvl: int) -> void:
+func _chain(center: Vector3, lvl: int, big: bool = false) -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
-	var jumps: int = Settings.SKILL_CHAIN_JUMPS + (lvl - 1)
+	var jumps: int = Settings.SKILL_CHAIN_JUMPS + (lvl - 1) + (2 if big else 0)
 	var nearest: Node = null
 	var best: float = 12.0
 	for e in tree.get_nodes_in_group(Groups.ENEMIES):
@@ -234,7 +268,7 @@ func _chain(center: Vector3, lvl: int) -> void:
 ## Distinct per-ability cast effect (built by SkillVFX), broadcast to every peer (call_local).
 ## Render-only — headless-skipped + FX-distance-gated, so it never touches gameplay/golden.
 @rpc("authority", "call_local", "unreliable")
-func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3, facing: Vector3) -> void:
+func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3, facing: Vector3, big: bool) -> void:
 	Events.skill_cast.emit(skill_id, 0)
 	if DisplayServer.get_name() == "headless":
 		return
@@ -247,7 +281,13 @@ func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3, facing: Vector3) ->
 	var color: Color = def["color"]
 	var ability: String = String(def["ability"])
 	SkillVFX.play(ability, color, pos, aim, facing, arena)
-	Events.screen_shake.emit(SkillVFX.shake_for(ability))
+	if big:
+		# Evolved / combo-empowered cast — a bright shock-ring emphasis + a stronger shake.
+		var at: Vector3 = aim if ability == "mortar" else pos
+		SkillVFX.emphasis(at, arena)
+		Events.screen_shake.emit(SkillVFX.shake_for(ability) * 1.5)
+	else:
+		Events.screen_shake.emit(SkillVFX.shake_for(ability))
 
 
 # ------------------------------------------------------------ helpers

@@ -1139,6 +1139,57 @@ const SKILL_WHIRL_RADIUS: float = 4.5
 const SKILL_WHIRL_DAMAGE: float = 35.0
 const SKILL_RECON_RADIUS: float = 22.0
 
+# --- Mutant Harvest DEPTH (v0.4.1): passives, set synergies, combos, evolution -------------
+## Each skill's archetype (drives SET bonuses) — melee / ranged / mobility / defense.
+const SKILL_ARCHETYPES := {
+	"leap": "mobility",
+	"slam": "melee",
+	"blink": "mobility",
+	"mortar": "ranged",
+	"shield": "defense",
+	"ram": "melee",
+	"chainshock": "ranged",
+	"bite": "melee",
+	"whirlwind": "melee",
+	"recon": "ranged",
+}
+## A PASSIVE that applies WHILE the limb is worn (level-scaled), even without casting.
+## stat: "damage" (gun + ability) or "toughness" (incoming-damage reduction). skill_id -> {..}.
+const SKILL_PASSIVES := {
+	"leap": {"stat": "toughness", "per_level": 0.015},
+	"slam": {"stat": "damage", "per_level": 0.04},
+	"blink": {"stat": "toughness", "per_level": 0.015},
+	"mortar": {"stat": "damage", "per_level": 0.03},
+	"shield": {"stat": "toughness", "per_level": 0.05},
+	"ram": {"stat": "damage", "per_level": 0.04},
+	"chainshock": {"stat": "damage", "per_level": 0.03},
+	"bite": {"stat": "damage", "per_level": 0.04},
+	"whirlwind": {"stat": "damage", "per_level": 0.035},
+	"recon": {"stat": "damage", "per_level": 0.025},
+}
+## SET bonuses: holding N distinct skills of an archetype grants a build-defining passive.
+## archetype -> [[count, stat, value], ...] (highest matching threshold per archetype applies).
+const SKILL_SETS := {
+	"melee": [[2, "damage", 0.12], [3, "damage", 0.25]],
+	"ranged": [[2, "damage", 0.10], [3, "damage", 0.20]],
+	"mobility": [[2, "toughness", 0.10]],
+	"defense": [[1, "toughness", 0.10]],
+}
+const SKILL_PASSIVE_DMG_CAP: float = 0.8  # cap total bonus gun/ability damage at +80%
+const SKILL_PASSIVE_TOUGH_CAP: float = 0.6  # cap total incoming-damage reduction at 60%
+# Combo: casting a DIFFERENT skill within the window empowers it (bigger effect + cd refund).
+const SKILL_COMBO_WINDOW: float = 3.0  # s after a cast that the next (different) cast can combo
+const SKILL_COMBO_MULT: float = 1.5  # empowered effect multiplier
+const SKILL_COMBO_CD_REFUND: float = 0.4  # fraction of the empowered cast's cooldown refunded
+# Evolution: a skill at max_level MUTATES — its effect gets this multiplier + a distinct look.
+const SKILL_EVOLVE_MULT: float = 1.6
+
+
+## Archetype of a skill (for set bonuses), or "" if unknown.
+func skill_archetype(id: String) -> String:
+	return String(SKILL_ARCHETYPES.get(id, ""))
+
+
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
 ## "weakpoint_armored" sets the WeakPoint Hurtbox damage_multiplier to an ABSOLUTE armor_mult

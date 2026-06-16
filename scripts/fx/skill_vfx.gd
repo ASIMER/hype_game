@@ -39,6 +39,14 @@ static func play(
 			_ring(arena, pos, color, 6.0)
 
 
+## A bright white shock-ring overlay for an EVOLVED / COMBO-empowered cast (the "payoff" pop).
+static func emphasis(pos: Vector3, arena: Node) -> void:
+	if arena == null or DisplayServer.get_name() == "headless":
+		return
+	_ring(arena, pos, Color(1.0, 1.0, 1.0), 9.0, 0.45)
+	_flash(arena, pos + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.95, 0.7), 7.0)
+
+
 ## Camera-shake trauma appropriate to the ability (big slams punch harder).
 static func shake_for(ability: String) -> float:
 	match ability:

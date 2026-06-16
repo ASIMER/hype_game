@@ -14,6 +14,7 @@ const _ICON_DIR := "res://assets/ui/icons/skills/%s.svg"
 
 var _player: Node = null
 var _slots: Array = []  # per-slot {panel,iconbg,icon,cd,key,lvl,cdtext,skill_id}
+var _passive: Label = null  # live passive/set bonus readout above the slots
 
 
 func _ready() -> void:
@@ -31,6 +32,19 @@ func _ready() -> void:
 	offset_bottom = -12.0
 	for i in Settings.SKILL_MAX_SLOTS:
 		_slots.append(_make_slot(i))
+	# Passive/set readout — sits just above the slot row so the build's bonuses are VISIBLE.
+	_passive = Label.new()
+	_passive.add_theme_font_size_override("font_size", 13)
+	_passive.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))
+	_passive.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_passive.add_theme_constant_override("outline_size", 3)
+	_passive.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_passive.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_passive.offset_top = -20.0
+	_passive.offset_bottom = -2.0
+	_passive.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_passive.visible = false
+	add_child(_passive)
 	Events.local_player_spawned.connect(_on_player)
 	Events.skill_changed.connect(_rebuild)
 	_rebuild()
@@ -64,6 +78,26 @@ func _process(_delta: float) -> void:
 			s["cdtext"].text = "%d" % int(ceil(rem))  # whole seconds left
 		else:
 			s["cdtext"].visible = false
+	_update_passive(sk)
+
+
+## Show the live limb-passive / set-bonus totals above the slots (hidden when zero).
+func _update_passive(sk: Node) -> void:
+	if _passive == null or not sk.has_method("passive_totals"):
+		return
+	var t: Dictionary = sk.passive_totals()
+	var dmg: int = int(round(float(t.get("damage", 0.0)) * 100.0))
+	var tough: int = int(round(float(t.get("toughness", 0.0)) * 100.0))
+	if dmg <= 0 and tough <= 0:
+		_passive.visible = false
+		return
+	var parts: Array = []
+	if dmg > 0:
+		parts.append("+%d%% DMG" % dmg)
+	if tough > 0:
+		parts.append("+%d%% TGH" % tough)
+	_passive.text = "  ".join(parts)
+	_passive.visible = true
 
 
 ## Find/refresh the local-authority player (the signal may have fired before _ready).

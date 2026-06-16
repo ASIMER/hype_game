@@ -20,6 +20,8 @@ var _limbs: Node3D = null  # the current limb assembly (re-welded if the body re
 var _headless: bool = false
 var _slot_order: Array[String] = []  # acquisition order → hotbar slot index (authority-local)
 var _cd: Dictionary = {}  # skill_id -> cooldown seconds remaining (authority-local)
+var _combo_until_ms: int = 0  # combo window deadline ms (authority-local)
+var _combo_last: String = ""  # last skill cast — a combo needs a DIFFERENT skill next
 
 
 func _ready() -> void:
@@ -98,6 +100,53 @@ func cooldown_remaining(skill_id: String) -> float:
 	return maxf(0.0, float(_cd.get(skill_id, 0.0)))
 
 
+# ------------------------------------------------------------ passives + set synergies
+## Aggregate passive bonuses from held skills (level-scaled) + archetype SET bonuses.
+## Returns {"damage": bonus, "toughness": reduction} (0-based, capped). Cheap (≤5 skills).
+func passive_totals() -> Dictionary:
+	var dmg: float = 0.0
+	var tough: float = 0.0
+	var arch_counts: Dictionary = {}
+	for sid in _p.skills:
+		var lvl: int = int(_p.skills[sid])
+		var pas: Dictionary = Settings.SKILL_PASSIVES.get(sid, {})
+		if pas.has("stat"):
+			var add: float = float(pas["per_level"]) * float(lvl)
+			if String(pas["stat"]) == "damage":
+				dmg += add
+			else:
+				tough += add
+		var arch: String = Settings.skill_archetype(String(sid))
+		if arch != "":
+			arch_counts[arch] = int(arch_counts.get(arch, 0)) + 1
+	for arch in arch_counts:
+		var cnt: int = int(arch_counts[arch])
+		var best_dmg: float = 0.0
+		var best_tough: float = 0.0
+		for tier in Settings.SKILL_SETS.get(arch, []):
+			if cnt >= int(tier[0]):
+				if String(tier[1]) == "damage":
+					best_dmg = float(tier[2])
+				else:
+					best_tough = float(tier[2])
+		dmg += best_dmg
+		tough += best_tough
+	return {
+		"damage": minf(dmg, Settings.SKILL_PASSIVE_DMG_CAP),
+		"toughness": minf(tough, Settings.SKILL_PASSIVE_TOUGH_CAP),
+	}
+
+
+## Gun/ability DAMAGE multiplier from limb passives (≥ 1.0). Read by weapon_controller + casts.
+func passive_damage_mult() -> float:
+	return 1.0 + float(passive_totals()["damage"])
+
+
+## Incoming-damage REDUCTION fraction from limb passives (0..cap). Read by PlayerGear.
+func passive_toughness() -> float:
+	return float(passive_totals()["toughness"])
+
+
 func _tick_cooldowns(delta: float) -> void:
 	for sid in _cd.keys():
 		var rem: float = float(_cd[sid]) - delta
@@ -128,11 +177,30 @@ func cast(slot: int) -> void:
 		return
 	var lvl: int = int(_p.skills.get(sid, 1))
 	var def: Dictionary = Settings.skill_def(sid)
+	# COMBO: a DIFFERENT skill cast within the window is empowered (bigger effect + cd refund).
+	var now: int = Time.get_ticks_msec()
+	var empowered: bool = now < _combo_until_ms and sid != _combo_last
+	_combo_until_ms = now + int(Settings.SKILL_COMBO_WINDOW * 1000.0)
+	_combo_last = sid
 	# Cooldown shrinks 5%/level; reset locally + trusted (the grenade/consumable economy).
-	_cd[sid] = float(def["cooldown"]) * pow(0.95, lvl - 1)
+	var cd: float = float(def["cooldown"]) * pow(0.95, lvl - 1)
+	if empowered:
+		cd *= 1.0 - Settings.SKILL_COMBO_CD_REFUND
+	_cd[sid] = cd
 	Events.skill_cooldown_changed.emit(sid, float(_cd[sid]))
 	Events.skill_cast.emit(sid, lvl)
-	SkillDirector.request_cast(sid, lvl, _p.global_position, _aim_point(), _facing())
+	if empowered:
+		Events.notify.emit(tr("COMBO!"), 0)
+	# Damage scale folds in the limb passive (the owner knows its own passives) × combo × evolve.
+	var dmg_power: float = passive_damage_mult()
+	if empowered:
+		dmg_power *= Settings.SKILL_COMBO_MULT
+	var evolved: bool = lvl >= int(def["max_level"])
+	if evolved:
+		dmg_power *= Settings.SKILL_EVOLVE_MULT
+	SkillDirector.request_cast(
+		sid, lvl, _p.global_position, _aim_point(), _facing(), dmg_power, empowered or evolved
+	)
 
 
 ## Forward direction of the body (faces -Z), flat on the ground plane.

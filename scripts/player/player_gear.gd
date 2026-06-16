@@ -114,6 +114,10 @@ func filter_incoming_damage(amount: float, source: Node) -> float:
 			break
 	var armor: float = clampf(float(_p.call("_buff_sum", "armor")), 0.0, 0.9)
 	amount *= (1.0 - armor)
+	# Mutant-Harvest limb TOUGHNESS passive (shield/mobility limbs + defense set bonus).
+	var sk: Node = _p.get_node_or_null("Skills")
+	if sk != null and sk.has_method("passive_toughness"):
+		amount *= 1.0 - float(sk.passive_toughness())
 	var shield: float = float(_p._overshield)
 	if shield > 0.0:
 		var absorbed: float = minf(shield, amount)
