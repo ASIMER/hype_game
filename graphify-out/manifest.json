@@ -985,8 +985,8 @@
     "semantic_hash": ""
   },
   "tools/lint/golden_world.json": {
-    "mtime": 1781611677.2814891,
-    "ast_hash": "b5fc9df0a57c5cfe3024589e6569a1f2",
+    "mtime": 1781618654.5221605,
+    "ast_hash": "e30efdb6dbae6d2604d409165b6fa869",
     "semantic_hash": ""
   },
   "docs/AUDIT.md": {
