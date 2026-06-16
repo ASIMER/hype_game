@@ -112,8 +112,9 @@ func _detonate_effect(pos: Vector3) -> void:
 		# Grenade explosion is AI-audible; _detonate_effect runs under the
 		# server-auth gate here so report_noise emits directly (no RPC needed).
 		NetworkManager.report_noise(pos, Settings.NOISE_GRENADE, 2)
-		# Blast shatters every window pane in radius (server decides + replicates).
+		# Blast shatters every window pane + crumbles every wall segment in radius.
 		BreakableGlass.break_in_radius(pos, Settings.GRENADE_RADIUS)
+		BreakableChunk.break_in_radius(pos, Settings.GRENADE_RADIUS)
 
 
 ## Damage every "enemies" node within `radius`, scaled by distance falloff

@@ -97,6 +97,7 @@ static func mat_glass() -> StandardMaterial3D:
 # emission ENERGY is animated by world_atmosphere._apply_sun_ambient (warm windows at night).
 static var _glass_pool: Array[StandardMaterial3D] = []
 static var _glass_seq: int = 0
+static var _chunk_seq: int = 0  # per-build BreakableChunk id (reset by arena → co-op parity)
 
 
 static func glass_pool() -> Array[StandardMaterial3D]:
@@ -242,18 +243,42 @@ static func mat_sandstone_dark(sid: int = 0) -> StandardMaterial3D:
 ## it. `rot_y_deg` rotates about Y only (keeps the box axis-aligned for collision via
 ## the StaticBody transform).
 static func _solid(
-	parent: Node3D, size: Vector3, mat: StandardMaterial3D, offset: Vector3, rot_y_deg: float = 0.0
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	rot_y_deg: float = 0.0,
+	breakable: bool = false
 ) -> StaticBody3D:
-	var body := StaticBody3D.new()
+	# `breakable` wall segments become a BreakableChunk (same box/collision; shoot to crumble).
+	# When the feature is OFF, the body + child names stay byte-identical to a plain _solid so the
+	# golden snapshot + world are completely unaffected (the destruction system is opt-in).
+	var make_chunk := breakable and Settings.CHUNK_DESTRUCTION_ENABLED
+	var body: StaticBody3D
+	if make_chunk:
+		_chunk_seq += 1
+		var c := BreakableChunk.new()
+		c.name = "Chunk_%d" % _chunk_seq
+		c.index = _chunk_seq
+		c.hp = Settings.CHUNK_HP
+		c.chunk_size = size
+		c.chunk_color = mat.albedo_color
+		body = c
+	else:
+		body = StaticBody3D.new()
 	body.collision_layer = 1
 	body.collision_mask = 0
 	var basis := Basis.from_euler(Vector3(0.0, deg_to_rad(rot_y_deg), 0.0))
 	body.transform = Transform3D(basis, offset)
 	var mi := MeshInstance3D.new()
+	if make_chunk:
+		mi.name = "Mesh"
 	mi.mesh = ProceduralModels._box(size)
 	mi.material_override = mat
 	body.add_child(mi)
 	var col := CollisionShape3D.new()
+	if make_chunk:
+		col.name = "CollisionShape3D"
 	var shape := BoxShape3D.new()
 	shape.size = size
 	col.shape = shape
@@ -390,8 +415,15 @@ static func wall(
 		var head_y: float = sill_h + win_h
 		var ww: float = min(length * 0.5, 1.6)
 		var pier: float = (length - ww) * 0.5
-		# Sill strip across the full length.
-		_solid(root, Vector3(length, sill_h, thickness), mat, Vector3(0.0, sill_h * 0.5, 0.0))
+		# Sill strip across the full length (breakable — shoot to crumble).
+		_solid(
+			root,
+			Vector3(length, sill_h, thickness),
+			mat,
+			Vector3(0.0, sill_h * 0.5, 0.0),
+			0.0,
+			true
+		)
 		# Header strip across the full length.
 		var header_h: float = height - head_y
 		if header_h > 0.05:
@@ -399,7 +431,9 @@ static func wall(
 				root,
 				Vector3(length, header_h, thickness),
 				mat,
-				Vector3(0.0, head_y + header_h * 0.5, 0.0)
+				Vector3(0.0, head_y + header_h * 0.5, 0.0),
+				0.0,
+				true
 			)
 		# Side piers flanking the opening.
 		if pier > 0.05:
@@ -407,13 +441,17 @@ static func wall(
 				root,
 				Vector3(pier, win_h, thickness),
 				mat,
-				Vector3(-(length - pier) * 0.5, sill_h + win_h * 0.5, 0.0)
+				Vector3(-(length - pier) * 0.5, sill_h + win_h * 0.5, 0.0),
+				0.0,
+				true
 			)
 			_solid(
 				root,
 				Vector3(pier, win_h, thickness),
 				mat,
-				Vector3((length - pier) * 0.5, sill_h + win_h * 0.5, 0.0)
+				Vector3((length - pier) * 0.5, sill_h + win_h * 0.5, 0.0),
+				0.0,
+				true
 			)
 		# Glass pane filling the opening: a BREAKABLE solid (layer 1 — stops bullets
 		# and enemy LOS until shattered). Deterministic index from _glass_seq so the
@@ -451,7 +489,14 @@ static func wall(
 			root, Vector3(ww + 0.3, 0.1, thickness + 0.12), ledge, Vector3(0.0, head_y + 0.04, 0.0)
 		)
 	else:
-		_solid(root, Vector3(length, height, thickness), mat, Vector3(0.0, height * 0.5, 0.0))
+		_solid(
+			root,
+			Vector3(length, height, thickness),
+			mat,
+			Vector3(0.0, height * 0.5, 0.0),
+			0.0,
+			true
+		)
 	return root
 
 

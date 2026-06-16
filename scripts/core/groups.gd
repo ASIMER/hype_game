@@ -18,6 +18,7 @@ const WAVE_MANAGER := "wave_manager"  # the per-match WaveManager registers itse
 const LOCKED_DOORS := "locked_doors"  # key-gated annex doors (batch C)
 const NIGHT_LIGHTS := "night_lights"  # street-lamp OmniLights driven by the day-night ramp
 const BREAKABLE_GLASS := "breakable_glass"  # window panes a bullet/blast can shatter
+const BREAKABLE_CHUNK := "breakable_chunk"  # building wall segments a bullet/blast can crumble
 const NEMESIS := "nemesis"  # the active Machine Nemesis (map marker + kill-payoff lookup)
 const POWER_CORE := "power_core"  # a boss/miniboss-dropped carriable beacon (map marker)
 

@@ -47,6 +47,7 @@ signal zipline_ride_started(player: Node, zipline: Node)
 signal door_opened(door: Node)
 ## A window pane shattered (fires on EVERY peer, post-replication — audio/QA hook).
 signal glass_broken(pane: Node)
+signal chunk_broken(chunk: Node)
 ## The raid mutator for THIS match ("" = none). Re-emitted on every sync so late HUD
 ## instances catch it; drives the HUD banner + map label.
 signal raid_mutator_changed(mutator: String)

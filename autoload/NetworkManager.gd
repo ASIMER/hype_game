@@ -409,6 +409,39 @@ func _glass_broken_rpc(index: int) -> void:
 		pane.shatter()
 
 
+## Building wall-segment damage (BreakableChunk, index-keyed like glass). HP is server-only:
+## the host applies directly; a client routes the shot's damage via rpc_id(1). When a hit
+## depletes the segment, the server broadcasts the crumble to every peer.
+func request_damage_chunk(index: int, dmg: float) -> void:
+	if GameState.is_local_authority_server():
+		_server_damage_chunk(index, dmg)
+	else:
+		_damage_chunk_request_rpc.rpc_id(1, index, dmg)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _damage_chunk_request_rpc(index: int, dmg: float) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_damage_chunk(index, dmg)
+
+
+func _server_damage_chunk(index: int, dmg: float) -> void:
+	var chunk: BreakableChunk = BreakableChunk.by_index(index)
+	if chunk == null or chunk.broken:
+		return
+	if chunk.server_take_damage(dmg):
+		report_noise(chunk.global_position, BreakableChunk.NOISE_LOUDNESS, 1)
+		_chunk_broken_rpc.rpc(index)
+
+
+@rpc("authority", "call_local", "reliable")
+func _chunk_broken_rpc(index: int) -> void:
+	var chunk: BreakableChunk = BreakableChunk.by_index(index)
+	if chunk != null:
+		chunk.crumble()
+
+
 # ============================================== server-spawned throwables / gadgets
 ## ALL grenade throws + gadget placements spawn on the SERVER under Arena/Net/Gadgets
 ## (a MultiplayerSpawner with NetThrowables.spawn as its custom spawn_function), so

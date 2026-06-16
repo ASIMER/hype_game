@@ -1190,6 +1190,16 @@ func skill_archetype(id: String) -> String:
 	return String(SKILL_ARCHETYPES.get(id, ""))
 
 
+# --- Local building destruction (v0.4.1): shoot a wall segment -> it crumbles locally ----
+# OFF by default: the BreakableChunk infra is shipped but UNVERIFIED — harness testing could not
+# confirm walls crumble (the spawn building's walls are built via direct _solid calls, not the
+# wall() segments wired breakable here, so coverage is incomplete). Needs a focused follow-up to
+# (a) widen breakable coverage to the themed builders and (b) confirm crumbling. Enabling it as-is
+# would ship an unverified world/combat change. With this false, the world is byte-identical.
+const CHUNK_DESTRUCTION_ENABLED: bool = false  # master toggle for BreakableChunk wall segments
+const CHUNK_HP: float = 120.0  # HP of a breakable wall segment (deliberate — many shots/blasts)
+const CHUNK_NOISE: float = 14.0  # how loud a crumbling segment is to enemy hearing (m)
+
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
 ## "weakpoint_armored" sets the WeakPoint Hurtbox damage_multiplier to an ABSOLUTE armor_mult

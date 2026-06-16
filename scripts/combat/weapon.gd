@@ -270,6 +270,10 @@ func _shoot(
 			# Window pane: the bullet correctly STOPS on this (breaking) shot — the
 			# impact FX already targets the pane point; the server shatters + replicates.
 			NetworkManager.request_break_glass((hit_node as BreakableGlass).index)
+		elif hit_node is BreakableChunk:
+			# Building wall segment: route this shot's damage to the SERVER, which tracks HP
+			# and broadcasts the crumble once depleted (index-keyed, like glass).
+			NetworkManager.request_damage_chunk((hit_node as BreakableChunk).index, dmg)
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)

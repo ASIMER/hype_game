@@ -257,6 +257,7 @@ func _build_poi_structures() -> void:
 		return
 	_annexes.clear()
 	ProceduralBuildings._glass_seq = 0  # per-build window-pick determinism (co-op parity)
+	ProceduralBuildings._chunk_seq = 0  # per-build BreakableChunk id determinism (co-op parity)
 	for poi_name in _POI_DEFS.keys():
 		var def: Dictionary = _POI_DEFS[poi_name]
 		var old := geometry.get_node_or_null(poi_name)
