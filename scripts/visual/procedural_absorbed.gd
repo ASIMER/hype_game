@@ -145,27 +145,33 @@ static func _place_limb(root: Node3D, part: String, color: Color, i: int, s: int
 	var tier: int = i / 2
 	var pos: Vector3
 	var rot: Vector3
-	var scl: float = 0.85
+	# Parts are scaled UP and pushed further off the body so the Frankenstein silhouette reads
+	# clearly from the behind-the-back camera (the user couldn't see the old small limbs).
+	var scl: float = 1.4
 	match part:
 		"horn", "spike":  # head-top, ringing outward
-			pos = Vector3(side * (0.10 + 0.05 * float(tier)), 1.74 + 0.02 * jitter, 0.02)
-			rot = Vector3(-18.0, 0.0, side * 28.0)
+			pos = Vector3(side * (0.12 + 0.06 * float(tier)), 1.80 + 0.02 * jitter, 0.02)
+			rot = Vector3(-18.0, 0.0, side * 30.0)
+			scl = 1.5
 		"fist":  # shoulders
-			pos = Vector3(side * 0.36, 1.40 - 0.12 * float(tier), 0.0)
+			pos = Vector3(side * 0.44, 1.42 - 0.14 * float(tier), 0.0)
 			rot = Vector3(0.0, 0.0, side * 92.0)
-			scl = 0.95
+			scl = 1.55
 		"claw":  # torso sides — legs marching DOWN (the spider legs)
-			pos = Vector3(side * (0.28 + 0.03 * jitter), 1.16 - float(tier) * 0.16, 0.04)
+			pos = Vector3(side * (0.36 + 0.03 * jitter), 1.20 - float(tier) * 0.18, 0.04)
 			rot = Vector3(90.0, side * 18.0, side * 62.0)
+			scl = 1.5
 		"blade":  # forearms
-			pos = Vector3(side * 0.34, 0.80 - float(tier) * 0.12, 0.06)
+			pos = Vector3(side * 0.42, 0.82 - float(tier) * 0.14, 0.06)
 			rot = Vector3(20.0, 0.0, side * 40.0)
+			scl = 1.45
 		"maw":  # chest front
-			pos = Vector3(side * 0.12 * float(tier), 1.20 + 0.06 * jitter, -0.20)
+			pos = Vector3(side * 0.14 * float(tier), 1.22 + 0.06 * jitter, -0.26)
 			rot = Vector3(-90.0, 0.0, 0.0)
+			scl = 1.5
 		_:  # shell/vane/barrel/rotor/antenna/scrap → fanned on the back
 			var ang: float = side * (0.4 + 0.25 * float(tier)) + jitter * 0.1
-			pos = Vector3(sin(ang) * 0.26, 1.30 + float(tier) * 0.16, 0.20 + cos(ang) * 0.05)
+			pos = Vector3(sin(ang) * 0.32, 1.32 + float(tier) * 0.18, 0.26 + cos(ang) * 0.06)
 			rot = Vector3(-24.0, rad_to_deg(ang) * 0.5, sin(ang) * 28.0)
 	node.position = pos
 	node.scale = Vector3.ONE * scl

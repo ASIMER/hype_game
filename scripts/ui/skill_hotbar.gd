@@ -1,18 +1,19 @@
 extends Control
 ## Bottom-center skill hotbar (Mutant Harvest): up to 5 slots, each showing the skill's 2D icon
-## (tinted its signature colour), the hotkey letter, the level, and a draining cooldown cover.
-## Fills as the local player harvests body-part skills. Reads the local player's replicated
-## `skills` {skill_id: level} + the Skills component's slot_order()/cooldown_frac(). Render-only.
+## (tinted its signature colour on a dark backing so it reads), the hotkey digit, the level, and a
+## draining cooldown cover with the remaining SECONDS counting down on top. Fills as the local
+## player harvests body-part skills. Reads the local player's replicated `skills` {skill_id: level}
+## + the Skills component's slot_order()/cooldown_frac()/cooldown_remaining(). Render-only.
 ## Self-positions as a fixed bottom-centre box (the minimap pattern — a FULL_RECT wrapper under a
 ## CanvasLayer collapses to zero size); slots are children at fixed local offsets.
 
-const KEYS := ["Q", "U", "J", "K", "L"]
+const KEYS := ["1", "2", "3", "4", "5"]
 const SLOT := 60.0
 const GAP := 8.0
 const _ICON_DIR := "res://assets/ui/icons/skills/%s.svg"
 
 var _player: Node = null
-var _slots: Array = []  # per-slot {panel,icon,cd,key,lvl,skill_id}
+var _slots: Array = []  # per-slot {panel,iconbg,icon,cd,key,lvl,cdtext,skill_id}
 
 
 func _ready() -> void:
@@ -50,10 +51,19 @@ func _process(_delta: float) -> void:
 		var sid: String = String(s["skill_id"])
 		if sid == "":
 			s["cd"].visible = false
+			s["cdtext"].visible = false
 			continue
 		var f: float = sk.cooldown_frac(sid)
 		s["cd"].visible = f > 0.0
 		s["cd"].offset_bottom = SLOT * f  # cover the top f fraction (drains to 0 when ready)
+		var rem: float = 0.0
+		if sk.has_method("cooldown_remaining"):
+			rem = float(sk.cooldown_remaining(sid))
+		if rem > 0.0:
+			s["cdtext"].visible = true
+			s["cdtext"].text = "%d" % int(ceil(rem))  # whole seconds left
+		else:
+			s["cdtext"].visible = false
 
 
 ## Find/refresh the local-authority player (the signal may have fired before _ready).
@@ -83,14 +93,19 @@ func _rebuild(_a = null, _b = null) -> void:
 			s["skill_id"] = sid
 			s["icon"].texture = _load_icon(sid)
 			s["icon"].modulate = col
+			s["icon"].visible = true
 			s["lvl"].text = "%d" % int(skills.get(sid, 1))
 			s["panel"].add_theme_stylebox_override("panel", _slot_style(col, true))
+			s["iconbg"].add_theme_stylebox_override("panel", _icon_bg_style(col))
 		else:
 			s["skill_id"] = ""
 			s["icon"].texture = null
+			s["icon"].visible = false
 			s["lvl"].text = ""
 			s["cd"].visible = false
+			s["cdtext"].visible = false
 			s["panel"].add_theme_stylebox_override("panel", _slot_style(UIStyle.DIM, false))
+			s["iconbg"].add_theme_stylebox_override("panel", _icon_bg_style(UIStyle.DIM))
 
 
 func _load_icon(skill_id: String) -> Texture2D:
@@ -109,6 +124,15 @@ func _slot_style(col: Color, filled: bool) -> StyleBoxFlat:
 	return sb
 
 
+## Dark rounded inner backing (faintly tinted) so the tinted-white icon silhouette pops — without
+## it the pale icon on the translucent panel read as a vague "white blob".
+func _icon_bg_style(col: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.02 + col.r * 0.04, 0.03 + col.g * 0.04, 0.05 + col.b * 0.04, 0.94)
+	sb.set_corner_radius_all(6)
+	return sb
+
+
 func _make_slot(i: int) -> Dictionary:
 	var panel := Panel.new()
 	# Fixed position within the hotbar box (top-left local origin).
@@ -119,18 +143,27 @@ func _make_slot(i: int) -> Dictionary:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", _slot_style(UIStyle.DIM, false))
 	add_child(panel)
+	var iconbg := Panel.new()
+	iconbg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	iconbg.offset_left = 4.0
+	iconbg.offset_top = 4.0
+	iconbg.offset_right = -4.0
+	iconbg.offset_bottom = -4.0
+	iconbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	iconbg.add_theme_stylebox_override("panel", _icon_bg_style(UIStyle.DIM))
+	panel.add_child(iconbg)
 	var icon := TextureRect.new()
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-	icon.offset_left = 6.0
-	icon.offset_top = 4.0
-	icon.offset_right = -6.0
-	icon.offset_bottom = -14.0
+	icon.offset_left = 7.0
+	icon.offset_top = 5.0
+	icon.offset_right = -7.0
+	icon.offset_bottom = -13.0
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(icon)
 	var cd := ColorRect.new()
-	cd.color = Color(0.0, 0.0, 0.0, 0.6)
+	cd.color = Color(0.0, 0.0, 0.0, 0.55)
 	cd.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	cd.offset_bottom = 0.0
 	cd.visible = false
@@ -138,7 +171,8 @@ func _make_slot(i: int) -> Dictionary:
 	panel.add_child(cd)
 	var key := Label.new()
 	key.text = KEYS[i] if i < KEYS.size() else ""
-	key.add_theme_font_size_override("font_size", 13)
+	key.add_theme_font_size_override("font_size", 14)
+	key.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
 	key.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	key.add_theme_constant_override("outline_size", 3)
 	key.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -158,4 +192,25 @@ func _make_slot(i: int) -> Dictionary:
 	lvl.offset_top = 1.0
 	lvl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(lvl)
-	return {"panel": panel, "icon": icon, "cd": cd, "key": key, "lvl": lvl, "skill_id": ""}
+	# Remaining-seconds countdown, centred ON TOP of the drain cover.
+	var cdtext := Label.new()
+	cdtext.add_theme_font_size_override("font_size", 22)
+	cdtext.add_theme_color_override("font_color", Color(1, 1, 1, 0.96))
+	cdtext.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	cdtext.add_theme_constant_override("outline_size", 4)
+	cdtext.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cdtext.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cdtext.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cdtext.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cdtext.visible = false
+	panel.add_child(cdtext)
+	return {
+		"panel": panel,
+		"iconbg": iconbg,
+		"icon": icon,
+		"cd": cd,
+		"key": key,
+		"lvl": lvl,
+		"cdtext": cdtext,
+		"skill_id": "",
+	}

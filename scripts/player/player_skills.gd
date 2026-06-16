@@ -93,6 +93,11 @@ func cooldown_frac(skill_id: String) -> float:
 	return clampf(rem / maxf(0.01, total), 0.0, 1.0)
 
 
+## Cooldown seconds REMAINING (0 = ready) for the HUD countdown text.
+func cooldown_remaining(skill_id: String) -> float:
+	return maxf(0.0, float(_cd.get(skill_id, 0.0)))
+
+
 func _tick_cooldowns(delta: float) -> void:
 	for sid in _cd.keys():
 		var rem: float = float(_cd[sid]) - delta

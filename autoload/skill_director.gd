@@ -65,7 +65,7 @@ func _server_cast(
 		return
 	var ability: String = String(Settings.skill_def(skill_id)["ability"])
 	_apply_server_effect(ability, lvl, _player_by_peer(peer), pos, aim, facing)
-	_cast_vfx.rpc(skill_id, pos, aim)
+	_cast_vfx.rpc(skill_id, pos, aim, facing)
 
 
 # ------------------------------------------------------------ owner-local effects (caster machine)
@@ -231,8 +231,10 @@ func _chain(center: Vector3, lvl: int) -> void:
 
 
 # ------------------------------------------------------------ VFX (every peer)
+## Distinct per-ability cast effect (built by SkillVFX), broadcast to every peer (call_local).
+## Render-only — headless-skipped + FX-distance-gated, so it never touches gameplay/golden.
 @rpc("authority", "call_local", "unreliable")
-func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3) -> void:
+func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3, facing: Vector3) -> void:
 	Events.skill_cast.emit(skill_id, 0)
 	if DisplayServer.get_name() == "headless":
 		return
@@ -244,42 +246,8 @@ func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3) -> void:
 	var def: Dictionary = Settings.skill_def(skill_id)
 	var color: Color = def["color"]
 	var ability: String = String(def["ability"])
-	# Ground-targeted abilities ring at the aim point; the rest at the caster.
-	var at: Vector3 = aim if ability == "mortar" else pos
-	_spawn_ring(arena, at, color)
-	Events.screen_shake.emit(0.25)
-
-
-func _spawn_ring(arena: Node, pos: Vector3, color: Color) -> void:
-	var ring := MeshInstance3D.new()
-	var tm := TorusMesh.new()
-	tm.inner_radius = 0.5
-	tm.outer_radius = 0.66
-	ring.mesh = tm
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(color.r, color.g, color.b, 0.85)
-	mat.emission_enabled = true
-	mat.emission = color
-	mat.emission_energy_multiplier = 4.0
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	ring.material_override = mat
-	arena.add_child(ring)
-	ring.global_position = pos + Vector3(0.0, 0.25, 0.0)
-	ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
-	ring.scale = Vector3.ONE * 0.2
-	var light := OmniLight3D.new()
-	light.light_color = color
-	light.light_energy = 6.0
-	light.omni_range = 6.0
-	ring.add_child(light)
-	var tw := ring.create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(ring, "scale", Vector3.ONE * 6.0, 0.35)
-	tw.tween_property(mat, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.35)
-	tw.tween_property(light, "light_energy", 0.0, 0.3)
-	tw.set_parallel(false)
-	tw.tween_callback(ring.queue_free)
+	SkillVFX.play(ability, color, pos, aim, facing, arena)
+	Events.screen_shake.emit(SkillVFX.shake_for(ability))
 
 
 # ------------------------------------------------------------ helpers
