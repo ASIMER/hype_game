@@ -287,6 +287,39 @@ static func _solid(
 	return body
 
 
+## A shootable wall that crumbles LOCALLY: large walls split into a grid of ~CHUNK_CELL_SIZE
+## BreakableChunk cells (each an independent _solid breakable) so a burst punches a hole exactly
+## where you hit; small segments (≤ CHUNK_GRID_MIN) stay one cell. The thin horizontal axis is the
+## wall thickness (kept whole); the wide horizontal + the height are gridded. Cells tile flush (no
+## gaps); `_chunk_seq` increments in loop order → co-op byte-identical. When destruction is OFF, one
+## plain _solid is emitted (byte-identical → golden unaffected).
+static func _breakable_wall(
+	parent: Node3D, size: Vector3, mat: StandardMaterial3D, offset: Vector3, rot_y_deg: float = 0.0
+) -> void:
+	if not Settings.CHUNK_DESTRUCTION_ENABLED:
+		_solid(parent, size, mat, offset, rot_y_deg, false)
+		return
+	var thin_is_x: bool = size.x <= size.z  # the smaller horizontal extent is the wall thickness
+	var wide: float = size.z if thin_is_x else size.x
+	var thick: float = size.x if thin_is_x else size.z
+	if maxf(wide, size.y) <= Settings.CHUNK_GRID_MIN:
+		_solid(parent, size, mat, offset, rot_y_deg, true)  # small wall — one breakable cell
+		return
+	var cols: int = maxi(1, int(ceil(wide / Settings.CHUNK_CELL_SIZE)))
+	var rows: int = maxi(1, int(ceil(size.y / Settings.CHUNK_CELL_SIZE)))
+	var cw: float = wide / float(cols)
+	var ch: float = size.y / float(rows)
+	var rot: float = deg_to_rad(rot_y_deg)
+	for r in rows:
+		var ly: float = -size.y * 0.5 + (float(r) + 0.5) * ch
+		for c in cols:
+			var lw: float = -wide * 0.5 + (float(c) + 0.5) * cw
+			var cell: Vector3 = Vector3(thick, ch, cw) if thin_is_x else Vector3(cw, ch, thick)
+			var lpos: Vector3 = Vector3(0.0, ly, lw) if thin_is_x else Vector3(lw, ly, 0.0)
+			var rp: Vector3 = lpos.rotated(Vector3.UP, rot) if rot != 0.0 else lpos
+			_solid(parent, cell, mat, offset + rp, rot_y_deg, true)
+
+
 ## Render-only decorative box (no collision) — for window glass, trim, signage that
 ## should not block navigation/raycasts.
 static func _decor(
@@ -380,13 +413,13 @@ static func wall(
 		var dh: float = min(2.2, height - 0.2)
 		var side: float = (length - dw) * 0.5
 		if side > 0.05:
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(side, height, thickness),
 				mat,
 				Vector3(-(length - side) * 0.5, height * 0.5, 0.0)
 			)
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(side, height, thickness),
 				mat,
@@ -394,7 +427,7 @@ static func wall(
 			)
 		var lintel_h: float = height - dh
 		if lintel_h > 0.05:
-			_solid(
+			_breakable_wall(
 				root, Vector3(dw, lintel_h, thickness), mat, Vector3(0.0, dh + lintel_h * 0.5, 0.0)
 			)
 		# Small emissive door lamp beside the door (render-only, no OmniLight) so the
@@ -415,43 +448,32 @@ static func wall(
 		var head_y: float = sill_h + win_h
 		var ww: float = min(length * 0.5, 1.6)
 		var pier: float = (length - ww) * 0.5
-		# Sill strip across the full length (breakable — shoot to crumble).
-		_solid(
-			root,
-			Vector3(length, sill_h, thickness),
-			mat,
-			Vector3(0.0, sill_h * 0.5, 0.0),
-			0.0,
-			true
+		# Sill strip across the full length (breakable — shoot a hole in it).
+		_breakable_wall(
+			root, Vector3(length, sill_h, thickness), mat, Vector3(0.0, sill_h * 0.5, 0.0)
 		)
 		# Header strip across the full length.
 		var header_h: float = height - head_y
 		if header_h > 0.05:
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(length, header_h, thickness),
 				mat,
-				Vector3(0.0, head_y + header_h * 0.5, 0.0),
-				0.0,
-				true
+				Vector3(0.0, head_y + header_h * 0.5, 0.0)
 			)
 		# Side piers flanking the opening.
 		if pier > 0.05:
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(pier, win_h, thickness),
 				mat,
-				Vector3(-(length - pier) * 0.5, sill_h + win_h * 0.5, 0.0),
-				0.0,
-				true
+				Vector3(-(length - pier) * 0.5, sill_h + win_h * 0.5, 0.0)
 			)
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(pier, win_h, thickness),
 				mat,
-				Vector3((length - pier) * 0.5, sill_h + win_h * 0.5, 0.0),
-				0.0,
-				true
+				Vector3((length - pier) * 0.5, sill_h + win_h * 0.5, 0.0)
 			)
 		# Glass pane filling the opening: a BREAKABLE solid (layer 1 — stops bullets
 		# and enemy LOS until shattered). Deterministic index from _glass_seq so the
@@ -489,13 +511,8 @@ static func wall(
 			root, Vector3(ww + 0.3, 0.1, thickness + 0.12), ledge, Vector3(0.0, head_y + 0.04, 0.0)
 		)
 	else:
-		_solid(
-			root,
-			Vector3(length, height, thickness),
-			mat,
-			Vector3(0.0, height * 0.5, 0.0),
-			0.0,
-			true
+		_breakable_wall(
+			root, Vector3(length, height, thickness), mat, Vector3(0.0, height * 0.5, 0.0)
 		)
 	return root
 
@@ -1285,7 +1302,7 @@ static func _ruin_wall(
 		var sz: Vector3 = (
 			Vector3(0.55, hgt, seg_len * 0.92) if along_z else Vector3(seg_len * 0.92, hgt, 0.55)
 		)
-		_solid(parent, sz, mat, pos)
+		_breakable_wall(parent, sz, mat, pos)
 		if toppled:
 			var jitter: float = (ProcHash.hf(hk + 2) - 0.5) * 1.4
 			var bpos: Vector3 = (

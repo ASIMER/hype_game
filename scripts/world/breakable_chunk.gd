@@ -86,18 +86,25 @@ func _spawn_rubble() -> void:
 	rmat.roughness = 0.95
 	var w: float = maxf(0.3, chunk_size.x)
 	var d: float = maxf(0.3, chunk_size.z)
+	var hgt: float = maxf(0.3, chunk_size.y)
 	var base_y: float = -chunk_size.y * 0.5  # bottom of the segment (origin is its centre)
-	for _i in 7:
+	# Rubble count + chunk size scale to the cell so a big hole reads with substantial debris.
+	var span: float = maxf(maxf(w, d), hgt)
+	var count: int = clampi(int(span * 5.0) + 4, 6, 22)
+	var szmul: float = clampf(span * 0.45, 0.7, 1.8)
+	for _i in count:
 		s = (s * 1103515245 + 12345) & 0x7fffffff
 		var fx: float = (float(s % 1000) / 1000.0 - 0.5) * w
 		s = (s * 1103515245 + 12345) & 0x7fffffff
 		var fz: float = (float(s % 1000) / 1000.0 - 0.5) * d
 		s = (s * 1103515245 + 12345) & 0x7fffffff
-		var sz: float = 0.18 + float(s % 1000) / 1000.0 * 0.22
+		var fy: float = float(s % 1000) / 1000.0 * hgt * 0.45  # spread up the broken face a touch
+		s = (s * 1103515245 + 12345) & 0x7fffffff
+		var sz: float = (0.16 + float(s % 1000) / 1000.0 * 0.22) * szmul
 		var box := MeshInstance3D.new()
 		box.mesh = ProceduralModels._box(Vector3(sz, sz * 0.7, sz))
 		box.material_override = rmat
-		box.position = Vector3(fx, base_y + sz * 0.35, fz)
+		box.position = Vector3(fx, base_y + sz * 0.35 + fy, fz)
 		box.rotation = Vector3(0.0, deg_to_rad(float(s % 360)), 0.0)
 		pile.add_child(box)
 	var p := GPUParticles3D.new()

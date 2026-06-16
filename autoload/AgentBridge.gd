@@ -294,8 +294,7 @@ func _handle_line(line: String) -> void:
 			var snapped: Vector3 = LootPickup.snap_to_surface(get_tree().current_scene, ppos)
 			_send({"ok": true, "hit": [snapped.x, snapped.y, snapped.z]})
 		"glass":
-			# QA: breakable windows. No args = registry summary; {break:true, index:N}
-			# or {break:true, nearest:true} = server-gated shatter (logic in the class).
+			# QA: breakable windows. No args = summary; {break, index|nearest} = server shatter.
 			if bool(json.get("break", false)) and GameState.is_local_authority_server():
 				var gi: int = int(json.get("index", -1))
 				var gpl3: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
@@ -309,9 +308,10 @@ func _handle_line(line: String) -> void:
 			_send(NemesisQA.run(get_tree(), json))
 		"chemistry":  # QA: Machine Chemistry (Phase 5) — logic in ChemistryQA (file at the ceiling).
 			_send(ChemistryQA.run(get_tree(), json))
+		"chunk":  # QA: BreakableChunk wall destruction — logic in AgentChunkDebug (file at ceiling).
+			_send(AgentChunkDebug.run(get_tree(), json))
 		"perf":
-			# QA: frame-time sampling window for perf A/B ({window: seconds}) — fps,
-			# frame_ms p95, script/physics ms, draw calls, node counts, world_children.
+			# QA: frame-time sampling ({window: seconds}) — fps/frame_ms p95/draws/nodes.
 			_send(await PerfProbe.capture(get_tree(), float(json.get("window", 1.0))))
 		"mutator":
 			# QA (batch C): {id:"fog"|"double_loot"|"elite_patrols"|"night_raid"|""} forces

@@ -1190,15 +1190,15 @@ func skill_archetype(id: String) -> String:
 	return String(SKILL_ARCHETYPES.get(id, ""))
 
 
-# --- Local building destruction (v0.4.1): shoot a wall segment -> it crumbles locally ----
-# OFF by default: the BreakableChunk infra is shipped but UNVERIFIED — harness testing could not
-# confirm walls crumble (the spawn building's walls are built via direct _solid calls, not the
-# wall() segments wired breakable here, so coverage is incomplete). Needs a focused follow-up to
-# (a) widen breakable coverage to the themed builders and (b) confirm crumbling. Enabling it as-is
-# would ship an unverified world/combat change. With this false, the world is byte-identical.
-const CHUNK_DESTRUCTION_ENABLED: bool = false  # master toggle for BreakableChunk wall segments
-const CHUNK_HP: float = 120.0  # HP of a breakable wall segment (deliberate — many shots/blasts)
-const CHUNK_NOISE: float = 14.0  # how loud a crumbling segment is to enemy hearing (m)
+# --- Local building destruction (v0.4.1): shoot a wall -> a hole crumbles where you hit ----
+# Walls are split into a grid of breakable CELLS (BreakableChunk), so a burst punches a localized
+# hole exactly where you shoot (user's pick). With the toggle false, _solid is byte-identical to a
+# plain StaticBody3D (no cell, no naming) -> world + golden unaffected.
+const CHUNK_DESTRUCTION_ENABLED: bool = true  # master toggle for BreakableChunk wall cells
+const CHUNK_HP: float = 30.0  # HP per wall CELL — a short burst breaks it (~2-3 rifle hits)
+const CHUNK_NOISE: float = 14.0  # how loud a crumbling cell is to enemy hearing (m)
+const CHUNK_CELL_SIZE: float = 1.8  # target grid-cell edge (m) — bigger = fewer nodes (perf)
+const CHUNK_GRID_MIN: float = 2.4  # walls whose wide/height ≤ this stay ONE cell (no grid)
 
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
