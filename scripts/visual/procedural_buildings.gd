@@ -248,11 +248,13 @@ static func _solid(
 	mat: StandardMaterial3D,
 	offset: Vector3,
 	rot_y_deg: float = 0.0,
-	breakable: bool = false
+	breakable: bool = false,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
 ) -> StaticBody3D:
 	# `breakable` wall segments become a BreakableChunk (same box/collision; shoot to crumble).
 	# When the feature is OFF, the body + child names stay byte-identical to a plain _solid so the
-	# golden snapshot + world are completely unaffected (the destruction system is opt-in).
+	# golden snapshot + world are completely unaffected (the destruction system is opt-in). `kind`
+	# (concrete/metal/stone) sets the debris/SFX/HP flavor locally; it is NOT folded into golden.
 	var make_chunk := breakable and Settings.CHUNK_DESTRUCTION_ENABLED
 	var body: StaticBody3D
 	if make_chunk:
@@ -260,7 +262,8 @@ static func _solid(
 		var c := BreakableChunk.new()
 		c.name = "Chunk_%d" % _chunk_seq
 		c.index = _chunk_seq
-		c.hp = Settings.CHUNK_HP
+		c.material_kind = kind
+		c.hp = Settings.CHUNK_HP * float(Settings.CHUNK_KIND_DEFS[kind]["hp_mult"])
 		c.chunk_size = size
 		c.chunk_color = mat.albedo_color
 		body = c
@@ -294,7 +297,12 @@ static func _solid(
 ## gaps); `_chunk_seq` increments in loop order → co-op byte-identical. When destruction is OFF, one
 ## plain _solid is emitted (byte-identical → golden unaffected).
 static func _breakable_wall(
-	parent: Node3D, size: Vector3, mat: StandardMaterial3D, offset: Vector3, rot_y_deg: float = 0.0
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	rot_y_deg: float = 0.0,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
 ) -> void:
 	if not Settings.CHUNK_DESTRUCTION_ENABLED:
 		_solid(parent, size, mat, offset, rot_y_deg, false)
@@ -303,7 +311,7 @@ static func _breakable_wall(
 	var wide: float = size.z if thin_is_x else size.x
 	var thick: float = size.x if thin_is_x else size.z
 	if maxf(wide, size.y) <= Settings.CHUNK_GRID_MIN:
-		_solid(parent, size, mat, offset, rot_y_deg, true)  # small wall — one breakable cell
+		_solid(parent, size, mat, offset, rot_y_deg, true, kind)  # small wall — one breakable cell
 		return
 	var cols: int = maxi(1, int(ceil(wide / Settings.CHUNK_CELL_SIZE)))
 	var rows: int = maxi(1, int(ceil(size.y / Settings.CHUNK_CELL_SIZE)))
@@ -317,7 +325,7 @@ static func _breakable_wall(
 			var cell: Vector3 = Vector3(thick, ch, cw) if thin_is_x else Vector3(cw, ch, thick)
 			var lpos: Vector3 = Vector3(0.0, ly, lw) if thin_is_x else Vector3(lw, ly, 0.0)
 			var rp: Vector3 = lpos.rotated(Vector3.UP, rot) if rot != 0.0 else lpos
-			_solid(parent, cell, mat, offset + rp, rot_y_deg, true)
+			_solid(parent, cell, mat, offset + rp, rot_y_deg, true, kind)
 
 
 ## Generalized breakable: split ANY box (floors/ceilings/containers/pillars, not just walls) into a
@@ -332,7 +340,8 @@ static func _breakable_part(
 	mat: StandardMaterial3D,
 	offset: Vector3,
 	rot_y_deg: float = 0.0,
-	cell_size: float = 0.0
+	cell_size: float = 0.0,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
 ) -> void:
 	if not (Settings.CHUNK_DESTRUCTION_ENABLED and Settings.CHUNK_BREAK_FLOORS):
 		_solid(parent, size, mat, offset, rot_y_deg, false)
@@ -347,7 +356,7 @@ static func _breakable_part(
 	var ua: float = size.y if ax == 0 else size.x
 	var ub: float = size.z if ax != 2 else size.y
 	if maxf(ua, ub) <= Settings.CHUNK_GRID_MIN:
-		_solid(parent, size, mat, offset, rot_y_deg, true)  # small part — one breakable cell
+		_solid(parent, size, mat, offset, rot_y_deg, true, kind)  # small part — one breakable cell
 		return
 	var na: int = maxi(1, int(ceil(ua / cs)))
 	var nb: int = maxi(1, int(ceil(ub / cs)))
@@ -370,7 +379,7 @@ static func _breakable_part(
 				cell = Vector3(ca, cb, size.z)
 				lpos = Vector3(la, lb, 0.0)
 			var rp: Vector3 = lpos.rotated(Vector3.UP, rot) if rot != 0.0 else lpos
-			_solid(parent, cell, mat, offset + rp, rot_y_deg, true)
+			_solid(parent, cell, mat, offset + rp, rot_y_deg, true, kind)
 
 
 ## Render-only decorative box (no collision) — for window glass, trim, signage that
@@ -586,11 +595,16 @@ static func floor_slab(
 
 
 ## A big flat slab / container body broken at the COARSE cell size (floors/ceilings/cargo). A const
-## can't reference the Settings autoload, so the coarse size is fetched at call time here.
+## can't reference the Settings autoload, so the coarse size is fetched at call time here. `kind`
+## flavors the debris/SFX (containers pass METAL, floors/roofs stay CONCRETE).
 static func _breakable_slab(
-	parent: Node3D, size: Vector3, mat: StandardMaterial3D, offset: Vector3
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
 ) -> void:
-	_breakable_part(parent, size, mat, offset, 0.0, Settings.CHUNK_CELL_SIZE_BIG)
+	_breakable_part(parent, size, mat, offset, 0.0, Settings.CHUNK_CELL_SIZE_BIG, kind)
 
 
 ## Emit the 4 strip boxes of a holed slab deck (N/S full-width, W/E beside the hole). Each strip is
@@ -692,7 +706,11 @@ static func rubble_pile(sid: int) -> Node3D:
 ## local y=0. Solid (blocks pathing) — read as crates/cargo.
 static func container(w: float, h: float, d: float, mat: StandardMaterial3D) -> Node3D:
 	var root := Node3D.new()
-	_breakable_slab(root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0))
+	# METAL: thinner (low HP), breaks into metal panels + sparks + a clang, and bullets PENETRATE it
+	# (soft cover, not a solid wall) — see weapon.gd + Settings.CHUNK_KIND_METAL.
+	_breakable_slab(
+		root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0), Settings.CHUNK_KIND_METAL
+	)
 	# Corrugation ribs + a darker door end (decorative only).
 	var ribs := mat_metal_dark(int(w * 41.0 + d))
 	var n: int = int(d / 0.8)

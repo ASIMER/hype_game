@@ -61,7 +61,8 @@ const FLORA_BUSHES: int = 650
 const GRASS_VIS_RANGE: float = 58.0  # near-layer visibility_range_end (m); wider so grass doesn't pop on the 160m map
 const GRASS_FAR_RANGE: float = 90.0  # far-layer visibility_range_end (m)
 const FLORA_STONES: int = 1000  # textured pebbles (FloraClutter MultiMesh, render-only)
-const FLORA_BOULDERS: int = 36  # big collidable cover rocks
+const FLORA_BOULDERS: int = 36  # big collidable cover rocks (breakable STONE when destruction is on)
+const FLORA_SMALL_ROCKS: int = 60  # small shoot-only breakable rocks ("мелкие камни"; don't block)
 # FloraClutter expected per-layer totals (documentation + NET_DEBUG count checks).
 const FLORA_CLUTTER: Dictionary = {
 	"fern": 500, "flower": 280, "clover": 200, "mushroom": 180, "plant": 250, "flagstone": 60
@@ -1206,10 +1207,71 @@ const CHUNK_BREAK_FLOORS: bool = true  # floors/roofs/containers/pillars also cr
 # Falling physics DEBRIS on crumble (RigidBody shards that fall + tumble, then fade). Purely
 # local/visual (collision_layer 0, mask 1 = world only) so it never desyncs co-op or the navmesh.
 const CHUNK_DEBRIS_ENABLED: bool = true  # spawn falling RigidBody shards (vs static rubble)
-const CHUNK_DEBRIS_PER_CELL: int = 7  # shards per crumbled cell (scaled down near the global cap)
-const CHUNK_DEBRIS_CAP: int = 160  # global concurrent live shards — over this, cells drop fewer
+const CHUNK_DEBRIS_PER_CELL: int = 10  # shards per crumbled cell (scaled down near the global cap)
+const CHUNK_DEBRIS_CAP: int = 200  # global concurrent live shards — over this, cells drop fewer
 const CHUNK_DEBRIS_LIFETIME: float = 3.6  # seconds a shard lives before it fades + frees
 const CHUNK_DEBRIS_FADE: float = 2.4  # shard age (s) at which the fade-out starts
+const CHUNK_FLASH_ENABLED: bool = true  # a brief OmniLight pop on crumble (rate-limited; dark grade)
+
+# --- Material-typed destruction (v0.4.3): a chunk's `material_kind` selects its debris look, break
+# SFX, HP, and bullet-penetration. Threaded onto the node at BUILD on EVERY peer (the build is
+# identical), so it never rides the crumble RPC. CONCRETE is the default → walls/floors are
+# unchanged and the golden OFF path stays byte-identical. AudioManager/ChunkDebris read it locally.
+const CHUNK_KIND_CONCRETE: int = 0
+const CHUNK_KIND_METAL: int = 1  # containers — thin steel: low HP + bullets penetrate + sparks
+const CHUNK_KIND_STONE: int = 2  # boulders + small rocks — earthy chunky shards
+# Per-kind tunables. `debris_mult`×CHUNK_DEBRIS_PER_CELL; `hp_mult`×CHUNK_HP (metal thinner → 0.6);
+# `shard_flat` = shard box height factor (metal=flat panels, stone=chunky); `shard_size` scale;
+# `metallic`/`roughness`/`tint_lighten` style the shards (lightened so they read in the dark grade).
+const CHUNK_KIND_DEFS := {
+	CHUNK_KIND_CONCRETE:
+	{
+		"debris_mult": 1.0,
+		"hp_mult": 1.0,
+		"shard_flat": 0.72,
+		"shard_size": 1.0,
+		"metallic": 0.2,
+		"roughness": 0.92,
+		"tint_lighten": 0.15,
+		"spark": false,
+		"sfx": "chunk_concrete",
+	},
+	CHUNK_KIND_METAL:
+	{
+		"debris_mult": 0.8,
+		"hp_mult": 0.6,
+		"shard_flat": 0.22,
+		"shard_size": 1.5,
+		"metallic": 0.7,
+		"roughness": 0.35,
+		"tint_lighten": 0.2,
+		"spark": true,
+		"sfx": "chunk_metal",
+	},
+	CHUNK_KIND_STONE:
+	{
+		"debris_mult": 1.3,
+		"hp_mult": 1.0,
+		"shard_flat": 0.85,
+		"shard_size": 0.8,
+		"metallic": 0.0,
+		"roughness": 1.0,
+		"tint_lighten": 0.1,
+		"spark": false,
+		"sfx": "chunk_stone",
+	},
+}
+# Bullet penetration: a METAL chunk lets the shot pass THROUGH (it's not solid cover like a wall) up
+# to MAX times, losing FALLOFF of its damage per pass; concrete/stone STOP the ray. The pierced
+# chunk still takes (scaled) damage so a container breaks. Anti-spam SFX throttle for crumbles.
+const CHUNK_PENETRATE_METAL: bool = true
+const CHUNK_PENETRATE_MAX: int = 2
+const CHUNK_PENETRATE_FALLOFF: float = 0.55
+const CHUNK_SFX_MIN_INTERVAL: float = 0.08  # min seconds between crumble SFX (burst → 1-2, not 14)
+# Small breakable rocks (_build_stones → shoot-only): on this NON-world layer so the navmesh + the
+# player ignore them (no tripping, no nav-fragmentation) but the weapon ray + grenades still break
+# them. The weapon's hurtbox_mask gets this bit added so shots register.
+const CHUNK_ROCK_LAYER: int = 8  # physics layer for shoot-only small rocks (bit 7)
 
 ## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
 ## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.

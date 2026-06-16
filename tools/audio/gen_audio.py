@@ -558,6 +558,72 @@ def gen_glass_break() -> list[float]:
     return _fade(out, 0.001, 0.06)
 
 
+def gen_chunk_concrete() -> list[float]:
+    """Concrete crumble: a low sub THUMP + a gritty muffled rubble gurgle (double-lowpassed noise)
+    + a short mid CRACK attack. The 'обвал' centerpiece — heavy + dusty. ~0.55 s."""
+    total = 0.55
+    n = int(SAMPLE_RATE * total)
+    # Sub thump: descending 70 -> 40 Hz sine (weight under the break).
+    boom = []
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        f = 70.0 * math.exp(-t * 5.0)
+        boom.append(0.9 * math.sin(2 * math.pi * f * i / SAMPLE_RATE))
+    boom = _adsr(boom, 0.002, 0.12, 0.2, 0.40)
+    # Rubble body: noise → double single-pole lowpass for a granular, muffled scatter.
+    body = _noise(total, amp=0.9, seed=310)
+    body = _lowpass(body, 800)
+    body = _lowpass(body, 800)
+    body = _adsr(body, 0.001, 0.18, 0.25, 0.32)
+    # Mid crack transient so the break has an attack edge.
+    crack = _noise(0.06, amp=0.7, seed=311)
+    crack = _highpass(crack, 400)
+    crack = _adsr(crack, 0.001, 0.03, 0.0, 0.03)
+    crack = crack + [0.0] * (n - len(crack))
+    return _fade(_mix(boom, body, crack), 0.001, 0.06)
+
+
+def gen_chunk_metal() -> list[float]:
+    """Container clang: 3 INHARMONIC resonant partials (metallic ring) + a high-passed impact crunch
+    + a small low thump for weight. ~0.45 s."""
+    total = 0.45
+    n = int(SAMPLE_RATE * total)
+    # Inharmonic partials (not octaves → metal, not a tone).
+    ring_a = _adsr(_sine(322.0, total, amp=0.5), 0.001, 0.25, 0.0, 0.24)
+    ring_b = _adsr(_sine(505.0, total, amp=0.32), 0.001, 0.22, 0.0, 0.21)
+    ring_c = _adsr(_sine(781.0, total, amp=0.22), 0.001, 0.20, 0.0, 0.19)
+    # Impact crunch.
+    crunch = _noise(0.08, amp=0.8, seed=320)
+    crunch = _highpass(crunch, 900)
+    crunch = _adsr(crunch, 0.001, 0.04, 0.0, 0.04)
+    crunch = crunch + [0.0] * (n - len(crunch))
+    # Low body thump.
+    thump = _adsr(_sine(90.0, 0.14, amp=0.4), 0.001, 0.05, 0.0, 0.09)
+    thump = thump + [0.0] * (n - len(thump))
+    return _fade(_mix(ring_a, ring_b, ring_c, crunch, thump), 0.001, 0.05)
+
+
+def gen_chunk_stone() -> list[float]:
+    """Rock crack: a sharp DRY high-passed crack (brighter than concrete, little sub) + a short
+    lowpassed gravel tail + a small mid thump. ~0.4 s."""
+    total = 0.4
+    n = int(SAMPLE_RATE * total)
+    # Sharp dry crack.
+    crack = _noise(0.07, amp=1.0, seed=330)
+    crack = _highpass(crack, 1200)
+    crack = _lowpass(crack, 5000)
+    crack = _adsr(crack, 0.001, 0.025, 0.1, 0.03)
+    crack = crack + [0.0] * (n - len(crack))
+    # Gravel tail.
+    grav = _noise(total, amp=0.5, seed=331)
+    grav = _lowpass(grav, 1500)
+    grav = _adsr(grav, 0.001, 0.10, 0.2, 0.22)
+    # Small mid thump for body (quieter than concrete).
+    thump = _adsr(_sine(120.0, 0.1, amp=0.35), 0.001, 0.04, 0.0, 0.06)
+    thump = thump + [0.0] * (n - len(thump))
+    return _fade(_mix(crack, grav, thump), 0.001, 0.05)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -593,6 +659,10 @@ def main() -> None:
         ("underwater.wav",     gen_underwater),
         # Breakable windows
         ("glass_break.wav",    gen_glass_break),
+        # Material-typed building/rock collapse (Destruction 2.1)
+        ("chunk_concrete.wav", gen_chunk_concrete),
+        ("chunk_metal.wav",    gen_chunk_metal),
+        ("chunk_stone.wav",    gen_chunk_stone),
     ]
 
     generated = 0

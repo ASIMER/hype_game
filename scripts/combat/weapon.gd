@@ -27,7 +27,7 @@ const _MAX_BALLISTIC_SEGMENTS := 40
 @export var fire_rate: float = 8.0  # shots per second
 @export var max_range: float = 80.0
 @export var auto: bool = true  # held-to-fire
-@export var hurtbox_mask: int = 0b1000101  # layers: world(1) + enemy(3) + hurtbox(7)
+@export var hurtbox_mask: int = 0b11000101  # layers: world(1) + enemy(3) + hurtbox(7) + small-rock(8)
 
 var _cooldown: float = 0.0
 # Surface normal of the most recent resolved hit (Vector3.ZERO = none). Set in
@@ -189,6 +189,12 @@ func _shoot(
 	var resolved := false
 	var travelled := 0.0
 	_last_hit_normal = Vector3.ZERO
+	# Bullet penetration through METAL chunks (containers = soft cover, not solid like walls): a metal
+	# cell is recorded + excluded and the ray keeps marching with damage falloff, up to a cap. The
+	# pierced cells still take (scaled) damage so the container breaks. Concrete/stone STOP the ray.
+	var pen_count := 0
+	var dmg_scale := 1.0
+	var pierced: Array[Dictionary] = []
 
 	for i in seg_count:
 		# Advance the projectile one ballistic segment (simple Euler integration).
@@ -212,9 +218,26 @@ func _shoot(
 		params.exclude = exclude
 		var result := space.intersect_ray(params)
 		if result:
-			hit_point = result["position"]
-			hit_node = result["collider"]
-			_last_hit_normal = result.get("normal", Vector3.ZERO)
+			var rnode: Node = result["collider"]
+			var rpos: Vector3 = result["position"]
+			var rnorm: Vector3 = result.get("normal", Vector3.ZERO)
+			if _can_penetrate(rnode, pen_count):
+				# Pass THROUGH this metal cell: record it (scaled damage), exclude its body so we
+				# don't re-hit the same face, drop damage, and resume marching from the impact.
+				arc.append(rpos)
+				pierced.append(
+					{"idx": (rnode as BreakableChunk).index, "n": rnorm, "d": dmg * dmg_scale}
+				)
+				var rid: RID = result.get("rid", RID())
+				if rid != RID():
+					exclude.append(rid)
+				pen_count += 1
+				dmg_scale *= Settings.CHUNK_PENETRATE_FALLOFF
+				pos = rpos + seg.normalized() * 0.05
+				continue
+			hit_point = rpos
+			hit_node = rnode
+			_last_hit_normal = rnorm
 			arc.append(hit_point)
 			resolved = true
 			break
@@ -229,12 +252,17 @@ func _shoot(
 	if not resolved:
 		hit_point = arc[arc.size() - 1]
 
+	# Damage every metal cell the bullet punched through (it still breaks the container).
+	for pc in pierced:
+		NetworkManager.request_damage_chunk(int(pc["idx"]), float(pc["d"]), pc["n"])
+
 	if hit_node != null:
 		var hb := _resolve_hurtbox(hit_node)
 		if hb:
-			# A weak-point hurtbox carries damage_multiplier > 1 (e.g. headshot).
+			# A weak-point hurtbox carries damage_multiplier > 1 (e.g. headshot). Penetration
+			# falloff (dmg_scale) cuts the damage of a shot that came through containers.
 			var is_crit := hb.damage_multiplier > 1.0 and crit_mult > 1.0
-			var dealt := dmg
+			var dealt := dmg * dmg_scale
 			if is_crit:
 				dealt *= crit_mult
 			# Active power-cache damage buff (Berserk / Frenzy) on the firing player.
@@ -275,7 +303,7 @@ func _shoot(
 			# and broadcasts the crumble once depleted (index-keyed, like glass). The surface
 			# normal rides along so the falling debris sprays toward the shooter.
 			NetworkManager.request_damage_chunk(
-				(hit_node as BreakableChunk).index, dmg, _last_hit_normal
+				(hit_node as BreakableChunk).index, dmg * dmg_scale, _last_hit_normal
 			)
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
@@ -445,6 +473,17 @@ func _is_enemy(node: Node) -> bool:
 			return true
 		n = n.get_parent()
 	return false
+
+
+## True when the bullet should PASS THROUGH `node` rather than stop: a METAL BreakableChunk
+## (container) while the per-shot penetration budget remains. Concrete/stone/enemies all stop.
+func _can_penetrate(node: Node, pen_count: int) -> bool:
+	if not Settings.CHUNK_PENETRATE_METAL or pen_count >= Settings.CHUNK_PENETRATE_MAX:
+		return false
+	return (
+		node is BreakableChunk
+		and int((node as BreakableChunk).material_kind) == Settings.CHUNK_KIND_METAL
+	)
 
 
 func _resolve_hurtbox(node: Node) -> Hurtbox:

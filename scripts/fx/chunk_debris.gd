@@ -28,13 +28,20 @@ var _mats: Array[StandardMaterial3D] = []
 ## shooter (Vector3.ZERO = a radial grenade blast). `sid` seeds a little variation. Render-only:
 ## skipped on headless (a dedicated server has no camera and shouldn't simulate cosmetic bodies).
 static func burst(
-	host: Node, world_pos: Vector3, color: Color, cell: Vector3, hit_normal: Vector3, sid: int
+	host: Node,
+	world_pos: Vector3,
+	color: Color,
+	cell: Vector3,
+	hit_normal: Vector3,
+	sid: int,
+	kind: int = 0
 ) -> void:
 	if host == null or not is_instance_valid(host):
 		return
 	if not Settings.CHUNK_DEBRIS_ENABLED or DisplayServer.get_name() == "headless":
 		return
-	var want: int = Settings.CHUNK_DEBRIS_PER_CELL
+	var kd: Dictionary = Settings.CHUNK_KIND_DEFS.get(kind, {})
+	var want: int = int(round(Settings.CHUNK_DEBRIS_PER_CELL * float(kd.get("debris_mult", 1.0))))
 	var room: int = Settings.CHUNK_DEBRIS_CAP - _active
 	var n: int = clampi(mini(want, room), 0, want)
 	if n <= 0:
@@ -44,10 +51,14 @@ static func burst(
 	_active += n
 	host.add_child(node)
 	node.global_position = world_pos
-	node._build(n, color, cell, hit_normal, sid)
+	node._build(n, color, cell, hit_normal, sid, kd)
 
 
-func _build(n: int, color: Color, cell: Vector3, hit_normal: Vector3, sid: int) -> void:
+func _build(
+	n: int, color: Color, cell: Vector3, hit_normal: Vector3, sid: int, kd: Dictionary
+) -> void:
+	var flat: float = float(kd.get("shard_flat", 0.72))
+	var szmul: float = float(kd.get("shard_size", 1.0))
 	var span: float = clampf(maxf(maxf(cell.x, cell.y), cell.z), 0.4, 3.0)
 	# Burst axis: away from the surface (toward the shooter) + a strong upward bias so shards arc up
 	# then fall. A zero normal (grenade) just bursts straight up and scatters radially.
@@ -64,7 +75,7 @@ func _build(n: int, color: Color, cell: Vector3, hit_normal: Vector3, sid: int) 
 		var rz: float = float(s % 1000) / 1000.0
 		s = (s * 1103515245 + 12345) & 0x7fffffff
 		var rsz: float = float(s % 1000) / 1000.0
-		var sx: float = (0.18 + rsz * 0.34) * clampf(span * 0.6, 0.5, 1.6)
+		var sx: float = (0.18 + rsz * 0.34) * clampf(span * 0.6, 0.5, 1.6) * szmul
 		var body := RigidBody3D.new()
 		body.gravity_scale = _GRAVITY_SCALE
 		body.mass = _MASS
@@ -73,11 +84,15 @@ func _build(n: int, color: Color, cell: Vector3, hit_normal: Vector3, sid: int) 
 		body.collision_layer = 0  # nothing collides INTO the shards
 		body.collision_mask = 1  # shards collide with WORLD only (floors/ground/walls)
 		var box := BoxMesh.new()
-		box.size = Vector3(sx, sx * 0.72, sx)
+		box.size = Vector3(sx, sx * flat, sx)  # metal = flat panels, stone = chunky, concrete = mid
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = color.darkened(0.1)
-		mat.metallic = 0.2
-		mat.roughness = 0.92
+		# Lighten (not darken) so shards read against the dark cinematic grade; faint emission helps.
+		mat.albedo_color = color.lightened(float(kd.get("tint_lighten", 0.15)))
+		mat.metallic = float(kd.get("metallic", 0.2))
+		mat.roughness = float(kd.get("roughness", 0.92))
+		mat.emission_enabled = true
+		mat.emission = color.lightened(0.3)
+		mat.emission_energy_multiplier = 0.35
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		box.material = mat
 		var mi := MeshInstance3D.new()

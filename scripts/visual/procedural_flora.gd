@@ -794,6 +794,131 @@ static func _build_boulders(root: Node3D, seed: int) -> void:
 	var node := Node3D.new()
 	node.name = "Boulders"
 	root.add_child(node)
+	if not Settings.CHUNK_DESTRUCTION_ENABLED:
+		_build_boulders_legacy(node, seed)  # OFF: old MMI+collider path → Flora byte-identical
+		return
+	# ON: each boulder is a discrete breakable STONE BreakableChunk (cover, layer 1) so it shatters
+	# into rock + a collapse SFX. Plus a modest set of small shoot-only rocks ("мелкие камни").
+	var target: int = Settings.FLORA_BOULDERS
+	var candidates: Array = _boulder_candidates(seed)
+	var placed: Array[Vector2] = []
+	var idx: int = 0
+	var near_river_done: int = 0
+	while idx < candidates.size() and placed.size() < target:
+		var c: Vector2 = candidates[idx]
+		idx += 1
+		if _blocked(c.x, c.y, true):
+			continue
+		var gy: float = _ground_y(c.x, c.y)
+		var river_bank: bool = gy < -0.05 and gy > -0.30
+		if gy < -0.05 and not (river_bank and near_river_done < 2):
+			continue
+		var ok: bool = true
+		for p in placed:
+			if c.distance_to(p) < 10.0:
+				ok = false
+				break
+		if not ok:
+			continue
+		if river_bank:
+			near_river_done += 1
+		var hseed: int = ProcHash.h(seed * 7919 + placed.size() * 53 + 21)
+		_place_breakable_rock(node, hseed, c.x, maxf(gy, 0.0), c.y, true)
+		placed.append(c)
+	_build_small_rocks(node, seed)
+
+
+## The deterministic golden-angle candidate ring for boulders (shared by legacy + breakable paths).
+static func _boulder_candidates(seed: int) -> Array:
+	var candidates: Array = []
+	for k in range(200):
+		var hk: int = ProcHash.h(seed * 4099 + k * 37 + 9)
+		var ang: float = float(k) * 2.39996323
+		var rad: float = ProcHash.hrange(hk + 1, 20.0, 150.0)
+		var cx: float = WorldBounds.CX + cos(ang) * rad + ProcHash.hrange(hk + 2, -4.0, 4.0)
+		var cz: float = WorldBounds.CZ + sin(ang) * rad + ProcHash.hrange(hk + 3, -4.0, 4.0)
+		candidates.append(Vector2(cx, cz))
+	return candidates
+
+
+## A scatter of small shoot-only breakable rocks (the user's "мелкие камни"): on the dedicated rock
+## layer so the navmesh + player ignore them (no tripping / nav-fragmentation) while bullets + grenades
+## still break them. Distance-culled. Deterministic (ProcHash only).
+static func _build_small_rocks(node: Node3D, seed: int) -> void:
+	var target: int = Settings.FLORA_SMALL_ROCKS
+	var placed: Array[Vector2] = []
+	var k: int = 0
+	while k < 400 and placed.size() < target:
+		var hk: int = ProcHash.h(seed * 5237 + k * 41 + 3)
+		var ang: float = float(k) * 2.39996323
+		var rad: float = ProcHash.hrange(hk + 1, 14.0, 150.0)
+		var cx: float = WorldBounds.CX + cos(ang) * rad + ProcHash.hrange(hk + 2, -3.0, 3.0)
+		var cz: float = WorldBounds.CZ + sin(ang) * rad + ProcHash.hrange(hk + 3, -3.0, 3.0)
+		k += 1
+		var c := Vector2(cx, cz)
+		if _blocked(cx, cz, true):
+			continue
+		var gy: float = _ground_y(cx, cz)
+		if gy < -0.05:
+			continue
+		var ok: bool = true
+		for p in placed:
+			if c.distance_to(p) < 4.0:
+				ok = false
+				break
+		if not ok:
+			continue
+		var hseed: int = ProcHash.h(seed * 6113 + placed.size() * 47 + 5)
+		_place_breakable_rock(node, hseed, cx, maxf(gy, 0.0), cz, false)
+		placed.append(c)
+
+
+## Build ONE rock as a discrete BreakableChunk (material_kind = STONE). `cover` rocks are big +
+## block (layer 1, bake into navmesh as cover); small rocks are shoot-only (rock layer, no nav/player
+## collision). The "Mesh" carries the per-instance scale so the body + sphere stay unscaled.
+static func _place_breakable_rock(
+	parent: Node3D, hseed: int, x: float, y: float, z: float, cover: bool
+) -> void:
+	var mi: int = ProcHash.h(hseed + 1) % _ROCK_MODELS.size()
+	var id: String = String(_ROCK_MODELS[mi][0])
+	var base_scale: float = float(_ROCK_MODELS[mi][1])
+	var yaw: float = ProcHash.hrange(hseed + 2, 0.0, TAU)
+	var sc: float = (
+		base_scale
+		* (ProcHash.hrange(hseed + 3, 0.7, 1.3) if cover else ProcHash.hrange(hseed + 3, 0.18, 0.4))
+	)
+	ProceduralBuildings._chunk_seq += 1
+	var c := BreakableChunk.new()
+	c.name = "Rock_%d" % ProceduralBuildings._chunk_seq
+	c.index = ProceduralBuildings._chunk_seq
+	c.material_kind = Settings.CHUNK_KIND_STONE
+	c.hp = Settings.CHUNK_HP * float(Settings.CHUNK_KIND_DEFS[Settings.CHUNK_KIND_STONE]["hp_mult"])
+	var r: float = maxf(1.3 * sc, 0.45)
+	c.chunk_size = Vector3(r * 2.0, r * 2.0, r * 2.0)
+	c.chunk_color = Color(0.42, 0.40, 0.38)
+	c.collision_layer = 1 if cover else (1 << (Settings.CHUNK_ROCK_LAYER - 1))
+	c.collision_mask = 0
+	c.transform = Transform3D(Basis.from_euler(Vector3(0.0, yaw, 0.0)), Vector3(x, y, z))
+	parent.add_child(c)
+	var mvis := MeshInstance3D.new()
+	mvis.name = "Mesh"
+	mvis.mesh = FloraMeshLib.model_mesh(id)  # null on headless → invisible, collider still bakes
+	mvis.scale = Vector3(sc, sc, sc)
+	if not cover:
+		mvis.visibility_range_end = 55.0  # cull small rocks at distance (perf)
+	c.add_child(mvis)
+	var col := CollisionShape3D.new()
+	col.name = "CollisionShape3D"
+	var sh := SphereShape3D.new()
+	sh.radius = r
+	col.shape = sh
+	col.position = Vector3(0.0, r * 0.4, 0.0)
+	c.add_child(col)
+
+
+## Legacy boulders (render-only MMI per model + a discrete sphere collider per instance) — used when
+## destruction is OFF so the Flora golden snapshot stays byte-identical. Verbatim of the pre-2.1 path.
+static func _build_boulders_legacy(node: Node3D, seed: int) -> void:
 	var colliders := Node3D.new()
 	colliders.name = "BoulderColliders"
 	node.add_child(colliders)

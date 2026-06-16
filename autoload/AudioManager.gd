@@ -49,6 +49,10 @@ const SOUNDS := {
 	"underwater": "res://assets/audio/underwater.ogg",
 	# Breakable windows (interactivity overhaul).
 	"glass_break": "res://assets/audio/glass_break.wav",
+	# Material-typed building/rock collapse (Destruction 2.1).
+	"chunk_concrete": "res://assets/audio/chunk_concrete.wav",
+	"chunk_metal": "res://assets/audio/chunk_metal.wav",
+	"chunk_stone": "res://assets/audio/chunk_stone.wav",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -78,6 +82,9 @@ const SOUND_DB := {
 	"water_splash": -5.0,
 	"underwater": -12.0,
 	"glass_break": -6.0,
+	"chunk_concrete": -5.0,
+	"chunk_metal": -6.0,
+	"chunk_stone": -7.0,
 }
 
 ## Master toggle + trim.  Public so a settings menu can drive them later.
@@ -89,6 +96,11 @@ var master_db := -3.0
 # ---------------------------------------------------------------------------
 const SHOT_MIN_INTERVAL := 0.05
 var _last_shot_time := -1.0
+
+# Crumble SFX throttle: a grenade/burst snaps many cells in one frame → play 1-2 layered crumbles,
+# not 14. material_kind (0/1/2) selects the sound.
+var _last_chunk_sfx_time := -1.0
+const _CHUNK_SFX_BY_KIND := ["chunk_concrete", "chunk_metal", "chunk_stone"]
 
 # ---------------------------------------------------------------------------
 # Stream cache (null when the file is absent)
@@ -191,6 +203,7 @@ func _ready() -> void:
 	Events.player_health_changed.connect(_on_player_health_changed)
 	Events.water_state_changed.connect(_on_water_state_changed)
 	Events.glass_broken.connect(_on_glass_broken)
+	Events.chunk_broken.connect(_on_chunk_broken)
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
@@ -244,6 +257,23 @@ func _on_glass_broken(pane: Node) -> void:
 		return
 	if pane is Node3D:
 		_play_at("glass_break", pane)
+
+
+## A building/rock chunk crumbled (fires on every peer) — a material-typed collapse boom at the
+## cell. Throttled so a grenade snapping a whole section plays 1-2 layered crumbles, not 14.
+func _on_chunk_broken(chunk: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if not (chunk is Node3D):
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if _last_chunk_sfx_time >= 0.0 and now - _last_chunk_sfx_time < Settings.CHUNK_SFX_MIN_INTERVAL:
+		return
+	_last_chunk_sfx_time = now
+	var kind: int = 0
+	if "material_kind" in chunk:
+		kind = clampi(int(chunk.material_kind), 0, 2)
+	_play_at_pitched(_CHUNK_SFX_BY_KIND[kind], chunk, randf_range(0.94, 1.06))
 
 
 ## Per-weapon-class gunfire trim. Each class now has its OWN recorded firearm
@@ -513,6 +543,28 @@ func _play_at(id: String, where: Node) -> void:
 		var p := AudioStreamPlayer3D.new()
 		p.stream = stream
 		p.bus = "Master"
+		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
+		p.max_distance = 60.0
+		p.finished.connect(p.queue_free)
+		(where as Node3D).add_child(p)
+		p.global_position = (where as Node3D).global_position
+		p.play()
+	else:
+		_play(id)
+
+
+## Positional one-shot with a pitch tweak (variety on repeated crumbles). Mirrors _play_at.
+func _play_at_pitched(id: String, where: Node, pitch: float) -> void:
+	if not enabled:
+		return
+	var stream: AudioStream = _streams.get(id, null)
+	if stream == null:
+		return
+	if where is Node3D and (where as Node3D).is_inside_tree():
+		var p := AudioStreamPlayer3D.new()
+		p.stream = stream
+		p.bus = "Master"
+		p.pitch_scale = clampf(pitch, 0.5, 2.0)
 		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
 		p.max_distance = 60.0
 		p.finished.connect(p.queue_free)

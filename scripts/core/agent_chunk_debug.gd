@@ -24,6 +24,7 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 				"ok": true,
 				"index": idx,
 				"hp": c.hp,
+				"kind": c.material_kind,
 				"broken": c.broken,
 				"pos": [p.x, p.y, p.z],
 				"dist": _player_pos(tree).distance_to(p),
