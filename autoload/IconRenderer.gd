@@ -72,6 +72,16 @@ func _prewarm() -> void:
 		var entry: Dictionary = AssetRegistry.CATALOG[id]
 		if String(entry.get("icon", "")) == "":
 			await render_now(id)
+	# Also prewarm ids that have a ProceduralModels builder but no CATALOG row (gadgets,
+	# utility grenades, energy cores) — without this get_icon returns null -> a grey UI box.
+	var builder_ids: Array = (
+		ProceduralModels.GADGET_BUILDERS
+		+ ProceduralModels.ITEM_BUILDERS
+		+ ProceduralModels.GEAR_BUILDERS
+	)
+	for id in builder_ids:
+		if not _cache.has(id):
+			await render_now(id)
 
 
 ## SYNC: cached rendered icon for `id`, or null (UI fallback to colored box). The

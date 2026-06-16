@@ -53,7 +53,18 @@ const ITEM_BUILDERS := [
 	"loot_ammo",
 	"loot_scrap",
 	"loot_plastic",
-	"loot_data_chip"
+	"loot_data_chip",
+	# v0.4.1 audit — ids that previously fell back to a bare tinted cube + blank icon.
+	"loot_grenade_emp",
+	"loot_grenade_smoke",
+	"loot_grenade_decoy",
+	"loot_grenade_incendiary",
+	"loot_grenade_cryo",
+	"loot_power_core",
+	"loot_nemesis_core",
+	"loot_self_revive",
+	"loot_knockdown_shield",
+	"power_cache",
 ]
 const ATT_OPTIC := ["att_scope_4x", "att_holo_sight", "att_red_dot"]
 const ATT_MAG := ["att_ext_mag", "att_drum_mag", "att_light_mag"]
@@ -136,6 +147,26 @@ static func build(id: String) -> Node3D:
 			return build_plastic()
 		"loot_data_chip":
 			return build_data_chip()
+		"loot_grenade_emp":
+			return build_utility_grenade(Color(0.3, 0.7, 1.0), "emp")
+		"loot_grenade_smoke":
+			return build_utility_grenade(Color(0.55, 0.6, 0.55), "smoke")
+		"loot_grenade_decoy":
+			return build_utility_grenade(Color(0.9, 0.75, 0.2), "decoy")
+		"loot_grenade_incendiary":
+			return build_utility_grenade(Color(1.0, 0.45, 0.1), "incendiary")
+		"loot_grenade_cryo":
+			return build_utility_grenade(Color(0.6, 0.85, 1.0), "cryo")
+		"loot_power_core":
+			return build_energy_core(Color(1.0, 0.62, 0.18), false)
+		"loot_nemesis_core":
+			return build_energy_core(Color(0.95, 0.15, 0.12), true)
+		"loot_self_revive":
+			return build_self_revive()
+		"loot_knockdown_shield":
+			return build_knockdown_shield()
+		"power_cache":
+			return build_power_cache()
 		"gadget_turret":
 			return build_gadget_turret()
 		"gadget_dome":
@@ -780,6 +811,119 @@ static func build_scrap() -> Node3D:
 		root, _box(Vector3(0.14, 0.1, 0.12)), m1, Vector3(-0.1, 0.07, -0.05), Vector3(-20, 35, 15)
 	)
 	_part(root, _cyl(0.05, 0.18, 8), m2, Vector3(-0.02, 0.16, 0.1), Vector3(70, 0, 20))
+	return root
+
+
+## Utility grenade (EMP/smoke/decoy/incendiary/cryo) — a tactical CANISTER (distinct from the
+## frag sphere) with a top cap, a glowing accent band + per-type flourish; tinted per type.
+static func build_utility_grenade(col: Color, kind: String) -> Node3D:
+	var root := Node3D.new()
+	var body := _mat(col.darkened(0.35), 0.4, 0.4)
+	var metal := _mat(Color(0.45, 0.47, 0.5), 0.6, 0.3)
+	var glow := _mat(col, 0.0, 0.3, col, 2.4)
+	_part(root, _cyl(0.11, 0.3, 14), body, Vector3(0, 0.18, 0))  # canister body
+	_part(root, _cyl(0.115, 0.05, 14), glow, Vector3(0, 0.2, 0))  # accent band
+	_part(root, _cyl(0.09, 0.05, 14), metal, Vector3(0, 0.35, 0))  # top cap
+	_part(root, _box(Vector3(0.03, 0.16, 0.05)), metal, Vector3(0.07, 0.28, 0), Vector3(0, 0, 16))
+	_part(root, _cyl(0.03, 0.018, 10), metal, Vector3(0.1, 0.36, 0.0), Vector3(90, 0, 0))  # pin ring
+	match kind:
+		"decoy":
+			_part(root, _cyl(0.01, 0.16, 6), metal, Vector3(0, 0.46, 0))  # antenna whip
+			_part(root, _sphere(0.025), glow, Vector3(0, 0.55, 0))  # blink beacon
+		"smoke":
+			for i in range(3):
+				var a := i * TAU / 3.0
+				_part(
+					root, _cyl(0.018, 0.05, 6), metal, Vector3(cos(a) * 0.05, 0.38, sin(a) * 0.05)
+				)
+		"cryo":
+			for i in range(4):
+				var a2 := i * TAU / 4.0
+				var fp := Vector3(cos(a2) * 0.06, 0.4, sin(a2) * 0.06)
+				_part(
+					root, _box(Vector3(0.03, 0.08, 0.03)), glow, fp, Vector3(20, rad_to_deg(a2), 20)
+				)
+		"incendiary":
+			_part(root, _cyl(0.12, 0.03, 14), glow, Vector3(0, 0.1, 0))  # lower burn band
+		_:  # emp
+			_part(root, _cyl(0.13, 0.02, 14), glow, Vector3(0, 0.3, 0))  # electronic discharge ring
+	return root
+
+
+## A contained energy core — a faceted glowing sphere in crossed containment struts + a ring.
+## `scarred` = the Nemesis trophy variant: charred frame, blood-red core, blown-off plate shards.
+static func build_energy_core(col: Color, scarred: bool) -> Node3D:
+	var root := Node3D.new()
+	var frame_col := Color(0.18, 0.16, 0.16) if scarred else Color(0.3, 0.32, 0.36)
+	var frame := _mat(frame_col, 0.6, 0.4)
+	var core := _mat(col, 0.0, 0.2, col, 2.6)
+	_part(root, _sphere(0.15, false, 5, 8), core, Vector3(0, 0.26, 0))  # faceted core
+	_part(root, _box(Vector3(0.04, 0.04, 0.4)), frame, Vector3(0, 0.26, 0))
+	_part(root, _box(Vector3(0.4, 0.04, 0.04)), frame, Vector3(0, 0.26, 0))
+	_part(root, _box(Vector3(0.04, 0.4, 0.04)), frame, Vector3(0, 0.26, 0))
+	_part(root, _cyl(0.19, 0.03, 6), frame, Vector3(0, 0.26, 0), Vector3(90, 0, 0))  # containment ring
+	if scarred:
+		_part(
+			root,
+			_box(Vector3(0.08, 0.02, 0.06)),
+			frame,
+			Vector3(0.16, 0.34, 0.05),
+			Vector3(30, 10, 40)
+		)
+		_part(
+			root,
+			_box(Vector3(0.06, 0.02, 0.07)),
+			frame,
+			Vector3(-0.14, 0.2, -0.06),
+			Vector3(-20, 25, 15)
+		)
+	return root
+
+
+## Self-revive auto-injector — a stim-pen (red): barrel, thumb collar, needle, red cross indicator.
+static func build_self_revive() -> Node3D:
+	var root := Node3D.new()
+	var barrel := _mat(Color(0.85, 0.86, 0.88), 0.1, 0.3)
+	var grip := _mat(Color(0.2, 0.21, 0.23), 0.3, 0.5)
+	var red := _mat(Color(0.9, 0.15, 0.15), 0.0, 0.3, Color(0.9, 0.1, 0.1), 2.2)
+	var metal := _mat(Color(0.5, 0.53, 0.56), 0.6, 0.3)
+	_part(root, _cyl(0.06, 0.3, 12), barrel, Vector3(0, 0.2, 0))  # barrel
+	_part(root, _cyl(0.07, 0.06, 12), grip, Vector3(0, 0.12, 0))  # thumb collar
+	_part(root, _box(Vector3(0.03, 0.16, 0.02)), red, Vector3(0.06, 0.22, 0))  # indicator strip
+	_part(root, _box(Vector3(0.06, 0.05, 0.05)), red, Vector3(0, 0.36, 0))  # red cross
+	_part(root, _box(Vector3(0.14, 0.02, 0.02)), red, Vector3(0, 0.36, 0))
+	_part(root, _cyl(0.012, 0.1, 8), metal, Vector3(0, 0.03, 0))  # needle
+	return root
+
+
+## Knockdown shield — a folded ballistic shield panel (blue): curved plate, energy edge, ribs, grip.
+static func build_knockdown_shield() -> Node3D:
+	var root := Node3D.new()
+	var plate := _mat(Color(0.2, 0.34, 0.5), 0.3, 0.4)
+	var rib := _mat(Color(0.28, 0.45, 0.62), 0.4, 0.4)
+	var edge := _mat(Color(0.35, 0.6, 0.9), 0.0, 0.3, Color(0.3, 0.55, 0.9), 1.8)
+	var grip := _mat(Color(0.15, 0.16, 0.18), 0.3, 0.5)
+	_part(root, _box(Vector3(0.34, 0.46, 0.04)), plate, Vector3(0, 0.26, 0))  # main plate
+	_part(root, _box(Vector3(0.36, 0.04, 0.05)), edge, Vector3(0, 0.48, 0))  # top energy edge
+	for i in range(3):
+		_part(root, _box(Vector3(0.03, 0.42, 0.05)), rib, Vector3(-0.1 + i * 0.1, 0.26, 0.03))
+	_part(root, _cyl(0.02, 0.16, 8), grip, Vector3(0, 0.26, -0.06), Vector3(90, 0, 0))  # back grip
+	return root
+
+
+## Power cache — a cracked-open loot chest (weathered steel) with a glowing gold interior.
+static func build_power_cache() -> Node3D:
+	var root := Node3D.new()
+	var steel := _mat(Color(0.34, 0.36, 0.4), 0.6, 0.45)
+	var gold := _mat(Color(0.98, 0.8, 0.3), 0.0, 0.3, Color(0.98, 0.78, 0.25), 2.4)
+	var stud := _mat(Color(0.5, 0.52, 0.55), 0.7, 0.3)
+	_part(root, _box(Vector3(0.7, 0.42, 0.5)), steel, Vector3(0, 0.21, 0))  # base crate
+	_part(root, _box(Vector3(0.62, 0.2, 0.42)), gold, Vector3(0, 0.36, 0))  # glowing interior
+	_part(root, _box(Vector3(0.72, 0.12, 0.52)), steel, Vector3(0, 0.5, -0.18), Vector3(-28, 0, 0))
+	for sx in [-0.32, 0.32]:
+		for sz in [-0.23, 0.23]:
+			_part(root, _box(Vector3(0.06, 0.42, 0.06)), stud, Vector3(sx, 0.21, sz))  # corner studs
+	_part(root, _box(Vector3(0.14, 0.08, 0.04)), stud, Vector3(0, 0.16, 0.26))  # front latch
 	return root
 
 
