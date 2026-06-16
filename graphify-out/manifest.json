@@ -1113,5 +1113,10 @@
     "mtime": 1781560109.384187,
     "ast_hash": "e1b198faa1233603c0ebc127ac8dc139",
     "semantic_hash": ""
+  },
+  "docs/research/voxel-destructibility-research.md": {
+    "mtime": 1781594671.1246457,
+    "ast_hash": "a720991e65d7f364e1f1059f00be4940",
+    "semantic_hash": ""
   }
 }
