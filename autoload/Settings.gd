@@ -1196,10 +1196,10 @@ func skill_archetype(id: String) -> String:
 # hole exactly where you shoot (user's pick). With the toggle false, _solid is byte-identical to a
 # plain StaticBody3D (no cell, no naming) -> world + golden unaffected.
 const CHUNK_DESTRUCTION_ENABLED: bool = true  # master toggle for BreakableChunk wall cells
-const CHUNK_HP: float = 30.0  # HP per wall CELL — a short burst breaks it (~2-3 rifle hits)
+const CHUNK_HP: float = 16.0  # HP per wall CELL — a shot (~10-12 dmg) pops a small cell precisely
 const CHUNK_NOISE: float = 14.0  # how loud a crumbling cell is to enemy hearing (m)
-const CHUNK_CELL_SIZE: float = 1.8  # target grid-cell edge (m) — bigger = fewer nodes (perf)
-const CHUNK_GRID_MIN: float = 2.4  # walls whose wide/height ≤ this stay ONE cell (no grid)
+const CHUNK_CELL_SIZE: float = 0.8  # wall grid-cell edge (m) — FINE "voxel-ish" hole granularity
+const CHUNK_GRID_MIN: float = 1.0  # walls whose wide/height ≤ this stay ONE cell (no grid)
 # Big flat slabs (floors/roofs/containers) grid at a COARSER cell so "break everything" doesn't
 # explode node/draw-call counts — a 10×10 floor → ~16 cells at 2.8 m vs ~36 at 1.8 m.
 const CHUNK_CELL_SIZE_BIG: float = 2.8  # coarse grid edge (m) for floors/roofs/containers
@@ -1251,7 +1251,7 @@ const CHUNK_KIND_DEFS := {
 	CHUNK_KIND_STONE:
 	{
 		"debris_mult": 1.3,
-		"hp_mult": 1.0,
+		"hp_mult": 1.5,
 		"shard_flat": 0.85,
 		"shard_size": 0.8,
 		"metallic": 0.0,

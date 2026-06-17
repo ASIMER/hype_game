@@ -71,9 +71,11 @@ func crumble(hit_normal: Vector3 = Vector3.ZERO) -> void:
 	var col := get_node_or_null("CollisionShape3D")
 	if col != null:
 		col.set_deferred("disabled", true)
+	# Hide the visual. Walls: "Mesh" is a MeshInstance3D; stairs: "Mesh" is a Node3D wrapper holding
+	# the ramp mesh + treads + stringer — setting visible on the wrapper hides them all at once.
 	var mesh := get_node_or_null("Mesh")
-	if mesh != null:
-		(mesh as MeshInstance3D).visible = false
+	if mesh is Node3D:
+		(mesh as Node3D).visible = false
 	# Falling rigid-body shards (the "обломки падают" fix) + a dust puff at the broken cell.
 	ChunkDebris.burst(
 		self, global_position, chunk_color, chunk_size, hit_normal, index, material_kind

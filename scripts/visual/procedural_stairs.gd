@@ -56,7 +56,98 @@ static func _solid_ramp(
 ## A full stair flight: the solid ramp + render-only horizontal treads + a thin side
 ## stringer. Runs along local +Z from y=0 to y=rise; the returned node is placed and
 ## yawed by the caller (cardinal directions only — the hole math is axis-aligned).
+## When destruction is ON the WHOLE flight is one BreakableChunk (shoot it away → falling
+## rubble); the ramp's incline tilt rides on its collision shape + ramp mesh (the chunk body
+## is yaw-only), and the treads/stringer live under a "Mesh" wrapper so they hide together.
 static func flight(
+	parent: Node3D,
+	base_pos: Vector3,
+	run: float,
+	rise: float,
+	width: float,
+	yaw_deg: float,
+	mat: StandardMaterial3D,
+	tread_mat: StandardMaterial3D
+) -> void:
+	if not Settings.CHUNK_DESTRUCTION_ENABLED:
+		_flight_legacy(parent, base_pos, run, rise, width, yaw_deg, mat, tread_mat)
+		return
+	var slope_len: float = sqrt(run * run + rise * rise) + 0.4
+	var c := BreakableChunk.new()
+	ProceduralBuildings._chunk_seq += 1
+	c.name = "Flight_%d" % ProceduralBuildings._chunk_seq
+	c.index = ProceduralBuildings._chunk_seq
+	c.material_kind = Settings.CHUNK_KIND_CONCRETE
+	c.hp = Settings.CHUNK_HP * 2.5  # a whole flight is a big structural piece → ~4-5 hits
+	c.chunk_size = Vector3(width, maxf(rise, 1.0), run)
+	c.chunk_color = mat.albedo_color
+	c.collision_layer = 1
+	c.collision_mask = 0
+	c.transform = Transform3D(Basis.from_euler(Vector3(0.0, deg_to_rad(yaw_deg), 0.0)), base_pos)
+	parent.add_child(c)
+	# The ramp's local tilt transform (same math as _solid_ramp), applied to the collision + mesh.
+	var ramp_xf := _ramp_xform(run, rise)
+	var col := CollisionShape3D.new()
+	col.name = "CollisionShape3D"
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(width, RAMP_THICKNESS, slope_len)
+	col.shape = shape
+	col.transform = ramp_xf
+	c.add_child(col)
+	var meshroot := Node3D.new()
+	meshroot.name = "Mesh"
+	c.add_child(meshroot)
+	var ramp_mi := MeshInstance3D.new()
+	ramp_mi.mesh = ProceduralModels._box(Vector3(width, RAMP_THICKNESS, slope_len))
+	ramp_mi.material_override = mat
+	ramp_mi.transform = ramp_xf
+	meshroot.add_child(ramp_mi)
+	_add_treads(meshroot, run, rise, width, mat, tread_mat)
+
+
+## The ramp box's local Transform3D (tilted to the ≤36° slope, centred under the walking surface).
+static func _ramp_xform(run: float, rise: float) -> Transform3D:
+	var dir := Vector3(0.0, rise, run).normalized()
+	var right := Vector3(1.0, 0.0, 0.0)
+	var up := dir.cross(right)
+	if up.y < 0.0:
+		up = -up
+	up = up.normalized()
+	var mid := Vector3(0.0, rise * 0.5, run * 0.5)
+	return Transform3D(Basis(right, up, dir), mid - up * (RAMP_THICKNESS * 0.5 - 0.02))
+
+
+## Render-only treads + side stringer for a flight (shared by the breakable + legacy paths).
+static func _add_treads(
+	node: Node3D,
+	run: float,
+	rise: float,
+	width: float,
+	mat: StandardMaterial3D,
+	tread_mat: StandardMaterial3D
+) -> void:
+	var n: int = int(ceil(rise / TREAD_RISE))
+	var step_run: float = run / float(n)
+	var step_rise: float = rise / float(n)
+	for i in range(n):
+		var tread := MeshInstance3D.new()
+		tread.mesh = ProceduralModels._box(Vector3(width, 0.06, step_run + 0.06))
+		tread.material_override = tread_mat
+		tread.position = Vector3(0.0, float(i + 1) * step_rise - 0.02, (float(i) + 0.5) * step_run)
+		tread.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.add_child(tread)
+	var stringer := MeshInstance3D.new()
+	var slope_len: float = sqrt(run * run + rise * rise)
+	stringer.mesh = ProceduralModels._box(Vector3(0.08, 0.5, slope_len))
+	stringer.material_override = mat
+	stringer.position = Vector3(width * 0.5 + 0.04, rise * 0.5, run * 0.5)
+	stringer.rotation = Vector3(-atan2(rise, run), 0.0, 0.0)
+	stringer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.add_child(stringer)
+
+
+## Legacy non-breakable flight (destruction OFF → world byte-identical to the pre-2.2 build).
+static func _flight_legacy(
 	parent: Node3D,
 	base_pos: Vector3,
 	run: float,
@@ -71,26 +162,7 @@ static func flight(
 	node.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
 	parent.add_child(node)
 	_solid_ramp(node, width, run, rise, mat)
-	# Render-only treads: flat horizontal steps poking through the slope.
-	var n: int = int(ceil(rise / TREAD_RISE))
-	var step_run: float = run / float(n)
-	var step_rise: float = rise / float(n)
-	for i in range(n):
-		var tread := MeshInstance3D.new()
-		tread.mesh = ProceduralModels._box(Vector3(width, 0.06, step_run + 0.06))
-		tread.material_override = tread_mat
-		tread.position = Vector3(0.0, float(i + 1) * step_rise - 0.02, (float(i) + 0.5) * step_run)
-		tread.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		node.add_child(tread)
-	# Thin render-only stringer along one side so the flight reads as built, not extruded.
-	var stringer := MeshInstance3D.new()
-	var slope_len: float = sqrt(run * run + rise * rise)
-	stringer.mesh = ProceduralModels._box(Vector3(0.08, 0.5, slope_len))
-	stringer.material_override = mat
-	stringer.position = Vector3(width * 0.5 + 0.04, rise * 0.5, run * 0.5)
-	stringer.rotation = Vector3(-atan2(rise, run), 0.0, 0.0)
-	stringer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.add_child(stringer)
+	_add_treads(node, run, rise, width, mat, tread_mat)
 
 
 ## The slab/roof OPENING (building-local XZ Rect2) a flight needs to pierce the level
@@ -131,10 +203,16 @@ static func crate_steps(parent: Node3D, base_pos: Vector3, yaw_deg: float, sid: 
 	parent.add_child(node)
 	var timber: StandardMaterial3D = ProceduralBuildings.mat_timber(sid)
 	var dark: StandardMaterial3D = ProceduralBuildings.mat_metal_dark(sid + 3)
-	# C hugs the container face (local -Z = origin); B and A step back (+Z).
-	ProceduralBuildings._solid(node, Vector3(1.1, 3.30, 1.1), timber, Vector3(0.0, 1.65, 0.0))
-	ProceduralBuildings._solid(node, Vector3(1.1, 2.30, 1.1), timber, Vector3(0.0, 1.15, 1.2))
-	ProceduralBuildings._solid(node, Vector3(1.1, 1.15, 1.1), timber, Vector3(0.0, 0.575, 2.4))
+	# C hugs the container face (local -Z = origin); B and A step back (+Z). Breakable (shootable).
+	ProceduralBuildings._solid(
+		node, Vector3(1.1, 3.30, 1.1), timber, Vector3(0.0, 1.65, 0.0), 0.0, true
+	)
+	ProceduralBuildings._solid(
+		node, Vector3(1.1, 2.30, 1.1), timber, Vector3(0.0, 1.15, 1.2), 0.0, true
+	)
+	ProceduralBuildings._solid(
+		node, Vector3(1.1, 1.15, 1.1), timber, Vector3(0.0, 0.575, 2.4), 0.0, true
+	)
 	# Render seams so the tall columns read as stacked crates, not extruded boxes.
 	for seam_def in [[1.65, 0.0], [2.2, 0.0], [1.15, 1.2], [0.0, 0.0]]:
 		var sy: float = seam_def[0]
@@ -179,7 +257,7 @@ static func yard_ramp(
 	# the junction is a small step DOWN — a front edge under the slope's surface line
 	# presents a >45° lip-wall the capsule cannot climb (live QA jammed on it).
 	ProceduralBuildings._solid(
-		node, Vector3(2.0, 0.3, 2.6), metal, Vector3(0.0, rise - 0.13, run + 1.4)
+		node, Vector3(2.0, 0.3, 2.6), metal, Vector3(0.0, rise - 0.13, run + 1.4), 0.0, true
 	)
 	# Render-only support legs so the deck reads as a welded platform, not a floater.
 	var dark: StandardMaterial3D = ProceduralBuildings.mat_metal_dark(sid + 11)
