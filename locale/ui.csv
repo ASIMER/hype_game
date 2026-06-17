@@ -4,10 +4,10 @@ keys,ru
 "⚠ FINAL WAVE","⚠ ФИНАЛЬНАЯ ВОЛНА"
 "  (RELOADING)","  (ПЕРЕЗАРЯДКА)"
 "WASD Move   Shift Sprint   Space Jump
-LMB Fire   RMB Aim   V View 1/3
+LMB Fire   RMB Aim   V Camera Zoom
 1-5 / Wheel Weapon   R Reload
 G Grenade   H Heal   E Loot   I Inventory   M Map","WASD движение   Shift спринт   Space прыжок
-ЛКМ огонь   ПКМ прицел   V вид 1/3
+ЛКМ огонь   ПКМ прицел   V зум камеры
 1-5 / колесо оружие   R перезарядка
 G граната   H аптечка   E лут   I инвентарь   M карта"
 "WAVE %d CLEARED","ВОЛНА %d ЗАЧИЩЕНА"
@@ -804,7 +804,7 @@ CR %d","%s
 "⚡ POWER CORE DROPPED — CARRY IT OUT","⚡ ВЫПАЛО ЯДРО — ВЫНЕСИ ЕГО"
 "Power Core extracted!","Ядро вынесено!"
 "Another machine takes up the grudge.","Другая машина принимает обиду."
-"V toggles 1st/3rd person — change your look in the Hub CHARACTER tab","V — вид от 1/3 лица; внешность меняется в Хабе, вкладка ПЕРСОНАЖ"
+"V zooms the camera: close / medium / far / first-person","V — зум камеры: близко / средне / далеко / от 1-го лица"
 "Skill: %s (lvl %d)","Скилл: %s (ур. %d)"
 "Pick up skill: %s","Подобрать скилл: %s"
 "Skill panel full — pick up a duplicate to upgrade","Панель скиллов полна — подбери дубликат для апгрейда"

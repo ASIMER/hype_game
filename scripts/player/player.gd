@@ -113,8 +113,8 @@ var _zipline: Node = null
 var _gear: PlayerGear = null  # grenade/gadget verbs component (created in _ready)
 var _cam_base_y: float = 1.5  # CameraPivot's base local Y (cached once in _ready)
 
-# --- View toggle + camera-from-settings (authority only) ---
-var _first_person: bool = false  # init from Settings.default_first_person in _ready
+# --- View ZOOM cycle (V) + camera-from-settings (authority only) ---
+var _view_step: int = 1  # close/med/far→first-person; V zooms out, not into the head. Reset in _ready.
 var _cam_distance_scale: float = 1.0  # cached Settings.camera_distance_scale
 var _cam_shoulder_scale: float = 1.0  # cached Settings.camera_shoulder_scale
 
@@ -196,10 +196,11 @@ func _ready() -> void:
 	camera.fov = Settings.fov
 	# Cache the camera pivot's authored base height (crouch/slide lerp down from this).
 	_cam_base_y = camera_pivot.position.y
-	# Read player-tunable camera distance/shoulder + the spawn view from Settings.
 	_read_camera_settings()
-	_first_person = Settings.default_first_person
-	spring_arm.spring_length = _third_person_len()
+	_view_step = Settings.DEFAULT_VIEW_STEP
+	if Settings.default_first_person:
+		_view_step = Settings.VIEW_STEP_FIRST_PERSON
+	spring_arm.spring_length = Settings.FP_SPRING_LENGTH if _is_first_person() else _step_len()
 	spring_arm.position.x = _shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale
 	# Anti-cheat: the spring arm pulls the camera in against world geometry (layer 1, where
 	# buildings live) so you can't see through walls. A small margin avoids clipping thin
@@ -507,15 +508,14 @@ func _update_camera(delta: float) -> void:
 		Events.ads_changed.emit(self, _ads)
 
 	var target_fov := _ads_fov() if _ads else Settings.fov
-	# Spring length: ADS overrides everything; else first-person vs settings-scaled
-	# third-person distance.
+	# Spring length: ADS pull-in (unless 1st-person), else the zoom-step distance.
 	var target_len: float
-	if _ads:
+	if _ads and not _is_first_person():
 		target_len = Settings.ADS_SPRING_LENGTH
-	elif _first_person:
+	elif _is_first_person():
 		target_len = Settings.FP_SPRING_LENGTH
 	else:
-		target_len = _third_person_len()
+		target_len = _step_len()
 	var base_off := (
 		_shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale * (0.65 if _ads else 1.0)
 	)
@@ -763,14 +763,19 @@ func end_zipline(jump: bool) -> void:
 		velocity.y = Settings.PLAYER_JUMP_VELOCITY * 0.6
 
 
-## Third-person spring length, scaled by the player's camera-distance setting.
-func _third_person_len() -> float:
-	return Settings.DEFAULT_SPRING_LENGTH * _cam_distance_scale
+## True when the current zoom step is the first-person step (camera in the head, body hidden).
+func _is_first_person() -> bool:
+	return _view_step == Settings.VIEW_STEP_FIRST_PERSON
 
 
-## Re-read the player-tunable camera distance/shoulder scales from Settings. Connected to
-## Events.camera_settings_changed so live edits apply (the lerp in _update_camera eases to
-## the new target). Safe to call as a 0-arg signal handler.
+## Third-person spring length for the current zoom step (close/medium/far) × the distance setting.
+func _step_len() -> float:
+	var lengths: Array = Settings.VIEW_STEP_LENGTHS
+	var idx: int = clampi(_view_step, 0, lengths.size() - 1)
+	return float(lengths[idx]) * _cam_distance_scale
+
+
+## Re-read camera distance/shoulder scales from Settings (Events.camera_settings_changed handler).
 func _read_camera_settings() -> void:
 	_cam_distance_scale = Settings.camera_distance_scale
 	_cam_shoulder_scale = Settings.camera_shoulder_scale
@@ -782,7 +787,7 @@ func _apply_view_visibility() -> void:
 	if not is_multiplayer_authority():
 		return
 	if model_root:
-		model_root.visible = not _first_person
+		model_root.visible = not _is_first_person()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -809,9 +814,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		# converged shot keeps the same impact point).
 		_shoulder_sign = -_shoulder_sign
 	elif event.is_action_pressed("toggle_view"):
-		# Flip between third- and first-person. The spring-length target folds into the
-		# ADS lerp in _update_camera; the local body is hidden in first-person.
-		_first_person = not _first_person
+		# V = ZOOM cycle: close→medium→far→first-person→close (folds into the _update_camera lerp).
+		_view_step = (_view_step + 1) % Settings.VIEW_STEP_COUNT
 		_apply_view_visibility()
 	elif event.is_action_pressed("heal"):
 		# While downed the heal key triggers a SELF-REVIVE (if you brought one); the crawl

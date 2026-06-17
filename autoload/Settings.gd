@@ -520,7 +520,13 @@ const DEFAULT_FOV: float = 60.0
 const ADS_FOV: float = 42.0  # zoomed FOV when aiming (per-weapon may override)
 const ADS_SENS_SCALE: float = 0.5  # look sensitivity multiplier while aiming
 const ADS_SPRING_LENGTH: float = 2.0  # camera pulled in when aiming
-const DEFAULT_SPRING_LENGTH: float = 3.5  # centered behind-back hero framing (whole body visible)
+const DEFAULT_SPRING_LENGTH: float = 3.5  # legacy single 3rd-person distance (kept for ref)
+# V cycles the camera through these THIRD-person distances (m, ×camera_distance_scale) then
+# first-person — so V "zooms out" instead of jumping into the head. Index 3 (size) = first-person.
+const VIEW_STEP_LENGTHS: Array = [3.0, 4.5, 6.5]  # 0 close · 1 medium · 2 far
+const VIEW_STEP_COUNT: int = 4  # the 3 distances above + first-person as the last step
+const DEFAULT_VIEW_STEP: int = 1  # spawn at MEDIUM (4.5 m) — the whole body is in frame
+const VIEW_STEP_FIRST_PERSON: int = 3  # the cycle index that means first-person
 const SHOULDER_OFFSET: float = 0.5  # over-the-shoulder camera x-offset (flipped by swap)
 const AIM_TWEEN_SPEED: float = 10.0  # lerp speed for fov/length/offset
 const PEEK_PROBE: float = 1.4  # side-raycast distance to detect a wall to lean past

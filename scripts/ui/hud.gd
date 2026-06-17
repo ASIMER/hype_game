@@ -310,7 +310,7 @@ func _build_hud_widgets() -> void:
 	# This long string is a LOCALIZATION KEY (locale/ui.csv) — splitting it would break
 	# the translation lookup, so it stays one line.
 	hints.text = tr(
-		"WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   V View 1/3\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"  # gdlint: ignore=max-line-length
+		"WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   V Camera Zoom\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"  # gdlint: ignore=max-line-length
 	)
 	$Root.add_child(hints)
 
@@ -966,9 +966,7 @@ func _on_local_player_spawned(player: Node) -> void:
 	# find either). Static flag → shows once per session, not every raid.
 	if not _view_tip_shown:
 		_view_tip_shown = true
-		Events.notify.emit(
-			tr("V toggles 1st/3rd person — change your look in the Hub CHARACTER tab"), 0
-		)
+		Events.notify.emit(tr("V zooms the camera: close / medium / far / first-person"), 0)
 
 
 func _on_player_health_changed(player: Node, current: float, max_health: float) -> void:
