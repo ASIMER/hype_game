@@ -109,50 +109,94 @@ static func build_part_node(token: String, color: Color) -> Node3D:
 
 
 # --- recognizable LIMB models (arm / leg) — the dropped + attached body parts ----
-## A dull metal/flesh BASE material for the limb body (so it reads as an actual limb, not a glowing
-## blob — the signature colour is only an accent/emission on the joints + end-bit).
-static func _limb_base_mat() -> StandardMaterial3D:
-	# Light warm grey (flesh/metal) + a faint self-emission so the limb READS clearly as a body
-	# part even under the cold dark grade (the dark version was nearly invisible in-world).
-	return _MODELS._mat(Color(0.62, 0.56, 0.52), 0.35, 0.55, Color(0.30, 0.26, 0.24), 0.5)
+## A flesh/metal BASE material for the limb body (so it reads as an actual limb, not a glowing
+## blob). Mostly a warm grey with a HINT of the skill colour + a faint matching emission, so the
+## limb READS under the cold dark grade AND each skill's limb has a subtle colour identity.
+static func _limb_base_mat(tint: Color) -> StandardMaterial3D:
+	var g: Color = Color(0.62, 0.56, 0.52).lerp(tint, 0.22)
+	return _MODELS._mat(g, 0.35, 0.55, tint.darkened(0.35), 0.6)
 
 
-## Build a RECOGNIZABLE body-part model — an ARM (shoulder→upper→elbow→forearm→hand+fingers) or a
-## LEG (thigh→knee→shin→foot), assembled like ProceduralPlayer's limbs so a dropped one reads as
-## "a severed arm/leg", not an abstract bit. The themed signature bit (claw/fist/blade/…) caps the
-## hand/foot in the skill colour, and the joints glow the skill colour. Extends +Y from the local
-## origin (the "cut" end), ~0.95 m tall — the drop lays it flat, the body-attach scales it down.
+## Build a RECOGNIZABLE body-part model — a BENT ARM (shoulder→upper→elbow→forearm→hand+fingers)
+## or a BENT LEG (thigh→knee→shin→foot). The kink at the elbow/knee + the hand/foot at the end are
+## the silhouette cues that make a dropped one read as "a severed arm/leg", not an abstract rod; the
+## themed signature bit (claw/fist/blade/…) caps the hand/foot in the skill colour and the joints
+## glow it. Extends roughly +Y from the local origin (the "cut" end) — the drop lays it flat.
 static func build_limb_model(skill_id: String, color: Color) -> Node3D:
 	var def: Dictionary = Settings.skill_def(skill_id)
 	var part: String = String(def["part"])
-	var limb: String = String(def.get("limb", "arm"))
 	var n := Node3D.new()
 	n.name = "Limb"
-	var base := _limb_base_mat()
+	var base := _limb_base_mat(color)
 	var glow := _pmat(color)
-	if limb == "leg":
-		_p(n, _cyl(0.11, 0.44), base, Vector3(0, 0.22, 0))  # thigh
-		_p(n, _sph(0.115), glow, Vector3(0, 0.45, 0))  # knee (glows)
-		_p(n, _cyl(0.09, 0.40), base, Vector3(0, 0.67, 0))  # shin
-		_p(n, _sph(0.08), base, Vector3(0, 0.88, 0))  # ankle
-		_p(n, _box(Vector3(0.17, 0.11, 0.32)), base, Vector3(0, 0.93, -0.09))  # foot
-		var bit := build_part_node(part, color)  # themed spur on the foot
-		bit.scale = Vector3.ONE * 0.55
-		bit.position = Vector3(0, 0.96, -0.22)
-		n.add_child(bit)
-	else:  # arm
-		_p(n, _sph(0.105), base, Vector3(0, 0.05, 0))  # shoulder ball
-		_p(n, _cyl(0.085, 0.38), base, Vector3(0, 0.26, 0))  # upper arm
-		_p(n, _sph(0.085), glow, Vector3(0, 0.46, 0))  # elbow (glows)
-		_p(n, _cyl(0.07, 0.36), base, Vector3(0, 0.67, 0))  # forearm
-		_p(n, _box(Vector3(0.12, 0.13, 0.13)), base, Vector3(0, 0.88, 0))  # palm
-		for f in 3:  # fingers
-			_p(n, _box(Vector3(0.03, 0.11, 0.035)), base, Vector3(-0.04 + float(f) * 0.04, 0.97, 0))
-		var bit := build_part_node(part, color)  # themed "weapon hand"
-		bit.scale = Vector3.ONE * 0.7
-		bit.position = Vector3(0, 0.9, 0.0)
-		n.add_child(bit)
+	if String(def.get("limb", "arm")) == "leg":
+		_build_leg(n, part, color, base, glow)
+	else:
+		_build_arm(n, part, color, base, glow)
 	return n
+
+
+## A bent leg: thigh (origin→knee), a SOLID grey knee that BRIDGES the joint (kills the gap) wearing
+## a thin glowing seam, a shin kinked ~22° (dipping below the pivot to overlap), and an L-shaped foot
+## pointing +Z with a toe + a themed spur.
+static func _build_leg(
+	n: Node3D, part: String, color: Color, base: StandardMaterial3D, glow: StandardMaterial3D
+) -> void:
+	_p(n, _cyl(0.12, 0.50), base, Vector3(0, 0.25, 0))  # thigh
+	_p(n, _sph(0.16), base, Vector3(0, 0.48, 0))  # knee — solid, bridges thigh↔shin (no gap)
+	_p(n, _cyl(0.175, 0.05), glow, Vector3(0, 0.48, 0))  # glowing knee seam (skill colour)
+	var shin := Node3D.new()
+	shin.position = Vector3(0, 0.48, 0)
+	shin.rotation_degrees = Vector3(22, 0, 0)  # kink forward at the knee
+	n.add_child(shin)
+	_p(shin, _cyl(0.105, 0.48), base, Vector3(0, 0.18, 0))  # shin (dips below pivot → overlaps knee)
+	_p(shin, _sph(0.1), base, Vector3(0, 0.42, 0))  # ankle
+	var foot := Node3D.new()
+	foot.position = Vector3(0, 0.42, 0)
+	foot.rotation_degrees = Vector3(-22, 0, 0)  # cancel the kink so the foot sits flat
+	shin.add_child(foot)
+	_p(foot, _box(Vector3(0.18, 0.1, 0.36)), base, Vector3(0, -0.02, 0.13))  # foot
+	_p(foot, _box(Vector3(0.16, 0.07, 0.1)), base, Vector3(0, -0.03, 0.32))  # toe
+	var bit := build_part_node(part, color)
+	bit.scale = Vector3.ONE * 0.55
+	bit.position = Vector3(0, 0.06, 0.18)
+	foot.add_child(bit)
+
+
+## A bent arm: shoulder ball, upper arm (origin→elbow), a SOLID grey elbow that BRIDGES the joint
+## wearing a thin glowing seam, a forearm kinked ~22° (dipping below the pivot to overlap), then a
+## HAND (palm + spread fingers + thumb) with the themed bit as the per-skill silhouette (a fist vs
+## an antenna now read differently).
+static func _build_arm(
+	n: Node3D, part: String, color: Color, base: StandardMaterial3D, glow: StandardMaterial3D
+) -> void:
+	_p(n, _sph(0.12), base, Vector3(0, 0.06, 0))  # shoulder ball
+	_p(n, _cyl(0.09, 0.42), base, Vector3(0, 0.27, 0))  # upper arm
+	_p(n, _sph(0.12), base, Vector3(0, 0.49, 0))  # elbow — solid, bridges (no gap)
+	_p(n, _cyl(0.135, 0.05), glow, Vector3(0, 0.49, 0))  # glowing elbow seam (skill colour)
+	var fore := Node3D.new()
+	fore.position = Vector3(0, 0.49, 0)
+	fore.rotation_degrees = Vector3(22, 0, 0)  # kink forward at the elbow
+	n.add_child(fore)
+	_p(fore, _cyl(0.078, 0.42), base, Vector3(0, 0.16, 0))  # forearm (dips below pivot → overlaps)
+	var hand := Node3D.new()
+	hand.position = Vector3(0, 0.37, 0)
+	hand.rotation_degrees = Vector3(-22, 0, 0)
+	fore.add_child(hand)
+	_build_hand(hand, base)
+	var bit := build_part_node(part, color)  # themed "weapon hand"
+	bit.scale = Vector3.ONE * 0.7
+	bit.position = Vector3(0, 0.06, 0.06)
+	hand.add_child(bit)
+
+
+## Palm + four spread fingers + an angled thumb, pointing +Z — the recognizable hand silhouette.
+static func _build_hand(hand: Node3D, base: StandardMaterial3D) -> void:
+	_p(hand, _box(Vector3(0.14, 0.06, 0.13)), base, Vector3(0, 0, 0.05))  # palm
+	for f in 4:
+		var fx: float = -0.045 + float(f) * 0.03
+		_p(hand, _box(Vector3(0.025, 0.03, 0.12)), base, Vector3(fx, 0, 0.16))  # finger
+	_p(hand, _box(Vector3(0.03, 0.03, 0.08)), base, Vector3(0.085, 0, 0.05), Vector3(0, 0, 28))
 
 
 # --- visible LIMBS on the body (Frankenstein) --------------------------------
