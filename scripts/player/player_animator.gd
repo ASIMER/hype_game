@@ -288,15 +288,22 @@ func _update_procedural(delta: float) -> void:
 			if Events.has_signal("footstep"):
 				Events.footstep.emit(_parent, sprinting)
 
+	# ── Mutant-Harvest gait: the more harvested LIMBS you wear, the heavier + more lopsided
+	# (limping) the walk reads — so collecting body parts visibly changes how you move.
+	var mut: float = _mutation_factor()
+
 	# ── compute bob amounts ───────────────────────────────────────────────────
-	var bob_amp: float = lerpf(BOB_AMPLITUDE_WALK, BOB_AMPLITUDE_SPRINT, t_speed)
+	var bob_amp: float = (
+		lerpf(BOB_AMPLITUDE_WALK, BOB_AMPLITUDE_SPRINT, t_speed) * (1.0 + mut * 0.9)
+	)
 	# Vertical: sine of the phase (2x frequency for a proper step cycle feel).
 	var bob_y: float = sin(_bob_phase * 2.0) * bob_amp * (1.0 if moving else 0.0)
 	# Decay landing dip into the vertical offset.
 	bob_y -= _land_t * LAND_DIP
 
-	# Roll (local Z rotation): sways left/right with the step.
+	# Roll (local Z rotation): sways left/right with the step + an off-phase LIMP from limbs.
 	var roll_deg: float = cos(_bob_phase) * ROLL_AMPLITUDE_DEG * t_speed
+	roll_deg += mut * sin(_bob_phase + 1.2) * 7.0 * (1.0 if moving else 0.0)
 
 	# Pitch (local X rotation): lean forward when sprinting.
 	var pitch_deg: float = t_speed * PITCH_LEAN_DEG
@@ -328,6 +335,17 @@ func _update_procedural(delta: float) -> void:
 	_visual_model.position = _proc_offset
 	_visual_model.rotation = Vector3(_proc_rot_deg.x + extra_pitch, 0.0, _proc_rot_deg.z)
 	_visual_model.scale = Vector3(1.0, _roll_squash_scale(), 1.0)
+
+
+## Mutant-Harvest mutation level (0..1) = harvested-limb count / 8, driving the heavier + limping
+## gait. Reads the player's replicated Skills dict so every co-op peer animates identically.
+func _mutation_factor() -> float:
+	if _parent == null or not ("skills" in _parent):
+		return 0.0
+	var total: int = 0
+	for v in (_parent.skills as Dictionary).values():
+		total += int(v)
+	return clampf(float(total) / 8.0, 0.0, 1.0)
 
 
 # ── roll / mantle layer ───────────────────────────────────────────────────────

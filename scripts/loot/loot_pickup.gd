@@ -56,10 +56,11 @@ const SPIN_SPEED := 1.0
 const BOB_AMP := 0.1
 const BOB_SPEED := 2.0
 const HOVER := 0.22
-const SKILL_ICON_H := 1.15  # Mutant-Harvest: height of the floating skill-icon above a body-part
+const SKILL_ICON_H := 1.05  # Mutant-Harvest: height of the SMALL skill-icon above a body-part
 var _model_root: Node3D = null
 var _bob_t: float = 0.0
-var _skill_icon: Sprite3D = null  # spinning 2D skill icon above a dropped body-part (render-only)
+var _hover: float = HOVER  # rest height (body-parts lie LOW on the ground, not floating)
+var _skill_icon: Sprite3D = null  # small 2D skill icon above a dropped body-part (render-only)
 
 
 func _ready() -> void:
@@ -72,17 +73,24 @@ func _ready() -> void:
 	# the map carries ~100 pickups, so this saves a few hundred draw calls.
 	var model: Node3D
 	if item_id.begins_with("bodypart_"):
-		# Mutant-Harvest body-part: build the signature part shape (no ItemData/catalog entry).
-		var sdef: Dictionary = Settings.skill_def(item_id.substr(9))
-		model = ProceduralAbsorbed.build_part_node(String(sdef["part"]), sdef["color"])
-		model.scale = Vector3.ONE * 2.1
-		_build_skill_billboard(item_id.substr(9), sdef["color"])
+		# Mutant-Harvest body-part: a RECOGNIZABLE severed LIMB (arm/leg) lying flat on the ground —
+		# pick it up and it grows onto your body. The limb is the visual; the skill icon is a small
+		# label hint. (Was an abstract bit + a big spinning icon — the user wanted an actual limb.)
+		var sid: String = item_id.substr(9)
+		var sdef: Dictionary = Settings.skill_def(sid)
+		var limb := ProceduralAbsorbed.build_limb_model(sid, sdef["color"])
+		limb.rotation = Vector3(deg_to_rad(82.0), 0.0, 0.0)  # lay it nearly flat on the ground
+		limb.scale = Vector3.ONE * 1.4  # ~1.3 m — a clearly-visible severed limb
+		model = Node3D.new()  # spinnable wrapper so the flat limb slowly turns on the ground
+		model.add_child(limb)
+		_hover = 0.12  # rest LOW, like a dropped limb
+		_build_skill_billboard(sid, sdef["color"])
 	else:
 		model = AssetRegistry.get_model_merged(item_id)
 	model.name = "ModelRoot"
 	add_child(model)
 	_model_root = model
-	model.position.y = HOVER
+	model.position.y = _hover
 	_apply_loot_glow()
 
 	if _has_spawn_pos:
@@ -100,8 +108,8 @@ func _process(delta: float) -> void:
 		return
 	_bob_t += delta
 	_model_root.rotation.y += SPIN_SPEED * delta
-	_model_root.position.y = HOVER + sin(_bob_t * BOB_SPEED) * BOB_AMP
-	# Mutant-Harvest: the floating skill icon spins (a bit faster) + bobs so it reads as a skill drop.
+	_model_root.position.y = _hover + sin(_bob_t * BOB_SPEED) * BOB_AMP
+	# Mutant-Harvest: a small skill-icon hint hovers above the limb (the LIMB itself is the visual).
 	if _skill_icon != null:
 		_skill_icon.rotation.y += SPIN_SPEED * 1.6 * delta
 		_skill_icon.position.y = SKILL_ICON_H + sin(_bob_t * BOB_SPEED) * (BOB_AMP * 0.6)
@@ -168,9 +176,10 @@ func _build_skill_billboard(skill_id: String, col: Color) -> void:
 	var spr := Sprite3D.new()
 	spr.texture = tex
 	spr.modulate = Color(col.r, col.g, col.b, 1.0)
-	spr.pixel_size = 0.0016  # 512 px icon → ~0.82 m tall
+	spr.pixel_size = 0.0008  # 512 px → ~0.41 m: a small HINT above the limb, not the main visual
 	spr.shaded = false
 	spr.double_sided = true
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED  # always face the camera (readable hint)
 	spr.position = Vector3(0.0, SKILL_ICON_H, 0.0)
 	add_child(spr)
 	_skill_icon = spr

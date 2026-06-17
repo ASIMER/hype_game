@@ -97,7 +97,13 @@ func render_now(id: String) -> Texture2D:
 		return _cache[id]
 	if _vp == null:
 		return null
-	var model: Node3D = AssetRegistry.get_model(id)
+	var model: Node3D
+	if id.begins_with("bodypart_"):
+		# Mutant-Harvest limb: not an AssetRegistry id — build the recognizable arm/leg directly.
+		var sdef: Dictionary = Settings.skill_def(id.substr(9))
+		model = ProceduralAbsorbed.build_limb_model(id.substr(9), sdef["color"])
+	else:
+		model = AssetRegistry.get_model(id)
 	if model == null:
 		return null
 	return await _capture(id, model)

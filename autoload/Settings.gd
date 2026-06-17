@@ -1012,6 +1012,7 @@ const SKILL_DEFS := {
 	"leap":
 	{
 		"part": "claw",
+		"limb": "leg",
 		"color": Color(0.55, 0.95, 0.55),
 		"name_key": "LEAP",
 		"ability": "dash",
@@ -1030,6 +1031,7 @@ const SKILL_DEFS := {
 	"blink":
 	{
 		"part": "blade",
+		"limb": "leg",
 		"color": Color(0.40, 0.90, 1.0),
 		"name_key": "BLINK",
 		"ability": "blink",
