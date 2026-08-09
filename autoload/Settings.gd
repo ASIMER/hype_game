@@ -1208,9 +1208,10 @@ const CHUNK_HP: float = 16.0  # HP per wall CELL — a shot (~10-12 dmg) pops a 
 const CHUNK_NOISE: float = 14.0  # how loud a crumbling cell is to enemy hearing (m)
 const CHUNK_CELL_SIZE: float = 0.8  # wall grid-cell edge (m) — FINE "voxel-ish" hole granularity
 const CHUNK_GRID_MIN: float = 1.0  # walls whose wide/height ≤ this stay ONE cell (no grid)
-# Big flat slabs (floors/roofs/containers) grid at a COARSER cell so "break everything" doesn't
-# explode node/draw-call counts — a 10×10 floor → ~16 cells at 2.8 m vs ~36 at 1.8 m.
-const CHUNK_CELL_SIZE_BIG: float = 2.8  # coarse grid edge (m) for floors/roofs/containers
+# Big flat slabs (floors/roofs/containers) grid at a coarser-than-wall cell. 2.8 → 1.4 in the
+# merged-render pass: containers/floors were breaking «кусками большими» (user), and with cells
+# batched into MultiMeshes the extra pieces cost bodies, not draw calls.
+const CHUNK_CELL_SIZE_BIG: float = 1.4  # grid edge (m) for floors/roofs/containers
 const CHUNK_BREAK_FLOORS: bool = true  # floors/roofs/containers/pillars also crumble (user's pick)
 # Falling physics DEBRIS on crumble (RigidBody shards that fall + tumble, then fade). Purely
 # local/visual (collision_layer 0, mask 1 = world only) so it never desyncs co-op or the navmesh.
@@ -1220,6 +1221,11 @@ const CHUNK_DEBRIS_CAP: int = 200  # global concurrent live shards — over this
 const CHUNK_DEBRIS_LIFETIME: float = 3.6  # seconds a shard lives before it fades + frees
 const CHUNK_DEBRIS_FADE: float = 2.4  # shard age (s) at which the fade-out starts
 const CHUNK_FLASH_ENABLED: bool = true  # a brief OmniLight pop on crumble (rate-limited; dark grade)
+# Merged-render (v0.4.4 perf): breakable BOX cells render in per-(parent,material) MultiMesh
+# batches (ChunkMeshMerger) instead of ~4k per-cell MeshInstances whose draw calls halved fps
+# at POIs. OFF = the old per-cell path (visual A/B / dial-back). World-triplanar materials make
+# the batched scaled unit-cube shade identically to the old sized box.
+const CHUNK_MERGED_RENDER: bool = true
 
 # --- Material-typed destruction (v0.4.3): a chunk's `material_kind` selects its debris look, break
 # SFX, HP, and bullet-penetration. Threaded onto the node at BUILD on EVERY peer (the build is

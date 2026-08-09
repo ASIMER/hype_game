@@ -258,6 +258,7 @@ func _build_poi_structures() -> void:
 	_annexes.clear()
 	ProceduralBuildings._glass_seq = 0  # per-build window-pick determinism (co-op parity)
 	ProceduralBuildings._chunk_seq = 0  # per-build BreakableChunk id determinism (co-op parity)
+	ChunkMeshMerger.reset()  # merged chunk-render batches rebuild per arena
 	for poi_name in _POI_DEFS.keys():
 		var def: Dictionary = _POI_DEFS[poi_name]
 		var old := geometry.get_node_or_null(poi_name)
@@ -294,6 +295,9 @@ func _build_poi_structures() -> void:
 		if Settings.LOCKED_ROOM_POIS.has(poi_name):
 			_build_locked_annex(geometry, poi_name, def)
 	_rebuild_scatter(geometry)
+	# Batch all breakable cells queued by the builders above into per-(parent, material)
+	# MultiMeshes — the draw-call fix that makes the fine 0.8 m destruction grid affordable.
+	ChunkMeshMerger.flush()
 
 
 # Locked-annex roots built this arena (batch C) — read by _populate_locked_loot.

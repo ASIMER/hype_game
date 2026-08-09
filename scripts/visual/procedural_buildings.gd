@@ -273,12 +273,18 @@ static func _solid(
 	body.collision_mask = 0
 	var basis := Basis.from_euler(Vector3(0.0, deg_to_rad(rot_y_deg), 0.0))
 	body.transform = Transform3D(basis, offset)
-	var mi := MeshInstance3D.new()
-	if make_chunk:
-		mi.name = "Mesh"
-	mi.mesh = ProceduralModels._box(size)
-	mi.material_override = mat
-	body.add_child(mi)
+	if make_chunk and Settings.CHUNK_MERGED_RENDER:
+		# Merged path: no per-cell MeshInstance — the cell renders inside a batched
+		# MultiMesh (ChunkMeshMerger.flush(), called by arena after the build, adds
+		# one MMI per (parent, material) group). ~4k fewer draw calls at POIs.
+		ChunkMeshMerger.queue(parent, body as BreakableChunk, size, mat)
+	else:
+		var mi := MeshInstance3D.new()
+		if make_chunk:
+			mi.name = "Mesh"
+		mi.mesh = ProceduralModels._box(size)
+		mi.material_override = mat
+		body.add_child(mi)
 	var col := CollisionShape3D.new()
 	if make_chunk:
 		col.name = "CollisionShape3D"
@@ -392,6 +398,35 @@ static func _decor(
 	rot_deg: Vector3 = Vector3.ZERO
 ) -> MeshInstance3D:
 	return ProceduralModels._part(parent, ProceduralModels._box(size), mat, offset, rot_deg)
+
+
+## Tie render-only decor `pieces` to their NEAREST BreakableChunk cell among `root`'s direct
+## children, so each piece vanishes with the cell it decorates (no floating door plates /
+## coping after a break — «разрушаемость полная»). Positions compare in root-local space
+## (cells and decor are siblings). No-op when destruction is off (nothing ever breaks).
+static func _attach_decor(root: Node3D, pieces: Array) -> void:
+	if not Settings.CHUNK_DESTRUCTION_ENABLED:
+		return
+	var cells: Array = []
+	for ch in root.get_children():
+		if ch is BreakableChunk:
+			cells.append(ch)
+	if cells.is_empty():
+		return
+	for piece_v: Variant in pieces:
+		var piece := piece_v as Node3D
+		if piece == null:
+			continue
+		var best: BreakableChunk = null
+		var best_d: float = 1e9
+		for cell_v: Variant in cells:
+			var cell := cell_v as BreakableChunk
+			var dd: float = cell.position.distance_squared_to(piece.position)
+			if dd < best_d:
+				best_d = dd
+				best = cell
+		if best != null:
+			best.attached_decor.append(piece)
 
 
 ## A vertical collidable CYLINDER (round column / obelisk shaft) — both renders and collides
@@ -649,22 +684,33 @@ static func roof(w: float, d: float, mat: StandardMaterial3D, hole: Rect2 = Rect
 		_breakable_slab(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
 	else:
 		_slab_strips(root, w, d, mat, hole)
-	# Low parapet around the edges (knee height) so a roof reads as a roof.
+	# Low parapet around the edges (knee height) so a roof reads as a roof. Breakable —
+	# one cell per strip (a 0.5 m trim; grid-cutting it would add ~100 bodies per roof).
 	var ph: float = 0.5
-	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, d * 0.5 - 0.12))
-	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, -d * 0.5 + 0.12))
-	_solid(root, Vector3(0.25, ph, d), mat, Vector3(w * 0.5 - 0.12, ph * 0.5, 0.0))
-	_solid(root, Vector3(0.25, ph, d), mat, Vector3(-w * 0.5 + 0.12, ph * 0.5, 0.0))
-	# Darker coping cap along the parapet top (cheap render-only silhouette trim).
+	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, d * 0.5 - 0.12), 0.0, true)
+	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, -d * 0.5 + 0.12), 0.0, true)
+	_solid(root, Vector3(0.25, ph, d), mat, Vector3(w * 0.5 - 0.12, ph * 0.5, 0.0), 0.0, true)
+	_solid(root, Vector3(0.25, ph, d), mat, Vector3(-w * 0.5 + 0.12, ph * 0.5, 0.0), 0.0, true)
+	# Darker coping cap along the parapet top + vent stubs — render-only, TIED to their
+	# nearest breakable cell so nothing floats after the parapet/slab goes down.
 	var cap := mat_metal_dark(int(w * 53.0 + d))
-	_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, d * 0.5 - 0.12))
-	_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, -d * 0.5 + 0.12))
-	_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(w * 0.5 - 0.12, ph + 0.02, 0.0))
-	_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(-w * 0.5 + 0.12, ph + 0.02, 0.0))
-	# A vent/pipe stub on the roof for rooftop interest (render-only).
+	var trims: Array = []
+	trims.append(
+		_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, d * 0.5 - 0.12))
+	)
+	trims.append(
+		_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, -d * 0.5 + 0.12))
+	)
+	trims.append(
+		_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(w * 0.5 - 0.12, ph + 0.02, 0.0))
+	)
+	trims.append(
+		_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(-w * 0.5 + 0.12, ph + 0.02, 0.0))
+	)
 	var vent := mat_metal(int(w * 71.0))
-	_decor(root, Vector3(0.5, 0.9, 0.5), vent, Vector3(w * 0.25, 0.45, -d * 0.2))
-	_decor(root, Vector3(0.3, 0.6, 0.3), vent, Vector3(-w * 0.28, 0.3, d * 0.22))
+	trims.append(_decor(root, Vector3(0.5, 0.9, 0.5), vent, Vector3(w * 0.25, 0.45, -d * 0.2)))
+	trims.append(_decor(root, Vector3(0.3, 0.6, 0.3), vent, Vector3(-w * 0.28, 0.3, d * 0.22)))
+	_attach_decor(root, trims)
 	return root
 
 
@@ -711,13 +757,15 @@ static func container(w: float, h: float, d: float, mat: StandardMaterial3D) -> 
 	_breakable_slab(
 		root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0), Settings.CHUNK_KIND_METAL
 	)
-	# Corrugation ribs + a darker door end (decorative only).
-	var ribs := mat_metal_dark(int(w * 41.0 + d))
-	var n: int = int(d / 0.8)
-	for i in range(n):
-		var z: float = -d * 0.5 + 0.4 + i * 0.8
-		_decor(root, Vector3(w + 0.04, h * 0.9, 0.06), ribs, Vector3(0.0, h * 0.5, z))
-	_decor(root, Vector3(w * 0.9, h * 0.8, 0.04), ribs, Vector3(0.0, h * 0.5, d * 0.5 + 0.02))
+	# Corrugation comes ENTIRELY from the baked `corrugated` material now. The old decor
+	# ribs were THROUGH-plates slicing the interior every 0.8 m — render-only, so after the
+	# metal broke they hung mid-air («в контейнерах остаются плиты»). Only the darker door
+	# end remains, TIED to its nearest cell so it crumbles with the door face.
+	var end_mat := mat_metal_dark(int(w * 41.0 + d))
+	var door := _decor(
+		root, Vector3(w * 0.9, h * 0.8, 0.04), end_mat, Vector3(0.0, h * 0.5, d * 0.5 + 0.02)
+	)
+	_attach_decor(root, [door])
 	return root
 
 

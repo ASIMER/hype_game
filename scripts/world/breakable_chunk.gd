@@ -20,6 +20,14 @@ var hp: float = 120.0  # server-authoritative; set from Settings.CHUNK_HP by the
 var chunk_size: Vector3 = Vector3.ONE  # the segment box size (rubble scales to it)
 var chunk_color: Color = Color(0.5, 0.5, 0.5)  # the wall material colour (rubble tint)
 var material_kind: int = 0  # Settings.CHUNK_KIND_* — selects debris look / SFX / penetration (local)
+# Merged-render (ChunkMeshMerger): the baked batch this cell renders inside — crumble
+# marks it dirty (deferred re-bake without the broken cells) instead of hiding a child
+# MeshInstance. null = unmerged (stairs flights, boulders, merged-render OFF) → the
+# "Mesh"-child path applies.
+var merge_group: RefCounted = null
+# Render-only decor pieces (container door plate, roof coping/vents…) tied to this cell —
+# hidden when it crumbles so no floating plates remain («разрушаемость полная»).
+var attached_decor: Array[Node3D] = []
 
 static var _registry: Dictionary = {}
 # Rate-limit the OmniLight crumble flash so a grenade snapping a whole section spawns ONE light, not
@@ -76,6 +84,13 @@ func crumble(hit_normal: Vector3 = Vector3.ZERO) -> void:
 	var mesh := get_node_or_null("Mesh")
 	if mesh is Node3D:
 		(mesh as Node3D).visible = false
+	# Merged cell: the batch re-bakes without this cell (deferred, coalesced per frame).
+	if merge_group != null:
+		merge_group.mark_dirty()
+	# Decor tied to this cell goes down with it (no floating door plates / coping).
+	for dec in attached_decor:
+		if is_instance_valid(dec):
+			dec.visible = false
 	# Falling rigid-body shards (the "обломки падают" fix) + a dust puff at the broken cell.
 	ChunkDebris.burst(
 		self, global_position, chunk_color, chunk_size, hit_normal, index, material_kind
