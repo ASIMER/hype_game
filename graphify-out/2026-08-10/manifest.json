@@ -35,8 +35,8 @@
     "semantic_hash": ""
   },
   "tools/audio/gen_audio.py": {
-    "mtime": 1781219233.9769292,
-    "ast_hash": "a46fdc2918c57d06b61d2f233e69420c",
+    "mtime": 1781634292.7735431,
+    "ast_hash": "cfb9036c6f1bbf6aa074dbdd52420e1e",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "docs/ASSETS.md": {
-    "mtime": 1781560246.5236099,
-    "ast_hash": "60ef2632215b7d52b0fcddd014a3ddfd",
+    "mtime": 1781634401.0344734,
+    "ast_hash": "d7fb1db49e4fa8e39f10b8846fba117c",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/SkyIcon.png": {
@@ -985,8 +985,8 @@
     "semantic_hash": ""
   },
   "tools/lint/golden_world.json": {
-    "mtime": 1781626809.7363167,
-    "ast_hash": "59465876bd09e99bb036ac4dfc224d69",
+    "mtime": 1781676164.2950597,
+    "ast_hash": "7911f1cad1efd9e8d30ba0fe5ee40ea2",
     "semantic_hash": ""
   },
   "docs/AUDIT.md": {
@@ -1055,7 +1055,7 @@
     "semantic_hash": ""
   },
   "assets/audio/glass_break.wav": {
-    "mtime": 1781219244.1809082,
+    "mtime": 1781634302.969482,
     "ast_hash": "ef4e4c13d9e16c40be24b5d19b984bcb",
     "semantic_hash": ""
   },
@@ -1117,6 +1117,126 @@
   "docs/research/voxel-destructibility-research.md": {
     "mtime": 1781594671.1246457,
     "ast_hash": "a720991e65d7f364e1f1059f00be4940",
+    "semantic_hash": ""
+  },
+  "assets/audio/ambient.wav": {
+    "mtime": 1781634302.486998,
+    "ast_hash": "91ee1ec324f04f72cf2d4f900b52e453",
+    "semantic_hash": ""
+  },
+  "assets/audio/chunk_concrete.wav": {
+    "mtime": 1781634302.994553,
+    "ast_hash": "563cca664c4afe0e1ed3e4243710cc89",
+    "semantic_hash": ""
+  },
+  "assets/audio/chunk_metal.wav": {
+    "mtime": 1781634303.0226748,
+    "ast_hash": "1894867feefe21196fb761adeec13563",
+    "semantic_hash": ""
+  },
+  "assets/audio/chunk_stone.wav": {
+    "mtime": 1781634303.039709,
+    "ast_hash": "63568efddd15fcf6a488535924cfb10f",
+    "semantic_hash": ""
+  },
+  "assets/audio/explosion.wav": {
+    "mtime": 1781634302.2053523,
+    "ast_hash": "eb646c1e20ce9231a0cf0a7758c85db2",
+    "semantic_hash": ""
+  },
+  "assets/audio/extract_beep.wav": {
+    "mtime": 1781634302.2423577,
+    "ast_hash": "45cf8ee8d8c6b282ac3236c172356d79",
+    "semantic_hash": ""
+  },
+  "assets/audio/extract_cancel.wav": {
+    "mtime": 1781634302.2633586,
+    "ast_hash": "6851f79dffa1298c53e2f292255cdab9",
+    "semantic_hash": ""
+  },
+  "assets/audio/extract_done.wav": {
+    "mtime": 1781634302.253358,
+    "ast_hash": "d1c1293bbd18a19fdf3ee00a4f9570b5",
+    "semantic_hash": ""
+  },
+  "assets/audio/footstep1.wav": {
+    "mtime": 1781634302.3328233,
+    "ast_hash": "21e5b6d121fcbddabf1269edbcd5687e",
+    "semantic_hash": ""
+  },
+  "assets/audio/footstep2.wav": {
+    "mtime": 1781634302.3368232,
+    "ast_hash": "f940a187f07d6c8bba46da556ee1c860",
+    "semantic_hash": ""
+  },
+  "assets/audio/footstep3.wav": {
+    "mtime": 1781634302.3408265,
+    "ast_hash": "7152e556898ec051caeda3d56cbcdeb3",
+    "semantic_hash": ""
+  },
+  "assets/audio/heartbeat.wav": {
+    "mtime": 1781634302.3608878,
+    "ast_hash": "7946918327dbdd55acedf2fe79a6b4c4",
+    "semantic_hash": ""
+  },
+  "assets/audio/hit.wav": {
+    "mtime": 1781634302.162589,
+    "ast_hash": "625a641ac6bf8c7e02649796946e9838",
+    "semantic_hash": ""
+  },
+  "assets/audio/lose.wav": {
+    "mtime": 1781634302.3272138,
+    "ast_hash": "cdc778451e36b58013cbe82491be518a",
+    "semantic_hash": ""
+  },
+  "assets/audio/music.wav": {
+    "mtime": 1781634302.7649765,
+    "ast_hash": "ee01f643789bce94d2e3110ce6a1bb9f",
+    "semantic_hash": ""
+  },
+  "assets/audio/player_death.wav": {
+    "mtime": 1781634302.2373595,
+    "ast_hash": "94bf14fe552b5917ab5ed453d98beee5",
+    "semantic_hash": ""
+  },
+  "assets/audio/reload.wav": {
+    "mtime": 1781634302.3448288,
+    "ast_hash": "9c9ffb286cabac5a1319f90921d58342",
+    "semantic_hash": ""
+  },
+  "assets/audio/shot.wav": {
+    "mtime": 1781634302.1595922,
+    "ast_hash": "db5e9f9a72fa50ff41c26f37145e5660",
+    "semantic_hash": ""
+  },
+  "assets/audio/ui_click.wav": {
+    "mtime": 1781634302.3518274,
+    "ast_hash": "176abc76c11f8cd15fbf11adacd8ede5",
+    "semantic_hash": ""
+  },
+  "assets/audio/underwater.wav": {
+    "mtime": 1781634302.9518528,
+    "ast_hash": "f03860c2c839a452c7d6f1d3e44babf5",
+    "semantic_hash": ""
+  },
+  "assets/audio/water_splash.wav": {
+    "mtime": 1781634302.8012106,
+    "ast_hash": "aec277663d8b2eaddf2b8b1e4afad6ff",
+    "semantic_hash": ""
+  },
+  "assets/audio/wave_alert.wav": {
+    "mtime": 1781634302.272361,
+    "ast_hash": "0d481a90360767a4cb0ca977a20038f4",
+    "semantic_hash": ""
+  },
+  "assets/audio/weapon_switch.wav": {
+    "mtime": 1781634302.3488257,
+    "ast_hash": "3929a19681d454507be09c2dd7566c05",
+    "semantic_hash": ""
+  },
+  "assets/audio/win.wav": {
+    "mtime": 1781634302.297696,
+    "ast_hash": "3ac8f565496e9e579ac813bb16dcee1f",
     "semantic_hash": ""
   }
 }

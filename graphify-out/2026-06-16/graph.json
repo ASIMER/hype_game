@@ -2622,6 +2622,213 @@
       "norm_label": "8. parallel testing (2\u20134 instances at once)"
     },
     {
+      "label": "voxel-destructibility-research.md",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L1",
+      "id": "research_voxel_destructibility_research",
+      "community": 56,
+      "norm_label": "voxel-destructibility-research.md"
+    },
+    {
+      "label": "Voxel / Local-Destruction Feasibility Research (Godot 4.6.3)",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L1",
+      "id": "research_voxel_destructibility_research_voxel_local_destruction_feasibility_research_godot_4_6_3",
+      "community": 56,
+      "norm_label": "voxel / local-destruction feasibility research (godot 4.6.3)"
+    },
+    {
+      "label": "Local World Destruction \u2014 Final Feasibility Report (Godot 4.6.3, Hype Raiders)",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L5",
+      "id": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "community": 56,
+      "norm_label": "local world destruction \u2014 final feasibility report (godot 4.6.3, hype raiders)"
+    },
+    {
+      "label": "1. Verdict",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L7",
+      "id": "research_voxel_destructibility_research_1_verdict",
+      "community": 56,
+      "norm_label": "1. verdict"
+    },
+    {
+      "label": "2. Ranked Options",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L11",
+      "id": "research_voxel_destructibility_research_2_ranked_options",
+      "community": 56,
+      "norm_label": "2. ranked options"
+    },
+    {
+      "label": "3. Recommended Approach \u2014 `BreakableChunk` (detailed)",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L23",
+      "id": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "community": 56,
+      "norm_label": "3. recommended approach \u2014 `breakablechunk` (detailed)"
+    },
+    {
+      "label": "3.1 Why it uniquely passes the HARD \"must look identical\" gate",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L25",
+      "id": "research_voxel_destructibility_research_3_1_why_it_uniquely_passes_the_hard_must_look_identical_gate",
+      "community": 56,
+      "norm_label": "3.1 why it uniquely passes the hard \"must look identical\" gate"
+    },
+    {
+      "label": "3.2 How it hooks into the existing precedent (concrete wiring)",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L35",
+      "id": "research_voxel_destructibility_research_3_2_how_it_hooks_into_the_existing_precedent_concrete_wiring",
+      "community": 56,
+      "norm_label": "3.2 how it hooks into the existing precedent (concrete wiring)"
+    },
+    {
+      "label": "3.3 Co-op replication",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L52",
+      "id": "research_voxel_destructibility_research_3_3_co_op_replication",
+      "community": 56,
+      "norm_label": "3.3 co-op replication"
+    },
+    {
+      "label": "3.4 Golden determinism",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L56",
+      "id": "research_voxel_destructibility_research_3_4_golden_determinism",
+      "community": 56,
+      "norm_label": "3.4 golden determinism"
+    },
+    {
+      "label": "3.5 Navmesh",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L64",
+      "id": "research_voxel_destructibility_research_3_5_navmesh",
+      "community": 56,
+      "norm_label": "3.5 navmesh"
+    },
+    {
+      "label": "3.6 Scope honesty",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L68",
+      "id": "research_voxel_destructibility_research_3_6_scope_honesty",
+      "community": 56,
+      "norm_label": "3.6 scope honesty"
+    },
+    {
+      "label": "4. Rejected Approaches (and why \u2014 especially blockiness)",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L72",
+      "id": "research_voxel_destructibility_research_4_rejected_approaches_and_why_especially_blockiness",
+      "community": 56,
+      "norm_label": "4. rejected approaches (and why \u2014 especially blockiness)"
+    },
+    {
+      "label": "5. Risks, Unknowns, and a De-risking Proof-of-Concept",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L81",
+      "id": "research_voxel_destructibility_research_5_risks_unknowns_and_a_de_risking_proof_of_concept",
+      "community": 56,
+      "norm_label": "5. risks, unknowns, and a de-risking proof-of-concept"
+    },
+    {
+      "label": "6. Sources",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L100",
+      "id": "research_voxel_destructibility_research_6_sources",
+      "community": 56,
+      "norm_label": "6. sources"
+    },
+    {
+      "label": "Appendix A \u2014 Per-technique assessments",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L173",
+      "id": "research_voxel_destructibility_research_appendix_a_per_technique_assessments",
+      "community": 56,
+      "norm_label": "appendix a \u2014 per-technique assessments"
+    },
+    {
+      "label": "Appendix B \u2014 Codebase grounding",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L336",
+      "id": "research_voxel_destructibility_research_appendix_b_codebase_grounding",
+      "community": 56,
+      "norm_label": "appendix b \u2014 codebase grounding"
+    },
+    {
+      "label": "Local World Destruction \u2014 Feasibility Research (Godot 4.6.3, Hype Raiders)",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L342",
+      "id": "research_voxel_destructibility_research_local_world_destruction_feasibility_research_godot_4_6_3_hype_raiders",
+      "community": 56,
+      "norm_label": "local world destruction \u2014 feasibility research (godot 4.6.3, hype raiders)"
+    },
+    {
+      "label": "(1) How buildings are currently built",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L346",
+      "id": "research_voxel_destructibility_research_1_how_buildings_are_currently_built",
+      "community": 56,
+      "norm_label": "(1) how buildings are currently built"
+    },
+    {
+      "label": "(2) How breakable GLASS works \u2014 and whether it extends to walls",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L359",
+      "id": "research_voxel_destructibility_research_2_how_breakable_glass_works_and_whether_it_extends_to_walls",
+      "community": 56,
+      "norm_label": "(2) how breakable glass works \u2014 and whether it extends to walls"
+    },
+    {
+      "label": "(3) What a bullet impact already knows",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L375",
+      "id": "research_voxel_destructibility_research_3_what_a_bullet_impact_already_knows",
+      "community": 56,
+      "norm_label": "(3) what a bullet impact already knows"
+    },
+    {
+      "label": "(4) Hardest integration constraints",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L381",
+      "id": "research_voxel_destructibility_research_4_hardest_integration_constraints",
+      "community": 56,
+      "norm_label": "(4) hardest integration constraints"
+    },
+    {
+      "label": "Concrete recommendation (research conclusion, not implementation)",
+      "file_type": "document",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L394",
+      "id": "research_voxel_destructibility_research_concrete_recommendation_research_conclusion_not_implementation",
+      "community": 56,
+      "norm_label": "concrete recommendation (research conclusion, not implementation)"
+    },
+    {
       "label": "README.md",
       "file_type": "document",
       "source_file": "tools/agent/README.md",
@@ -3166,7 +3373,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 85,
       "norm_label": "assetregistry.catalog (logical id table)",
       "id": "assetregistry_catalog"
     },
@@ -3179,7 +3386,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 85,
       "norm_label": "assetregistry.get_model",
       "id": "assetregistry_get_model"
     },
@@ -3205,7 +3412,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 85,
       "norm_label": "assetregistry._make_primitive (tinted fallback)",
       "id": "assetregistry_make_primitive"
     },
@@ -3218,7 +3425,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 1,
       "norm_label": "guarded-fallback resolution (glb to procedural to primitive)",
       "id": "assetregistry_fallback_chain"
     },
@@ -3231,7 +3438,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 1,
       "norm_label": "audiomanager (events-driven sfx)",
       "id": "audiomanager_audiomanager"
     },
@@ -3244,7 +3451,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 1,
       "norm_label": "audiomanager._play / _play_at",
       "id": "audiomanager_play"
     },
@@ -3439,7 +3646,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 85,
       "norm_label": "iconrenderer.render_now",
       "id": "iconrenderer_render_now"
     },
@@ -3465,7 +3672,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 85,
       "norm_label": "iconrenderer._prewarm",
       "id": "iconrenderer_prewarm"
     },
@@ -3985,7 +4192,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "settingsmanager.load_config",
       "id": "settingsmanager_load_config"
     },
@@ -3998,7 +4205,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "settingsmanager._cmp_version",
       "id": "settingsmanager_cmp_version"
     },
@@ -4024,7 +4231,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "stash.total_weight",
       "id": "stash_total_weight"
     },
@@ -4063,7 +4270,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "stash.load_stash",
       "id": "stash_load_stash"
     },
@@ -4076,7 +4283,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main.gd entry point",
       "id": "main_main"
     },
@@ -4089,7 +4296,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main.load_arena",
       "id": "main_load_arena"
     },
@@ -4102,7 +4309,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main._do_deploy",
       "id": "main_do_deploy"
     },
@@ -4115,7 +4322,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main._on_hub_deploy",
       "id": "main_on_hub_deploy"
     },
@@ -4128,7 +4335,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main.open_hub",
       "id": "main_open_hub"
     },
@@ -4141,7 +4348,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main._start_agent",
       "id": "main_start_agent"
     },
@@ -4167,7 +4374,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main_menu._join",
       "id": "main_menu_join"
     },
@@ -4180,7 +4387,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "main_menu._on_single_player",
       "id": "main_menu_on_single_player"
     },
@@ -4245,7 +4452,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "weaponcontroller._load_weapons",
       "id": "combat_weapon_controller_load_weapons"
     },
@@ -4271,7 +4478,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "weaponcontroller._apply_attachments",
       "id": "combat_weapon_controller_apply_attachments"
     },
@@ -4349,7 +4556,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "attachmentdata.apply_to",
       "id": "combat_attachment_data_apply_to"
     },
@@ -4362,7 +4569,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "weapondata resource",
       "id": "combat_weapon_data_weapondata"
     },
@@ -4375,7 +4582,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "craftrecipe resource",
       "id": "crafting_craft_recipe_craftrecipe"
     },
@@ -4505,7 +4712,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "resourceindex (generated paths)",
       "id": "resource_index_resourceindex"
     },
@@ -4557,7 +4764,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "co-op netcode model",
       "id": "docs_architecture_coop_netcode"
     },
@@ -4583,7 +4790,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "inventory server-to-owner mirror",
       "id": "docs_architecture_inventory_mirror"
     },
@@ -4596,7 +4803,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "lobby/deploy synchronized handshake",
       "id": "docs_architecture_lobby_handshake"
     },
@@ -4609,7 +4816,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 3,
       "norm_label": "version-safe configfile saves",
       "id": "docs_architecture_persistence_versioning"
     },
@@ -4635,7 +4842,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "self-play harness (--agent)",
       "id": "docs_testing_self_play_harness"
     },
@@ -4648,7 +4855,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 81,
       "norm_label": "agentbridge command protocol",
       "id": "docs_testing_command_protocol"
     },
@@ -5142,7 +5349,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 56,
+      "community": 85,
       "norm_label": "lootpickup",
       "id": "loot_loot_pickup_lootpickup"
     },
@@ -7393,9 +7600,9 @@
       "source_file": "tools/art/fetch_skill_icons.ps1",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "art_fetch_skill_icons",
-      "target": "art_fetch_skill_icons_strip_bg",
-      "confidence_score": 1.0
+      "target": "art_fetch_skill_icons_strip_bg"
     },
     {
       "relation": "contains",
@@ -10652,6 +10859,226 @@
       "confidence_score": 1.0,
       "source": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
       "target": "docs_testing_wan_hairpin_test"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L342",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research",
+      "target": "research_voxel_destructibility_research_local_world_destruction_feasibility_research_godot_4_6_3_hype_raiders",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research",
+      "target": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research",
+      "target": "research_voxel_destructibility_research_voxel_local_destruction_feasibility_research_godot_4_6_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_1_verdict",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_2_ranked_options",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_4_rejected_approaches_and_why_especially_blockiness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_5_risks_unknowns_and_a_de_risking_proof_of_concept",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L100",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_6_sources",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L173",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_appendix_a_per_technique_assessments",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L336",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_final_feasibility_report_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_appendix_b_codebase_grounding",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "target": "research_voxel_destructibility_research_3_1_why_it_uniquely_passes_the_hard_must_look_identical_gate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "target": "research_voxel_destructibility_research_3_2_how_it_hooks_into_the_existing_precedent_concrete_wiring",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "target": "research_voxel_destructibility_research_3_3_co_op_replication",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "target": "research_voxel_destructibility_research_3_4_golden_determinism",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L64",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "target": "research_voxel_destructibility_research_3_5_navmesh",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_3_recommended_approach_breakablechunk_detailed",
+      "target": "research_voxel_destructibility_research_3_6_scope_honesty",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L346",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_feasibility_research_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_1_how_buildings_are_currently_built",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L359",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_feasibility_research_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_2_how_breakable_glass_works_and_whether_it_extends_to_walls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L375",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_feasibility_research_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_3_what_a_bullet_impact_already_knows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L381",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_feasibility_research_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_4_hardest_integration_constraints",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/research/voxel-destructibility-research.md",
+      "source_location": "L394",
+      "weight": 1.0,
+      "source": "research_voxel_destructibility_research_local_world_destruction_feasibility_research_godot_4_6_3_hype_raiders",
+      "target": "research_voxel_destructibility_research_concrete_recommendation_research_conclusion_not_implementation",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -13968,5 +14395,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "ae5c173434e259648bdf67d1b6a289acfd5919a4"
+  "built_at_commit": "3627c4cd52c9b6a50ff67c8a90d0118991fd5f65"
 }
