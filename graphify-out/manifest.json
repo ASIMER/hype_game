@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1786315725.933451,
-    "ast_hash": "3def4fcdf0b6b05da788f21834ce6c5c",
+    "mtime": 1786319128.475638,
+    "ast_hash": "006e4d4ec1695d9daceb143860075702",
     "semantic_hash": ""
   },
   "README.md": {
@@ -985,8 +985,8 @@
     "semantic_hash": ""
   },
   "tools/lint/golden_world.json": {
-    "mtime": 1781676164.2950597,
-    "ast_hash": "7911f1cad1efd9e8d30ba0fe5ee40ea2",
+    "mtime": 1786319020.0589492,
+    "ast_hash": "2e5b9d4d6cfc9878974e83b9ef4d49f7",
     "semantic_hash": ""
   },
   "docs/AUDIT.md": {
