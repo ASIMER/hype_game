@@ -996,34 +996,34 @@
       "label": "_write_wav()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L27",
+      "source_location": "L28",
       "id": "audio_gen_audio_write_wav",
-      "community": 0,
+      "community": 95,
       "norm_label": "_write_wav()"
     },
     {
       "label": "str",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L27",
+      "source_location": "L28",
       "id": "tools_audio_gen_audio_py_str",
-      "community": 0,
+      "community": 95,
       "norm_label": "str"
     },
     {
       "label": "float",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L27",
+      "source_location": "L28",
       "id": "float",
-      "community": 0,
+      "community": 87,
       "norm_label": "float"
     },
     {
       "label": "_silence()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L42",
+      "source_location": "L43",
       "id": "audio_gen_audio_silence",
       "community": 0,
       "norm_label": "_silence()"
@@ -1032,61 +1032,61 @@
       "label": "_sine()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L46",
+      "source_location": "L47",
       "id": "audio_gen_audio_sine",
-      "community": 0,
+      "community": 91,
       "norm_label": "_sine()"
     },
     {
       "label": "_triangle()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L51",
+      "source_location": "L52",
       "id": "audio_gen_audio_triangle",
-      "community": 0,
+      "community": 87,
       "norm_label": "_triangle()"
     },
     {
       "label": "_noise()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L61",
+      "source_location": "L62",
       "id": "audio_gen_audio_noise",
-      "community": 0,
+      "community": 12,
       "norm_label": "_noise()"
     },
     {
       "label": "int",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L61",
+      "source_location": "L62",
       "id": "tools_audio_gen_audio_py_int",
-      "community": 0,
+      "community": 12,
       "norm_label": "int"
     },
     {
       "label": "_adsr()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L67",
+      "source_location": "L68",
       "id": "audio_gen_audio_adsr",
-      "community": 0,
+      "community": 81,
       "norm_label": "_adsr()"
     },
     {
       "label": "_mix()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L102",
+      "source_location": "L103",
       "id": "audio_gen_audio_mix",
-      "community": 0,
+      "community": 89,
       "norm_label": "_mix()"
     },
     {
       "label": "_concat()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L113",
+      "source_location": "L114",
       "id": "audio_gen_audio_concat",
       "community": 0,
       "norm_label": "_concat()"
@@ -1095,97 +1095,97 @@
       "label": "_mul()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L120",
+      "source_location": "L121",
       "id": "audio_gen_audio_mul",
-      "community": 0,
+      "community": 87,
       "norm_label": "_mul()"
     },
     {
       "label": "_add_tracks()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L124",
+      "source_location": "L125",
       "id": "audio_gen_audio_add_tracks",
-      "community": 0,
+      "community": 96,
       "norm_label": "_add_tracks()"
     },
     {
       "label": "_lowpass()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L134",
+      "source_location": "L135",
       "id": "audio_gen_audio_lowpass",
-      "community": 0,
+      "community": 12,
       "norm_label": "_lowpass()"
     },
     {
       "label": "_highpass()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L147",
+      "source_location": "L148",
       "id": "audio_gen_audio_highpass",
-      "community": 0,
+      "community": 88,
       "norm_label": "_highpass()"
     },
     {
       "label": "_fade()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L163",
+      "source_location": "L164",
       "id": "audio_gen_audio_fade",
-      "community": 0,
+      "community": 92,
       "norm_label": "_fade()"
     },
     {
       "label": "gen_shot()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L180",
+      "source_location": "L181",
       "id": "audio_gen_audio_gen_shot",
-      "community": 0,
+      "community": 88,
       "norm_label": "gen_shot()"
     },
     {
       "label": "gen_hit()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L209",
+      "source_location": "L210",
       "id": "audio_gen_audio_gen_hit",
-      "community": 0,
+      "community": 91,
       "norm_label": "gen_hit()"
     },
     {
       "label": "gen_explosion()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L220",
+      "source_location": "L221",
       "id": "audio_gen_audio_gen_explosion",
-      "community": 0,
+      "community": 98,
       "norm_label": "gen_explosion()"
     },
     {
       "label": "gen_player_death()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L248",
+      "source_location": "L249",
       "id": "audio_gen_audio_gen_player_death",
-      "community": 0,
+      "community": 87,
       "norm_label": "gen_player_death()"
     },
     {
       "label": "gen_extract_beep()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L266",
+      "source_location": "L267",
       "id": "audio_gen_audio_gen_extract_beep",
-      "community": 0,
+      "community": 91,
       "norm_label": "gen_extract_beep()"
     },
     {
       "label": "gen_extract_done()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L274",
+      "source_location": "L275",
       "id": "audio_gen_audio_gen_extract_done",
       "community": 0,
       "norm_label": "gen_extract_done()"
@@ -1194,16 +1194,16 @@
       "label": "gen_extract_cancel()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L283",
+      "source_location": "L284",
       "id": "audio_gen_audio_gen_extract_cancel",
-      "community": 0,
+      "community": 12,
       "norm_label": "gen_extract_cancel()"
     },
     {
       "label": "gen_wave_alert()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L296",
+      "source_location": "L297",
       "id": "audio_gen_audio_gen_wave_alert",
       "community": 0,
       "norm_label": "gen_wave_alert()"
@@ -1212,7 +1212,7 @@
       "label": "gen_win()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L306",
+      "source_location": "L307",
       "id": "audio_gen_audio_gen_win",
       "community": 0,
       "norm_label": "gen_win()"
@@ -1221,25 +1221,25 @@
       "label": "gen_lose()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L320",
+      "source_location": "L321",
       "id": "audio_gen_audio_gen_lose",
-      "community": 0,
+      "community": 87,
       "norm_label": "gen_lose()"
     },
     {
       "label": "gen_footstep()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L333",
+      "source_location": "L334",
       "id": "audio_gen_audio_gen_footstep",
-      "community": 0,
+      "community": 12,
       "norm_label": "gen_footstep()"
     },
     {
       "label": "gen_reload()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L349",
+      "source_location": "L350",
       "id": "audio_gen_audio_gen_reload",
       "community": 0,
       "norm_label": "gen_reload()"
@@ -1248,25 +1248,25 @@
       "label": "gen_weapon_switch()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L366",
+      "source_location": "L367",
       "id": "audio_gen_audio_gen_weapon_switch",
-      "community": 0,
+      "community": 81,
       "norm_label": "gen_weapon_switch()"
     },
     {
       "label": "gen_ui_click()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L382",
+      "source_location": "L383",
       "id": "audio_gen_audio_gen_ui_click",
-      "community": 0,
+      "community": 88,
       "norm_label": "gen_ui_click()"
     },
     {
       "label": "gen_heartbeat()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L393",
+      "source_location": "L394",
       "id": "audio_gen_audio_gen_heartbeat",
       "community": 0,
       "norm_label": "gen_heartbeat()"
@@ -1275,81 +1275,162 @@
       "label": "gen_water_splash()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L418",
+      "source_location": "L419",
       "id": "audio_gen_audio_gen_water_splash",
-      "community": 0,
+      "community": 92,
       "norm_label": "gen_water_splash()"
     },
     {
       "label": "gen_underwater()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L443",
+      "source_location": "L444",
       "id": "audio_gen_audio_gen_underwater",
-      "community": 0,
+      "community": 89,
       "norm_label": "gen_underwater()"
     },
     {
       "label": "gen_ambient()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L468",
+      "source_location": "L469",
       "id": "audio_gen_audio_gen_ambient",
-      "community": 0,
+      "community": 92,
       "norm_label": "gen_ambient()"
     },
     {
       "label": "gen_music()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L496",
+      "source_location": "L497",
       "id": "audio_gen_audio_gen_music",
-      "community": 0,
+      "community": 81,
       "norm_label": "gen_music()"
     },
     {
       "label": "gen_glass_break()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L534",
+      "source_location": "L535",
       "id": "audio_gen_audio_gen_glass_break",
-      "community": 0,
+      "community": 81,
       "norm_label": "gen_glass_break()"
     },
     {
       "label": "gen_chunk_concrete()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L561",
+      "source_location": "L562",
       "id": "audio_gen_audio_gen_chunk_concrete",
-      "community": 0,
+      "community": 97,
       "norm_label": "gen_chunk_concrete()"
     },
     {
       "label": "gen_chunk_metal()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L586",
+      "source_location": "L587",
       "id": "audio_gen_audio_gen_chunk_metal",
-      "community": 0,
+      "community": 91,
       "norm_label": "gen_chunk_metal()"
     },
     {
       "label": "gen_chunk_stone()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L606",
+      "source_location": "L607",
       "id": "audio_gen_audio_gen_chunk_stone",
-      "community": 0,
+      "community": 89,
       "norm_label": "gen_chunk_stone()"
+    },
+    {
+      "label": "_chord_pad()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L628",
+      "id": "audio_gen_audio_chord_pad",
+      "community": 87,
+      "norm_label": "_chord_pad()"
+    },
+    {
+      "label": "gen_music_long()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L644",
+      "id": "audio_gen_audio_gen_music_long",
+      "community": 87,
+      "norm_label": "gen_music_long()"
+    },
+    {
+      "label": "_amb_wind()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L694",
+      "id": "audio_gen_audio_amb_wind",
+      "community": 12,
+      "norm_label": "_amb_wind()"
+    },
+    {
+      "label": "gen_amb_urban()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L703",
+      "id": "audio_gen_audio_gen_amb_urban",
+      "community": 12,
+      "norm_label": "gen_amb_urban()"
+    },
+    {
+      "label": "gen_amb_snow()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L721",
+      "id": "audio_gen_audio_gen_amb_snow",
+      "community": 12,
+      "norm_label": "gen_amb_snow()"
+    },
+    {
+      "label": "gen_amb_desert()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L733",
+      "id": "audio_gen_audio_gen_amb_desert",
+      "community": 12,
+      "norm_label": "gen_amb_desert()"
+    },
+    {
+      "label": "gen_amb_rain()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L747",
+      "id": "audio_gen_audio_gen_amb_rain",
+      "community": 88,
+      "norm_label": "gen_amb_rain()"
+    },
+    {
+      "label": "gen_robot_alert()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L770",
+      "id": "audio_gen_audio_gen_robot_alert",
+      "community": 0,
+      "norm_label": "gen_robot_alert()"
+    },
+    {
+      "label": "gen_robot_death()",
+      "file_type": "code",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L791",
+      "id": "audio_gen_audio_gen_robot_death",
+      "community": 89,
+      "norm_label": "gen_robot_death()"
     },
     {
       "label": "main()",
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L631",
+      "source_location": "L818",
       "id": "audio_gen_audio_main",
-      "community": 0,
+      "community": 95,
       "norm_label": "main()"
     },
     {
@@ -1365,116 +1446,116 @@
       "label": "Normalise to PEAK_AMPLITUDE and write a mono 16-bit WAV.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L28",
-      "id": "audio_gen_audio_rationale_28",
-      "community": 0,
+      "source_location": "L29",
+      "id": "audio_gen_audio_rationale_29",
+      "community": 95,
       "norm_label": "normalise to peak_amplitude and write a mono 16-bit wav."
     },
     {
       "label": "Apply an ADSR envelope to samples in-place (returns copy).",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L75",
-      "id": "audio_gen_audio_rationale_75",
-      "community": 0,
+      "source_location": "L76",
+      "id": "audio_gen_audio_rationale_76",
+      "community": 81,
       "norm_label": "apply an adsr envelope to samples in-place (returns copy)."
     },
     {
       "label": "Sum multiple tracks (same length) with soft clipping.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L103",
-      "id": "audio_gen_audio_rationale_103",
-      "community": 0,
+      "source_location": "L104",
+      "id": "audio_gen_audio_rationale_104",
+      "community": 89,
       "norm_label": "sum multiple tracks (same length) with soft clipping."
     },
     {
       "label": "Add two tracks, extending the shorter one with silence.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L125",
-      "id": "audio_gen_audio_rationale_125",
-      "community": 0,
+      "source_location": "L126",
+      "id": "audio_gen_audio_rationale_126",
+      "community": 96,
       "norm_label": "add two tracks, extending the shorter one with silence."
     },
     {
       "label": "Simple single-pole IIR lowpass.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L135",
-      "id": "audio_gen_audio_rationale_135",
-      "community": 0,
+      "source_location": "L136",
+      "id": "audio_gen_audio_rationale_136",
+      "community": 12,
       "norm_label": "simple single-pole iir lowpass."
     },
     {
       "label": "Simple single-pole IIR highpass.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L148",
-      "id": "audio_gen_audio_rationale_148",
-      "community": 0,
+      "source_location": "L149",
+      "id": "audio_gen_audio_rationale_149",
+      "community": 88,
       "norm_label": "simple single-pole iir highpass."
     },
     {
       "label": "Apply a short linear fade-in/out to avoid clicks.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L164",
-      "id": "audio_gen_audio_rationale_164",
-      "community": 0,
+      "source_location": "L165",
+      "id": "audio_gen_audio_rationale_165",
+      "community": 92,
       "norm_label": "apply a short linear fade-in/out to avoid clicks."
     },
     {
       "label": "Short punchy laser crack: high transient + descending tone.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L181",
-      "id": "audio_gen_audio_rationale_181",
-      "community": 0,
+      "source_location": "L182",
+      "id": "audio_gen_audio_rationale_182",
+      "community": 88,
       "norm_label": "short punchy laser crack: high transient + descending tone."
     },
     {
       "label": "Short impact tick: snappy transient.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L210",
-      "id": "audio_gen_audio_rationale_210",
-      "community": 0,
+      "source_location": "L211",
+      "id": "audio_gen_audio_rationale_211",
+      "community": 91,
       "norm_label": "short impact tick: snappy transient."
     },
     {
       "label": "Low-frequency noise burst with rumble tail.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L221",
-      "id": "audio_gen_audio_rationale_221",
-      "community": 0,
+      "source_location": "L222",
+      "id": "audio_gen_audio_rationale_222",
+      "community": 98,
       "norm_label": "low-frequency noise burst with rumble tail."
     },
     {
       "label": "Descending minor tone \u2014 ominous.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L249",
-      "id": "audio_gen_audio_rationale_249",
-      "community": 0,
+      "source_location": "L250",
+      "id": "audio_gen_audio_rationale_250",
+      "community": 87,
       "norm_label": "descending minor tone \u2014 ominous."
     },
     {
       "label": "Clean short beep \u2014 extraction proximity cue.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L267",
-      "id": "audio_gen_audio_rationale_267",
-      "community": 0,
+      "source_location": "L268",
+      "id": "audio_gen_audio_rationale_268",
+      "community": 91,
       "norm_label": "clean short beep \u2014 extraction proximity cue."
     },
     {
       "label": "Rising 2-note chime \u2014 success.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L275",
-      "id": "audio_gen_audio_rationale_275",
+      "source_location": "L276",
+      "id": "audio_gen_audio_rationale_276",
       "community": 0,
       "norm_label": "rising 2-note chime \u2014 success."
     },
@@ -1482,17 +1563,17 @@
       "label": "Low buzz \u2014 failure/cancel.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L284",
-      "id": "audio_gen_audio_rationale_284",
-      "community": 0,
+      "source_location": "L285",
+      "id": "audio_gen_audio_rationale_285",
+      "community": 12,
       "norm_label": "low buzz \u2014 failure/cancel."
     },
     {
       "label": "Two-tone alarm: alternating hi/lo pulses.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L297",
-      "id": "audio_gen_audio_rationale_297",
+      "source_location": "L298",
+      "id": "audio_gen_audio_rationale_298",
       "community": 0,
       "norm_label": "two-tone alarm: alternating hi/lo pulses."
     },
@@ -1500,8 +1581,8 @@
       "label": "Major arpeggio: C-E-G-C5.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L307",
-      "id": "audio_gen_audio_rationale_307",
+      "source_location": "L308",
+      "id": "audio_gen_audio_rationale_308",
       "community": 0,
       "norm_label": "major arpeggio: c-e-g-c5."
     },
@@ -1509,26 +1590,26 @@
       "label": "Minor descending arpeggio: A-F-D-A3.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L321",
-      "id": "audio_gen_audio_rationale_321",
-      "community": 0,
+      "source_location": "L322",
+      "id": "audio_gen_audio_rationale_322",
+      "community": 87,
       "norm_label": "minor descending arpeggio: a-f-d-a3."
     },
     {
       "label": "Soft thud with a brief low-frequency transient.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L334",
-      "id": "audio_gen_audio_rationale_334",
-      "community": 0,
+      "source_location": "L335",
+      "id": "audio_gen_audio_rationale_335",
+      "community": 12,
       "norm_label": "soft thud with a brief low-frequency transient."
     },
     {
       "label": "Mechanical clack-click: two discrete transients.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L350",
-      "id": "audio_gen_audio_rationale_350",
+      "source_location": "L351",
+      "id": "audio_gen_audio_rationale_351",
       "community": 0,
       "norm_label": "mechanical clack-click: two discrete transients."
     },
@@ -1536,26 +1617,26 @@
       "label": "Short metallic shink \u2014 rising high freq click.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L367",
-      "id": "audio_gen_audio_rationale_367",
-      "community": 0,
+      "source_location": "L368",
+      "id": "audio_gen_audio_rationale_368",
+      "community": 81,
       "norm_label": "short metallic shink \u2014 rising high freq click."
     },
     {
       "label": "Soft UI tick \u2014 short, quiet, round.",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L383",
-      "id": "audio_gen_audio_rationale_383",
-      "community": 0,
+      "source_location": "L384",
+      "id": "audio_gen_audio_rationale_384",
+      "community": 88,
       "norm_label": "soft ui tick \u2014 short, quiet, round."
     },
     {
       "label": "Low dull thud (meant to loop).  Two-pulse cardiac shape.     Keep start/end at",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L394",
-      "id": "audio_gen_audio_rationale_394",
+      "source_location": "L395",
+      "id": "audio_gen_audio_rationale_395",
       "community": 0,
       "norm_label": "low dull thud (meant to loop).  two-pulse cardiac shape.     keep start/end at"
     },
@@ -1563,73 +1644,145 @@
       "label": "Entering-water splash: a bright filtered-noise burst with a quick wet decay,",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L419",
-      "id": "audio_gen_audio_rationale_419",
-      "community": 0,
+      "source_location": "L420",
+      "id": "audio_gen_audio_rationale_420",
+      "community": 92,
       "norm_label": "entering-water splash: a bright filtered-noise burst with a quick wet decay,"
     },
     {
       "label": "Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L444",
-      "id": "audio_gen_audio_rationale_444",
-      "community": 0,
+      "source_location": "L445",
+      "id": "audio_gen_audio_rationale_445",
+      "community": 89,
       "norm_label": "muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,"
     },
     {
       "label": "Quiet evolving low drone/wind bed (loopable).     Low filtered noise + slow sin",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L469",
-      "id": "audio_gen_audio_rationale_469",
-      "community": 0,
+      "source_location": "L470",
+      "id": "audio_gen_audio_rationale_470",
+      "community": 92,
       "norm_label": "quiet evolving low drone/wind bed (loopable).     low filtered noise + slow sin"
     },
     {
       "label": "Slow low-tension pad/pulse loop (a few seconds, loopable).     Layered detuned",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L497",
-      "id": "audio_gen_audio_rationale_497",
-      "community": 0,
+      "source_location": "L498",
+      "id": "audio_gen_audio_rationale_498",
+      "community": 81,
       "norm_label": "slow low-tension pad/pulse loop (a few seconds, loopable).     layered detuned"
     },
     {
       "label": "Window shatter: a bright high-passed noise CRACK followed by 4-6 staggered",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L535",
-      "id": "audio_gen_audio_rationale_535",
-      "community": 0,
+      "source_location": "L536",
+      "id": "audio_gen_audio_rationale_536",
+      "community": 81,
       "norm_label": "window shatter: a bright high-passed noise crack followed by 4-6 staggered"
     },
     {
       "label": "Concrete crumble: a low sub THUMP + a gritty muffled rubble gurgle (double-lowpa",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L562",
-      "id": "audio_gen_audio_rationale_562",
-      "community": 0,
+      "source_location": "L563",
+      "id": "audio_gen_audio_rationale_563",
+      "community": 97,
       "norm_label": "concrete crumble: a low sub thump + a gritty muffled rubble gurgle (double-lowpa"
     },
     {
       "label": "Container clang: 3 INHARMONIC resonant partials (metallic ring) + a high-passed",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L587",
-      "id": "audio_gen_audio_rationale_587",
-      "community": 0,
+      "source_location": "L588",
+      "id": "audio_gen_audio_rationale_588",
+      "community": 91,
       "norm_label": "container clang: 3 inharmonic resonant partials (metallic ring) + a high-passed"
     },
     {
       "label": "Rock crack: a sharp DRY high-passed crack (brighter than concrete, little sub) +",
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
-      "source_location": "L607",
-      "id": "audio_gen_audio_rationale_607",
-      "community": 0,
+      "source_location": "L608",
+      "id": "audio_gen_audio_rationale_608",
+      "community": 89,
       "norm_label": "rock crack: a sharp dry high-passed crack (brighter than concrete, little sub) +"
+    },
+    {
+      "label": "Detuned dual-osc pad for a chord segment, slow tremolo, lowpassed.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L629",
+      "id": "audio_gen_audio_rationale_629",
+      "community": 87,
+      "norm_label": "detuned dual-osc pad for a chord segment, slow tremolo, lowpassed."
+    },
+    {
+      "label": "~96 s evolving dark-ambient loop: 4-chord minor progression pads + sub pulse +",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L645",
+      "id": "audio_gen_audio_rationale_645",
+      "community": 87,
+      "norm_label": "~96 s evolving dark-ambient loop: 4-chord minor progression pads + sub pulse +"
+    },
+    {
+      "label": "Urban ruins: low wind + faint machine hum + a distant groan once per loop.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L704",
+      "id": "audio_gen_audio_rationale_704",
+      "community": 12,
+      "norm_label": "urban ruins: low wind + faint machine hum + a distant groan once per loop."
+    },
+    {
+      "label": "Alpine: whistling airy wind \u2014 band-swept noise, no hum, cold gusts.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L722",
+      "id": "audio_gen_audio_rationale_722",
+      "community": 12,
+      "norm_label": "alpine: whistling airy wind \u2014 band-swept noise, no hum, cold gusts."
+    },
+    {
+      "label": "Desert: dry mid wind + thin grit shimmer + slow deep swells.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L734",
+      "id": "audio_gen_audio_rationale_734",
+      "community": 12,
+      "norm_label": "desert: dry mid wind + thin grit shimmer + slow deep swells."
+    },
+    {
+      "label": "Rain biome: steady patter (banded noise flutter) + low rumble + a soft far thund",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L748",
+      "id": "audio_gen_audio_rationale_748",
+      "community": 88,
+      "norm_label": "rain biome: steady patter (banded noise flutter) + low rumble + a soft far thund"
+    },
+    {
+      "label": "Machine spotted you: two rising FM chirps + a click. Stealth-relevant cue.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L771",
+      "id": "audio_gen_audio_rationale_771",
+      "community": 0,
+      "norm_label": "machine spotted you: two rising fm chirps + a click. stealth-relevant cue."
+    },
+    {
+      "label": "Power-down: descending quantized sweep + spark crackle (layered under the boom).",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L792",
+      "id": "audio_gen_audio_rationale_792",
+      "community": 89,
+      "norm_label": "power-down: descending quantized sweep + spark crackle (layered under the boom)."
     },
     {
       "label": "trim_shots.py",
@@ -3414,6 +3567,276 @@
       "norm_label": "quick manual test (no game)"
     },
     {
+      "label": "Normalise to PEAK_AMPLITUDE and write a mono 16-bit WAV.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L28",
+      "community": 95,
+      "norm_label": "normalise to peak_amplitude and write a mono 16-bit wav.",
+      "id": "audio_gen_audio_rationale_28"
+    },
+    {
+      "label": "Apply an ADSR envelope to samples in-place (returns copy).",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L75",
+      "community": 81,
+      "norm_label": "apply an adsr envelope to samples in-place (returns copy).",
+      "id": "audio_gen_audio_rationale_75"
+    },
+    {
+      "label": "Sum multiple tracks (same length) with soft clipping.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L103",
+      "community": 89,
+      "norm_label": "sum multiple tracks (same length) with soft clipping.",
+      "id": "audio_gen_audio_rationale_103"
+    },
+    {
+      "label": "Add two tracks, extending the shorter one with silence.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L125",
+      "community": 96,
+      "norm_label": "add two tracks, extending the shorter one with silence.",
+      "id": "audio_gen_audio_rationale_125"
+    },
+    {
+      "label": "Simple single-pole IIR lowpass.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L135",
+      "community": 12,
+      "norm_label": "simple single-pole iir lowpass.",
+      "id": "audio_gen_audio_rationale_135"
+    },
+    {
+      "label": "Simple single-pole IIR highpass.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L148",
+      "community": 88,
+      "norm_label": "simple single-pole iir highpass.",
+      "id": "audio_gen_audio_rationale_148"
+    },
+    {
+      "label": "Apply a short linear fade-in/out to avoid clicks.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L164",
+      "community": 92,
+      "norm_label": "apply a short linear fade-in/out to avoid clicks.",
+      "id": "audio_gen_audio_rationale_164"
+    },
+    {
+      "label": "Short punchy laser crack: high transient + descending tone.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L181",
+      "community": 88,
+      "norm_label": "short punchy laser crack: high transient + descending tone.",
+      "id": "audio_gen_audio_rationale_181"
+    },
+    {
+      "label": "Short impact tick: snappy transient.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L210",
+      "community": 91,
+      "norm_label": "short impact tick: snappy transient.",
+      "id": "audio_gen_audio_rationale_210"
+    },
+    {
+      "label": "Low-frequency noise burst with rumble tail.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L221",
+      "community": 98,
+      "norm_label": "low-frequency noise burst with rumble tail.",
+      "id": "audio_gen_audio_rationale_221"
+    },
+    {
+      "label": "Descending minor tone \u2014 ominous.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L249",
+      "community": 87,
+      "norm_label": "descending minor tone \u2014 ominous.",
+      "id": "audio_gen_audio_rationale_249"
+    },
+    {
+      "label": "Clean short beep \u2014 extraction proximity cue.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L267",
+      "community": 91,
+      "norm_label": "clean short beep \u2014 extraction proximity cue.",
+      "id": "audio_gen_audio_rationale_267"
+    },
+    {
+      "label": "Rising 2-note chime \u2014 success.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L275",
+      "community": 0,
+      "norm_label": "rising 2-note chime \u2014 success.",
+      "id": "audio_gen_audio_rationale_275"
+    },
+    {
+      "label": "Low buzz \u2014 failure/cancel.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L284",
+      "community": 12,
+      "norm_label": "low buzz \u2014 failure/cancel.",
+      "id": "audio_gen_audio_rationale_284"
+    },
+    {
+      "label": "Two-tone alarm: alternating hi/lo pulses.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L297",
+      "community": 0,
+      "norm_label": "two-tone alarm: alternating hi/lo pulses.",
+      "id": "audio_gen_audio_rationale_297"
+    },
+    {
+      "label": "Major arpeggio: C-E-G-C5.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L307",
+      "community": 0,
+      "norm_label": "major arpeggio: c-e-g-c5.",
+      "id": "audio_gen_audio_rationale_307"
+    },
+    {
+      "label": "Minor descending arpeggio: A-F-D-A3.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L321",
+      "community": 87,
+      "norm_label": "minor descending arpeggio: a-f-d-a3.",
+      "id": "audio_gen_audio_rationale_321"
+    },
+    {
+      "label": "Soft thud with a brief low-frequency transient.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L334",
+      "community": 12,
+      "norm_label": "soft thud with a brief low-frequency transient.",
+      "id": "audio_gen_audio_rationale_334"
+    },
+    {
+      "label": "Mechanical clack-click: two discrete transients.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L350",
+      "community": 0,
+      "norm_label": "mechanical clack-click: two discrete transients.",
+      "id": "audio_gen_audio_rationale_350"
+    },
+    {
+      "label": "Short metallic shink \u2014 rising high freq click.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L367",
+      "community": 81,
+      "norm_label": "short metallic shink \u2014 rising high freq click.",
+      "id": "audio_gen_audio_rationale_367"
+    },
+    {
+      "label": "Soft UI tick \u2014 short, quiet, round.",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L383",
+      "community": 88,
+      "norm_label": "soft ui tick \u2014 short, quiet, round.",
+      "id": "audio_gen_audio_rationale_383"
+    },
+    {
+      "label": "Low dull thud (meant to loop).  Two-pulse cardiac shape.     Keep start/end at",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L394",
+      "community": 0,
+      "norm_label": "low dull thud (meant to loop).  two-pulse cardiac shape.     keep start/end at",
+      "id": "audio_gen_audio_rationale_394"
+    },
+    {
+      "label": "Entering-water splash: a bright filtered-noise burst with a quick wet decay,",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L419",
+      "community": 92,
+      "norm_label": "entering-water splash: a bright filtered-noise burst with a quick wet decay,",
+      "id": "audio_gen_audio_rationale_419"
+    },
+    {
+      "label": "Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L444",
+      "community": 89,
+      "norm_label": "muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,",
+      "id": "audio_gen_audio_rationale_444"
+    },
+    {
+      "label": "Quiet evolving low drone/wind bed (loopable).     Low filtered noise + slow sin",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L469",
+      "community": 92,
+      "norm_label": "quiet evolving low drone/wind bed (loopable).     low filtered noise + slow sin",
+      "id": "audio_gen_audio_rationale_469"
+    },
+    {
+      "label": "Slow low-tension pad/pulse loop (a few seconds, loopable).     Layered detuned",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L497",
+      "community": 81,
+      "norm_label": "slow low-tension pad/pulse loop (a few seconds, loopable).     layered detuned",
+      "id": "audio_gen_audio_rationale_497"
+    },
+    {
+      "label": "Window shatter: a bright high-passed noise CRACK followed by 4-6 staggered",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L535",
+      "community": 81,
+      "norm_label": "window shatter: a bright high-passed noise crack followed by 4-6 staggered",
+      "id": "audio_gen_audio_rationale_535"
+    },
+    {
+      "label": "Concrete crumble: a low sub THUMP + a gritty muffled rubble gurgle (double-lowpa",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L562",
+      "community": 97,
+      "norm_label": "concrete crumble: a low sub thump + a gritty muffled rubble gurgle (double-lowpa",
+      "id": "audio_gen_audio_rationale_562"
+    },
+    {
+      "label": "Container clang: 3 INHARMONIC resonant partials (metallic ring) + a high-passed",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L587",
+      "community": 91,
+      "norm_label": "container clang: 3 inharmonic resonant partials (metallic ring) + a high-passed",
+      "id": "audio_gen_audio_rationale_587"
+    },
+    {
+      "label": "Rock crack: a sharp DRY high-passed crack (brighter than concrete, little sub) +",
+      "file_type": "rationale",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L607",
+      "community": 89,
+      "norm_label": "rock crack: a sharp dry high-passed crack (brighter than concrete, little sub) +",
+      "id": "audio_gen_audio_rationale_607"
+    },
+    {
       "label": "Parse game_raw arguments into a command dict.",
       "file_type": "rationale",
       "source_file": "tools/agent/mcp_server.py",
@@ -3481,7 +3904,7 @@
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L61",
-      "community": 0,
+      "community": 12,
       "norm_label": "int",
       "id": "int"
     },
@@ -3490,7 +3913,7 @@
       "file_type": "code",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L27",
-      "community": 0,
+      "community": 95,
       "norm_label": "str",
       "id": "str"
     },
@@ -3571,7 +3994,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L447",
-      "community": 0,
+      "community": 81,
       "norm_label": "slow low-tension pad/pulse loop (a few seconds, loopable).     layered detuned",
       "id": "audio_gen_audio_rationale_447"
     },
@@ -3805,7 +4228,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "assetregistry.catalog (logical id table)",
       "id": "assetregistry_catalog"
     },
@@ -3818,7 +4241,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "assetregistry.get_model",
       "id": "assetregistry_get_model"
     },
@@ -3831,7 +4254,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 94,
       "norm_label": "assetregistry.get_icon",
       "id": "assetregistry_get_icon"
     },
@@ -3844,7 +4267,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "assetregistry._make_primitive (tinted fallback)",
       "id": "assetregistry_make_primitive"
     },
@@ -3857,7 +4280,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "guarded-fallback resolution (glb to procedural to primitive)",
       "id": "assetregistry_fallback_chain"
     },
@@ -3870,7 +4293,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "audiomanager (events-driven sfx)",
       "id": "audiomanager_audiomanager"
     },
@@ -3883,7 +4306,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "audiomanager._play / _play_at",
       "id": "audiomanager_play"
     },
@@ -3987,7 +4410,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 71,
       "norm_label": "extractiondirector._apply_windows",
       "id": "extractiondirector_apply_windows"
     },
@@ -4026,7 +4449,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "gamestate.record_kill / record_death",
       "id": "gamestate_record_kill"
     },
@@ -4039,7 +4462,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "gamestate.reset_match",
       "id": "gamestate_reset_match"
     },
@@ -4052,7 +4475,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "gamestate.peers (peer roster)",
       "id": "gamestate_peers"
     },
@@ -4078,7 +4501,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "iconrenderer.render_now",
       "id": "iconrenderer_render_now"
     },
@@ -4091,7 +4514,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "iconrenderer.render_icon (sync cache)",
       "id": "iconrenderer_render_icon"
     },
@@ -4104,7 +4527,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "iconrenderer._prewarm",
       "id": "iconrenderer_prewarm"
     },
@@ -4260,7 +4683,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "metaprogression.player_mods",
       "id": "metaprogression_player_mods"
     },
@@ -4351,7 +4774,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "networkmanager.request_start (leader start)",
       "id": "networkmanager_request_start"
     },
@@ -4390,7 +4813,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "networkmanager.request_hit (server-auth damage)",
       "id": "networkmanager_request_hit"
     },
@@ -4416,7 +4839,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "networkmanager.transfer_item (give/trade)",
       "id": "networkmanager_transfer_item"
     },
@@ -4442,7 +4865,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "networkmanager._on_entity_died (kill attribution)",
       "id": "networkmanager_on_entity_died"
     },
@@ -4468,7 +4891,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 71,
       "norm_label": "serverbrowser.scan_lan",
       "id": "serverbrowser_scan_lan"
     },
@@ -4481,7 +4904,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "serverbrowser._poll_responder (host discovery reply)",
       "id": "serverbrowser_poll_responder"
     },
@@ -4520,7 +4943,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 71,
       "norm_label": "settings (tunable constants)",
       "id": "settings_settings"
     },
@@ -4585,7 +5008,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "server-authoritative co-op (hit/score/transfer routing)",
       "id": "coop_server_authority_pattern"
     },
@@ -5365,7 +5788,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "extractionzone",
       "id": "extraction_extraction_zone_extractionzone"
     },
@@ -5443,7 +5866,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "camerafx",
       "id": "fx_camera_fx_camerafx"
     },
@@ -5495,7 +5918,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "damagenumber",
       "id": "fx_damage_number_damagenumber"
     },
@@ -5508,7 +5931,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "damagenumberslayer",
       "id": "fx_damage_numbers_layer_damagenumberslayer"
     },
@@ -5625,7 +6048,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "worldatmosphere._on_final_wave",
       "id": "fx_world_atmosphere_on_final_wave"
     },
@@ -5638,7 +6061,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 94,
       "norm_label": "inventory",
       "id": "inventory_inventory_inventory"
     },
@@ -5690,7 +6113,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 94,
       "norm_label": "inventoryui",
       "id": "inventory_inventory_ui_inventoryui"
     },
@@ -5703,7 +6126,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 2,
       "norm_label": "inventoryui._give_item",
       "id": "inventory_inventory_ui_give_item"
     },
@@ -5742,7 +6165,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 94,
       "norm_label": "itemdata",
       "id": "inventory_item_data_itemdata"
     },
@@ -5781,7 +6204,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 90,
       "norm_label": "lootpickup",
       "id": "loot_loot_pickup_lootpickup"
     },
@@ -5794,7 +6217,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 94,
       "norm_label": "lootpickup._on_pickup_requested",
       "id": "loot_loot_pickup_on_pickup_requested"
     },
@@ -5833,7 +6256,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "player",
       "id": "player_player_player"
     },
@@ -5911,7 +6334,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "playeranimator",
       "id": "player_player_animator_playeranimator"
     },
@@ -5924,7 +6347,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 93,
       "norm_label": "events bus",
       "id": "concept_events_bus"
     },
@@ -5963,7 +6386,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 85,
+      "community": 94,
       "norm_label": "server-authoritative inventory owner-mirror",
       "id": "concept_inventory_owner_mirror"
     },
@@ -8080,6 +8503,26 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L694",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_amb_wind",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L628",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_chord_pad",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L113",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -8095,6 +8538,46 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio",
       "target": "audio_gen_audio_fade"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L733",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_amb_desert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L747",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_amb_rain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L721",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_amb_snow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L703",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_amb_urban",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -8240,6 +8723,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L644",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_music_long",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L248",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -8255,6 +8748,26 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio",
       "target": "audio_gen_audio_gen_reload"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L770",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_robot_alert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L791",
+      "weight": 1.0,
+      "source": "audio_gen_audio",
+      "target": "audio_gen_audio_gen_robot_death",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -8458,6 +8971,16 @@
       "target": "audio_gen_audio_write_wav"
     },
     {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_29",
+      "target": "audio_gen_audio_write_wav",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "references",
       "context": "generic_arg",
       "confidence": "EXTRACTED",
@@ -8517,6 +9040,28 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L694",
+      "weight": 1.0,
+      "source": "audio_gen_audio_amb_wind",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L628",
+      "weight": 1.0,
+      "source": "audio_gen_audio_chord_pad",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L113",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -8533,6 +9078,50 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_fade",
       "target": "float"
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L733",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_desert",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L747",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_rain",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L721",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_snow",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L703",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_urban",
+      "target": "float",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -8693,6 +9282,17 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L644",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_music_long",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L248",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -8709,6 +9309,28 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_reload",
       "target": "float"
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L770",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_alert",
+      "target": "float",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L791",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_death",
+      "target": "float",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -8902,6 +9524,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L785",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_alert",
+      "target": "audio_gen_audio_silence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L300",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9078,6 +9711,61 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L695",
+      "weight": 1.0,
+      "source": "audio_gen_audio_amb_wind",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L737",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_desert",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L750",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_rain",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L725",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_snow",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L712",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_urban",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L427",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9188,11 +9876,44 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L658",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_music_long",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L258",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_player_death",
       "target": "audio_gen_audio_noise"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L784",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_alert",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L804",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_death",
+      "target": "audio_gen_audio_noise",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9276,11 +9997,44 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L694",
+      "weight": 1.0,
+      "source": "audio_gen_audio_amb_wind",
+      "target": "tools_audio_gen_audio_py_int",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L333",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_footstep",
       "target": "tools_audio_gen_audio_py_int"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L760",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_rain",
+      "target": "audio_gen_audio_adsr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L713",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_urban",
+      "target": "audio_gen_audio_adsr",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9430,6 +10184,28 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L784",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_alert",
+      "target": "audio_gen_audio_adsr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L803",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_death",
+      "target": "audio_gen_audio_adsr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L185",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9500,6 +10276,16 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_75",
       "target": "audio_gen_audio_adsr"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_76",
+      "target": "audio_gen_audio_adsr",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9616,6 +10402,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L811",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_death",
+      "target": "audio_gen_audio_mix",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L201",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9677,6 +10474,16 @@
       "target": "audio_gen_audio_mix"
     },
     {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L104",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_104",
+      "target": "audio_gen_audio_mix",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -9725,6 +10532,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L788",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_alert",
+      "target": "audio_gen_audio_concat",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L303",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9751,6 +10569,82 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_125",
       "target": "audio_gen_audio_add_tracks"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L126",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_126",
+      "target": "audio_gen_audio_add_tracks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L695",
+      "weight": 1.0,
+      "source": "audio_gen_audio_amb_wind",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L641",
+      "weight": 1.0,
+      "source": "audio_gen_audio_chord_pad",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L738",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_desert",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L750",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_rain",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L725",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_snow",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L712",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_urban",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9834,6 +10728,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L658",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_music_long",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L259",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9871,6 +10776,49 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_135",
       "target": "audio_gen_audio_lowpass"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L136",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_136",
+      "target": "audio_gen_audio_lowpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L737",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_desert",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L750",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_rain",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L725",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_snow",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -9954,6 +10902,39 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L658",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_music_long",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L784",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_alert",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L804",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_death",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L198",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -10002,6 +10983,60 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_148",
       "target": "audio_gen_audio_highpass"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L149",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_149",
+      "target": "audio_gen_audio_highpass",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L744",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_desert",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L767",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_rain",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L730",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_snow",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L718",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_urban",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -10162,6 +11197,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L691",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_music_long",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L263",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -10178,6 +11224,28 @@
       "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_reload",
       "target": "audio_gen_audio_fade"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L788",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_alert",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L811",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_robot_death",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -10270,11 +11338,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L165",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_165",
+      "target": "audio_gen_audio_fade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L181",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_181",
       "target": "audio_gen_audio_gen_shot"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L182",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_182",
+      "target": "audio_gen_audio_gen_shot",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10290,11 +11378,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L211",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_211",
+      "target": "audio_gen_audio_gen_hit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L221",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_221",
       "target": "audio_gen_audio_gen_explosion"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L222",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_222",
+      "target": "audio_gen_audio_gen_explosion",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10310,11 +11418,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L250",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_250",
+      "target": "audio_gen_audio_gen_player_death",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L267",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_267",
       "target": "audio_gen_audio_gen_extract_beep"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L268",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_268",
+      "target": "audio_gen_audio_gen_extract_beep",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10330,11 +11458,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L276",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_276",
+      "target": "audio_gen_audio_gen_extract_done",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L284",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_284",
       "target": "audio_gen_audio_gen_extract_cancel"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L285",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_285",
+      "target": "audio_gen_audio_gen_extract_cancel",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10350,6 +11498,16 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L298",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_298",
+      "target": "audio_gen_audio_gen_wave_alert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L307",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -10360,11 +11518,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L308",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_308",
+      "target": "audio_gen_audio_gen_win",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L321",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_321",
       "target": "audio_gen_audio_gen_lose"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L322",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_322",
+      "target": "audio_gen_audio_gen_lose",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -10402,11 +11580,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L335",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_335",
+      "target": "audio_gen_audio_gen_footstep",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L350",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_350",
       "target": "audio_gen_audio_gen_reload"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L351",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_351",
+      "target": "audio_gen_audio_gen_reload",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10422,11 +11620,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L368",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_368",
+      "target": "audio_gen_audio_gen_weapon_switch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L383",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_383",
       "target": "audio_gen_audio_gen_ui_click"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L384",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_384",
+      "target": "audio_gen_audio_gen_ui_click",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10442,6 +11660,16 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L395",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_395",
+      "target": "audio_gen_audio_gen_heartbeat",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L419",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -10452,11 +11680,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L420",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_420",
+      "target": "audio_gen_audio_gen_water_splash",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L444",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_444",
       "target": "audio_gen_audio_gen_underwater"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L445",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_445",
+      "target": "audio_gen_audio_gen_underwater",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10482,6 +11730,16 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L470",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_470",
+      "target": "audio_gen_audio_gen_ambient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L447",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -10502,11 +11760,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L498",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_498",
+      "target": "audio_gen_audio_gen_music",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L535",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_535",
       "target": "audio_gen_audio_gen_glass_break"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L536",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_536",
+      "target": "audio_gen_audio_gen_glass_break",
+      "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
@@ -10522,6 +11800,16 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L563",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_563",
+      "target": "audio_gen_audio_gen_chunk_concrete",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L587",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -10532,11 +11820,155 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L588",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_588",
+      "target": "audio_gen_audio_gen_chunk_metal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
       "source_location": "L607",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_607",
       "target": "audio_gen_audio_gen_chunk_stone"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L608",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_608",
+      "target": "audio_gen_audio_gen_chunk_stone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L656",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_music_long",
+      "target": "audio_gen_audio_chord_pad",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L629",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_629",
+      "target": "audio_gen_audio_chord_pad",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L645",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_645",
+      "target": "audio_gen_audio_gen_music_long",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L736",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_desert",
+      "target": "audio_gen_audio_amb_wind",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L724",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_snow",
+      "target": "audio_gen_audio_amb_wind",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L706",
+      "weight": 1.0,
+      "source": "audio_gen_audio_gen_amb_urban",
+      "target": "audio_gen_audio_amb_wind",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L704",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_704",
+      "target": "audio_gen_audio_gen_amb_urban",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L722",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_722",
+      "target": "audio_gen_audio_gen_amb_snow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L734",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_734",
+      "target": "audio_gen_audio_gen_amb_desert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L748",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_748",
+      "target": "audio_gen_audio_gen_amb_rain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L771",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_771",
+      "target": "audio_gen_audio_gen_robot_alert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tools/audio/gen_audio.py",
+      "source_location": "L792",
+      "weight": 1.0,
+      "source": "audio_gen_audio_rationale_792",
+      "target": "audio_gen_audio_gen_robot_death",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -11460,9 +12892,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game",
-      "target": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual"
     },
     {
       "relation": "contains",
@@ -11470,9 +12902,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L265",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_appendix_quick_reference",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_appendix_quick_reference"
     },
     {
       "relation": "contains",
@@ -11480,9 +12912,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_part_0_tl_dr_the_16_lessons_that_matter_most",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_part_0_tl_dr_the_16_lessons_that_matter_most"
     },
     {
       "relation": "contains",
@@ -11490,9 +12922,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_part_1_the_engine_godot_4_6_3_reality_check",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_part_1_the_engine_godot_4_6_3_reality_check"
     },
     {
       "relation": "contains",
@@ -11500,9 +12932,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L92",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale"
     },
     {
       "relation": "contains",
@@ -11510,9 +12942,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L131",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order"
     },
     {
       "relation": "contains",
@@ -11520,9 +12952,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L206",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_part_4_quality_gates_the_parallel_agent_workflow",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_part_4_quality_gates_the_parallel_agent_workflow"
     },
     {
       "relation": "contains",
@@ -11530,9 +12962,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_part_5_what_hype_raiders_actually_built_for_comparison_to_differentiate_from",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_part_5_what_hype_raiders_actually_built_for_comparison_to_differentiate_from"
     },
     {
       "relation": "contains",
@@ -11540,9 +12972,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L247",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_handoff_for_the_next_game_godot_4_6_3_field_manual",
-      "target": "docs_handoff_for_next_game_part_6_do_don_t_for_the_next_game",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_part_6_do_don_t_for_the_next_game"
     },
     {
       "relation": "contains",
@@ -11550,9 +12982,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_1_the_engine_godot_4_6_3_reality_check",
-      "target": "docs_handoff_for_next_game_1_1_what_the_engine_is_genuinely_good_at_lean_on_these",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_1_1_what_the_engine_is_genuinely_good_at_lean_on_these"
     },
     {
       "relation": "contains",
@@ -11560,9 +12992,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L45",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_1_the_engine_godot_4_6_3_reality_check",
-      "target": "docs_handoff_for_next_game_1_2_hard_limitations_the_workaround_we_shipped_the_part_you_came_for",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_1_2_hard_limitations_the_workaround_we_shipped_the_part_you_came_for"
     },
     {
       "relation": "contains",
@@ -11570,9 +13002,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_1_the_engine_godot_4_6_3_reality_check",
-      "target": "docs_handoff_for_next_game_1_3_gdscript_tooling_traps_each_one_cost_real_time",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_1_3_gdscript_tooling_traps_each_one_cost_real_time"
     },
     {
       "relation": "contains",
@@ -11580,9 +13012,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L81",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_1_the_engine_godot_4_6_3_reality_check",
-      "target": "docs_handoff_for_next_game_1_4_physics_project_conventions_worth_copying",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_1_4_physics_project_conventions_worth_copying"
     },
     {
       "relation": "contains",
@@ -11590,9 +13022,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L94",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_1_autoloads_a_global_events_signal_bus_the_only_inter_system_coupling",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_1_autoloads_a_global_events_signal_bus_the_only_inter_system_coupling"
     },
     {
       "relation": "contains",
@@ -11600,9 +13032,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_2_offlinemultiplayerpeer_one_code_path_for_solo_and_co_op",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_2_offlinemultiplayerpeer_one_code_path_for_solo_and_co_op"
     },
     {
       "relation": "contains",
@@ -11610,9 +13042,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L102",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_3_server_authoritative_everything_intent_rpcs_chosen_reliability",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_3_server_authoritative_everything_intent_rpcs_chosen_reliability"
     },
     {
       "relation": "contains",
@@ -11620,9 +13052,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L109",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_4_replicate_by_name_the_free_replication_trick",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_4_replicate_by_name_the_free_replication_trick"
     },
     {
       "relation": "contains",
@@ -11630,9 +13062,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L114",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_5_settings_autoload_centralizes_every_tunable_data_tables",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_5_settings_autoload_centralizes_every_tunable_data_tables"
     },
     {
       "relation": "contains",
@@ -11640,9 +13072,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L117",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_6_scripts_core_shared_helpers_never_copy_paste",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_6_scripts_core_shared_helpers_never_copy_paste"
     },
     {
       "relation": "contains",
@@ -11650,9 +13082,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L120",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_7_version_safe_saves",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_7_version_safe_saves"
     },
     {
       "relation": "contains",
@@ -11660,9 +13092,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L123",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_8_assetregistry_fallback_chain_runs_with_zero_art",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_8_assetregistry_fallback_chain_runs_with_zero_art"
     },
     {
       "relation": "contains",
@@ -11670,9 +13102,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_2_architecture_patterns_that_worked_copy_these_wholesale",
-      "target": "docs_handoff_for_next_game_2_9_golden_determinism_snapshot_for_procedural_worlds",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_2_9_golden_determinism_snapshot_for_procedural_worlds"
     },
     {
       "relation": "contains",
@@ -11680,9 +13112,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L135",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_1_the_philosophy",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_1_the_philosophy"
     },
     {
       "relation": "contains",
@@ -11690,9 +13122,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L138",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_2_how_the_harness_works_so_you_can_rebuild_it",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_2_how_the_harness_works_so_you_can_rebuild_it"
     },
     {
       "relation": "contains",
@@ -11700,9 +13132,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L146",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_3_the_mcp_layer_how_you_actually_drive_it",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_3_the_mcp_layer_how_you_actually_drive_it"
     },
     {
       "relation": "contains",
@@ -11710,9 +13142,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L160",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_4_the_testing_order_do_it_in_this_sequence_every_change",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_4_the_testing_order_do_it_in_this_sequence_every_change"
     },
     {
       "relation": "contains",
@@ -11720,9 +13152,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L179",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_5_mandatory_take_screenshots_and_actually_look_at_them",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_5_mandatory_take_screenshots_and_actually_look_at_them"
     },
     {
       "relation": "contains",
@@ -11730,9 +13162,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L188",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_6_the_state_snapshot_what_to_inspect",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_6_the_state_snapshot_what_to_inspect"
     },
     {
       "relation": "contains",
@@ -11740,9 +13172,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L195",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_7_multi_instance_co_op_testing",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_7_multi_instance_co_op_testing"
     },
     {
       "relation": "contains",
@@ -11750,9 +13182,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L201",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_3_testing_the_game_via_mcp_the_mandatory_process_order",
-      "target": "docs_handoff_for_next_game_3_8_reusing_the_harness_for_a_different_game_the_one_paragraph_recipe",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_3_8_reusing_the_harness_for_a_different_game_the_one_paragraph_recipe"
     },
     {
       "relation": "contains",
@@ -11760,9 +13192,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L208",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_4_quality_gates_the_parallel_agent_workflow",
-      "target": "docs_handoff_for_next_game_4_1_linters_as_a_blocking_hook",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_4_1_linters_as_a_blocking_hook"
     },
     {
       "relation": "contains",
@@ -11770,9 +13202,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L211",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_4_quality_gates_the_parallel_agent_workflow",
-      "target": "docs_handoff_for_next_game_4_2_golden_snapshot_see_2_9_the_refactoring_safety_net_for_anything_procedural",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_4_2_golden_snapshot_see_2_9_the_refactoring_safety_net_for_anything_procedural"
     },
     {
       "relation": "contains",
@@ -11780,9 +13212,9 @@
       "source_file": "docs/HANDOFF_FOR_NEXT_GAME.md",
       "source_location": "L213",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_handoff_for_next_game_part_4_quality_gates_the_parallel_agent_workflow",
-      "target": "docs_handoff_for_next_game_4_3_agent_teams_spine_vs_lanes",
-      "confidence_score": 1.0
+      "target": "docs_handoff_for_next_game_4_3_agent_teams_spine_vs_lanes"
     },
     {
       "relation": "contains",
@@ -12150,9 +13582,9 @@
       "source_file": "showcase/INDEX.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "showcase_index",
-      "target": "showcase_index_hype_raiders_visual_showcase",
-      "confidence_score": 1.0
+      "target": "showcase_index_hype_raiders_visual_showcase"
     },
     {
       "relation": "contains",
@@ -12160,9 +13592,9 @@
       "source_file": "showcase/INDEX.md",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "showcase_index_hype_raiders_visual_showcase",
-      "target": "showcase_index_characters_player",
-      "confidence_score": 1.0
+      "target": "showcase_index_characters_player"
     },
     {
       "relation": "contains",
@@ -12170,9 +13602,9 @@
       "source_file": "showcase/INDEX.md",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "showcase_index_hype_raiders_visual_showcase",
-      "target": "showcase_index_destruction_in_world_walls_break_into_0_8_m_chunks_physics_debris",
-      "confidence_score": 1.0
+      "target": "showcase_index_destruction_in_world_walls_break_into_0_8_m_chunks_physics_debris"
     },
     {
       "relation": "contains",
@@ -12180,9 +13612,9 @@
       "source_file": "showcase/INDEX.md",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "showcase_index_hype_raiders_visual_showcase",
-      "target": "showcase_index_enemies_21_archetypes_every_body_is_a_distinct_procedural_silhouette",
-      "confidence_score": 1.0
+      "target": "showcase_index_enemies_21_archetypes_every_body_is_a_distinct_procedural_silhouette"
     },
     {
       "relation": "contains",
@@ -12190,9 +13622,9 @@
       "source_file": "showcase/INDEX.md",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "showcase_index_hype_raiders_visual_showcase",
-      "target": "showcase_index_locations_in_world_the_4_biomes_a_landmark",
-      "confidence_score": 1.0
+      "target": "showcase_index_locations_in_world_the_4_biomes_a_landmark"
     },
     {
       "relation": "contains",
@@ -12200,9 +13632,9 @@
       "source_file": "showcase/INDEX.md",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "showcase_index_hype_raiders_visual_showcase",
-      "target": "showcase_index_loot_items",
-      "confidence_score": 1.0
+      "target": "showcase_index_loot_items"
     },
     {
       "relation": "contains",
@@ -12210,9 +13642,9 @@
       "source_file": "showcase/INDEX.md",
       "source_location": "L55",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "showcase_index_hype_raiders_visual_showcase",
-      "target": "showcase_index_ui",
-      "confidence_score": 1.0
+      "target": "showcase_index_ui"
     },
     {
       "relation": "contains",
@@ -15529,5 +16961,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "42a9c72de6e46d77ed6419887ec109f8becbce26"
+  "built_at_commit": "8ef522eb8cdc4639af2ccbe2b0186440a1ccb6b6"
 }

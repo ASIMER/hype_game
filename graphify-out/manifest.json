@@ -1,7 +1,7 @@
 {
   ".claude/settings.json": {
-    "mtime": 1781172116.982606,
-    "ast_hash": "3f9f19d9b31ec10fb9ebdabd752549c8",
+    "mtime": 1786348890.534735,
+    "ast_hash": "61d90624f6321ba4ca3c26a3b904dd6b",
     "semantic_hash": ""
   },
   ".mcp.json": {
@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1786321144.9660246,
-    "ast_hash": "d34168e5cee615d4584ede7e4831683f",
+    "mtime": 1786322163.537767,
+    "ast_hash": "1f40170e227b3a46880845680d00e547",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1412,6 +1412,16 @@
   "assets/audio/robot_death.ogg": {
     "mtime": 1786320835.4951234,
     "ast_hash": "7718bd9d43dc5cff291d3ee4b3d0562c",
+    "semantic_hash": ""
+  },
+  "docs/UI_REDESIGN.md": {
+    "mtime": 1786373202.4100223,
+    "ast_hash": "b24c741eab60131cfce6f1a28facc44e",
+    "semantic_hash": ""
+  },
+  "assets/audio/music_storm.ogg": {
+    "mtime": 1786322585.6916695,
+    "ast_hash": "7d8ccf977deb68a87f8ab7711aace307",
     "semantic_hash": ""
   }
 }
