@@ -60,6 +60,8 @@ const SOUNDS := {
 	"amb_rain": "res://assets/audio/amb_rain.ogg",
 	"robot_alert": "res://assets/audio/robot_alert.ogg",
 	"robot_death": "res://assets/audio/robot_death.ogg",
+	# 96 s evolving dark loop (gen_music_long) — swapped in when the STORM hits.
+	"music_storm": "res://assets/audio/music_storm.ogg",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -226,6 +228,7 @@ func _ready() -> void:
 	Events.glass_broken.connect(_on_glass_broken)
 	Events.chunk_broken.connect(_on_chunk_broken)
 	Events.enemy_chase_started.connect(_on_enemy_chase_started)
+	Events.final_wave_started.connect(_on_final_wave)
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
@@ -404,6 +407,27 @@ func _on_match_won() -> void:
 func _on_match_lost() -> void:
 	_play("lose")
 	_fade_beds_out()
+
+
+## The STORM hit — crossfade the music bed to the intense evolving loop, a touch
+## louder than the wave level. _on_match_started reassigns the normal track, so a
+## restart resets this automatically.
+func _on_final_wave() -> void:
+	if _music_player == null or _streams.get("music_storm") == null:
+		return
+	var tw := create_tween()
+	tw.tween_property(_music_player, "volume_db", -60.0, 1.0)
+	tw.tween_callback(_swap_music_storm)
+	tw.tween_property(_music_player, "volume_db", MUSIC_WAVE_DB + master_db + 2.0, 2.0)
+
+
+func _swap_music_storm() -> void:
+	var stream: AudioStream = _streams.get("music_storm")
+	if stream == null or _music_player == null:
+		return
+	_set_stream_loop(stream)
+	_music_player.stream = stream
+	_music_player.play()
 
 
 # ---------------------------------------------------------------------------
