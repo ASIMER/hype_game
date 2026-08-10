@@ -294,7 +294,7 @@ func _make_panel() -> PanelContainer:
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	pc.add_child(UIStyle.micro_header(title, UIStyle.TEAL, 15))
 	return pc
 
@@ -354,7 +354,7 @@ func _icon_cell(id: String, count: int, cell_size: int) -> Panel:
 		badge.add_theme_color_override("font_color", Color.WHITE)
 		badge.add_theme_color_override("font_outline_color", Color.BLACK)
 		badge.add_theme_constant_override("outline_size", 4)
-		badge.add_theme_font_size_override("font_size", 12)
+		badge.add_theme_font_size_override("font_size", 13)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(badge)
 	return slot
@@ -490,7 +490,7 @@ func _rebuild_consumable_rows() -> void:
 		var max_lbl := Label.new()
 		max_lbl.name = "MaxLbl"
 		max_lbl.add_theme_color_override("font_color", COL_DIM)
-		max_lbl.add_theme_font_size_override("font_size", 12)
+		max_lbl.add_theme_font_size_override("font_size", 13)
 		row.add_child(max_lbl)
 
 		_consumable_rows.add_child(row)
@@ -572,7 +572,7 @@ func _make_gear_slot_cell(slot_id: String, equipped: Dictionary) -> VBoxContaine
 		none_lbl.text = tr("— empty —")
 		none_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		none_lbl.add_theme_color_override("font_color", COL_DIM)
-		none_lbl.add_theme_font_size_override("font_size", 12)
+		none_lbl.add_theme_font_size_override("font_size", 13)
 		col.add_child(none_lbl)
 		return col
 
@@ -604,7 +604,7 @@ func _make_gear_slot_cell(slot_id: String, equipped: Dictionary) -> VBoxContaine
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.add_theme_color_override("font_color", COL_RED if broken else COL_WHITE)
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", 13)
 	col.add_child(name_lbl)
 
 	# Durability bar — hidden for indestructible packs (durability_max 0).
@@ -633,7 +633,7 @@ func _make_gear_slot_cell(slot_id: String, equipped: Dictionary) -> VBoxContaine
 			broke_lbl.text = tr("BROKEN")
 			broke_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			broke_lbl.add_theme_color_override("font_color", COL_RED)
-			broke_lbl.add_theme_font_size_override("font_size", 11)
+			broke_lbl.add_theme_font_size_override("font_size", 12)
 			col.add_child(broke_lbl)
 	return col
 
@@ -814,7 +814,7 @@ func _make_owned_armor_card(id: String, equipped: Dictionary) -> PanelContainer:
 	var slot_lbl := Label.new()
 	slot_lbl.text = tr(GEAR_SLOT_LABELS.get(slot_id, slot_id.to_upper()))
 	slot_lbl.add_theme_color_override("font_color", COL_TEAL)
-	slot_lbl.add_theme_font_size_override("font_size", 11)
+	slot_lbl.add_theme_font_size_override("font_size", 12)
 	info.add_child(slot_lbl)
 
 	if is_equipped:
@@ -923,7 +923,7 @@ func _make_chip(text: String, color: Color) -> PanelContainer:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_color_override("font_color", color)
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", 13)
 	pc.add_child(lbl)
 	return pc
 

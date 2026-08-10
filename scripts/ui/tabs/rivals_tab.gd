@@ -167,7 +167,7 @@ func _traits_row(traits: Variant) -> Control:
 		for t in traits as Array:
 			var chip := Label.new()
 			chip.text = tr(String(_TRAIT_LABELS.get(String(t), String(t).to_upper())))
-			chip.add_theme_font_size_override("font_size", 11)
+			chip.add_theme_font_size_override("font_size", 12)
 			chip.add_theme_color_override("font_color", UIStyle.TEAL)
 			box.add_child(chip)
 	return box

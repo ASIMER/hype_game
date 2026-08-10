@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=18 format=3 uid="uid://c0arcuitheme01"]
+[gd_resource type="Theme" load_steps=23 format=3 uid="uid://c0arcuitheme01"]
 
 ; "Military glass" UI theme (Battlefield 2042 / Arc Raiders look). Dark TRANSLUCENT
 ; panels over a blurred backdrop, thin light borders, chamfered (asymmetric) corners,
@@ -187,6 +187,60 @@ corner_radius_bottom_left = 3
 shadow_color = Color(0.91, 0.64, 0.24, 0.4)
 shadow_size = 5
 
+; Dropdown POPUP (design-system pass): the OptionButton itself was themed but its
+; popup list stayed the native grey — the audit's "two visual languages" finding.
+[sub_resource type="StyleBoxFlat" id="SB_popup"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.055, 0.07, 0.085, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.14)
+corner_radius_top_left = 6
+corner_radius_top_right = 2
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="SB_popup_hover"]
+bg_color = Color(0.91, 0.64, 0.24, 0.18)
+border_width_left = 2
+border_color = Color(0.91, 0.64, 0.24, 0.9)
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+
+; Visible SCROLLBARS (design-system pass): the default grabbers were a ~3px invisible
+; sliver — content cut-offs read as clipping bugs instead of scrollable areas.
+[sub_resource type="StyleBoxFlat" id="SB_scroll_track"]
+bg_color = Color(1, 1, 1, 0.05)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 2.0
+content_margin_right = 2.0
+content_margin_top = 2.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="SB_scroll_grab"]
+bg_color = Color(0.62, 0.68, 0.74, 0.45)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="SB_scroll_grab_hi"]
+bg_color = Color(0.91, 0.64, 0.24, 0.85)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+shadow_color = Color(0.91, 0.64, 0.24, 0.3)
+shadow_size = 3
+
 [sub_resource type="StyleBoxFlat" id="SB_slider"]
 bg_color = Color(0.04, 0.05, 0.06, 0.85)
 border_width_left = 1
@@ -245,6 +299,22 @@ ProgressBar/styles/fill = SubResource("SB_pbar_fill")
 HSlider/styles/slider = SubResource("SB_slider")
 HSlider/styles/grabber_area = SubResource("SB_slider_grabber_area")
 HSlider/styles/grabber_area_highlight = SubResource("SB_slider_grabber_area")
+PopupMenu/styles/panel = SubResource("SB_popup")
+PopupMenu/styles/hover = SubResource("SB_popup_hover")
+PopupMenu/colors/font_color = Color(0.85, 0.88, 0.9, 1)
+PopupMenu/colors/font_hover_color = Color(0.97, 0.85, 0.55, 1)
+PopupMenu/colors/font_disabled_color = Color(0.45, 0.5, 0.55, 1)
+PopupMenu/colors/font_separator_color = Color(0.6, 0.65, 0.7, 1)
+VScrollBar/styles/scroll = SubResource("SB_scroll_track")
+VScrollBar/styles/grabber = SubResource("SB_scroll_grab")
+VScrollBar/styles/grabber_highlight = SubResource("SB_scroll_grab_hi")
+VScrollBar/styles/grabber_pressed = SubResource("SB_scroll_grab_hi")
+HScrollBar/styles/scroll = SubResource("SB_scroll_track")
+HScrollBar/styles/grabber = SubResource("SB_scroll_grab")
+HScrollBar/styles/grabber_highlight = SubResource("SB_scroll_grab_hi")
+HScrollBar/styles/grabber_pressed = SubResource("SB_scroll_grab_hi")
+TooltipPanel/styles/panel = SubResource("SB_popup")
+TooltipLabel/colors/font_color = Color(0.85, 0.88, 0.9, 1)
 HeaderLarge/base_type = &"Label"
 HeaderLarge/colors/font_color = Color(0.93, 0.95, 0.96, 1)
 HeaderLarge/fonts/font = SubResource("FV_header")

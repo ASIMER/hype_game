@@ -377,7 +377,7 @@ func _make_variant_cell(
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(float(THUMB_SIZE), 0.0)
 	name_lbl.add_theme_color_override("font_color", COL_WHITE)
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", 13)
 	vbox.add_child(name_lbl)
 
 	# ── Action button ─────────────────────────────────────────────────────────
@@ -507,7 +507,7 @@ func _refresh_currency() -> void:
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	pc.add_child(UIStyle.micro_header(tr(title), UIStyle.TEAL, 15))
 	return pc
 

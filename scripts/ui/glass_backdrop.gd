@@ -9,8 +9,12 @@ extends Control
 
 const BLUR_SHADER := "res://shaders/ui_blur.gdshader"
 const DIM := Color(0.03, 0.04, 0.055, 0.72)
+# Blur alone left the scene at near-full brightness behind modals (audit: "modals read
+# as toasts") — the fx path now layers a dim on TOP of the blur.
+const DIM_OVER_BLUR := Color(0.03, 0.04, 0.055, 0.45)
 
 var _rect: ColorRect = null
+var _dim: ColorRect = null
 
 
 func _ready() -> void:
@@ -20,6 +24,10 @@ func _ready() -> void:
 	_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_rect)
+	_dim = ColorRect.new()
+	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_dim)
 	Events.ui_fx_changed.connect(_apply)
 	_apply(Settings.ui_fx_enabled)
 
@@ -32,6 +40,8 @@ func _apply(enabled: bool) -> void:
 		mat.shader = load(BLUR_SHADER)
 		_rect.material = mat
 		_rect.color = Color(1.0, 1.0, 1.0, 1.0)
+		_dim.color = DIM_OVER_BLUR
 	else:
 		_rect.material = null
 		_rect.color = DIM
+		_dim.color = Color(0.0, 0.0, 0.0, 0.0)

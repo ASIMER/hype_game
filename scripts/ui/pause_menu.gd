@@ -23,6 +23,8 @@ func _ready() -> void:
 	UIStyle.hover_lift($Panel/VBox/ResumeBtn)
 	UIStyle.hover_lift($Panel/VBox/SettingsBtn)
 	UIStyle.hover_lift($Panel/VBox/QuitBtn)
+	# Mid-raid quit loses at-risk gear — dress it as the destructive action it is.
+	UIStyle.danger($Panel/VBox/QuitBtn)
 	# Frosted-glass backdrop behind the panel.
 	var bg := GlassBackdrop.new()
 	add_child(bg)

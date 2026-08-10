@@ -128,8 +128,8 @@ func _build_ui() -> void:
 	_numeric_label.scroll_active = false
 	_numeric_label.custom_minimum_size = Vector2(230, 0)
 	_numeric_label.add_theme_color_override("default_color", Color(0.86, 0.92, 0.98, 0.95))
-	_numeric_label.add_theme_font_size_override("normal_font_size", 12)
-	_numeric_label.add_theme_font_size_override("bold_font_size", 12)
+	_numeric_label.add_theme_font_size_override("normal_font_size", 13)
+	_numeric_label.add_theme_font_size_override("bold_font_size", 13)
 	_numeric_panel.add_child(_numeric_label)
 
 	# Detailed GRAPHS control (custom-drawn, top-left).

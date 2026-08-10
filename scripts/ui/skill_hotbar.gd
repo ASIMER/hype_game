@@ -217,7 +217,7 @@ func _make_slot(i: int) -> Dictionary:
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(key)
 	var lvl := Label.new()
-	lvl.add_theme_font_size_override("font_size", 11)
+	lvl.add_theme_font_size_override("font_size", 12)
 	lvl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))
 	lvl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	lvl.add_theme_constant_override("outline_size", 3)

@@ -180,7 +180,7 @@ func _build_hud_widgets() -> void:
 		var chip := Label.new()
 		chip.text = tr(String(effect[1]))
 		chip.visible = false
-		chip.add_theme_font_size_override("font_size", 12)
+		chip.add_theme_font_size_override("font_size", 13)
 		chip.add_theme_color_override("font_color", effect[2])
 		chip.add_theme_stylebox_override("normal", UIStyle.chip(effect[2]))
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -303,7 +303,7 @@ func _build_hud_widgets() -> void:
 	hints.offset_bottom = -86.0
 	hints.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hints.add_theme_font_size_override("font_size", 12)
+	hints.add_theme_font_size_override("font_size", 13)
 	hints.add_theme_color_override(
 		"font_color", Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.7)
 	)

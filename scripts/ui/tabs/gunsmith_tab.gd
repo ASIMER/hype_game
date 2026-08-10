@@ -409,7 +409,7 @@ func _build_perk_row(key: String) -> HBoxContainer:
 	desc_lbl.name = "PerkDesc"
 	desc_lbl.text = tr(String(perk_dict.get("desc", "")))
 	desc_lbl.add_theme_color_override("font_color", COL_DIM)
-	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_font_size_override("font_size", 13)
 	info_vbox.add_child(desc_lbl)
 
 	# Level indicator.
@@ -523,7 +523,7 @@ func _make_panel() -> PanelContainer:
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	pc.add_child(UIStyle.micro_header(title, UIStyle.TEAL, 15))
 	return pc
 

@@ -97,7 +97,7 @@ func _build_capacity_bar() -> void:
 	_cap_label.custom_minimum_size = Vector2(120, 0)
 	_cap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_cap_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_cap_label.add_theme_font_size_override("font_size", 12)
+	_cap_label.add_theme_font_size_override("font_size", 13)
 	cap_row.add_child(_cap_label)
 
 	# Insert just after the HSeparator (index 2 in the Layout VBox: Header=0, Sep=1).
@@ -164,6 +164,7 @@ func _build_footer() -> void:
 	sell_junk_btn.tooltip_text = tr("Sell every Common-rarity Material stack")
 	sell_junk_btn.pressed.connect(_on_sell_all_junk_pressed)
 	UIStyle.hover_lift(sell_junk_btn)
+	UIStyle.danger(sell_junk_btn)
 	footer.add_child(sell_junk_btn)
 
 	var recycle_all_btn := Button.new()
@@ -173,6 +174,7 @@ func _build_footer() -> void:
 	recycle_all_btn.tooltip_text = tr("Recycle every Material stack (leaves consumables & weapons)")
 	recycle_all_btn.pressed.connect(_on_recycle_all_pressed)
 	UIStyle.hover_lift(recycle_all_btn)
+	UIStyle.danger(recycle_all_btn)
 	footer.add_child(recycle_all_btn)
 
 

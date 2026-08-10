@@ -16,7 +16,9 @@ extends RefCounted
 # ── Palette (matches assets/ui/theme.tres) ──────────────────────────────────
 const AMBER := Color(0.91, 0.64, 0.24, 1.0)
 const TEAL := Color(0.247, 0.71, 0.79, 1.0)
-const DIM := Color(0.45, 0.50, 0.55, 1.0)
+# Lifted from 0.45/0.50/0.55 in the design-system pass: captions at the old value fell
+# under the readability floor on bright scenes.
+const DIM := Color(0.52, 0.57, 0.62, 1.0)
 const WHITE := Color(0.88, 0.90, 0.92, 1.0)
 const TEXT := Color(0.85, 0.88, 0.90, 1.0)
 const RED := Color(0.85, 0.30, 0.25, 1.0)
@@ -29,6 +31,16 @@ const BORDER_LT := Color(1.0, 1.0, 1.0, 0.12)  # thin light edge
 # tight) gives the beveled metal-plate read of the style.
 const CHAMFER_BIG := 10
 const CHAMFER_SMALL := 2
+
+# ── Type scale (design-system pass) ─────────────────────────────────────────
+# The audit's #1 readability finding: the UI had only display (28-40) and micro (≤12)
+# tiers. Rule for ALL new code: no user-facing text below FONT_MIN; captions use
+# FONT_CAPTION, working text FONT_BODY. (theme.tres default_font_size = 16.)
+const FONT_H1 := 26
+const FONT_H2 := 18
+const FONT_BODY := 15
+const FONT_CAPTION := 13
+const FONT_MIN := 12
 
 const FONT_HEADER := preload("res://assets/fonts/RussoOne-Regular.ttf")
 
@@ -94,6 +106,23 @@ static func chip(color: Color, alpha: float = 0.16) -> StyleBoxFlat:
 	return sb
 
 
+## A NON-interactive section header bar: left accent edge + subtle glass, NO full
+## outline. Replaces the old full-border teal "pill" section headers, which read as
+## buttons/inputs (audit: users would click them expecting a field).
+static func section_bar(accent: Color = TEAL, alpha: float = 0.30) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(GLASS_BG.r, GLASS_BG.g, GLASS_BG.b, alpha)
+	sb.border_color = accent
+	sb.border_width_left = 3
+	sb.corner_radius_top_right = CHAMFER_SMALL
+	sb.corner_radius_bottom_right = CHAMFER_SMALL
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 5
+	sb.content_margin_bottom = 5
+	return sb
+
+
 ## A progress-bar fill with a soft same-color glow (amber/teal energy line).
 static func glow_fill(color: Color = TEAL) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -107,11 +136,21 @@ static func glow_fill(color: Color = TEAL) -> StyleBoxFlat:
 ## A spaced-caps micro-heading Label (Russo One). NOTE: text is left as-is so the
 ## localization auto-translate (English-as-key) still matches — pass the caps form
 ## you want (most section names are already uppercase in source).
-static func micro_header(text: String, color: Color = DIM, size: int = 13) -> Label:
+static func micro_header(text: String, color: Color = DIM, size: int = 14) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_override("font", header_font(3))
 	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	return l
+
+
+## A body-tier caption Label (FONT_CAPTION, dim) — the standard for helper/annotation
+## text. Use this instead of ad-hoc sub-13px font_size overrides.
+static func caption(text: String, color: Color = DIM) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", FONT_CAPTION)
 	l.add_theme_color_override("font_color", color)
 	return l
 
@@ -180,3 +219,28 @@ static func hover_lift(btn: Control, scale_to: float = 1.03) -> void:
 			tw.tween_property(btn, "scale", Vector2.ONE, 0.08)
 			tw.tween_property(btn, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.08)
 	)
+
+
+## Mark a button DESTRUCTIVE (sell-all / recycle-all / quit-mid-raid): red text +
+## red-bordered hover so dangerous actions stop dressing like neutral ones (audit:
+## "SELL ALL JUNK styled identically to SORT").
+static func danger(btn: Button) -> void:
+	if btn == null:
+		return
+	btn.add_theme_color_override("font_color", Color(0.92, 0.55, 0.50, 1.0))
+	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.70, 0.62, 1.0))
+	var hover := StyleBoxFlat.new()
+	hover.bg_color = Color(0.22, 0.09, 0.08, 0.80)
+	hover.set_border_width_all(1)
+	hover.border_color = RED
+	hover.corner_radius_top_left = 8
+	hover.corner_radius_bottom_right = 8
+	hover.corner_radius_top_right = CHAMFER_SMALL
+	hover.corner_radius_bottom_left = CHAMFER_SMALL
+	hover.shadow_color = Color(RED.r, RED.g, RED.b, 0.25)
+	hover.shadow_size = 5
+	hover.content_margin_left = 16
+	hover.content_margin_right = 16
+	hover.content_margin_top = 9
+	hover.content_margin_bottom = 9
+	btn.add_theme_stylebox_override("hover", hover)

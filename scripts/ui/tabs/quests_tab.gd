@@ -377,7 +377,7 @@ func _giver_row(giver: String) -> PanelContainer:
 	var amt := Label.new()
 	amt.text = (tr("MAX") if need <= 0 else "%d / %d" % [into, need])
 	amt.add_theme_color_override("font_color", COL_DIM)
-	amt.add_theme_font_size_override("font_size", 12)
+	amt.add_theme_font_size_override("font_size", 13)
 	hb.add_child(amt)
 	return pc
 
@@ -432,7 +432,7 @@ func _build_section_header(title: String, note: String, accent: Color) -> VBoxCo
 	if note != "":
 		var note_lbl := Label.new()
 		note_lbl.text = note
-		note_lbl.add_theme_font_size_override("font_size", 12)
+		note_lbl.add_theme_font_size_override("font_size", 13)
 		note_lbl.add_theme_color_override("font_color", COL_DIM)
 		sec.add_child(note_lbl)
 
@@ -510,7 +510,7 @@ func _build_card(q: QuestData, mode: String = "active") -> PanelContainer:
 		var giver_lbl := Label.new()
 		giver_lbl.text = "— " + q.giver
 		giver_lbl.add_theme_color_override("font_color", COL_TEAL)
-		giver_lbl.add_theme_font_size_override("font_size", 12)
+		giver_lbl.add_theme_font_size_override("font_size", 13)
 		vbox.add_child(giver_lbl)
 
 	# ── Description / lore ───────────────────────────────────────────────────
@@ -618,7 +618,7 @@ func _build_card(q: QuestData, mode: String = "active") -> PanelContainer:
 func _chip(text: String, col: Color) -> Label:
 	var chip := Label.new()
 	chip.text = text
-	chip.add_theme_font_size_override("font_size", 11)
+	chip.add_theme_font_size_override("font_size", 12)
 	chip.add_theme_color_override("font_color", col)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	return chip

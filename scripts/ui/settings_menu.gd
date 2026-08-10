@@ -509,7 +509,7 @@ func _make_note(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", 12)
 	return l
 
 
