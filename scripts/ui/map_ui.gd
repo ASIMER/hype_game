@@ -129,9 +129,12 @@ func set_open(open: bool) -> void:
 		return
 	_is_open = open
 	visible = open
+	AudioManager.ui_panel(open)
 	if open:
 		_mutator = GameState.raid_mutator
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if _draw:
+			UIStyle.pop_in(_draw, UIStyle.Dir.DOWN, 0.0, 0.15)
 	else:
 		# Restore capture so the player can keep playing — unless something else
 		# (a pause menu) owns the cursor.
@@ -151,6 +154,8 @@ func _on_map_toggled(open: bool) -> void:
 	if open:
 		_mutator = GameState.raid_mutator
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if _draw:
+			UIStyle.pop_in(_draw, UIStyle.Dir.DOWN, 0.0, 0.15)
 	elif not get_tree().paused:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if _draw:
@@ -342,7 +347,7 @@ class MapDraw:
 		if owner_ui == null:
 			return
 		_placed_labels.clear()
-		# The project theme's body font (Oswald) — not the engine fallback.
+		# The project theme's body font — not the engine fallback.
 		var font := get_theme_default_font()
 		# --- Backdrop dim over the gameplay view (glass tone).
 		draw_rect(
@@ -535,10 +540,13 @@ class MapDraw:
 		"paid": Color(1.0, 0.78, 0.25),  # amber/gold
 		"signal": Color(0.72, 0.45, 1.0),  # violet
 	}
+	# CLOSED zones are ONE neutral grey regardless of type (a per-type tint read as
+	# "alive/go here" at a glance — critic-panel finding; the type stays in the tag
+	# TEXT: "PAID"/"SIGNAL").
 	const ZONE_HUE_CLOSED := {
-		"": Color(0.55, 0.6, 0.62),  # classic — grey
-		"paid": Color(0.6, 0.52, 0.34),  # muted gold
-		"signal": Color(0.5, 0.42, 0.62),  # muted violet
+		"": Color(0.52, 0.56, 0.59),
+		"paid": Color(0.52, 0.56, 0.59),
+		"signal": Color(0.52, 0.56, 0.59),
 	}
 
 	func _draw_extractions(font: Font, panel: Rect2) -> void:

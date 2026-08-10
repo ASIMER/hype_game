@@ -54,6 +54,9 @@ var _did_pause: bool = false
 var _prog_section: VBoxContainer = null
 var _prog_list: VBoxContainer = null
 
+# ── Run-stats strip (injected FIRST in the scroll content) ────────────────────
+var _stats_row: HBoxContainer = null
+
 # ── per-run accumulators (reset on match_started) ─────────────────────────────
 ## Raw loot deposited this run: id -> count.
 var _loot_counts: Dictionary = {}
@@ -146,7 +149,32 @@ func _ready() -> void:
 		# Last section inside the scroll (above the fixed footer buttons).
 		_content.add_child(_prog_section)
 
+		# RUN STATS strip (critic-panel: the KIA screen was a near-empty void) — the
+		# raid's hard numbers up top, shown on BOTH win and loss.
+		_stats_row = HBoxContainer.new()
+		_stats_row.name = "RunStats"
+		_stats_row.add_theme_constant_override("separation", 22)
+		_stats_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		_content.add_child(_stats_row)
+		_content.move_child(_stats_row, 0)
+
 	hide()
+
+
+## One "CAPTION over big number" cell for the run-stats strip.
+func _stat_cell(caption: String, value: String) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	var cap: Label = UIStyle.micro_header(caption, UIStyle.DIM, 12)
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(cap)
+	var val := Label.new()
+	val.text = value
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	val.add_theme_font_size_override("font_size", 22)
+	val.add_theme_color_override("font_color", Color(0.93, 0.95, 0.96))
+	box.add_child(val)
+	return box
 
 
 # ── Event handlers — accumulate ───────────────────────────────────────────────
@@ -255,6 +283,18 @@ func _show_summary(won: bool) -> void:
 		_title.add_theme_color_override("font_color", COL_LOSS)
 		_subtitle.text = tr("Gear lost. Better luck next time.")
 		_subtitle.add_theme_color_override("font_color", COL_LOSS)
+
+	# Run-stats strip: time survived · wave reached · your kills · team mobs.
+	if _stats_row != null:
+		_clear_children(_stats_row)
+		var survived: float = maxf(0.0, GameState.match_duration - GameState.match_time_left)
+		var mm: int = int(survived) / 60
+		var ss: int = int(survived) % 60
+		_stats_row.add_child(_stat_cell(tr("TIME"), "%d:%02d" % [mm, ss]))
+		_stats_row.add_child(_stat_cell(tr("WAVE"), str(maxi(1, GameState.current_wave))))
+		var my_kills: int = int(GameState.kills.get(GameState.local_peer_id(), 0))
+		_stats_row.add_child(_stat_cell(tr("KILLS"), str(my_kills)))
+		_stats_row.add_child(_stat_cell(tr("TEAM MOBS"), str(GameState.mobs_killed)))
 
 	# Loot section.
 	_clear_children(_loot_list)

@@ -60,6 +60,10 @@ var _quest_needed: Dictionary = {}
 # Empty-state caption under the grid ("pockets empty" / "no items of this type").
 var _empty_label: Label = null
 
+# Weight-bar micro-tween (Phase 5): the fill glides to the new weight instead of
+# snapping. Kept as a member so a rapid refresh kills the previous glide.
+var _weight_tw: Tween = null
+
 
 func _ready() -> void:
 	visible = false
@@ -157,8 +161,12 @@ func _unhandled_input(event: InputEvent) -> void:
 ## (the pause menu owns the cursor in that case).
 func _set_open(open: bool) -> void:
 	visible = open
+	AudioManager.ui_panel(open)
 	if open:
 		_refresh()
+		var root_panel := get_node_or_null("Panel") as Control
+		if root_panel != null:
+			UIStyle.pop_in(root_panel, UIStyle.Dir.DOWN, 12.0, 0.16)
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	else:
 		if _context_menu != null:
@@ -246,7 +254,18 @@ func _visible_stacks() -> Array:
 func _update_footer() -> void:
 	var weight := _inventory.total_weight() if _inventory != null else 0.0
 	var value := _inventory.total_value() if _inventory != null else 0
-	_weight_bar.value = weight
+	if _weight_tw != null and _weight_tw.is_valid():
+		_weight_tw.kill()
+	if visible:
+		_weight_tw = _weight_bar.create_tween()
+		(
+			_weight_tw
+			. tween_property(_weight_bar, "value", weight, 0.2)
+			. set_trans(Tween.TRANS_CUBIC)
+			. set_ease(Tween.EASE_OUT)
+		)
+	else:
+		_weight_bar.value = weight
 	_weight_label.text = tr("%.1f / %.0f kg") % [weight, Settings.INVENTORY_MAX_WEIGHT]
 	_value_label.text = tr("Value: %d") % value
 

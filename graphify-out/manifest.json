@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "docs/ASSETS.md": {
-    "mtime": 1781634401.0344734,
-    "ast_hash": "d7fb1db49e4fa8e39f10b8846fba117c",
+    "mtime": 1786374939.1187754,
+    "ast_hash": "84459a220b94dbb1eee08909a4b1a918",
     "semantic_hash": ""
   },
   "addons/sky_3d/assets/textures/SkyIcon.png": {
@@ -1415,13 +1415,18 @@
     "semantic_hash": ""
   },
   "docs/UI_REDESIGN.md": {
-    "mtime": 1786373202.4100223,
-    "ast_hash": "b24c741eab60131cfce6f1a28facc44e",
+    "mtime": 1786374887.7822583,
+    "ast_hash": "e5a6f007bd912ffeaeee88506ed8ab84",
     "semantic_hash": ""
   },
   "assets/audio/music_storm.ogg": {
     "mtime": 1786322585.6916695,
     "ast_hash": "7d8ccf977deb68a87f8ab7711aace307",
+    "semantic_hash": ""
+  },
+  "assets/fonts/OFL-Inter.txt": {
+    "mtime": 1786374917.2063334,
+    "ast_hash": "5e95cb23ed621124015c5d23224ba2d3",
     "semantic_hash": ""
   }
 }

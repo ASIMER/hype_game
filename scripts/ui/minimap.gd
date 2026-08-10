@@ -50,6 +50,9 @@ func _ready() -> void:
 	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
 		vp.size_changed.connect(_apply_hud_inset)
 	Events.local_player_spawned.connect(func(p): _player = p as Node3D)
+	# The fullscreen tactical map supersedes the minimap — hide while it's open
+	# (it rendered ON TOP of the map's extraction board).
+	Events.map_toggled.connect(func(open: bool) -> void: visible = not open)
 	Events.extraction_window_changed.connect(_on_window_changed)
 	Events.world_event_started.connect(_on_world_event_started)
 	Events.world_event_ended.connect(_on_world_event_ended)

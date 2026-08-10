@@ -607,6 +607,12 @@ func _on_button_pressed() -> void:
 	_play("ui_click")
 
 
+## Soft panel-open/close whoosh for UI overlays (map/inventory/modals) — the click
+## pitched down so no new asset is needed; open reads higher than close.
+func ui_panel(open: bool) -> void:
+	_play_pitched("ui_click", 0.8 if open else 0.65, -2.0)
+
+
 # ---------------------------------------------------------------------------
 # Playback helpers
 # ---------------------------------------------------------------------------

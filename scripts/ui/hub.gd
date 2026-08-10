@@ -36,6 +36,20 @@ const TAB_PROGRESSION := 6
 const TAB_CHARACTER := 7
 const TAB_RIVALS := 8
 
+# Header subtitle per tab (the old static "STASH // LOADOUT // WORKSHOP" read as a
+# breadcrumb that never updated — critic-panel finding). Index = TAB_* constant.
+const TAB_TAGLINES := [
+	"Everything you extracted — sell, recycle, prepare.",
+	"What you take is what you risk.",
+	"Craft from what the machines left behind.",
+	"Spend credits — stock rotates with your reputation.",
+	"Contracts and dailies — claim what you've earned.",
+	"Attachments ride into the raid. And don't come back.",
+	"Levels, skills, reputation, mastery.",
+	"Build your machine — parts and paint.",
+	"The machines that survived you. They remember.",
+]
+
 # Paths to tab scenes (built by other agents — guarded with ResourceLoader.exists).
 const TAB_PATHS := [
 	"res://scenes/ui/tabs/StashTab.tscn",
@@ -180,7 +194,7 @@ func _ready() -> void:
 	# ── Initial state ─────────────────────────────────────────────────────────
 	_refresh_currency()
 	_refresh_difficulty()
-	_update_tab_button_states()
+	_switch_tab(_active_tab)  # also seeds the per-tab header subtitle
 	_refresh_squad()
 	_refresh_deploy_button()
 
@@ -362,6 +376,11 @@ func _switch_tab(idx: int) -> void:
 			_tabs[i].visible = should_show
 			if should_show:
 				UIStyle.pop_in(_tabs[i], UIStyle.Dir.DOWN, 10.0, 0.14)
+	# The header subtitle tracks the ACTIVE tab (it used to be a static pseudo-
+	# breadcrumb that never updated).
+	var sub := get_node_or_null("Layout/Header/HeaderVBox/HRow/TitleBox/Subtitle") as Label
+	if sub != null and _active_tab < TAB_TAGLINES.size():
+		sub.text = tr(TAB_TAGLINES[_active_tab])
 	_update_tab_button_states()
 
 

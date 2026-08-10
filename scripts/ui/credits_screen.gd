@@ -42,7 +42,7 @@ const _SECTIONS: Array = [
 			"creativecommons.org/licenses/by/3.0",
 		]
 	],
-	["FONTS (SIL OFL 1.1)", ["Oswald · Russo One — Google Fonts"]],
+	["FONTS (SIL OFL 1.1)", ["Inter · Oswald · Russo One — Google Fonts"]],
 ]
 
 var _backdrop: Control = null
@@ -108,6 +108,10 @@ func _build_panel() -> void:
 	vbox.add_child(close)
 
 
+## Emitted on close so the host menu can restore whatever it hid while we covered it.
+signal closed
+
+
 func open() -> void:
 	visible = true
 	if _panel != null:
@@ -116,6 +120,7 @@ func open() -> void:
 
 func close_screen() -> void:
 	visible = false
+	closed.emit()
 
 
 ## Harness-friendly alias (the `ui` verb calls open()/close()).

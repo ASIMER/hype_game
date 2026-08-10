@@ -1034,7 +1034,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L1",
       "id": "audio_gen_audio",
-      "community": 87,
+      "community": 0,
       "norm_label": "gen_audio.py"
     },
     {
@@ -1088,7 +1088,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L52",
       "id": "audio_gen_audio_triangle",
-      "community": 87,
+      "community": 0,
       "norm_label": "_triangle()"
     },
     {
@@ -1115,7 +1115,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L68",
       "id": "audio_gen_audio_adsr",
-      "community": 81,
+      "community": 91,
       "norm_label": "_adsr()"
     },
     {
@@ -1142,7 +1142,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L121",
       "id": "audio_gen_audio_mul",
-      "community": 87,
+      "community": 0,
       "norm_label": "_mul()"
     },
     {
@@ -1178,7 +1178,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L164",
       "id": "audio_gen_audio_fade",
-      "community": 91,
+      "community": 87,
       "norm_label": "_fade()"
     },
     {
@@ -1196,7 +1196,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L210",
       "id": "audio_gen_audio_gen_hit",
-      "community": 88,
+      "community": 89,
       "norm_label": "gen_hit()"
     },
     {
@@ -1205,7 +1205,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L221",
       "id": "audio_gen_audio_gen_explosion",
-      "community": 81,
+      "community": 88,
       "norm_label": "gen_explosion()"
     },
     {
@@ -1232,7 +1232,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L275",
       "id": "audio_gen_audio_gen_extract_done",
-      "community": 0,
+      "community": 91,
       "norm_label": "gen_extract_done()"
     },
     {
@@ -1241,7 +1241,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L284",
       "id": "audio_gen_audio_gen_extract_cancel",
-      "community": 81,
+      "community": 91,
       "norm_label": "gen_extract_cancel()"
     },
     {
@@ -1259,7 +1259,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L307",
       "id": "audio_gen_audio_gen_win",
-      "community": 91,
+      "community": 0,
       "norm_label": "gen_win()"
     },
     {
@@ -1268,7 +1268,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L321",
       "id": "audio_gen_audio_gen_lose",
-      "community": 87,
+      "community": 0,
       "norm_label": "gen_lose()"
     },
     {
@@ -1295,7 +1295,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L367",
       "id": "audio_gen_audio_gen_weapon_switch",
-      "community": 81,
+      "community": 87,
       "norm_label": "gen_weapon_switch()"
     },
     {
@@ -1304,7 +1304,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L383",
       "id": "audio_gen_audio_gen_ui_click",
-      "community": 81,
+      "community": 91,
       "norm_label": "gen_ui_click()"
     },
     {
@@ -1331,7 +1331,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L444",
       "id": "audio_gen_audio_gen_underwater",
-      "community": 91,
+      "community": 81,
       "norm_label": "gen_underwater()"
     },
     {
@@ -1385,7 +1385,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L607",
       "id": "audio_gen_audio_gen_chunk_stone",
-      "community": 89,
+      "community": 88,
       "norm_label": "gen_chunk_stone()"
     },
     {
@@ -1394,7 +1394,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L628",
       "id": "audio_gen_audio_chord_pad",
-      "community": 87,
+      "community": 12,
       "norm_label": "_chord_pad()"
     },
     {
@@ -1403,7 +1403,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L644",
       "id": "audio_gen_audio_gen_music_long",
-      "community": 87,
+      "community": 12,
       "norm_label": "gen_music_long()"
     },
     {
@@ -1466,7 +1466,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L791",
       "id": "audio_gen_audio_gen_robot_death",
-      "community": 88,
+      "community": 81,
       "norm_label": "gen_robot_death()"
     },
     {
@@ -1484,7 +1484,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L1",
       "id": "audio_gen_audio_rationale_1",
-      "community": 87,
+      "community": 0,
       "norm_label": "gen_audio.py \u2014 procedural wav synthesizer for hype raiders.  generates all gam"
     },
     {
@@ -1502,7 +1502,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L76",
       "id": "audio_gen_audio_rationale_76",
-      "community": 81,
+      "community": 91,
       "norm_label": "apply an adsr envelope to samples in-place (returns copy)."
     },
     {
@@ -1547,7 +1547,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L165",
       "id": "audio_gen_audio_rationale_165",
-      "community": 91,
+      "community": 87,
       "norm_label": "apply a short linear fade-in/out to avoid clicks."
     },
     {
@@ -1565,7 +1565,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L211",
       "id": "audio_gen_audio_rationale_211",
-      "community": 88,
+      "community": 89,
       "norm_label": "short impact tick: snappy transient."
     },
     {
@@ -1574,7 +1574,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L222",
       "id": "audio_gen_audio_rationale_222",
-      "community": 81,
+      "community": 88,
       "norm_label": "low-frequency noise burst with rumble tail."
     },
     {
@@ -1601,7 +1601,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L276",
       "id": "audio_gen_audio_rationale_276",
-      "community": 0,
+      "community": 91,
       "norm_label": "rising 2-note chime \u2014 success."
     },
     {
@@ -1610,7 +1610,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L285",
       "id": "audio_gen_audio_rationale_285",
-      "community": 81,
+      "community": 91,
       "norm_label": "low buzz \u2014 failure/cancel."
     },
     {
@@ -1628,7 +1628,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L308",
       "id": "audio_gen_audio_rationale_308",
-      "community": 91,
+      "community": 0,
       "norm_label": "major arpeggio: c-e-g-c5."
     },
     {
@@ -1637,7 +1637,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L322",
       "id": "audio_gen_audio_rationale_322",
-      "community": 87,
+      "community": 0,
       "norm_label": "minor descending arpeggio: a-f-d-a3."
     },
     {
@@ -1664,7 +1664,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L368",
       "id": "audio_gen_audio_rationale_368",
-      "community": 81,
+      "community": 87,
       "norm_label": "short metallic shink \u2014 rising high freq click."
     },
     {
@@ -1673,7 +1673,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L384",
       "id": "audio_gen_audio_rationale_384",
-      "community": 81,
+      "community": 91,
       "norm_label": "soft ui tick \u2014 short, quiet, round."
     },
     {
@@ -1700,7 +1700,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L445",
       "id": "audio_gen_audio_rationale_445",
-      "community": 91,
+      "community": 81,
       "norm_label": "muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,"
     },
     {
@@ -1754,7 +1754,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L608",
       "id": "audio_gen_audio_rationale_608",
-      "community": 89,
+      "community": 88,
       "norm_label": "rock crack: a sharp dry high-passed crack (brighter than concrete, little sub) +"
     },
     {
@@ -1763,7 +1763,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L629",
       "id": "audio_gen_audio_rationale_629",
-      "community": 87,
+      "community": 12,
       "norm_label": "detuned dual-osc pad for a chord segment, slow tremolo, lowpassed."
     },
     {
@@ -1772,7 +1772,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L645",
       "id": "audio_gen_audio_rationale_645",
-      "community": 87,
+      "community": 12,
       "norm_label": "~96 s evolving dark-ambient loop: 4-chord minor progression pads + sub pulse +"
     },
     {
@@ -1826,7 +1826,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L792",
       "id": "audio_gen_audio_rationale_792",
-      "community": 88,
+      "community": 81,
       "norm_label": "power-down: descending quantized sweep + spark crackle (layered under the boom)."
     },
     {
@@ -2625,7 +2625,7 @@
       "label": "Deferred (planned, not this batch)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L39",
+      "source_location": "L40",
       "id": "docs_assets_deferred_planned_not_this_batch",
       "community": 60,
       "norm_label": "deferred (planned, not this batch)"
@@ -2634,7 +2634,7 @@
       "label": "Rejected",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L50",
+      "source_location": "L51",
       "id": "docs_assets_rejected",
       "community": 60,
       "norm_label": "rejected"
@@ -2643,7 +2643,7 @@
       "label": "Other vetted sources (for future searches)",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L62",
+      "source_location": "L63",
       "id": "docs_assets_other_vetted_sources_for_future_searches",
       "community": 60,
       "norm_label": "other vetted sources (for future searches)"
@@ -2652,7 +2652,7 @@
       "label": "Credits",
       "file_type": "document",
       "source_file": "docs/ASSETS.md",
-      "source_location": "L78",
+      "source_location": "L79",
       "id": "docs_assets_credits",
       "community": 60,
       "norm_label": "credits"
@@ -3679,7 +3679,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L75",
-      "community": 81,
+      "community": 91,
       "norm_label": "apply an adsr envelope to samples in-place (returns copy).",
       "id": "audio_gen_audio_rationale_75"
     },
@@ -3724,7 +3724,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L164",
-      "community": 91,
+      "community": 87,
       "norm_label": "apply a short linear fade-in/out to avoid clicks.",
       "id": "audio_gen_audio_rationale_164"
     },
@@ -3742,7 +3742,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L210",
-      "community": 88,
+      "community": 89,
       "norm_label": "short impact tick: snappy transient.",
       "id": "audio_gen_audio_rationale_210"
     },
@@ -3751,7 +3751,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L221",
-      "community": 81,
+      "community": 88,
       "norm_label": "low-frequency noise burst with rumble tail.",
       "id": "audio_gen_audio_rationale_221"
     },
@@ -3778,7 +3778,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L275",
-      "community": 0,
+      "community": 91,
       "norm_label": "rising 2-note chime \u2014 success.",
       "id": "audio_gen_audio_rationale_275"
     },
@@ -3787,7 +3787,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L284",
-      "community": 81,
+      "community": 91,
       "norm_label": "low buzz \u2014 failure/cancel.",
       "id": "audio_gen_audio_rationale_284"
     },
@@ -3805,7 +3805,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L307",
-      "community": 91,
+      "community": 0,
       "norm_label": "major arpeggio: c-e-g-c5.",
       "id": "audio_gen_audio_rationale_307"
     },
@@ -3814,7 +3814,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L321",
-      "community": 87,
+      "community": 0,
       "norm_label": "minor descending arpeggio: a-f-d-a3.",
       "id": "audio_gen_audio_rationale_321"
     },
@@ -3841,7 +3841,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L367",
-      "community": 81,
+      "community": 87,
       "norm_label": "short metallic shink \u2014 rising high freq click.",
       "id": "audio_gen_audio_rationale_367"
     },
@@ -3850,7 +3850,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L383",
-      "community": 81,
+      "community": 91,
       "norm_label": "soft ui tick \u2014 short, quiet, round.",
       "id": "audio_gen_audio_rationale_383"
     },
@@ -3877,7 +3877,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L444",
-      "community": 91,
+      "community": 81,
       "norm_label": "muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,",
       "id": "audio_gen_audio_rationale_444"
     },
@@ -3931,7 +3931,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L607",
-      "community": 89,
+      "community": 88,
       "norm_label": "rock crack: a sharp dry high-passed crack (brighter than concrete, little sub) +",
       "id": "audio_gen_audio_rationale_607"
     },
@@ -4236,7 +4236,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "agentbridge._handle_line (command dispatch)",
       "id": "agentbridge_handle_line"
     },
@@ -4249,7 +4249,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 93,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -4262,7 +4262,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "agentbridge._aim_at (converging camera aim)",
       "id": "agentbridge_aim_at"
     },
@@ -4301,7 +4301,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "agentbridge._ui_action (menu open/close)",
       "id": "agentbridge_ui_action"
     },
@@ -4743,7 +4743,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -4847,7 +4847,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -4977,7 +4977,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 93,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -5016,7 +5016,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "serverbrowser.add_favorite / record_connect",
       "id": "serverbrowser_add_favorite"
     },
@@ -5900,7 +5900,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -5913,7 +5913,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 68,
+      "community": 67,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -7433,9 +7433,9 @@
       "source_file": ".claude/settings.json",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_settings",
-      "target": "claude_settings_enabledplugins",
-      "confidence_score": 1.0
+      "target": "claude_settings_enabledplugins"
     },
     {
       "relation": "contains",
@@ -7473,9 +7473,9 @@
       "source_file": ".claude/settings.json",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_settings_enabledplugins",
-      "target": "claude_settings_enabledplugins_disciplines_awesome_gamedev_agent_skills",
-      "confidence_score": 1.0
+      "target": "claude_settings_enabledplugins_disciplines_awesome_gamedev_agent_skills"
     },
     {
       "relation": "contains",
@@ -7483,9 +7483,9 @@
       "source_file": ".claude/settings.json",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_settings_enabledplugins",
-      "target": "claude_settings_enabledplugins_example_skills_anthropic_agent_skills",
-      "confidence_score": 1.0
+      "target": "claude_settings_enabledplugins_example_skills_anthropic_agent_skills"
     },
     {
       "relation": "contains",
@@ -7493,9 +7493,9 @@
       "source_file": ".claude/settings.json",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_settings_enabledplugins",
-      "target": "claude_settings_enabledplugins_godot_awesome_gamedev_agent_skills",
-      "confidence_score": 1.0
+      "target": "claude_settings_enabledplugins_godot_awesome_gamedev_agent_skills"
     },
     {
       "relation": "contains",
@@ -7503,9 +7503,9 @@
       "source_file": ".claude/settings.json",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_settings_enabledplugins",
-      "target": "claude_settings_enabledplugins_godot_prompter_godot_prompter_marketplace",
-      "confidence_score": 1.0
+      "target": "claude_settings_enabledplugins_godot_prompter_godot_prompter_marketplace"
     },
     {
       "relation": "contains",
@@ -13511,9 +13511,9 @@
       "source_file": "docs/UI_REDESIGN.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_ui_redesign",
-      "target": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
-      "confidence_score": 1.0
+      "target": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10"
     },
     {
       "relation": "contains",
@@ -13521,9 +13521,9 @@
       "source_file": "docs/UI_REDESIGN.md",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
-      "target": "docs_ui_redesign_p0_\u0434\u0435\u0444\u0435\u043a\u0442\u044b_\u0441\u0442\u0430\u0442\u0443\u0441_\u043f\u043e\u0441\u043b\u0435_phase_0_5_2026_08_10",
-      "confidence_score": 1.0
+      "target": "docs_ui_redesign_p0_\u0434\u0435\u0444\u0435\u043a\u0442\u044b_\u0441\u0442\u0430\u0442\u0443\u0441_\u043f\u043e\u0441\u043b\u0435_phase_0_5_2026_08_10"
     },
     {
       "relation": "contains",
@@ -13531,9 +13531,9 @@
       "source_file": "docs/UI_REDESIGN.md",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
-      "target": "docs_ui_redesign_p1_\u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0435_\u0434\u0438\u0437\u0430\u0439\u043d_\u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441_\u043f\u0430\u043d\u0435\u043b\u0438",
-      "confidence_score": 1.0
+      "target": "docs_ui_redesign_p1_\u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0435_\u0434\u0438\u0437\u0430\u0439\u043d_\u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441_\u043f\u0430\u043d\u0435\u043b\u0438"
     },
     {
       "relation": "contains",
@@ -13541,9 +13541,9 @@
       "source_file": "docs/UI_REDESIGN.md",
       "source_location": "L80",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
-      "target": "docs_ui_redesign_\u043f\u043b\u0430\u043d_\u0444\u0430\u0437_\u043f\u0440\u0430\u0432\u043a\u0438_\u043f\u043e\u0441\u043b\u0435_phase_0",
-      "confidence_score": 1.0
+      "target": "docs_ui_redesign_\u043f\u043b\u0430\u043d_\u0444\u0430\u0437_\u043f\u0440\u0430\u0432\u043a\u0438_\u043f\u043e\u0441\u043b\u0435_phase_0"
     },
     {
       "relation": "contains",
@@ -13551,9 +13551,9 @@
       "source_file": "docs/UI_REDESIGN.md",
       "source_location": "L67",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
-      "target": "docs_ui_redesign_\u0441\u0438\u043b\u044b_\u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441",
-      "confidence_score": 1.0
+      "target": "docs_ui_redesign_\u0441\u0438\u043b\u044b_\u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441"
     },
     {
       "relation": "contains",
@@ -17160,5 +17160,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "c6375a692c13b716064f1652bb87bf9bfd87fc74"
+  "built_at_commit": "84cb86debef2134882f4be2592863a310eca098e"
 }

@@ -434,7 +434,9 @@ func _on_grenade_selection_changed(type: String, count: int) -> void:
 
 # --- Feedback overlays (built in code so HUD.tscn stays simple) -------------
 
-var _hurt_flash: ColorRect
+# Radial damage vignette (was a flat full-screen ColorRect — the critic panel read
+# the hard-edged red wash as "washes out the HUD exactly when you're dying").
+var _hurt_flash: TextureRect
 var _hit_marker: Label
 var _hit_marker_t: float = 0.0
 var _last_health: float = -1.0
@@ -462,8 +464,22 @@ var _team_poll_t: float = 0.0
 
 func _build_feedback_overlays() -> void:
 	# Full-screen red vignette pulse when the local player takes damage.
-	_hurt_flash = ColorRect.new()
-	_hurt_flash.color = Color(0.8, 0.0, 0.0, 0.0)
+	_hurt_flash = TextureRect.new()
+	var hurt_grad := Gradient.new()
+	hurt_grad.set_color(0, Color(0.8, 0.0, 0.0, 0.0))
+	hurt_grad.set_color(1, Color(0.8, 0.0, 0.0, 1.0))
+	hurt_grad.set_offset(0, 0.45)
+	var hurt_tex := GradientTexture2D.new()
+	hurt_tex.gradient = hurt_grad
+	hurt_tex.fill = GradientTexture2D.FILL_RADIAL
+	hurt_tex.fill_from = Vector2(0.5, 0.5)
+	hurt_tex.fill_to = Vector2(0.5, 0.0)
+	hurt_tex.width = 256
+	hurt_tex.height = 256
+	_hurt_flash.texture = hurt_tex
+	_hurt_flash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_hurt_flash.stretch_mode = TextureRect.STRETCH_SCALE
+	_hurt_flash.modulate.a = 0.0
 	_hurt_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_hurt_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hurt_flash)
@@ -523,8 +539,8 @@ func _build_downed_overlay() -> void:
 
 
 func _process(delta: float) -> void:
-	if _hurt_flash and _hurt_flash.color.a > 0.0:
-		_hurt_flash.color.a = maxf(0.0, _hurt_flash.color.a - delta * 2.4)
+	if _hurt_flash and _hurt_flash.modulate.a > 0.0:
+		_hurt_flash.modulate.a = maxf(0.0, _hurt_flash.modulate.a - delta * 2.4)
 	if _hit_marker and _hit_marker.visible:
 		_hit_marker_t -= delta
 		if _hit_marker_t <= 0.0:
@@ -553,11 +569,13 @@ func _process(delta: float) -> void:
 	# faint red screen-pulse floor (audit: the one-shot 4 s banner left the game's
 	# highest-stakes moment with no visible warning at all).
 	if _storm_banner and GameState.final_wave:
-		_storm_banner.visible = true
+		# Downed instructions own the screen centre — the banner yields while the
+		# local player is down (the red floor-pulse keeps signalling the storm).
+		_storm_banner.visible = not _down_active
 		var pt: float = Time.get_ticks_msec() / 180.0
 		_storm_banner.modulate.a = 0.78 + 0.22 * sin(pt)
 		if _hurt_flash:
-			_hurt_flash.color.a = maxf(_hurt_flash.color.a, 0.04 + 0.03 * sin(pt * 0.7))
+			_hurt_flash.modulate.a = maxf(_hurt_flash.modulate.a, 0.08 + 0.06 * sin(pt * 0.7))
 	elif _storm_banner and _storm_banner.visible:
 		# Pre-storm warning flash: timed fade as before.
 		_storm_banner_t -= delta
@@ -569,7 +587,7 @@ func _process(delta: float) -> void:
 	# Adaptive combat fade (ARC): ammo group bright in combat, translucent at rest.
 	if _ammo_box:
 		_combat_heat = maxf(0.0, _combat_heat - delta)
-		var target_a: float = 1.0 if _combat_heat > 0.0 else 0.45
+		var target_a: float = 1.0 if _combat_heat > 0.0 else 0.55
 		_ammo_box.modulate.a = move_toward(_ammo_box.modulate.a, target_a, delta * 2.0)
 	# Key-hint sheet: full for the first 75 s, then dims; hidden during the storm so
 	# the corner belongs to the alarm.
@@ -772,7 +790,7 @@ func _on_damage_dealt(target: Node, _amount: float, source: Node) -> void:
 		# A light wash only — the DIRECTIONAL blood arc (damage_indicator.gd) is the
 		# primary "where am I being hit from" cue, so keep this from drowning it in red.
 		if _hurt_flash:
-			_hurt_flash.color.a = maxf(_hurt_flash.color.a, 0.22)
+			_hurt_flash.modulate.a = maxf(_hurt_flash.modulate.a, 0.5)
 	elif (
 		source != null
 		and source == _local_player
@@ -1093,6 +1111,7 @@ func _on_run_rewards(currency: int, breakdown: Dictionary) -> void:
 
 
 func _on_match_won() -> void:
+	_hide_downed()  # a finish-damage death skips bleedout — never leave the crawl hints up
 	var msg := tr("EXTRACTED — YOU WIN")
 	if _reward_line != "":
 		msg += "\n" + _reward_line
@@ -1100,6 +1119,7 @@ func _on_match_won() -> void:
 
 
 func _on_match_lost() -> void:
+	_hide_downed()
 	_show_banner(tr("KIA — gear lost"), Color(1.0, 0.35, 0.35))
 
 

@@ -258,6 +258,51 @@
       "norm_label": "posttooluse"
     },
     {
+      "label": "enabledPlugins",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L35",
+      "id": "claude_settings_enabledplugins",
+      "community": 14,
+      "norm_label": "enabledplugins"
+    },
+    {
+      "label": "godot-prompter@godot-prompter-marketplace",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L36",
+      "id": "claude_settings_enabledplugins_godot_prompter_godot_prompter_marketplace",
+      "community": 14,
+      "norm_label": "godot-prompter@godot-prompter-marketplace"
+    },
+    {
+      "label": "godot@awesome-gamedev-agent-skills",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L37",
+      "id": "claude_settings_enabledplugins_godot_awesome_gamedev_agent_skills",
+      "community": 14,
+      "norm_label": "godot@awesome-gamedev-agent-skills"
+    },
+    {
+      "label": "disciplines@awesome-gamedev-agent-skills",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L38",
+      "id": "claude_settings_enabledplugins_disciplines_awesome_gamedev_agent_skills",
+      "community": 14,
+      "norm_label": "disciplines@awesome-gamedev-agent-skills"
+    },
+    {
+      "label": "example-skills@anthropic-agent-skills",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L39",
+      "id": "claude_settings_enabledplugins_example_skills_anthropic_agent_skills",
+      "community": 14,
+      "norm_label": "example-skills@anthropic-agent-skills"
+    },
+    {
       "label": "settings.local.json",
       "file_type": "code",
       "source_file": ".claude/settings.local.json",
@@ -989,7 +1034,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L1",
       "id": "audio_gen_audio",
-      "community": 0,
+      "community": 87,
       "norm_label": "gen_audio.py"
     },
     {
@@ -1016,7 +1061,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L28",
       "id": "float",
-      "community": 87,
+      "community": 0,
       "norm_label": "float"
     },
     {
@@ -1079,7 +1124,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L103",
       "id": "audio_gen_audio_mix",
-      "community": 89,
+      "community": 81,
       "norm_label": "_mix()"
     },
     {
@@ -1133,7 +1178,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L164",
       "id": "audio_gen_audio_fade",
-      "community": 92,
+      "community": 91,
       "norm_label": "_fade()"
     },
     {
@@ -1151,7 +1196,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L210",
       "id": "audio_gen_audio_gen_hit",
-      "community": 91,
+      "community": 88,
       "norm_label": "gen_hit()"
     },
     {
@@ -1160,7 +1205,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L221",
       "id": "audio_gen_audio_gen_explosion",
-      "community": 98,
+      "community": 81,
       "norm_label": "gen_explosion()"
     },
     {
@@ -1196,7 +1241,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L284",
       "id": "audio_gen_audio_gen_extract_cancel",
-      "community": 12,
+      "community": 81,
       "norm_label": "gen_extract_cancel()"
     },
     {
@@ -1214,7 +1259,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L307",
       "id": "audio_gen_audio_gen_win",
-      "community": 0,
+      "community": 91,
       "norm_label": "gen_win()"
     },
     {
@@ -1259,7 +1304,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L383",
       "id": "audio_gen_audio_gen_ui_click",
-      "community": 88,
+      "community": 81,
       "norm_label": "gen_ui_click()"
     },
     {
@@ -1286,7 +1331,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L444",
       "id": "audio_gen_audio_gen_underwater",
-      "community": 89,
+      "community": 91,
       "norm_label": "gen_underwater()"
     },
     {
@@ -1313,7 +1358,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L535",
       "id": "audio_gen_audio_gen_glass_break",
-      "community": 81,
+      "community": 91,
       "norm_label": "gen_glass_break()"
     },
     {
@@ -1403,7 +1448,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L747",
       "id": "audio_gen_audio_gen_amb_rain",
-      "community": 88,
+      "community": 12,
       "norm_label": "gen_amb_rain()"
     },
     {
@@ -1421,7 +1466,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L791",
       "id": "audio_gen_audio_gen_robot_death",
-      "community": 89,
+      "community": 88,
       "norm_label": "gen_robot_death()"
     },
     {
@@ -1430,7 +1475,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L818",
       "id": "audio_gen_audio_main",
-      "community": 95,
+      "community": 12,
       "norm_label": "main()"
     },
     {
@@ -1439,7 +1484,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L1",
       "id": "audio_gen_audio_rationale_1",
-      "community": 0,
+      "community": 87,
       "norm_label": "gen_audio.py \u2014 procedural wav synthesizer for hype raiders.  generates all gam"
     },
     {
@@ -1466,7 +1511,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L104",
       "id": "audio_gen_audio_rationale_104",
-      "community": 89,
+      "community": 81,
       "norm_label": "sum multiple tracks (same length) with soft clipping."
     },
     {
@@ -1502,7 +1547,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L165",
       "id": "audio_gen_audio_rationale_165",
-      "community": 92,
+      "community": 91,
       "norm_label": "apply a short linear fade-in/out to avoid clicks."
     },
     {
@@ -1520,7 +1565,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L211",
       "id": "audio_gen_audio_rationale_211",
-      "community": 91,
+      "community": 88,
       "norm_label": "short impact tick: snappy transient."
     },
     {
@@ -1529,7 +1574,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L222",
       "id": "audio_gen_audio_rationale_222",
-      "community": 98,
+      "community": 81,
       "norm_label": "low-frequency noise burst with rumble tail."
     },
     {
@@ -1565,7 +1610,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L285",
       "id": "audio_gen_audio_rationale_285",
-      "community": 12,
+      "community": 81,
       "norm_label": "low buzz \u2014 failure/cancel."
     },
     {
@@ -1583,7 +1628,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L308",
       "id": "audio_gen_audio_rationale_308",
-      "community": 0,
+      "community": 91,
       "norm_label": "major arpeggio: c-e-g-c5."
     },
     {
@@ -1628,7 +1673,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L384",
       "id": "audio_gen_audio_rationale_384",
-      "community": 88,
+      "community": 81,
       "norm_label": "soft ui tick \u2014 short, quiet, round."
     },
     {
@@ -1655,7 +1700,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L445",
       "id": "audio_gen_audio_rationale_445",
-      "community": 89,
+      "community": 91,
       "norm_label": "muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,"
     },
     {
@@ -1682,7 +1727,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L536",
       "id": "audio_gen_audio_rationale_536",
-      "community": 81,
+      "community": 91,
       "norm_label": "window shatter: a bright high-passed noise crack followed by 4-6 staggered"
     },
     {
@@ -1763,7 +1808,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L748",
       "id": "audio_gen_audio_rationale_748",
-      "community": 88,
+      "community": 12,
       "norm_label": "rain biome: steady patter (banded noise flutter) + low rumble + a soft far thund"
     },
     {
@@ -1781,7 +1826,7 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L792",
       "id": "audio_gen_audio_rationale_792",
-      "community": 89,
+      "community": 88,
       "norm_label": "power-down: descending quantized sweep + spark crackle (layered under the boom)."
     },
     {
@@ -3135,6 +3180,60 @@
       "norm_label": "8. parallel testing (2\u20134 instances at once)"
     },
     {
+      "label": "UI_REDESIGN.md",
+      "file_type": "document",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L1",
+      "id": "docs_ui_redesign",
+      "community": 94,
+      "norm_label": "ui_redesign.md"
+    },
+    {
+      "label": "UI Redesign \u2014 Phase 0 Audit (2026-08-10)",
+      "file_type": "document",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L1",
+      "id": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
+      "community": 94,
+      "norm_label": "ui redesign \u2014 phase 0 audit (2026-08-10)"
+    },
+    {
+      "label": "P0 \u2014 \u0414\u0415\u0424\u0415\u041a\u0422\u042b (\u0441\u0442\u0430\u0442\u0443\u0441 \u043f\u043e\u0441\u043b\u0435 Phase 0.5, 2026-08-10)",
+      "file_type": "document",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L15",
+      "id": "docs_ui_redesign_p0_\u0434\u0435\u0444\u0435\u043a\u0442\u044b_\u0441\u0442\u0430\u0442\u0443\u0441_\u043f\u043e\u0441\u043b\u0435_phase_0_5_2026_08_10",
+      "community": 94,
+      "norm_label": "p0 \u2014 \u0434\u0435\u0444\u0435\u043a\u0442\u044b (\u0441\u0442\u0430\u0442\u0443\u0441 \u043f\u043e\u0441\u043b\u0435 phase 0.5, 2026-08-10)"
+    },
+    {
+      "label": "P1 \u2014 \u0421\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0435 \u0434\u0438\u0437\u0430\u0439\u043d-\u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b (\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441 \u043f\u0430\u043d\u0435\u043b\u0438)",
+      "file_type": "document",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L39",
+      "id": "docs_ui_redesign_p1_\u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0435_\u0434\u0438\u0437\u0430\u0439\u043d_\u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441_\u043f\u0430\u043d\u0435\u043b\u0438",
+      "community": 94,
+      "norm_label": "p1 \u2014 \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0435 \u0434\u0438\u0437\u0430\u0438\u043d-\u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b (\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441 \u043f\u0430\u043d\u0435\u043b\u0438)"
+    },
+    {
+      "label": "\u0421\u0438\u043b\u044b \u2014 \u0421\u041e\u0425\u0420\u0410\u041d\u0418\u0422\u042c (\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441)",
+      "file_type": "document",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L67",
+      "id": "docs_ui_redesign_\u0441\u0438\u043b\u044b_\u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441",
+      "community": 94,
+      "norm_label": "\u0441\u0438\u043b\u044b \u2014 \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c (\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441)"
+    },
+    {
+      "label": "\u041f\u043b\u0430\u043d \u0444\u0430\u0437 (\u043f\u0440\u0430\u0432\u043a\u0438 \u2014 \u043f\u043e\u0441\u043b\u0435 Phase 0)",
+      "file_type": "document",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L80",
+      "id": "docs_ui_redesign_\u043f\u043b\u0430\u043d_\u0444\u0430\u0437_\u043f\u0440\u0430\u0432\u043a\u0438_\u043f\u043e\u0441\u043b\u0435_phase_0",
+      "community": 94,
+      "norm_label": "\u043f\u043b\u0430\u043d \u0444\u0430\u0437 (\u043f\u0440\u0430\u0432\u043a\u0438 \u2014 \u043f\u043e\u0441\u043b\u0435 phase 0)"
+    },
+    {
       "label": "voxel-destructibility-research.md",
       "file_type": "document",
       "source_file": "docs/research/voxel-destructibility-research.md",
@@ -3589,7 +3688,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L103",
-      "community": 89,
+      "community": 81,
       "norm_label": "sum multiple tracks (same length) with soft clipping.",
       "id": "audio_gen_audio_rationale_103"
     },
@@ -3625,7 +3724,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L164",
-      "community": 92,
+      "community": 91,
       "norm_label": "apply a short linear fade-in/out to avoid clicks.",
       "id": "audio_gen_audio_rationale_164"
     },
@@ -3643,7 +3742,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L210",
-      "community": 91,
+      "community": 88,
       "norm_label": "short impact tick: snappy transient.",
       "id": "audio_gen_audio_rationale_210"
     },
@@ -3652,7 +3751,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L221",
-      "community": 98,
+      "community": 81,
       "norm_label": "low-frequency noise burst with rumble tail.",
       "id": "audio_gen_audio_rationale_221"
     },
@@ -3688,7 +3787,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L284",
-      "community": 12,
+      "community": 81,
       "norm_label": "low buzz \u2014 failure/cancel.",
       "id": "audio_gen_audio_rationale_284"
     },
@@ -3706,7 +3805,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L307",
-      "community": 0,
+      "community": 91,
       "norm_label": "major arpeggio: c-e-g-c5.",
       "id": "audio_gen_audio_rationale_307"
     },
@@ -3751,7 +3850,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L383",
-      "community": 88,
+      "community": 81,
       "norm_label": "soft ui tick \u2014 short, quiet, round.",
       "id": "audio_gen_audio_rationale_383"
     },
@@ -3778,7 +3877,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L444",
-      "community": 89,
+      "community": 91,
       "norm_label": "muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,",
       "id": "audio_gen_audio_rationale_444"
     },
@@ -3805,7 +3904,7 @@
       "file_type": "rationale",
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L535",
-      "community": 81,
+      "community": 91,
       "norm_label": "window shatter: a bright high-passed noise crack followed by 4-6 staggered",
       "id": "audio_gen_audio_rationale_535"
     },
@@ -4150,7 +4249,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "agentbridge._snapshot (state json)",
       "id": "agentbridge_snapshot"
     },
@@ -4228,7 +4327,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "assetregistry.catalog (logical id table)",
       "id": "assetregistry_catalog"
     },
@@ -4241,7 +4340,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "assetregistry.get_model",
       "id": "assetregistry_get_model"
     },
@@ -4254,7 +4353,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 94,
+      "community": 85,
       "norm_label": "assetregistry.get_icon",
       "id": "assetregistry_get_icon"
     },
@@ -4267,7 +4366,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "assetregistry._make_primitive (tinted fallback)",
       "id": "assetregistry_make_primitive"
     },
@@ -4280,7 +4379,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "guarded-fallback resolution (glb to procedural to primitive)",
       "id": "assetregistry_fallback_chain"
     },
@@ -4293,7 +4392,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "audiomanager (events-driven sfx)",
       "id": "audiomanager_audiomanager"
     },
@@ -4306,7 +4405,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "audiomanager._play / _play_at",
       "id": "audiomanager_play"
     },
@@ -4332,7 +4431,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "crafting.craft",
       "id": "crafting_craft"
     },
@@ -4449,7 +4548,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "gamestate.record_kill / record_death",
       "id": "gamestate_record_kill"
     },
@@ -4462,7 +4561,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "gamestate.reset_match",
       "id": "gamestate_reset_match"
     },
@@ -4475,7 +4574,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "gamestate.peers (peer roster)",
       "id": "gamestate_peers"
     },
@@ -4501,7 +4600,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "iconrenderer.render_now",
       "id": "iconrenderer_render_now"
     },
@@ -4514,7 +4613,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "iconrenderer.render_icon (sync cache)",
       "id": "iconrenderer_render_icon"
     },
@@ -4527,7 +4626,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "iconrenderer._prewarm",
       "id": "iconrenderer_prewarm"
     },
@@ -4579,7 +4678,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "quests._advance / event hooks",
       "id": "quests_advance"
     },
@@ -4605,7 +4704,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "quests.get_daily_quests (daily rotation)",
       "id": "quests_get_daily_quests"
     },
@@ -4631,7 +4730,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "raidmanager.deploy (commit bring-list + attachments)",
       "id": "raidmanager_deploy"
     },
@@ -4644,7 +4743,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "raidmanager.grant_extraction",
       "id": "raidmanager_grant_extraction"
     },
@@ -4670,7 +4769,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "metaprogression (persistent profile)",
       "id": "metaprogression_metaprogression"
     },
@@ -4709,7 +4808,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 93,
       "norm_label": "metaprogression.stash_capacity",
       "id": "metaprogression_stash_capacity"
     },
@@ -4748,7 +4847,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "networkmanager (host/join + lobby + sync)",
       "id": "networkmanager_networkmanager"
     },
@@ -4774,7 +4873,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "networkmanager.request_start (leader start)",
       "id": "networkmanager_request_start"
     },
@@ -4813,7 +4912,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "networkmanager.request_hit (server-auth damage)",
       "id": "networkmanager_request_hit"
     },
@@ -4839,7 +4938,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "networkmanager.transfer_item (give/trade)",
       "id": "networkmanager_transfer_item"
     },
@@ -4865,7 +4964,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "networkmanager._on_entity_died (kill attribution)",
       "id": "networkmanager_on_entity_died"
     },
@@ -4878,7 +4977,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 71,
+      "community": 67,
       "norm_label": "serverbrowser (favorites + lan discovery)",
       "id": "serverbrowser_serverbrowser"
     },
@@ -4904,7 +5003,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "serverbrowser._poll_responder (host discovery reply)",
       "id": "serverbrowser_poll_responder"
     },
@@ -5008,7 +5107,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "server-authoritative co-op (hit/score/transfer routing)",
       "id": "coop_server_authority_pattern"
     },
@@ -5788,7 +5887,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "extractionzone",
       "id": "extraction_extraction_zone_extractionzone"
     },
@@ -5801,7 +5900,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "extractionzone._complete",
       "id": "extraction_extraction_zone_complete"
     },
@@ -5814,7 +5913,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 67,
+      "community": 68,
       "norm_label": "extractionzone._grant_extraction",
       "id": "extraction_extraction_zone_grant_extraction"
     },
@@ -5866,7 +5965,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "camerafx",
       "id": "fx_camera_fx_camerafx"
     },
@@ -5918,7 +6017,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "damagenumber",
       "id": "fx_damage_number_damagenumber"
     },
@@ -5931,7 +6030,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "damagenumberslayer",
       "id": "fx_damage_numbers_layer_damagenumberslayer"
     },
@@ -6048,7 +6147,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "worldatmosphere._on_final_wave",
       "id": "fx_world_atmosphere_on_final_wave"
     },
@@ -6061,7 +6160,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 94,
+      "community": 85,
       "norm_label": "inventory",
       "id": "inventory_inventory_inventory"
     },
@@ -6113,7 +6212,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 94,
+      "community": 85,
       "norm_label": "inventoryui",
       "id": "inventory_inventory_ui_inventoryui"
     },
@@ -6126,7 +6225,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 2,
+      "community": 90,
       "norm_label": "inventoryui._give_item",
       "id": "inventory_inventory_ui_give_item"
     },
@@ -6165,7 +6264,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 94,
+      "community": 85,
       "norm_label": "itemdata",
       "id": "inventory_item_data_itemdata"
     },
@@ -6204,7 +6303,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 85,
       "norm_label": "lootpickup",
       "id": "loot_loot_pickup_lootpickup"
     },
@@ -6217,7 +6316,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 94,
+      "community": 85,
       "norm_label": "lootpickup._on_pickup_requested",
       "id": "loot_loot_pickup_on_pickup_requested"
     },
@@ -6256,7 +6355,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "player",
       "id": "player_player_player"
     },
@@ -6334,7 +6433,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "playeranimator",
       "id": "player_player_animator_playeranimator"
     },
@@ -6347,7 +6446,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 93,
+      "community": 85,
       "norm_label": "events bus",
       "id": "concept_events_bus"
     },
@@ -6386,7 +6485,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 94,
+      "community": 85,
       "norm_label": "server-authoritative inventory owner-mirror",
       "id": "concept_inventory_owner_mirror"
     },
@@ -7332,6 +7431,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": ".claude/settings.json",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "claude_settings",
+      "target": "claude_settings_enabledplugins",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".claude/settings.json",
       "source_location": "L2",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -7357,6 +7466,46 @@
       "confidence_score": 1.0,
       "source": "claude_settings_hooks",
       "target": "claude_settings_hooks_pretooluse"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".claude/settings.json",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "claude_settings_enabledplugins",
+      "target": "claude_settings_enabledplugins_disciplines_awesome_gamedev_agent_skills",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".claude/settings.json",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "claude_settings_enabledplugins",
+      "target": "claude_settings_enabledplugins_example_skills_anthropic_agent_skills",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".claude/settings.json",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "claude_settings_enabledplugins",
+      "target": "claude_settings_enabledplugins_godot_awesome_gamedev_agent_skills",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".claude/settings.json",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "claude_settings_enabledplugins",
+      "target": "claude_settings_enabledplugins_godot_prompter_godot_prompter_marketplace",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -8505,9 +8654,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L694",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_amb_wind",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_amb_wind"
     },
     {
       "relation": "contains",
@@ -8515,9 +8664,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L628",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_chord_pad",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_chord_pad"
     },
     {
       "relation": "contains",
@@ -8545,9 +8694,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L733",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_amb_desert",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_desert"
     },
     {
       "relation": "contains",
@@ -8555,9 +8704,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L747",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_amb_rain",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_rain"
     },
     {
       "relation": "contains",
@@ -8565,9 +8714,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L721",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_amb_snow",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_snow"
     },
     {
       "relation": "contains",
@@ -8575,9 +8724,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L703",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_amb_urban",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_urban"
     },
     {
       "relation": "contains",
@@ -8725,9 +8874,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L644",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_music_long",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_music_long"
     },
     {
       "relation": "contains",
@@ -8755,9 +8904,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L770",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_robot_alert",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_robot_alert"
     },
     {
       "relation": "contains",
@@ -8765,9 +8914,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L791",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio",
-      "target": "audio_gen_audio_gen_robot_death",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_robot_death"
     },
     {
       "relation": "contains",
@@ -8976,9 +9125,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_29",
-      "target": "audio_gen_audio_write_wav",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_write_wav"
     },
     {
       "relation": "references",
@@ -9042,9 +9191,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L694",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_amb_wind",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9053,9 +9202,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L628",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_chord_pad",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9086,9 +9235,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L733",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_desert",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9097,9 +9246,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L747",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_rain",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9108,9 +9257,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L721",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_snow",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9119,9 +9268,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L703",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_urban",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9284,9 +9433,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L644",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_music_long",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9317,9 +9466,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L770",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_alert",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9328,9 +9477,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L791",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_death",
-      "target": "float",
-      "confidence_score": 1.0
+      "target": "float"
     },
     {
       "relation": "references",
@@ -9526,9 +9675,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L785",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_alert",
-      "target": "audio_gen_audio_silence",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_silence"
     },
     {
       "relation": "calls",
@@ -9713,9 +9862,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L695",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_amb_wind",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9724,9 +9873,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L737",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_desert",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9735,9 +9884,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L750",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_rain",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9746,9 +9895,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L725",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_snow",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9757,9 +9906,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L712",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_urban",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9878,9 +10027,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L658",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_music_long",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9900,9 +10049,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L784",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_alert",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9911,9 +10060,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L804",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_death",
-      "target": "audio_gen_audio_noise",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_noise"
     },
     {
       "relation": "calls",
@@ -9999,9 +10148,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L694",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_amb_wind",
-      "target": "tools_audio_gen_audio_py_int",
-      "confidence_score": 1.0
+      "target": "tools_audio_gen_audio_py_int"
     },
     {
       "relation": "references",
@@ -10021,9 +10170,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L760",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_rain",
-      "target": "audio_gen_audio_adsr",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_adsr"
     },
     {
       "relation": "calls",
@@ -10032,9 +10181,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L713",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_urban",
-      "target": "audio_gen_audio_adsr",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_adsr"
     },
     {
       "relation": "calls",
@@ -10186,9 +10335,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L784",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_alert",
-      "target": "audio_gen_audio_adsr",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_adsr"
     },
     {
       "relation": "calls",
@@ -10197,9 +10346,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L803",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_death",
-      "target": "audio_gen_audio_adsr",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_adsr"
     },
     {
       "relation": "calls",
@@ -10283,9 +10432,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_76",
-      "target": "audio_gen_audio_adsr",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_adsr"
     },
     {
       "relation": "calls",
@@ -10404,9 +10553,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L811",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_death",
-      "target": "audio_gen_audio_mix",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_mix"
     },
     {
       "relation": "calls",
@@ -10479,9 +10628,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L104",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_104",
-      "target": "audio_gen_audio_mix",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_mix"
     },
     {
       "relation": "calls",
@@ -10534,9 +10683,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L788",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_alert",
-      "target": "audio_gen_audio_concat",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_concat"
     },
     {
       "relation": "calls",
@@ -10576,9 +10725,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_126",
-      "target": "audio_gen_audio_add_tracks",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_add_tracks"
     },
     {
       "relation": "calls",
@@ -10587,9 +10736,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L695",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_amb_wind",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10598,9 +10747,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L641",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_chord_pad",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10609,9 +10758,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L738",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_desert",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10620,9 +10769,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L750",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_rain",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10631,9 +10780,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L725",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_snow",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10642,9 +10791,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L712",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_urban",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10730,9 +10879,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L658",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_music_long",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10783,9 +10932,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L136",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_136",
-      "target": "audio_gen_audio_lowpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_lowpass"
     },
     {
       "relation": "calls",
@@ -10794,9 +10943,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L737",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_desert",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -10805,9 +10954,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L750",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_rain",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -10816,9 +10965,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L725",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_snow",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -10904,9 +11053,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L658",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_music_long",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -10915,9 +11064,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L784",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_alert",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -10926,9 +11075,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L804",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_death",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -10990,9 +11139,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L149",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_149",
-      "target": "audio_gen_audio_highpass",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_highpass"
     },
     {
       "relation": "calls",
@@ -11001,9 +11150,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L744",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_desert",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -11012,9 +11161,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L767",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_rain",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -11023,9 +11172,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L730",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_snow",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -11034,9 +11183,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L718",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_urban",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -11199,9 +11348,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L691",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_music_long",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -11232,9 +11381,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L788",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_alert",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -11243,9 +11392,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L811",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_robot_death",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "calls",
@@ -11340,9 +11489,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L165",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_165",
-      "target": "audio_gen_audio_fade",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_fade"
     },
     {
       "relation": "rationale_for",
@@ -11360,9 +11509,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L182",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_182",
-      "target": "audio_gen_audio_gen_shot",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_shot"
     },
     {
       "relation": "rationale_for",
@@ -11380,9 +11529,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L211",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_211",
-      "target": "audio_gen_audio_gen_hit",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_hit"
     },
     {
       "relation": "rationale_for",
@@ -11400,9 +11549,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L222",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_222",
-      "target": "audio_gen_audio_gen_explosion",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_explosion"
     },
     {
       "relation": "rationale_for",
@@ -11420,9 +11569,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L250",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_250",
-      "target": "audio_gen_audio_gen_player_death",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_player_death"
     },
     {
       "relation": "rationale_for",
@@ -11440,9 +11589,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L268",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_268",
-      "target": "audio_gen_audio_gen_extract_beep",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_extract_beep"
     },
     {
       "relation": "rationale_for",
@@ -11460,9 +11609,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L276",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_276",
-      "target": "audio_gen_audio_gen_extract_done",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_extract_done"
     },
     {
       "relation": "rationale_for",
@@ -11480,9 +11629,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L285",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_285",
-      "target": "audio_gen_audio_gen_extract_cancel",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_extract_cancel"
     },
     {
       "relation": "rationale_for",
@@ -11500,9 +11649,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L298",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_298",
-      "target": "audio_gen_audio_gen_wave_alert",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_wave_alert"
     },
     {
       "relation": "rationale_for",
@@ -11520,9 +11669,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L308",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_308",
-      "target": "audio_gen_audio_gen_win",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_win"
     },
     {
       "relation": "rationale_for",
@@ -11540,9 +11689,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L322",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_322",
-      "target": "audio_gen_audio_gen_lose",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_lose"
     },
     {
       "relation": "references",
@@ -11582,9 +11731,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L335",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_335",
-      "target": "audio_gen_audio_gen_footstep",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_footstep"
     },
     {
       "relation": "rationale_for",
@@ -11602,9 +11751,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L351",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_351",
-      "target": "audio_gen_audio_gen_reload",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_reload"
     },
     {
       "relation": "rationale_for",
@@ -11622,9 +11771,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L368",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_368",
-      "target": "audio_gen_audio_gen_weapon_switch",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_weapon_switch"
     },
     {
       "relation": "rationale_for",
@@ -11642,9 +11791,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L384",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_384",
-      "target": "audio_gen_audio_gen_ui_click",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_ui_click"
     },
     {
       "relation": "rationale_for",
@@ -11662,9 +11811,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L395",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_395",
-      "target": "audio_gen_audio_gen_heartbeat",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_heartbeat"
     },
     {
       "relation": "rationale_for",
@@ -11682,9 +11831,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L420",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_420",
-      "target": "audio_gen_audio_gen_water_splash",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_water_splash"
     },
     {
       "relation": "rationale_for",
@@ -11702,9 +11851,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L445",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_445",
-      "target": "audio_gen_audio_gen_underwater",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_underwater"
     },
     {
       "relation": "rationale_for",
@@ -11732,9 +11881,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L470",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_470",
-      "target": "audio_gen_audio_gen_ambient",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_ambient"
     },
     {
       "relation": "rationale_for",
@@ -11762,9 +11911,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L498",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_498",
-      "target": "audio_gen_audio_gen_music",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_music"
     },
     {
       "relation": "rationale_for",
@@ -11782,9 +11931,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L536",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_536",
-      "target": "audio_gen_audio_gen_glass_break",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_glass_break"
     },
     {
       "relation": "rationale_for",
@@ -11802,9 +11951,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L563",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_563",
-      "target": "audio_gen_audio_gen_chunk_concrete",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_chunk_concrete"
     },
     {
       "relation": "rationale_for",
@@ -11822,9 +11971,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L588",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_588",
-      "target": "audio_gen_audio_gen_chunk_metal",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_chunk_metal"
     },
     {
       "relation": "rationale_for",
@@ -11842,9 +11991,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L608",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_608",
-      "target": "audio_gen_audio_gen_chunk_stone",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_chunk_stone"
     },
     {
       "relation": "calls",
@@ -11853,9 +12002,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L656",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_music_long",
-      "target": "audio_gen_audio_chord_pad",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_chord_pad"
     },
     {
       "relation": "rationale_for",
@@ -11863,9 +12012,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L629",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_629",
-      "target": "audio_gen_audio_chord_pad",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_chord_pad"
     },
     {
       "relation": "rationale_for",
@@ -11873,9 +12022,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L645",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_645",
-      "target": "audio_gen_audio_gen_music_long",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_music_long"
     },
     {
       "relation": "calls",
@@ -11884,9 +12033,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L736",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_desert",
-      "target": "audio_gen_audio_amb_wind",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_amb_wind"
     },
     {
       "relation": "calls",
@@ -11895,9 +12044,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L724",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_snow",
-      "target": "audio_gen_audio_amb_wind",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_amb_wind"
     },
     {
       "relation": "calls",
@@ -11906,9 +12055,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L706",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_gen_amb_urban",
-      "target": "audio_gen_audio_amb_wind",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_amb_wind"
     },
     {
       "relation": "rationale_for",
@@ -11916,9 +12065,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L704",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_704",
-      "target": "audio_gen_audio_gen_amb_urban",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_urban"
     },
     {
       "relation": "rationale_for",
@@ -11926,9 +12075,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L722",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_722",
-      "target": "audio_gen_audio_gen_amb_snow",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_snow"
     },
     {
       "relation": "rationale_for",
@@ -11936,9 +12085,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L734",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_734",
-      "target": "audio_gen_audio_gen_amb_desert",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_desert"
     },
     {
       "relation": "rationale_for",
@@ -11946,9 +12095,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L748",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_748",
-      "target": "audio_gen_audio_gen_amb_rain",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_amb_rain"
     },
     {
       "relation": "rationale_for",
@@ -11956,9 +12105,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L771",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_771",
-      "target": "audio_gen_audio_gen_robot_alert",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_robot_alert"
     },
     {
       "relation": "rationale_for",
@@ -11966,9 +12115,9 @@
       "source_file": "tools/audio/gen_audio.py",
       "source_location": "L792",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "audio_gen_audio_rationale_792",
-      "target": "audio_gen_audio_gen_robot_death",
-      "confidence_score": 1.0
+      "target": "audio_gen_audio_gen_robot_death"
     },
     {
       "relation": "contains",
@@ -13355,6 +13504,56 @@
       "confidence_score": 1.0,
       "source": "docs_testing_7_co_op_multi_instance_testing_instances_playing_together",
       "target": "docs_testing_wan_hairpin_test"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ui_redesign",
+      "target": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
+      "target": "docs_ui_redesign_p0_\u0434\u0435\u0444\u0435\u043a\u0442\u044b_\u0441\u0442\u0430\u0442\u0443\u0441_\u043f\u043e\u0441\u043b\u0435_phase_0_5_2026_08_10",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
+      "target": "docs_ui_redesign_p1_\u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0435_\u0434\u0438\u0437\u0430\u0439\u043d_\u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441_\u043f\u0430\u043d\u0435\u043b\u0438",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
+      "target": "docs_ui_redesign_\u043f\u043b\u0430\u043d_\u0444\u0430\u0437_\u043f\u0440\u0430\u0432\u043a\u0438_\u043f\u043e\u0441\u043b\u0435_phase_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/UI_REDESIGN.md",
+      "source_location": "L67",
+      "weight": 1.0,
+      "source": "docs_ui_redesign_ui_redesign_phase_0_audit_2026_08_10",
+      "target": "docs_ui_redesign_\u0441\u0438\u043b\u044b_\u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c_\u043a\u043e\u043d\u0441\u0435\u043d\u0441\u0443\u0441",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -16961,5 +17160,5 @@
       "source_file": "tools/agent/README.md"
     }
   ],
-  "built_at_commit": "8ef522eb8cdc4639af2ccbe2b0186440a1ccb6b6"
+  "built_at_commit": "c6375a692c13b716064f1652bb87bf9bfd87fc74"
 }

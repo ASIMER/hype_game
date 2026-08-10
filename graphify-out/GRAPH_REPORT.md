@@ -1,7 +1,7 @@
 # Graph Report - hype game  (2026-08-10)
 
 ## Corpus Check
-- 40 files · ~4,149,411 words
+- 40 files · ~4,315,991 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c6375a69`
+- Built from commit: `84cb86de`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -150,8 +150,8 @@
 ## Communities (98 total, 34 thin omitted)
 
 ### Community 0 - "SFX Audio Synthesizer"
-Cohesion: 0.18
-Nodes (17): _concat(), gen_extract_done(), gen_heartbeat(), gen_reload(), gen_robot_alert(), gen_wave_alert(), Rising 2-note chime — success., Rising 2-note chime — success. (+9 more)
+Cohesion: 0.16
+Nodes (23): _concat(), gen_heartbeat(), gen_lose(), gen_reload(), gen_robot_alert(), gen_wave_alert(), gen_win(), _mul() (+15 more)
 
 ### Community 1 - "AgentBridge QA Commands"
 Cohesion: 0.25
@@ -198,8 +198,8 @@ Cohesion: 0.20
 Nodes (10): AgentBridge.activate, AgentBridge (self-play control server), Agent-teams parallel work pattern, Decoupled-autoloads-via-Events-bus pattern, OfflineMultiplayerPeer authority model, Hype Raiders Project Guide (CLAUDE.md), Self-play test harness (--agent + play.py), hype-game MCP Server config (+2 more)
 
 ### Community 12 - "Server-Auth Co-op Netcode"
-Cohesion: 0.17
-Nodes (19): _amb_wind(), gen_amb_desert(), gen_amb_rain(), gen_amb_snow(), gen_amb_urban(), gen_footstep(), _lowpass(), main() (+11 more)
+Cohesion: 0.14
+Nodes (23): _amb_wind(), _chord_pad(), gen_amb_desert(), gen_amb_rain(), gen_amb_snow(), gen_amb_urban(), gen_footstep(), gen_music_long() (+15 more)
 
 ### Community 13 - "Procedural Buildings"
 Cohesion: 0.14
@@ -262,12 +262,12 @@ Cohesion: 0.50
 Nodes (3): Attribution, License, Relevant FAQs
 
 ### Community 67 - "Community 67"
-Cohesion: 0.33
-Nodes (6): AgentBridge._snapshot (state JSON), GameState (match-level shared state), NetworkManager.sync_match_timer / sync_wave, ServerBrowser (favorites + LAN discovery), Settings.difficulty_mods / DIFFICULTY_MODS, Settings.ENEMY_STATS (per-archetype table)
+Cohesion: 0.25
+Nodes (8): ExtractionZone._complete, ExtractionZone._grant_extraction, GameState (match-level shared state), NetworkManager (host/join + lobby + sync), NetworkManager.sync_match_timer / sync_wave, RaidManager.grant_extraction, Settings.difficulty_mods / DIFFICULTY_MODS, Settings.ENEMY_STATS (per-archetype table)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.22
-Nodes (9): Crafting.buy_blueprint, Crafting.learn_items (item to blueprint map), ExtractionZone._complete, ExtractionZone._grant_extraction, MetaProgression.learn_blueprint, NetworkManager (host/join + lobby + sync), Quests.claim (grant reward once), RaidManager._deposit (+1 more)
+Cohesion: 0.40
+Nodes (5): Crafting.buy_blueprint, Crafting.learn_items (item to blueprint map), MetaProgression.learn_blueprint, Quests.claim (grant reward once), RaidManager._deposit
 
 ### Community 69 - "Community 69"
 Cohesion: 0.60
@@ -278,8 +278,8 @@ Cohesion: 0.67
 Nodes (3): main(), trim(), str
 
 ### Community 71 - "Community 71"
-Cohesion: 0.29
-Nodes (7): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._ui_action (menu open/close), ExtractionDirector._apply_windows, ServerBrowser.add_favorite / record_connect, ServerBrowser.scan_lan, Settings (tunable constants)
+Cohesion: 0.67
+Nodes (3): ExtractionDirector._apply_windows, ServerBrowser.scan_lan, Settings (tunable constants)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.50
@@ -298,8 +298,8 @@ Cohesion: 0.22
 Nodes (8): 1. God files (size inventory), 2. Fragility findings (the "change A, B breaks" list), 3. Duplication (non-fragile, quality), 4. Dead code, 5. Lint baseline (gdlint, `gdlintrc` at repo root), 6. Golden determinism snapshot (the refactoring safety net), 7. Deferred (recorded so they aren't re-litigated), Hype Raiders — Architecture Audit (v0.3)
 
 ### Community 81 - "Community 81"
-Cohesion: 0.11
-Nodes (22): _adsr(), gen_explosion(), gen_extract_cancel(), gen_music(), gen_ui_click(), gen_weapon_switch(), _mix(), Sum multiple tracks (same length) with soft clipping. (+14 more)
+Cohesion: 0.17
+Nodes (12): gen_music(), gen_robot_death(), gen_underwater(), _mix(), Sum multiple tracks (same length) with soft clipping., Sum multiple tracks (same length) with soft clipping., Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,, Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge, (+4 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.67
@@ -318,32 +318,32 @@ Cohesion: 0.07
 Nodes (36): AssetRegistry.CATALOG (logical id table), Guarded-fallback resolution (glb to procedural to primitive), AssetRegistry.get_icon, AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), AudioManager (Events-driven SFX), AudioManager._play / _play_at, Events Bus (+28 more)
 
 ### Community 87 - "Community 87"
-Cohesion: 0.18
-Nodes (13): _chord_pad(), gen_lose(), gen_music_long(), gen_player_death(), _mul(), gen_audio.py — procedural WAV synthesizer for Hype Raiders.  Generates all gam, Descending minor tone — ominous., Descending minor tone — ominous. (+5 more)
+Cohesion: 0.22
+Nodes (9): _fade(), gen_player_death(), gen_weapon_switch(), Apply a short linear fade-in/out to avoid clicks., Apply a short linear fade-in/out to avoid clicks., Descending minor tone — ominous., Descending minor tone — ominous., Short metallic shink — rising high freq click. (+1 more)
 
 ### Community 88 - "Community 88"
-Cohesion: 0.18
-Nodes (11): gen_hit(), gen_robot_death(), gen_shot(), _highpass(), Simple single-pole IIR highpass., Simple single-pole IIR highpass., Short punchy laser crack: high transient + descending tone., Short punchy laser crack: high transient + descending tone. (+3 more)
+Cohesion: 0.17
+Nodes (12): gen_chunk_stone(), gen_explosion(), gen_shot(), _highpass(), Simple single-pole IIR highpass., Simple single-pole IIR highpass., Short punchy laser crack: high transient + descending tone., Short punchy laser crack: high transient + descending tone. (+4 more)
 
 ### Community 89 - "Community 89"
 Cohesion: 0.67
-Nodes (3): gen_chunk_stone(), Rock crack: a sharp DRY high-passed crack (brighter than concrete, little sub) +, Rock crack: a sharp DRY high-passed crack (brighter than concrete, little sub) +
+Nodes (3): gen_hit(), Short impact tick: snappy transient., Short impact tick: snappy transient.
 
 ### Community 90 - "Community 90"
 Cohesion: 0.20
 Nodes (10): Server-authoritative co-op (hit/score/transfer routing), GameState.peers (peer roster), GameState.record_kill / record_death, GameState.reset_match, InventoryUI._give_item, NetworkManager._on_entity_died (kill attribution), NetworkManager.request_hit (server-auth damage), NetworkManager.request_start (leader START) (+2 more)
 
 ### Community 91 - "Community 91"
-Cohesion: 0.13
-Nodes (19): _fade(), gen_chunk_metal(), gen_extract_beep(), gen_glass_break(), gen_underwater(), gen_win(), Apply a short linear fade-in/out to avoid clicks., Apply a short linear fade-in/out to avoid clicks. (+11 more)
+Cohesion: 0.11
+Nodes (22): _adsr(), gen_chunk_metal(), gen_extract_beep(), gen_extract_cancel(), gen_extract_done(), gen_glass_break(), gen_ui_click(), Clean short beep — extraction proximity cue. (+14 more)
 
 ### Community 92 - "Community 92"
 Cohesion: 0.33
 Nodes (6): gen_ambient(), gen_water_splash(), Entering-water splash: a bright filtered-noise burst with a quick wet decay,, Entering-water splash: a bright filtered-noise burst with a quick wet decay,, Quiet evolving low drone/wind bed (loopable).     Low filtered noise + slow sin, Quiet evolving low drone/wind bed (loopable).     Low filtered noise + slow sin
 
 ### Community 93 - "Community 93"
-Cohesion: 0.29
-Nodes (7): Crafting.craft, MetaProgression (persistent profile), MetaProgression.player_mods, MetaProgression.stash_capacity, Quests._advance / event hooks, Quests.get_daily_quests (daily rotation), RaidManager.deploy (commit bring-list + attachments)
+Cohesion: 0.18
+Nodes (13): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._snapshot (state JSON), AgentBridge._ui_action (menu open/close), Crafting.craft, MetaProgression (persistent profile), MetaProgression.player_mods, MetaProgression.stash_capacity (+5 more)
 
 ### Community 94 - "Community 94"
 Cohesion: 0.33
@@ -379,7 +379,7 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
 - **What is the exact relationship between `WeaponController._load_weapons` and `Version-safe ConfigFile saves`?**
   _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `AgentBridge QA Commands`, `Community 67`, `Community 68`, `Community 69`, `Community 85`, `Community 90`, `Community 93`?**
+- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 93` to `AgentBridge QA Commands`, `Community 68`, `Community 69`, `Community 71`, `Community 85`, `Community 90`?**
   _High betweenness centrality (0.011) - this node is a cross-community bridge._
 - **Why does `ItemCatalog (id to ItemData)` connect `Core Autoload Singletons` to `Community 90`, `Community 68`?**
   _High betweenness centrality (0.010) - this node is a cross-community bridge._

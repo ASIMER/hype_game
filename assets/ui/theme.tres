@@ -3,13 +3,15 @@
 ; "Military glass" UI theme (Battlefield 2042 / Arc Raiders look). Dark TRANSLUCENT
 ; panels over a blurred backdrop, thin light borders, chamfered (asymmetric) corners,
 ; amber accent + glow on hover/focus, teal progress fills. Set as gui/theme/custom in
-; project.godot so every default Control inherits it. Body font = Oswald, heading face
-; = Russo One (via the HeaderLarge/HeaderSmall type variations). Both ship Cyrillic for
-; the RU locale. Palette: bg #12181d, glass #10141880, accent amber #e8a33d, teal #3fb6c9.
-; Shared in-code factories mirror this in scripts/ui/ui_style.gd (UIStyle).
+; project.godot so every default Control inherits it. Body font = Inter (a true UI
+; sans — the critic-panel consensus was that condensed Oswald smears below ~16px),
+; heading face = Russo One (via the HeaderLarge/HeaderSmall type variations). All ship
+; Cyrillic for the RU locale. Palette: bg #12181d, glass #10141880, accent amber
+; #e8a33d, teal #3fb6c9. In-code factories mirror this in scripts/ui/ui_style.gd.
 
 [ext_resource type="FontFile" uid="uid://bj8mi55f7gaqi" path="res://assets/fonts/Oswald-Regular.ttf" id="1_oswald"]
 [ext_resource type="FontFile" uid="uid://crfxlthyimj7g" path="res://assets/fonts/RussoOne-Regular.ttf" id="2_russo"]
+[ext_resource type="FontFile" path="res://assets/fonts/Inter-Regular.ttf" id="3_inter"]
 
 [sub_resource type="FontVariation" id="FV_header"]
 base_font = ExtResource("2_russo")
@@ -215,18 +217,18 @@ corner_radius_bottom_right = 3
 ; Visible SCROLLBARS (design-system pass): the default grabbers were a ~3px invisible
 ; sliver — content cut-offs read as clipping bugs instead of scrollable areas.
 [sub_resource type="StyleBoxFlat" id="SB_scroll_track"]
-bg_color = Color(1, 1, 1, 0.05)
+bg_color = Color(1, 1, 1, 0.06)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
-content_margin_left = 2.0
-content_margin_right = 2.0
+content_margin_left = 4.0
+content_margin_right = 4.0
 content_margin_top = 2.0
 content_margin_bottom = 2.0
 
 [sub_resource type="StyleBoxFlat" id="SB_scroll_grab"]
-bg_color = Color(0.62, 0.68, 0.74, 0.45)
+bg_color = Color(0.62, 0.68, 0.74, 0.62)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -263,8 +265,8 @@ shadow_color = Color(0.91, 0.64, 0.24, 0.35)
 shadow_size = 4
 
 [resource]
-default_font = ExtResource("1_oswald")
-default_font_size = 16
+default_font = ExtResource("3_inter")
+default_font_size = 15
 Button/colors/font_color = Color(0.85, 0.88, 0.9, 1)
 Button/colors/font_hover_color = Color(0.97, 0.85, 0.55, 1)
 Button/colors/font_pressed_color = Color(0.91, 0.64, 0.24, 1)

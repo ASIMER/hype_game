@@ -46,6 +46,13 @@ func _ready() -> void:
 	UIStyle.hover_lift(credits_btn)
 	_credits = (load("res://scripts/ui/credits_screen.gd") as GDScript).new()
 	add_child(_credits)
+	if _credits.has_signal("closed"):
+		_credits.closed.connect(func() -> void: _set_shell_visible(true))
+	# Overlay visibility → shell sync (covers harness `ui open_*` paths that skip
+	# the menu buttons; CanvasLayer + Control both expose visibility_changed).
+	for ov: Node in [_server_browser, _credits, settings_menu]:
+		if ov != null and ov.has_signal("visibility_changed"):
+			ov.visibility_changed.connect(_sync_shell_to_overlays)
 	_apply_glass_style()
 
 
@@ -184,9 +191,36 @@ func _on_join_failed() -> void:
 func _on_servers() -> void:
 	if _server_browser == null:
 		return
-	$Panel.hide()
+	_set_shell_visible(false)
 	if _server_browser.has_method("open"):
 		_server_browser.open()
+
+
+## Hides/restores the menu's own chrome (title + panel) while a fullscreen overlay
+## (servers / settings / credits) is up — the huge title used to bleed through the
+## frosted backdrop and read as overlapping text.
+func _set_shell_visible(on: bool) -> void:
+	# An overlay may still be up (e.g. harness-opened credits over settings) —
+	# never restore the shell while any of them is visible.
+	if on and _any_overlay_visible():
+		return
+	$Panel.visible = on
+	if has_node("TitleBox"):
+		$TitleBox.visible = on
+
+
+func _any_overlay_visible() -> bool:
+	if _server_browser != null and _server_browser.visible:
+		return true
+	if _credits != null and bool(_credits.get("visible")):
+		return true
+	return settings_menu != null and settings_menu.visible
+
+
+## Overlays can be opened without their menu button (the QA harness calls open()
+## directly) — sync the shell off their visibility so EVERY path hides the title.
+func _sync_shell_to_overlays() -> void:
+	_set_shell_visible(not _any_overlay_visible())
 
 
 func _on_browser_connect(ip: String, port: int) -> void:
@@ -198,7 +232,7 @@ func _on_browser_connect(ip: String, port: int) -> void:
 
 
 func _on_browser_closed() -> void:
-	$Panel.show()
+	_set_shell_visible(true)
 
 
 func _on_all_ready() -> void:
@@ -207,16 +241,17 @@ func _on_all_ready() -> void:
 
 # ---------------------------------------------------------------- settings / quit
 func _on_settings() -> void:
-	$Panel.hide()
+	_set_shell_visible(false)
 	settings_menu.open()
 
 
 func _on_settings_closed() -> void:
-	$Panel.show()
+	_set_shell_visible(true)
 
 
 func _on_credits() -> void:
 	if _credits != null and _credits.has_method("open"):
+		_set_shell_visible(false)
 		_credits.open()
 
 
