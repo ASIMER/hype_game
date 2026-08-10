@@ -60,4 +60,9 @@ func _on_settings_closed() -> void:
 
 
 func _on_quit_to_menu() -> void:
-	quit_to_menu_pressed.emit()
+	# Phase 3 error-prevention: mid-raid quit loses the at-risk haul — say so first.
+	UIStyle.confirm(
+		self,
+		tr("Quit mid-raid? Everything you are carrying will be LOST."),
+		func() -> void: quit_to_menu_pressed.emit()
+	)

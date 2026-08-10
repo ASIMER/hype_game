@@ -221,6 +221,22 @@ static func hover_lift(btn: Control, scale_to: float = 1.03) -> void:
 	)
 
 
+## A themed yes/no gate for destructive actions (Phase 3): pops centered, calls
+## `on_confirm` on OK, frees itself on any outcome. The dialog inherits the global
+## glass theme (PopupPanel/Button styles).
+static func confirm(host: Node, text: String, on_confirm: Callable) -> void:
+	var dlg := ConfirmationDialog.new()
+	dlg.dialog_text = text
+	dlg.confirmed.connect(on_confirm)
+	dlg.visibility_changed.connect(
+		func() -> void:
+			if not dlg.visible:
+				dlg.queue_free()
+	)
+	host.add_child(dlg)
+	dlg.popup_centered()
+
+
 ## Mark a button DESTRUCTIVE (sell-all / recycle-all / quit-mid-raid): red text +
 ## red-bordered hover so dangerous actions stop dressing like neutral ones (audit:
 ## "SELL ALL JUNK styled identically to SORT").

@@ -239,6 +239,15 @@ func _on_deploy_pressed() -> void:
 		NetworkManager.set_ready.rpc_id(1, _self_ready)
 		_refresh_deploy_button()
 		return
+	# Phase 3 error-prevention (ARC pattern): catch the classic mistake BEFORE the
+	# raid — deploying with an empty weapon loadout.
+	if MetaProgression.get_loadout().is_empty():
+		UIStyle.confirm(
+			self,
+			tr("Deploy with NO weapons in the loadout?"),
+			func() -> void: deploy_requested.emit()
+		)
+		return
 	deploy_requested.emit()
 
 

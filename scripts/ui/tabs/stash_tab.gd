@@ -162,7 +162,12 @@ func _build_footer() -> void:
 	sell_junk_btn.text = tr("SELL ALL JUNK")
 	sell_junk_btn.custom_minimum_size = Vector2(120, 28)
 	sell_junk_btn.tooltip_text = tr("Sell every Common-rarity Material stack")
-	sell_junk_btn.pressed.connect(_on_sell_all_junk_pressed)
+	sell_junk_btn.pressed.connect(
+		func() -> void:
+			UIStyle.confirm(
+				self, tr("Sell every Common-rarity material stack?"), _on_sell_all_junk_pressed
+			)
+	)
 	UIStyle.hover_lift(sell_junk_btn)
 	UIStyle.danger(sell_junk_btn)
 	footer.add_child(sell_junk_btn)
@@ -172,7 +177,14 @@ func _build_footer() -> void:
 	recycle_all_btn.text = tr("RECYCLE ALL")
 	recycle_all_btn.custom_minimum_size = Vector2(110, 28)
 	recycle_all_btn.tooltip_text = tr("Recycle every Material stack (leaves consumables & weapons)")
-	recycle_all_btn.pressed.connect(_on_recycle_all_pressed)
+	recycle_all_btn.pressed.connect(
+		func() -> void:
+			UIStyle.confirm(
+				self,
+				tr("Recycle every material stack? This cannot be undone."),
+				_on_recycle_all_pressed
+			)
+	)
 	UIStyle.hover_lift(recycle_all_btn)
 	UIStyle.danger(recycle_all_btn)
 	footer.add_child(recycle_all_btn)
@@ -213,6 +225,11 @@ func _refresh() -> void:
 		var item: ItemData = ItemCatalog.get_item(id)  # may be null for unknown ids
 		_grid.add_child(_make_slot(id, cnt, item))
 
+	# Phase 3: pad with dim placeholder slots so the stash reads as a real container
+	# grid instead of a few items floating in a black void (audit: "60% dead space").
+	for _i in range(maxi(0, PLACEHOLDER_MIN_CELLS - display_items.size())):
+		_grid.add_child(_make_placeholder_slot())
+
 
 # ------------------------------------------------------------------ header
 func _refresh_header() -> void:
@@ -220,9 +237,26 @@ func _refresh_header() -> void:
 
 
 # ------------------------------------------------------------------ grid helpers
+# Minimum visible cells — items + dim placeholders pad up to this count.
+const PLACEHOLDER_MIN_CELLS := 24
+
+
 func _clear_grid() -> void:
 	for c in _grid.get_children():
 		c.queue_free()
+
+
+## A dim empty slot (same footprint as _make_slot) — the container-grid feel.
+func _make_placeholder_slot() -> Panel:
+	var p := Panel.new()
+	p.custom_minimum_size = Vector2(64, 64)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.025)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1, 1, 1, 0.06)
+	sb.set_corner_radius_all(4)
+	p.add_theme_stylebox_override("panel", sb)
+	return p
 
 
 ## Builds one 64×64 slot Panel. Mirrors the style from inventory_ui.gd _make_slot().
