@@ -174,6 +174,8 @@ var weapon_perks: Dictionary = {}
 ## always available) + the currently EQUIPPED variant per category (head/torso/arms/legs/
 ## paint). Replicated to other peers from the player at spawn so co-op shows your look.
 var unlocked_cosmetics: Array[String] = []
+# First-raid onboarding hint sequence completed (per profile; see onboarding_hints.gd).
+var onboarding_done := false
 var equipped_cosmetics: Dictionary = {}
 ## Worn gear (AT-RISK): slot (Settings.GEAR_SLOTS) -> armor item id. Empty slot = none.
 var equipped_gear: Dictionary = {}
@@ -377,6 +379,14 @@ func cosmetic_cost(variant_id: String) -> int:
 
 
 ## Buy + unlock a cosmetic variant (spends currency). Returns true if newly unlocked.
+## Stamp the first-raid onboarding sequence as seen (persisted immediately).
+func mark_onboarding_done() -> void:
+	if onboarding_done:
+		return
+	onboarding_done = true
+	save_profile()
+
+
 func unlock_cosmetic(variant_id: String) -> bool:
 	if is_cosmetic_unlocked(variant_id):
 		return false
@@ -1082,6 +1092,7 @@ func save_profile() -> void:
 		return  # --no-save test run: progression is not persisted
 	var cfg := ConfigFile.new()
 	cfg.set_value("meta", "save_version", Settings.GAME_VERSION)
+	cfg.set_value("meta", "onboarding_done", onboarding_done)
 	cfg.set_value("meta", "currency", currency)
 	cfg.set_value("meta", "unlocked", unlocked)
 	cfg.set_value("meta", "upgrades", upgrades)
@@ -1139,6 +1150,7 @@ func load_profile() -> void:
 			)
 	else:
 		_migrate(cfg, save_ver)
+	onboarding_done = bool(cfg.get_value("meta", "onboarding_done", false))
 	currency = int(cfg.get_value("meta", "currency", 0))
 	var raw_unlocked: Array = cfg.get_value("meta", "unlocked", [])
 	unlocked.clear()

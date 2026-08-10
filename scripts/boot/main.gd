@@ -112,6 +112,8 @@ func _build_persistent_overlays() -> void:
 	# Quest reward popup — self-shows on Events.quest_reward_granted (Iter 3). Persistent so it
 	# works from both the QUESTS tab and the QuestDetail modal claim paths.
 	add_child((load("res://scripts/ui/reward_popup.gd") as GDScript).new())
+	# First-raid onboarding hints (fresh profiles only; inert once stamped).
+	add_child((load("res://scripts/ui/onboarding_hints.gd") as GDScript).new())
 
 
 func _show_menu() -> void:

@@ -1,4 +1,9 @@
 keys,ru
+"GOAL: scavenge loot, survive the machines, reach an evac zone alive","ЦЕЛЬ: собери лут, переживи машин и доберись до зоны эвакуации живым"
+"E — pick up loot · M — tactical map with evac zones and timers","E — подобрать лут · M — тактическая карта с зонами эвакуации и таймерами"
+"Green beacon = evac OPEN — stand inside the ring to extract","Зелёный маяк = эвакуация ОТКРЫТА — стой внутри кольца"
+"Loot is only KEPT if you extract — dying drops your haul","Лут СОХРАНИТСЯ только после эвакуации — смерть теряет добычу"
+"Machine waves escalate — watch the timer, extract before the storm","Волны машин нарастают — следи за таймером и эвакуируйся до шторма"
 "⚠ STORM INCOMING — EXTRACT","⚠ ШТОРМ БЛИЗКО — ЭВАКУИРУЙТЕСЬ"
 "⚑ TEAMMATE DOWN","⚑ СОЮЗНИК СБИТ"
 "⚠ FINAL WAVE","⚠ ФИНАЛЬНАЯ ВОЛНА"
