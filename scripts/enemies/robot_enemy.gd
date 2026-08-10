@@ -720,6 +720,9 @@ func _nearest_player_visual() -> Node3D:
 		# Don't visually track a downed player (matches the AI ignoring them for targeting).
 		if pn.has_method("is_downed") and pn.is_downed():
 			continue
+		# CLOAKED player (recon-family skill): machines can't see it at all.
+		if SkillDirector.is_player_cloaked(pn):
+			continue
 		var d := global_position.distance_to(pn.global_position)
 		if d < best:
 			best = d
@@ -1388,6 +1391,9 @@ func _find_nearest_player() -> Node3D:
 		# Skip DOWNED players — AI fully ignores a downed player (it's threatened only by
 		# the bleedout timer), so the revive window isn't a near-instant death in combat.
 		if pn.has_method("is_downed") and pn.is_downed():
+			continue
+		# Skip CLOAKED players (recon-family active camo) — invisible to machines.
+		if SkillDirector.is_player_cloaked(pn):
 			continue
 		var d := global_position.distance_to(pn.global_position)
 		if d < best:

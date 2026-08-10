@@ -123,8 +123,12 @@ func _apply_owner_effect(
 			var rng: float = Settings.SKILL_BLINK_RANGE + float(lvl - 1) + (4.0 if big else 0.0)
 			_blink(body, body.global_position + facing * rng)
 		"shield":
-			var secs: float = Settings.SKILL_SHIELD_TIME + 0.5 * float(lvl - 1)
-			_grant_shield(body, secs * 1.5 if big else secs)
+			# VISIBLE energy dome: absorption via the existing _overshield pool — the
+			# damage filter eats hits and emits shield_absorbed (frozen-bullet FX).
+			var pool: float = Settings.SKILL_SHIELD_AMOUNT + 15.0 * float(lvl - 1)
+			if big:
+				pool *= 1.5
+			body._overshield = maxf(float(body._overshield), pool)
 		_:
 			pass
 	# Mortar/bite/whirlwind/slam/chain have no owner-local effect (server-only); aim used there.
@@ -142,17 +146,47 @@ func _blink(body: CharacterBody3D, target: Vector3) -> void:
 	body.velocity = Vector3.ZERO
 
 
-## Brief protection (Phase-1 placeholder via Health.invulnerable; Phase 5 → overshield).
-func _grant_shield(body: Node, secs: float) -> void:
-	var hp: Node = body.get_node_or_null(Groups.NODE_HEALTH)
-	if hp == null or not ("invulnerable" in hp):
+# ------------------------------------------------------------ cloak (server truth)
+# peer -> ms deadline while that player is CLOAKED (machines drop it as a target).
+# Server-side only — the AI runs on the server, so no replication is needed; the
+# body shimmer field is broadcast via the regular cast VFX.
+var _cloak_until: Dictionary = {}
+
+
+## Read by robot_enemy targeting: true while `player` is cloaked (server clock).
+func is_player_cloaked(player: Node) -> bool:
+	if player == null:
+		return false
+	var peer: int = str(player.name).to_int()
+	return Time.get_ticks_msec() < int(_cloak_until.get(peer, 0))
+
+
+func _server_set_cloak(peer: int, secs: float) -> void:
+	_cloak_until[peer] = Time.get_ticks_msec() + int(secs * 1000.0)
+
+
+## Firing BREAKS the cloak. Host shots arrive via Events.weapon_fired locally; a
+## CLIENT tells the server through the break rpc (wired in _ready).
+func _on_weapon_fired(shooter: Node, _wid: String) -> void:
+	if shooter == null or not shooter.is_in_group(Groups.PLAYERS):
 		return
-	hp.invulnerable = true
-	get_tree().create_timer(secs).timeout.connect(
-		func() -> void:
-			if is_instance_valid(hp):
-				hp.invulnerable = false
-	)
+	if not shooter.has_method("is_multiplayer_authority") or not shooter.is_multiplayer_authority():
+		return
+	if GameState.is_local_authority_server():
+		_cloak_until.erase(_local_peer())
+	else:
+		_break_cloak_rpc.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _break_cloak_rpc() -> void:
+	if multiplayer.is_server():
+		_cloak_until.erase(multiplayer.get_remote_sender_id())
+
+
+func _ready() -> void:
+	Events.weapon_fired.connect(_on_weapon_fired)
+	Events.match_started.connect(func() -> void: _cloak_until.clear())
 
 
 # ------------------------------------------------------------ server effects (enemies)
@@ -206,6 +240,9 @@ func _apply_server_effect(
 			_cone(me, lvl, caster, dmg_power, rmul)
 		"chain":
 			_chain(center, lvl, big)
+		"cloak":
+			var secs: float = Settings.SKILL_CLOAK_TIME + 0.5 * float(lvl - 1)
+			_server_set_cloak(str(me.name).to_int(), secs * 1.4 if big else secs)
 		_:
 			pass
 

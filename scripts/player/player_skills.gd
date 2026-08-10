@@ -29,10 +29,20 @@ var _aiming_slot: int = -1
 var _indicator: Node3D = null
 var _indicator_t: float = 0.0
 
+var _shield_absorbed_total: float = 0.0
+
 
 func _ready() -> void:
 	_p = get_parent() as Node3D
 	_headless = DisplayServer.get_name() == "headless"
+	# Frozen-bullet catches on the shield dome (owner-local FX; the pool lives in
+	# PlayerGear.filter_incoming_damage which emits this).
+	Events.shield_absorbed.connect(_on_shield_absorbed)
+	Events.skill_cast.connect(
+		func(sid: String, _lvl: int) -> void:
+			if String(Settings.skill_def(sid)["ability"]) == "shield":
+				_shield_absorbed_total = 0.0
+	)
 
 
 func _process(delta: float) -> void:
@@ -92,6 +102,54 @@ func reset() -> void:
 func _exit_tree() -> void:
 	# The indicator lives under the SCENE (not this node) — never leak it past death.
 	_hide_indicator()
+
+
+# ------------------------------------------------------------ shield catches (owner)
+## A bullet hit the energy dome: FREEZE a glowing slug on the shell (the user's
+## «гравитационное поле» ask) + tick the absorbed counter floating above it.
+func _on_shield_absorbed(amount: float) -> void:
+	if _headless or _p == null or not _p.is_multiplayer_authority():
+		return
+	var bubble := _p.get_node_or_null("SkillShieldBubble") as Node3D
+	if bubble == null:
+		return
+	_shield_absorbed_total += amount
+	if bubble.get_child_count() < 30:
+		var slug := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.07, 0.07, 0.32)
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = Color(0.85, 0.97, 1.0)
+		m.emission_enabled = true
+		m.emission = Color(0.6, 0.9, 1.0)
+		m.emission_energy_multiplier = 2.2
+		bm.material = m
+		slug.mesh = bm
+		slug.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bubble.add_child(slug)
+		# Random point on the FRONT-ish hemisphere of the shell, nose stuck inward.
+		var yaw: float = randf_range(-PI * 0.75, PI * 0.75)
+		var pitch: float = randf_range(-0.35, 0.6)
+		var dir := Vector3(sin(yaw) * cos(pitch), sin(pitch), -cos(yaw) * cos(pitch))
+		slug.position = dir * 1.66
+		slug.look_at_from_position(slug.position, Vector3.ZERO, Vector3.UP)
+		# A caught bullet TREMBLES in the field.
+		var tw := slug.create_tween().set_loops()
+		tw.tween_property(slug, "position", dir * 1.72, 0.18)
+		tw.tween_property(slug, "position", dir * 1.66, 0.18)
+	var lbl := bubble.get_node_or_null("Absorbed") as Label3D
+	if lbl == null:
+		lbl = Label3D.new()
+		lbl.name = "Absorbed"
+		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		lbl.no_depth_test = true
+		lbl.font_size = 52
+		lbl.modulate = Color(0.7, 0.95, 1.0)
+		lbl.outline_size = 10
+		lbl.position = Vector3(0, 2.3, 0)
+		bubble.add_child(lbl)
+	lbl.text = str(int(round(_shield_absorbed_total)))
 
 
 # ------------------------------------------------------------ hotbar / casting (owner)

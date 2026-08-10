@@ -1115,9 +1115,9 @@ const SKILL_DEFS := {
 	{
 		"part": "rotor",
 		"color": Color(0.40, 0.90, 1.0),
-		"name_key": "RECON",
-		"ability": "recon_dash",
-		"cooldown": 8.0,
+		"name_key": "CLOAK",
+		"ability": "cloak",
+		"cooldown": 16.0,
 		"max_level": 6
 	},
 }
@@ -1160,8 +1160,9 @@ const SKILL_RAM_RANGE: float = 8.0
 const SKILL_RAM_DAMAGE: float = 50.0
 const SKILL_CHAIN_JUMPS: int = 2
 const SKILL_CHAIN_DAMAGE: float = 30.0
-const SKILL_BITE_RANGE: float = 5.0
-const SKILL_BITE_ANGLE: float = 50.0  # degrees half-angle of the bite cone
+# Bite widened (playtest: «дамажащие скилы бьют крошечную область»).
+const SKILL_BITE_RANGE: float = 6.5
+const SKILL_BITE_ANGLE: float = 60.0  # degrees half-angle of the bite cone
 const SKILL_BITE_DAMAGE: float = 50.0
 const SKILL_WHIRL_RADIUS: float = 4.5
 const SKILL_WHIRL_DAMAGE: float = 35.0
@@ -1190,6 +1191,12 @@ const SKILL_STORM_SLOW: float = 2.5  # slow seconds per pulse hit
 const SKILL_LEAP_TIME: float = 0.55  # airtime — the server delays the AoE to landing
 # BREACH (ram family): the charge SMASHES THROUGH breakable walls along its path.
 const SKILL_BREACH_BREAK_R: float = 1.5
+# CLOAK (recon family, «читаемость скилов» rework): active camo — machines drop you
+# as a target for the duration; firing BREAKS it. Reveal pulse pings enemies nearby.
+const SKILL_CLOAK_TIME: float = 5.0
+# SHIELD rework: a VISIBLE energy dome that CATCHES bullets (frozen in the field) —
+# absorption via the existing _overshield pool; the bubble lives until the pool
+# empties or SKILL_SHIELD_TIME passes.
 
 # --- Mutant Harvest DEPTH (v0.4.1): passives, set synergies, combos, evolution -------------
 ## Each skill's archetype (drives SET bonuses) — melee / ranged / mobility / defense.

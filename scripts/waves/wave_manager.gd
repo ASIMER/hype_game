@@ -540,6 +540,10 @@ func _crosses_river(a: Vector3, b: Vector3) -> bool:
 ## across the surviving markers (index % count — the de-stack fix). Falls back gracefully:
 ## near-markers → any same-side marker → the raw index marker.
 const NEAR_SPAWN_RADIUS: float = 70.0  # markers within this of a player are "local"
+# Never MATERIALIZE an enemy in a player's face (playtest: «спавнятся прямо возле
+# меня, словно телепортировались») — markers closer than this to ANY player are
+# excluded entirely; enemies arrive from outside the immediate bubble instead.
+const SPAWN_MIN_PLAYER_DIST: float = 24.0
 
 
 func _spawn_xform(index: int) -> Transform3D:
@@ -555,11 +559,20 @@ func _spawn_xform(index: int) -> Transform3D:
 		var origin: Vector3 = _arena.get_enemy_spawn_point(i).origin
 		if not _spawn_ok_for_players(origin, players):
 			continue
-		ok.append(i)
+		var too_close := false
+		var is_near := false
 		for p in players:
-			if origin.distance_to(p) <= NEAR_SPAWN_RADIUS:
-				near.append(i)
+			var d: float = origin.distance_to(p)
+			if d < SPAWN_MIN_PLAYER_DIST:
+				too_close = true
 				break
+			if d <= NEAR_SPAWN_RADIUS:
+				is_near = true
+		if too_close:
+			continue
+		ok.append(i)
+		if is_near:
+			near.append(i)
 	var pick_from: Array[int] = near if not near.is_empty() else ok
 	if pick_from.is_empty():
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))

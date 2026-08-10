@@ -305,34 +305,118 @@ static func _blink_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color) 
 	_particles(arena, a, color, 16, 0.4, 4.0, 1.5, Vector3(0, 1, 0), 0.25)
 
 
+## SHIELD: a PERSISTENT energy dome ATTACHED to the caster (the user ask: «чтобы я
+## ВИДЕЛ щит») — translucent bubble + brighter equator ring, slowly rotating, alive
+## for SKILL_SHIELD_TIME then fading. Named so the owner's frozen-bullet spawner
+## (PlayerSkills) can find it. Falls back to a static dome if no player is at pos.
 static func _shield_fx(arena: Node, pos: Vector3, color: Color) -> void:
+	var host: Node3D = _player_at(arena, pos)
+	var root := Node3D.new()
+	root.name = "SkillShieldBubble"
 	var dome := MeshInstance3D.new()
 	var sm := SphereMesh.new()
 	sm.radius = 1.7
 	sm.height = 3.4
 	dome.mesh = sm
-	dome.material_override = _emat(color, 0.2)
-	arena.add_child(dome)
-	dome.global_position = pos + Vector3(0, 1.0, 0)
-	dome.scale = Vector3.ONE * 0.3
-	var tw := dome.create_tween()
-	tw.tween_property(dome, "scale", Vector3.ONE, 0.2)
-	tw.tween_interval(1.4)
-	tw.tween_property(dome.material_override, "albedo_color", _fade(color), 0.5)
-	tw.tween_callback(dome.queue_free)
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.albedo_color = Color(color.r, color.g, color.b, 0.13)
+	dm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	dome.material_override = dm
+	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(dome)
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 1.62
+	tm.outer_radius = 1.72
+	ring.mesh = tm
+	ring.material_override = _emat(color, 0.7)
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(ring)
+	if host != null:
+		host.add_child(root)
+		root.position = Vector3(0, 1.0, 0)
+	else:
+		arena.add_child(root)
+		root.global_position = pos + Vector3(0, 1.0, 0)
+	root.scale = Vector3.ONE * 0.25
+	var tw := root.create_tween()
+	tw.tween_property(root, "scale", Vector3.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	var spin := ring.create_tween().set_loops()
+	spin.tween_property(ring, "rotation:y", TAU, 4.0).from(0.0)
+	var life := root.create_tween()
+	life.tween_interval(Settings.SKILL_SHIELD_TIME)
+	life.tween_property(dome.material_override, "albedo_color", _fade(color), 0.6)
+	life.parallel().tween_property(ring.material_override, "albedo_color", _fade(color), 0.6)
+	life.tween_callback(root.queue_free)
 
 
+## LEAP (dash family): frost take-off ring + an arcing crystal trail + landing puff.
 static func _dash_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color) -> void:
 	_ring(arena, pos, color, 4.0, 0.3)
 	_particles(arena, pos + Vector3(0, 0.2, 0), color, 18, 0.4, 7.0, -8.0, Vector3(0, 1, 0), 0.25)
-	for k in 3:
-		_flash(arena, pos + facing * (1.2 * float(k + 1)) + Vector3(0, 0.6, 0), color, 3.0)
+	# Arc trail: crystal motes strung along the leap parabola (reads as a jump, not a slide).
+	for k in 5:
+		var t: float = float(k + 1) / 6.0
+		var p: Vector3 = pos + facing * (5.0 * t) + Vector3(0, 3.4 * t * (1.0 - t) * 2.0 + 0.4, 0)
+		_flash(arena, p, color, 2.6)
 
 
+## CLOAK (was recon): a shimmer FIELD wrapped around the caster for the duration —
+## «энерго-поле вокруг себя» — plus the reveal pulse rings.
 static func _recon_fx(arena: Node, pos: Vector3, color: Color) -> void:
 	_ring(arena, pos, color, 22.0, 0.7)
 	_ring(arena, pos, color, 14.0, 0.5)
-	_flash(arena, pos + Vector3(0, 1.0, 0), color, 6.0)
+	var host: Node3D = _player_at(arena, pos)
+	var shell := MeshInstance3D.new()
+	shell.name = "SkillCloakField"
+	var cm := CapsuleMesh.new()
+	cm.radius = 0.85
+	cm.height = 2.3
+	shell.mesh = cm
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.22)
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	shell.material_override = mat
+	shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if host != null:
+		host.add_child(shell)
+		shell.position = Vector3(0, 1.0, 0)
+	else:
+		arena.add_child(shell)
+		shell.global_position = pos + Vector3(0, 1.0, 0)
+	# Breathe while active, then dissolve.
+	var breathe := shell.create_tween().set_loops()
+	breathe.tween_property(shell, "scale", Vector3.ONE * 1.06, 0.5)
+	breathe.tween_property(shell, "scale", Vector3.ONE * 0.98, 0.5)
+	var life := shell.create_tween()
+	life.tween_interval(Settings.SKILL_CLOAK_TIME)
+	life.tween_property(mat, "albedo_color", _fade(color), 0.4)
+	life.tween_callback(shell.queue_free)
+
+
+## The nearest PLAYER body to `pos` (persistent effects attach to it); null if none
+## within 3 m (a stale/edge cast keeps the old static-position fallback).
+static func _player_at(arena: Node, pos: Vector3) -> Node3D:
+	var best: Node3D = null
+	var best_d: float = 3.0
+	var tree := arena.get_tree()
+	if tree == null:
+		return null
+	for p in tree.get_nodes_in_group("players"):
+		if not (p is Node3D):
+			continue
+		var d: float = (p as Node3D).global_position.distance_to(pos)
+		if d < best_d:
+			best_d = d
+			best = p as Node3D
+	return best
 
 
 ## BREACH: shock-cone at launch + speed-line bursts down the charge lane (the wall

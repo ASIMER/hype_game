@@ -166,6 +166,9 @@ func filter_incoming_damage(amount: float, source: Node) -> float:
 		var absorbed: float = minf(shield, amount)
 		_p._overshield = shield - absorbed
 		amount -= absorbed
+		# Frozen-bullet FX + absorbed counter on the energy dome (owner-local).
+		if absorbed > 0.0:
+			Events.shield_absorbed.emit(absorbed)
 	# Status DoT ticks (bleed) bypass worn armor and never re-roll effects.
 	var st: Node = _p.get_node_or_null("Status")
 	if st != null and bool(st.call("is_dot_tick")):

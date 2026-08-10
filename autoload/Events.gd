@@ -163,6 +163,9 @@ signal power_core_extracted(peer: int)
 signal skill_acquired(skill_id: String, level: int)
 ## A skill was cast (a hotbar key). Drives SFX/hooks; `level` is 0 on the VFX broadcast.
 signal skill_cast(skill_id: String, level: int)
+## Shield skill absorbed incoming damage (owner-local; drives the frozen-bullet FX
+## + the absorbed counter on the energy dome).
+signal shield_absorbed(amount: float)
 ## A skill's cooldown changed (owner only). `remaining` seconds (0 = ready). Drives the hotbar
 ## cooldown radial.
 signal skill_cooldown_changed(skill_id: String, remaining: float)
