@@ -9,6 +9,7 @@ extends Control
 
 const SERVER_BROWSER := "res://scenes/ui/ServerBrowser.tscn"
 var _server_browser: Control = null
+var _credits: Node = null  # CanvasLayer overlay (credits_screen.gd)
 
 
 func _ready() -> void:
@@ -34,6 +35,17 @@ func _ready() -> void:
 			_server_browser.connect_requested.connect(_on_browser_connect)
 		if _server_browser.has_signal("closed"):
 			_server_browser.closed.connect(_on_browser_closed)
+	# CREDITS button (code-added — MainMenu.tscn stays single-owner) + its overlay:
+	# in-product CC-BY/OFL/MIT attribution, legally required for release builds.
+	var credits_btn := Button.new()
+	credits_btn.name = "CreditsBtn"
+	credits_btn.text = "CREDITS"
+	$Panel/VBox/BottomRow.add_child(credits_btn)
+	$Panel/VBox/BottomRow.move_child(credits_btn, $Panel/VBox/BottomRow/QuitBtn.get_index())
+	credits_btn.pressed.connect(_on_credits)
+	UIStyle.hover_lift(credits_btn)
+	_credits = (load("res://scripts/ui/credits_screen.gd") as GDScript).new()
+	add_child(_credits)
 	_apply_glass_style()
 
 
@@ -178,6 +190,11 @@ func _on_settings() -> void:
 
 func _on_settings_closed() -> void:
 	$Panel.show()
+
+
+func _on_credits() -> void:
+	if _credits != null and _credits.has_method("open"):
+		_credits.open()
 
 
 func _on_quit() -> void:

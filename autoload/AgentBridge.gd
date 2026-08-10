@@ -1244,11 +1244,11 @@ func _ui_action(action: String) -> bool:
 			if sm and sm.has_method("open"):
 				sm.open()
 				return true
-		"open_servers", "close_servers":
-			# Show/hide the main-menu server browser overlay (screenshot QA).
-			var sb := scene.find_child("ServerBrowser", true, false)
+		"open_servers", "close_servers", "open_credits", "close_credits":
+			var ov := "ServerBrowser" if action.ends_with("servers") else "CreditsScreen"
+			var sb := scene.find_child(ov, true, false)
 			if sb and sb.has_method("open"):
-				if action == "open_servers":
+				if action.begins_with("open"):
 					sb.open()
 				else:
 					sb.close()
