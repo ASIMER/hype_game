@@ -1,16 +1,16 @@
-# Graph Report - hype game  (2026-06-16)
+# Graph Report - hype game  (2026-08-10)
 
 ## Corpus Check
-- 37 files · ~4,214,076 words
+- 39 files · ~4,312,116 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 605 nodes · 788 edges · 86 communities (52 shown, 34 thin omitted)
-- Extraction: 90% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.85)
+- 647 nodes · 828 edges · 87 communities (53 shown, 34 thin omitted)
+- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `92b16930`
+- Built from commit: `42a9c72d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -89,6 +89,7 @@
 - [[_COMMUNITY_Community 81|Community 81]]
 - [[_COMMUNITY_Community 82|Community 82]]
 - [[_COMMUNITY_Community 83|Community 83]]
+- [[_COMMUNITY_Community 84|Community 84]]
 - [[_COMMUNITY_Community 85|Community 85]]
 
 ## God Nodes (most connected - your core abstractions)
@@ -112,8 +113,8 @@
   .mcp.json → CLAUDE.md
 - `Stash.total_weight` --shares_data_with--> `WeaponData resource`  [AMBIGUOUS]
   autoload/Stash.gd → scripts/combat/weapon_data.gd
-- `AssetRegistry` --calls--> `ProceduralModels.build`  [INFERRED]
-  autoload/AssetRegistry.gd → scripts/visual/procedural_models.gd
+- `Decoupled-autoloads-via-Events-bus pattern` --references--> `Events (global signal bus)`  [EXTRACTED]
+  CLAUDE.md → autoload/Events.gd
 
 ## Import Cycles
 - None detected.
@@ -135,7 +136,7 @@
 - **Hub economy tabs over shared autoloads** — ui_workshop_tab_workshoptab, tabs_gunsmith_tab_gunsmithtab, tabs_shop_tab_shoptab, tabs_stash_tab_stashtab, tabs_quests_tab_queststab [INFERRED 0.80]
 - **Self-play control harness** — agent_play_play, agent_raw_raw, agent_mcp_server_mcpserver, concept_wire_protocol [INFERRED 0.80]
 
-## Communities (86 total, 34 thin omitted)
+## Communities (87 total, 34 thin omitted)
 
 ### Community 0 - "SFX Audio Synthesizer"
 Cohesion: 0.08
@@ -143,11 +144,11 @@ Nodes (74): _add_tracks(), _adsr(), _concat(), _fade(), gen_ambient(), gen_chunk
 
 ### Community 1 - "AgentBridge QA Commands"
 Cohesion: 0.25
-Nodes (8): Guarded-fallback resolution (glb to procedural to primitive), AudioManager (Events-driven SFX), AudioManager._play / _play_at, Events (global signal bus), RemoteShotFX, NetworkManager.begin_match, NetworkManager.broadcast_shot, NetworkManager.notify_loaded (load gate)
+Nodes (8): AgentBridge._debug_spawn, Events (global signal bus), ExtractionDirector (timed evac windows), RemoteShotFX, GameState.is_local_authority_server, NetworkManager.begin_match, NetworkManager.broadcast_shot, NetworkManager.notify_loaded (load gate)
 
 ### Community 2 - "Core Autoload Singletons"
-Cohesion: 0.11
-Nodes (33): AssetRegistry, Events bus, GameState, MetaProgression, NetworkManager, Settings, Stash, Export PCK DirAccess fallback to ResourceIndex (+25 more)
+Cohesion: 0.08
+Nodes (41): AssetRegistry, Events bus, GameState, MetaProgression, NetworkManager, Settings, Stash, Export PCK DirAccess fallback to ResourceIndex (+33 more)
 
 ### Community 3 - "Combat & Damage Pipeline"
 Cohesion: 0.05
@@ -178,8 +179,8 @@ Cohesion: 0.13
 Nodes (14): 1. How `--agent` mode works, 2. Command protocol, 3. `state` JSON schema, 4. Driving it, 5. Validation commands (run after every change), 6. QA workflow (test matrix), 7. Co-op multi-instance testing (instances playing together), 8. Parallel testing (2–4 instances at once) (+6 more)
 
 ### Community 10 - "MCP Server Bridge"
-Cohesion: 0.25
-Nodes (8): ProceduralBuildings.build_container_yard, ProceduralBuildings.build_house, ProceduralBuildings.build_tower, ProceduralBuildings.build_warehouse, ProceduralBuildings._solid, ProceduralModels.build, ProceduralModels._part, Arena._build_poi_structures
+Cohesion: 0.06
+Nodes (33): 1.1 What the engine is genuinely good at (lean on these), 1.2 Hard limitations & the workaround we shipped (the part you came for), 1.3 GDScript / tooling traps (each one cost real time), 1.4 Physics & project conventions worth copying, 2.1 Autoloads + a global `Events` signal bus = the only inter-system coupling, 2.2 `OfflineMultiplayerPeer` → one code path for solo and co-op, 2.3 Server-authoritative everything; intent RPCs; chosen reliability, 2.4 Replicate-by-name: the free-replication trick (+25 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.20
@@ -250,12 +251,12 @@ Cohesion: 0.50
 Nodes (3): Attribution, License, Relevant FAQs
 
 ### Community 67 - "Community 67"
-Cohesion: 0.33
-Nodes (6): AgentBridge._snapshot (state JSON), GameState (match-level shared state), NetworkManager.sync_match_timer / sync_wave, ServerBrowser (favorites + LAN discovery), Settings.difficulty_mods / DIFFICULTY_MODS, Settings.ENEMY_STATS (per-archetype table)
+Cohesion: 0.25
+Nodes (8): ExtractionZone._complete, ExtractionZone._grant_extraction, GameState (match-level shared state), NetworkManager (host/join + lobby + sync), NetworkManager.sync_match_timer / sync_wave, RaidManager.grant_extraction, Settings.difficulty_mods / DIFFICULTY_MODS, Settings.ENEMY_STATS (per-archetype table)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.22
-Nodes (9): Crafting.buy_blueprint, Crafting.learn_items (item to blueprint map), ExtractionZone._complete, ExtractionZone._grant_extraction, MetaProgression.learn_blueprint, NetworkManager (host/join + lobby + sync), Quests.claim (grant reward once), RaidManager._deposit (+1 more)
+Cohesion: 0.40
+Nodes (5): Crafting.buy_blueprint, Crafting.learn_items (item to blueprint map), MetaProgression.learn_blueprint, Quests.claim (grant reward once), RaidManager._deposit
 
 ### Community 69 - "Community 69"
 Cohesion: 0.60
@@ -266,8 +267,8 @@ Cohesion: 0.67
 Nodes (3): main(), trim(), str
 
 ### Community 71 - "Community 71"
-Cohesion: 0.17
-Nodes (13): AgentBridge._aim_at (converging camera aim), AgentBridge._debug_spawn, AgentBridge._handle_line (command dispatch), AgentBridge._ui_action (menu open/close), Crafting.craft, ExtractionDirector (timed evac windows), GameState.is_local_authority_server, MetaProgression (persistent profile) (+5 more)
+Cohesion: 0.20
+Nodes (12): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._snapshot (state JSON), AgentBridge._ui_action (menu open/close), Crafting.craft, MetaProgression (persistent profile), MetaProgression.stash_capacity, Quests._advance / event hooks (+4 more)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.50
@@ -297,9 +298,13 @@ Nodes (3): 4-player shootout perf: everyone holds fire at one spot; perf sampled
 Cohesion: 0.67
 Nodes (3): Perf baseline/AB: capture perf at 3 solo spots (open field, beacon, Temple)., send(), wait_drivable()
 
+### Community 84 - "Community 84"
+Cohesion: 0.25
+Nodes (7): Characters / player, Destruction (in-world — walls break into ~0.8 m chunks + physics debris), Enemies (21 archetypes — every body is a distinct procedural silhouette), Hype Raiders — Visual Showcase, Locations (in-world — the 4 biomes + a landmark), Loot / items, UI
+
 ### Community 85 - "Community 85"
 Cohesion: 0.07
-Nodes (34): AssetRegistry.CATALOG (logical id table), AssetRegistry.get_icon, AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), Events Bus, Server-Authoritative Inventory Owner-Mirror, Local Visual-Only FX, RobotGunner._fire_hitscan (+26 more)
+Nodes (37): AssetRegistry.CATALOG (logical id table), Guarded-fallback resolution (glb to procedural to primitive), AssetRegistry.get_icon, AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), AudioManager (Events-driven SFX), AudioManager._play / _play_at, Events Bus (+29 more)
 
 ## Ambiguous Edges - Review These
 - `Stash.total_weight` → `WeaponData resource`  [AMBIGUOUS]
@@ -308,7 +313,7 @@ Nodes (34): AssetRegistry.CATALOG (logical id table), AssetRegistry.get_icon, As
   scripts/combat/weapon_controller.gd · relation: references
 
 ## Knowledge Gaps
-- **221 isolated node(s):** `PreToolUse`, `PostToolUse`, `allow`, `python`, `AGENT_HOST` (+216 more)
+- **255 isolated node(s):** `PreToolUse`, `PostToolUse`, `allow`, `python`, `AGENT_HOST` (+250 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **34 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -319,13 +324,13 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
 - **What is the exact relationship between `WeaponController._load_weapons` and `Version-safe ConfigFile saves`?**
   _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `Community 67`, `Community 68`, `Community 69`, `Server-Auth Co-op Netcode`, `Community 81`, `Community 85`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
+- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `AgentBridge QA Commands`, `Community 68`, `Community 69`, `Server-Auth Co-op Netcode`, `Community 81`, `Community 85`?**
+  _High betweenness centrality (0.013) - this node is a cross-community bridge._
 - **Why does `ItemCatalog (id to ItemData)` connect `Core Autoload Singletons` to `Server-Auth Co-op Netcode`, `Community 68`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+  _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **Why does `Events Bus` connect `Community 85` to `AgentBridge QA Commands`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+  _High betweenness centrality (0.011) - this node is a cross-community bridge._
 - **What connects `PreToolUse`, `PostToolUse`, `allow` to the rest of the system?**
-  _302 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _336 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `SFX Audio Synthesizer` be split into smaller, more focused modules?**
   _Cohesion score 0.08360360360360361 - nodes in this community are weakly interconnected._

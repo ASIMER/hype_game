@@ -1,16 +1,16 @@
 # Graph Report - hype game  (2026-08-10)
 
 ## Corpus Check
-- 39 files · ~4,312,116 words
+- 39 files · ~4,313,712 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 647 nodes · 828 edges · 87 communities (53 shown, 34 thin omitted)
-- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.85)
+- 694 nodes · 924 edges · 99 communities (65 shown, 34 thin omitted)
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `42a9c72d`
+- Built from commit: `8ef522eb`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -91,18 +91,30 @@
 - [[_COMMUNITY_Community 83|Community 83]]
 - [[_COMMUNITY_Community 84|Community 84]]
 - [[_COMMUNITY_Community 85|Community 85]]
+- [[_COMMUNITY_Community 87|Community 87]]
+- [[_COMMUNITY_Community 88|Community 88]]
+- [[_COMMUNITY_Community 89|Community 89]]
+- [[_COMMUNITY_Community 90|Community 90]]
+- [[_COMMUNITY_Community 91|Community 91]]
+- [[_COMMUNITY_Community 92|Community 92]]
+- [[_COMMUNITY_Community 93|Community 93]]
+- [[_COMMUNITY_Community 94|Community 94]]
+- [[_COMMUNITY_Community 95|Community 95]]
+- [[_COMMUNITY_Community 96|Community 96]]
+- [[_COMMUNITY_Community 97|Community 97]]
+- [[_COMMUNITY_Community 98|Community 98]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `float` - 36 edges
-2. `_fade()` - 26 edges
-3. `_adsr()` - 22 edges
-4. `_noise()` - 20 edges
-5. `_mix()` - 18 edges
-6. `_sine()` - 15 edges
-7. `_highpass()` - 14 edges
-8. `handle_request()` - 13 edges
-9. `_lowpass()` - 13 edges
-10. `gen_footstep()` - 13 edges
+1. `float` - 45 edges
+2. `_fade()` - 34 edges
+3. `_noise()` - 28 edges
+4. `_adsr()` - 27 edges
+5. `_lowpass()` - 21 edges
+6. `_highpass()` - 21 edges
+7. `_mix()` - 20 edges
+8. `_sine()` - 15 edges
+9. `gen_footstep()` - 14 edges
+10. `handle_request()` - 13 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `.claude/settings.json graphify PreToolUse hooks` --conceptually_related_to--> `Hype Raiders Project Guide (CLAUDE.md)`  [INFERRED]
@@ -136,19 +148,19 @@
 - **Hub economy tabs over shared autoloads** — ui_workshop_tab_workshoptab, tabs_gunsmith_tab_gunsmithtab, tabs_shop_tab_shoptab, tabs_stash_tab_stashtab, tabs_quests_tab_queststab [INFERRED 0.80]
 - **Self-play control harness** — agent_play_play, agent_raw_raw, agent_mcp_server_mcpserver, concept_wire_protocol [INFERRED 0.80]
 
-## Communities (87 total, 34 thin omitted)
+## Communities (99 total, 34 thin omitted)
 
 ### Community 0 - "SFX Audio Synthesizer"
-Cohesion: 0.08
-Nodes (74): _add_tracks(), _adsr(), _concat(), _fade(), gen_ambient(), gen_chunk_concrete(), gen_chunk_metal(), gen_chunk_stone() (+66 more)
+Cohesion: 0.14
+Nodes (20): _concat(), gen_extract_done(), gen_heartbeat(), gen_reload(), gen_robot_alert(), gen_wave_alert(), gen_win(), gen_audio.py — procedural WAV synthesizer for Hype Raiders.  Generates all gam (+12 more)
 
 ### Community 1 - "AgentBridge QA Commands"
 Cohesion: 0.25
 Nodes (8): AgentBridge._debug_spawn, Events (global signal bus), ExtractionDirector (timed evac windows), RemoteShotFX, GameState.is_local_authority_server, NetworkManager.begin_match, NetworkManager.broadcast_shot, NetworkManager.notify_loaded (load gate)
 
 ### Community 2 - "Core Autoload Singletons"
-Cohesion: 0.08
-Nodes (41): AssetRegistry, Events bus, GameState, MetaProgression, NetworkManager, Settings, Stash, Export PCK DirAccess fallback to ResourceIndex (+33 more)
+Cohesion: 0.06
+Nodes (51): AssetRegistry, Events bus, GameState, MetaProgression, NetworkManager, Settings, Stash, Export PCK DirAccess fallback to ResourceIndex (+43 more)
 
 ### Community 3 - "Combat & Damage Pipeline"
 Cohesion: 0.05
@@ -187,8 +199,8 @@ Cohesion: 0.20
 Nodes (10): AgentBridge.activate, AgentBridge (self-play control server), Agent-teams parallel work pattern, Decoupled-autoloads-via-Events-bus pattern, OfflineMultiplayerPeer authority model, Hype Raiders Project Guide (CLAUDE.md), Self-play test harness (--agent + play.py), hype-game MCP Server config (+2 more)
 
 ### Community 12 - "Server-Auth Co-op Netcode"
-Cohesion: 0.20
-Nodes (10): Server-authoritative co-op (hit/score/transfer routing), GameState.peers (peer roster), GameState.record_kill / record_death, GameState.reset_match, InventoryUI._give_item, NetworkManager._on_entity_died (kill attribution), NetworkManager.request_hit (server-auth damage), NetworkManager.request_start (leader START) (+2 more)
+Cohesion: 0.17
+Nodes (19): _amb_wind(), gen_amb_desert(), gen_amb_snow(), gen_amb_urban(), gen_extract_cancel(), gen_footstep(), _lowpass(), _noise() (+11 more)
 
 ### Community 13 - "Procedural Buildings"
 Cohesion: 0.14
@@ -267,8 +279,8 @@ Cohesion: 0.67
 Nodes (3): main(), trim(), str
 
 ### Community 71 - "Community 71"
-Cohesion: 0.20
-Nodes (12): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._snapshot (state JSON), AgentBridge._ui_action (menu open/close), Crafting.craft, MetaProgression (persistent profile), MetaProgression.stash_capacity, Quests._advance / event hooks (+4 more)
+Cohesion: 0.15
+Nodes (15): AgentBridge._aim_at (converging camera aim), AgentBridge._handle_line (command dispatch), AgentBridge._snapshot (state JSON), AgentBridge._ui_action (menu open/close), Crafting.craft, ExtractionDirector._apply_windows, MetaProgression (persistent profile), MetaProgression.stash_capacity (+7 more)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.50
@@ -287,8 +299,8 @@ Cohesion: 0.22
 Nodes (8): 1. God files (size inventory), 2. Fragility findings (the "change A, B breaks" list), 3. Duplication (non-fragile, quality), 4. Dead code, 5. Lint baseline (gdlint, `gdlintrc` at repo root), 6. Golden determinism snapshot (the refactoring safety net), 7. Deferred (recorded so they aren't re-litigated), Hype Raiders — Architecture Audit (v0.3)
 
 ### Community 81 - "Community 81"
-Cohesion: 0.67
-Nodes (3): ExtractionDirector._apply_windows, ServerBrowser.scan_lan, Settings (tunable constants)
+Cohesion: 0.15
+Nodes (13): _adsr(), gen_glass_break(), gen_music(), gen_weapon_switch(), Short metallic shink — rising high freq click., Short metallic shink — rising high freq click., Slow low-tension pad/pulse loop (a few seconds, loopable).     Layered detuned, Slow low-tension pad/pulse loop (a few seconds, loopable).     Layered detuned (+5 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.67
@@ -303,8 +315,56 @@ Cohesion: 0.25
 Nodes (7): Characters / player, Destruction (in-world — walls break into ~0.8 m chunks + physics debris), Enemies (21 archetypes — every body is a distinct procedural silhouette), Hype Raiders — Visual Showcase, Locations (in-world — the 4 biomes + a landmark), Loot / items, UI
 
 ### Community 85 - "Community 85"
-Cohesion: 0.07
-Nodes (37): AssetRegistry.CATALOG (logical id table), Guarded-fallback resolution (glb to procedural to primitive), AssetRegistry.get_icon, AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), AudioManager (Events-driven SFX), AudioManager._play / _play_at, Events Bus (+29 more)
+Cohesion: 0.20
+Nodes (12): Local Visual-Only FX, RobotGunner._fire_hitscan, RobotGunner._spawn_tracer, RobotGunner._strike, CameraFX._on_hit_stop, Explosion, Impact, MuzzleFlash (+4 more)
+
+### Community 87 - "Community 87"
+Cohesion: 0.19
+Nodes (13): _chord_pad(), gen_lose(), gen_music_long(), gen_player_death(), _mul(), Descending minor tone — ominous., Descending minor tone — ominous., Minor descending arpeggio: A-F-D-A3. (+5 more)
+
+### Community 88 - "Community 88"
+Cohesion: 0.18
+Nodes (11): gen_amb_rain(), gen_shot(), gen_ui_click(), _highpass(), Simple single-pole IIR highpass., Simple single-pole IIR highpass., Short punchy laser crack: high transient + descending tone., Short punchy laser crack: high transient + descending tone. (+3 more)
+
+### Community 89 - "Community 89"
+Cohesion: 0.18
+Nodes (11): gen_chunk_stone(), gen_robot_death(), gen_underwater(), _mix(), Sum multiple tracks (same length) with soft clipping., Sum multiple tracks (same length) with soft clipping., Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge,, Muffled submerged ambience (loopable): low rumble + slow filtered-noise surge, (+3 more)
+
+### Community 90 - "Community 90"
+Cohesion: 0.22
+Nodes (10): AssetRegistry.CATALOG (logical id table), Guarded-fallback resolution (glb to procedural to primitive), AssetRegistry.get_model, AssetRegistry._make_primitive (tinted fallback), AudioManager (Events-driven SFX), AudioManager._play / _play_at, IconRenderer._prewarm, IconRenderer.render_icon (sync cache) (+2 more)
+
+### Community 91 - "Community 91"
+Cohesion: 0.20
+Nodes (10): gen_chunk_metal(), gen_extract_beep(), gen_hit(), Short impact tick: snappy transient., Short impact tick: snappy transient., Clean short beep — extraction proximity cue., Clean short beep — extraction proximity cue., Container clang: 3 INHARMONIC resonant partials (metallic ring) + a high-passed (+2 more)
+
+### Community 92 - "Community 92"
+Cohesion: 0.25
+Nodes (9): _fade(), gen_ambient(), gen_water_splash(), Apply a short linear fade-in/out to avoid clicks., Apply a short linear fade-in/out to avoid clicks., Entering-water splash: a bright filtered-noise burst with a quick wet decay,, Entering-water splash: a bright filtered-noise burst with a quick wet decay,, Quiet evolving low drone/wind bed (loopable).     Low filtered noise + slow sin (+1 more)
+
+### Community 93 - "Community 93"
+Cohesion: 0.28
+Nodes (9): Events Bus, ExtractionZone, CameraFX, DamageNumber, DamageNumbersLayer, WorldAtmosphere._on_final_wave, MetaProgression.player_mods, PlayerAnimator (+1 more)
+
+### Community 94 - "Community 94"
+Cohesion: 0.40
+Nodes (6): AssetRegistry.get_icon, Server-Authoritative Inventory Owner-Mirror, Inventory, InventoryUI, ItemData, LootPickup._on_pickup_requested
+
+### Community 95 - "Community 95"
+Cohesion: 0.33
+Nodes (6): main(), Normalise to PEAK_AMPLITUDE and write a mono 16-bit WAV., Normalise to PEAK_AMPLITUDE and write a mono 16-bit WAV., _write_wav(), str, str
+
+### Community 96 - "Community 96"
+Cohesion: 0.67
+Nodes (3): _add_tracks(), Add two tracks, extending the shorter one with silence., Add two tracks, extending the shorter one with silence.
+
+### Community 97 - "Community 97"
+Cohesion: 0.67
+Nodes (3): gen_chunk_concrete(), Concrete crumble: a low sub THUMP + a gritty muffled rubble gurgle (double-lowpa, Concrete crumble: a low sub THUMP + a gritty muffled rubble gurgle (double-lowpa
+
+### Community 98 - "Community 98"
+Cohesion: 0.67
+Nodes (3): gen_explosion(), Low-frequency noise burst with rumble tail., Low-frequency noise burst with rumble tail.
 
 ## Ambiguous Edges - Review These
 - `Stash.total_weight` → `WeaponData resource`  [AMBIGUOUS]
@@ -324,13 +384,13 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
 - **What is the exact relationship between `WeaponController._load_weapons` and `Version-safe ConfigFile saves`?**
   _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `AgentBridge QA Commands`, `Community 68`, `Community 69`, `Server-Auth Co-op Netcode`, `Community 81`, `Community 85`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
-- **Why does `ItemCatalog (id to ItemData)` connect `Core Autoload Singletons` to `Server-Auth Co-op Netcode`, `Community 68`?**
+- **Why does `AgentBridge._handle_line (command dispatch)` connect `Community 71` to `AgentBridge QA Commands`, `Core Autoload Singletons`, `Community 68`, `Community 69`, `Community 90`?**
   _High betweenness centrality (0.012) - this node is a cross-community bridge._
-- **Why does `Events Bus` connect `Community 85` to `AgentBridge QA Commands`?**
-  _High betweenness centrality (0.011) - this node is a cross-community bridge._
+- **Why does `ItemCatalog (id to ItemData)` connect `Core Autoload Singletons` to `Community 68`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
+- **Why does `Events Bus` connect `Community 93` to `AgentBridge QA Commands`, `Community 90`, `Community 85`, `Community 94`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **What connects `PreToolUse`, `PostToolUse`, `allow` to the rest of the system?**
-  _336 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _374 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `SFX Audio Synthesizer` be split into smaller, more focused modules?**
-  _Cohesion score 0.08360360360360361 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
