@@ -48,6 +48,9 @@ signal door_opened(door: Node)
 ## A window pane shattered (fires on EVERY peer, post-replication — audio/QA hook).
 signal glass_broken(pane: Node)
 signal chunk_broken(chunk: Node)
+## A machine LOCKED ON (calm→CHASE edge, throttled per enemy on every peer) — the
+## audible "spotted!" stealth cue (AudioManager plays the robot_alert chirp).
+signal enemy_chase_started(enemy: Node)
 ## The raid mutator for THIS match ("" = none). Re-emitted on every sync so late HUD
 ## instances catch it; drives the HUD banner + map label.
 signal raid_mutator_changed(mutator: String)

@@ -10,6 +10,7 @@ import math
 import os
 import random
 import struct
+import sys
 import wave
 
 # ---------------------------------------------------------------------------
@@ -624,6 +625,192 @@ def gen_chunk_stone() -> list[float]:
     return _fade(_mix(crack, grav, thump), 0.001, 0.05)
 
 
+def _chord_pad(freqs: list[float], dur: float, amp: float, detune: float = 0.6) -> list[float]:
+    """Detuned dual-osc pad for a chord segment, slow tremolo, lowpassed."""
+    n = int(SAMPLE_RATE * dur)
+    out = [0.0] * n
+    for note in freqs:
+        for osc, det in ((0.55, 0.0), (0.45, detune)):
+            ph = 0.0
+            step = 2 * math.pi * (note + det) / SAMPLE_RATE
+            for i in range(n):
+                t = i / SAMPLE_RATE
+                trem = 1.0 + 0.12 * math.sin(2 * math.pi * 0.19 * t + note)
+                out[i] += amp * osc * trem * math.sin(ph)
+                ph += step
+    return _lowpass(out, 900)
+
+
+def gen_music_long() -> list[float]:
+    """~96 s evolving dark-ambient loop: 4-chord minor progression pads + sub pulse +
+    sparse inharmonic metallic hits + slow noise swells. Replaces the 6 s pad stub."""
+    seg_dur = 24.0
+    chords = [
+        [82.41, 98.00, 123.47],   # Em (E2 G2 B2)
+        [65.41, 82.41, 98.00],    # C  (C2 E2 G2)
+        [55.00, 65.41, 82.41],    # Am (A1 C2 E2)
+        [61.74, 73.42, 92.50],    # Bdim-ish (B1 D2 F#2)
+    ]
+    out: list[float] = []
+    for ci, chord in enumerate(chords):
+        seg = _chord_pad(chord, seg_dur, 0.30)
+        # Slow bandpassed noise swell across the segment (cinematic breath).
+        swell = _lowpass(_highpass(_noise(seg_dur, 0.5, seed=500 + ci), 250), 900)
+        n = len(seg)
+        for i in range(n):
+            t = i / SAMPLE_RATE
+            env = 0.5 - 0.5 * math.cos(2 * math.pi * t / seg_dur)  # rise+fall per segment
+            seg[i] += swell[i] * 0.16 * env
+        # Sub pulse every 2 s (soft 42 Hz thump).
+        thump_len = int(0.30 * SAMPLE_RATE)
+        for beat in range(int(seg_dur / 2.0)):
+            start = int(beat * 2.0 * SAMPLE_RATE)
+            for i in range(thump_len):
+                if start + i < n:
+                    tt = i / SAMPLE_RATE
+                    envp = math.exp(-tt * 9.0)
+                    seg[start + i] += 0.22 * envp * math.sin(2 * math.pi * 42.0 * tt)
+        # Sparse metallic rings (inharmonic partials, quiet, seeded offsets).
+        rng = random.Random(900 + ci)
+        for _hit in range(2):
+            start = int(rng.uniform(3.0, seg_dur - 4.0) * SAMPLE_RATE)
+            ring_len = int(2.2 * SAMPLE_RATE)
+            for i in range(ring_len):
+                if start + i < n:
+                    tt = i / SAMPLE_RATE
+                    envr = math.exp(-tt * 2.2)
+                    v = 0.055 * envr * (
+                        math.sin(2 * math.pi * 317.0 * tt)
+                        + 0.6 * math.sin(2 * math.pi * 503.0 * tt)
+                        + 0.4 * math.sin(2 * math.pi * 787.0 * tt)
+                    )
+                    seg[start + i] += v
+        out.extend(seg)
+    # Soft-clip the mix and keep the loop seam quiet.
+    out = [math.tanh(s * 0.85) for s in out]
+    return _fade(out, 0.4, 0.6)
+
+
+def _amb_wind(dur: float, lp: float, amp: float, seed: int, gust_hz: float = 0.07) -> list[float]:
+    wind = _lowpass(_noise(dur, amp, seed=seed), lp)
+    n = len(wind)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        wind[i] *= 0.6 + 0.4 * (0.5 + 0.5 * math.sin(2 * math.pi * gust_hz * t + seed))
+    return wind
+
+
+def gen_amb_urban() -> list[float]:
+    """Urban ruins: low wind + faint machine hum + a distant groan once per loop."""
+    dur = 28.0
+    wind = _amb_wind(dur, 200, 0.55, seed=1100)
+    n = len(wind)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        hum = 0.05 * math.sin(2 * math.pi * 55.0 * t) + 0.03 * math.sin(2 * math.pi * 110.3 * t)
+        wind[i] += hum * (0.7 + 0.3 * math.sin(2 * math.pi * 0.05 * t))
+    groan = _lowpass(_noise(2.5, 0.35, seed=1101), 300)
+    groan = _adsr(groan, 0.8, 0.6, 0.4, 1.0)
+    start = int(14.0 * SAMPLE_RATE)
+    for i in range(len(groan)):
+        if start + i < n:
+            wind[start + i] += groan[i] * 0.4
+    return _fade(wind, 0.3, 0.3)
+
+
+def gen_amb_snow() -> list[float]:
+    """Alpine: whistling airy wind — band-swept noise, no hum, cold gusts."""
+    dur = 28.0
+    base = _amb_wind(dur, 500, 0.5, seed=1200, gust_hz=0.11)
+    whistle = _highpass(_lowpass(_noise(dur, 0.30, seed=1201), 1100), 350)
+    n = len(base)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        base[i] += whistle[i] * (0.35 + 0.35 * math.sin(2 * math.pi * 0.09 * t + 1.0))
+    return _fade(base, 0.3, 0.3)
+
+
+def gen_amb_desert() -> list[float]:
+    """Desert: dry mid wind + thin grit shimmer + slow deep swells."""
+    dur = 28.0
+    base = _amb_wind(dur, 420, 0.5, seed=1300, gust_hz=0.05)
+    grit = _highpass(_noise(dur, 0.12, seed=1301), 2400)
+    sub = _lowpass(_noise(dur, 0.4, seed=1302), 90)
+    n = len(base)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        base[i] += grit[i] * (0.5 + 0.5 * math.sin(2 * math.pi * 0.23 * t))
+        base[i] += sub[i] * (0.4 + 0.6 * (0.5 + 0.5 * math.sin(2 * math.pi * 0.03 * t)))
+    return _fade(base, 0.3, 0.3)
+
+
+def gen_amb_rain() -> list[float]:
+    """Rain biome: steady patter (banded noise flutter) + low rumble + a soft far thunder."""
+    dur = 28.0
+    patter = _highpass(_lowpass(_noise(dur, 0.6, seed=1400), 6500), 1400)
+    n = len(patter)
+    flutter = random.Random(1401)
+    amp = 0.8
+    for i in range(n):
+        if i % 441 == 0:  # ~10 ms grains — rain density flicker
+            amp = 0.65 + flutter.random() * 0.5
+        patter[i] *= amp
+    rumble = _lowpass(_noise(dur, 0.35, seed=1402), 120)
+    thunder = _lowpass(_noise(4.0, 0.6, seed=1403), 160)
+    thunder = _adsr(thunder, 1.2, 1.0, 0.35, 1.6)
+    start = int(17.0 * SAMPLE_RATE)
+    for i in range(n):
+        patter[i] = patter[i] * 0.55 + rumble[i] * 0.5
+    for i in range(len(thunder)):
+        if start + i < n:
+            patter[start + i] += thunder[i] * 0.5
+    return _fade(patter, 0.3, 0.3)
+
+
+def gen_robot_alert() -> list[float]:
+    """Machine spotted you: two rising FM chirps + a click. Stealth-relevant cue."""
+    def chirp(f0: float, f1: float, dur: float, amp: float) -> list[float]:
+        n = int(SAMPLE_RATE * dur)
+        out = []
+        ph = 0.0
+        for i in range(n):
+            t = i / n
+            f = f0 + (f1 - f0) * t
+            ph += 2 * math.pi * f / SAMPLE_RATE
+            v = math.sin(ph) + 0.35 * math.sin(2 * ph)  # square-ish edge
+            out.append(amp * v)
+        return _adsr(out, 0.004, dur * 0.2, 0.6, dur * 0.4)
+
+    click = _adsr(_highpass(_noise(0.03, 0.8, seed=1500), 1800), 0.001, 0.01, 0.0, 0.019)
+    gap = _silence(0.05)
+    c1 = chirp(620.0, 1150.0, 0.16, 0.7)
+    c2 = chirp(780.0, 1500.0, 0.20, 0.75)
+    return _fade(_concat(click, c1, gap, c2), 0.002, 0.03)
+
+
+def gen_robot_death() -> list[float]:
+    """Power-down: descending quantized sweep + spark crackle (layered under the boom)."""
+    dur = 0.85
+    n = int(SAMPLE_RATE * dur)
+    sweep = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 880.0 * math.exp(-t * 3.2) + 55.0
+        f = round(f / 40.0) * 40.0  # coarse steps → glitchy power-down
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        sweep.append(0.6 * math.sin(ph) * (1.0 - t * 0.6))
+    sweep = _adsr(sweep, 0.004, 0.1, 0.7, 0.35)
+    crackle = _highpass(_noise(dur, 0.4, seed=1600), 2200)
+    rng = random.Random(1601)
+    gate = 0.0
+    for i in range(n):
+        if i % 220 == 0:
+            gate = 1.0 if rng.random() < 0.35 else 0.15
+        crackle[i] *= gate * (1.0 - i / n)
+    return _fade(_mix(sweep, crackle), 0.002, 0.06)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -663,7 +850,22 @@ def main() -> None:
         ("chunk_concrete.wav", gen_chunk_concrete),
         ("chunk_metal.wav",    gen_chunk_metal),
         ("chunk_stone.wav",    gen_chunk_stone),
+        # Production audio pass (2026-08): long evolving music, biome ambient beds,
+        # robot vocalizations (alert = stealth info, death = power-down).
+        ("music_long.wav",     gen_music_long),
+        ("amb_urban.wav",      gen_amb_urban),
+        ("amb_snow.wav",       gen_amb_snow),
+        ("amb_desert.wav",     gen_amb_desert),
+        ("amb_rain.wav",       gen_amb_rain),
+        ("robot_alert.wav",    gen_robot_alert),
+        ("robot_death.wav",    gen_robot_death),
     ]
+
+    # Optional CLI filter: `python gen_audio.py music_long amb_rain` regenerates only
+    # the named jobs (base name, no extension) instead of all 32.
+    wanted = {a.lower() for a in sys.argv[1:]}
+    if wanted:
+        jobs = [j for j in jobs if j[0].rsplit(".", 1)[0].lower() in wanted]
 
     generated = 0
     for filename, fn in jobs:

@@ -160,6 +160,10 @@ var _pulse_base_energy: float = 6.0
 # Replicated to clients by the MultiplayerSynchronizer (see .tscn). Authority
 # writes it each tick; clients read it for animation/state-driven visuals.
 var current_state: int = State.PATROL
+# Alert-chirp bookkeeping (visual/_process side; see the calm→CHASE watcher).
+var _sfx_state_prev: int = State.PATROL
+var _sfx_age: float = 0.0
+var _sfx_alert_last_ms: int = -10000
 
 # Hunter mode: wave-spawned enemies actively seek the nearest player (ignoring the
 # detect radius / line-of-sight gate) so survival waves stay aggressive on the big
@@ -486,6 +490,21 @@ func _process(delta: float) -> void:
 		_tick_death_pop(delta)
 		_tick_flash(delta)  # let a final hit-flash finish; it only touches emission
 		return
+	# Audible "spotted!" cue: calm→CHASE edge on the REPLICATED state (every peer hears
+	# it positionally). Age-gated so hunter waves that spawn straight into CHASE don't
+	# chorus; per-enemy cooldown so flapping LOS doesn't spam.
+	_sfx_age += delta
+	if current_state != _sfx_state_prev:
+		var from_calm := _sfx_state_prev == State.PATROL or _sfx_state_prev == State.INVESTIGATE
+		if (
+			current_state == State.CHASE
+			and from_calm
+			and _sfx_age > 1.5
+			and Time.get_ticks_msec() - _sfx_alert_last_ms > 4000
+		):
+			_sfx_alert_last_ms = Time.get_ticks_msec()
+			Events.enemy_chase_started.emit(self)
+		_sfx_state_prev = current_state
 	if _has_proc_anim:
 		# PERF: idle bobbing/rotor spin is invisible past ~60m — gate it on camera
 		# distance (2 Hz check, per peer, render-only). Combat feedback below

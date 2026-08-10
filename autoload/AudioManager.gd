@@ -53,6 +53,13 @@ const SOUNDS := {
 	"chunk_concrete": "res://assets/audio/chunk_concrete.wav",
 	"chunk_metal": "res://assets/audio/chunk_metal.wav",
 	"chunk_stone": "res://assets/audio/chunk_stone.wav",
+	# Production audio pass: biome ambient beds + robot vocalizations (gen_audio.py).
+	"amb_urban": "res://assets/audio/amb_urban.ogg",
+	"amb_snow": "res://assets/audio/amb_snow.ogg",
+	"amb_desert": "res://assets/audio/amb_desert.ogg",
+	"amb_rain": "res://assets/audio/amb_rain.ogg",
+	"robot_alert": "res://assets/audio/robot_alert.ogg",
+	"robot_death": "res://assets/audio/robot_death.ogg",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -85,6 +92,16 @@ const SOUND_DB := {
 	"chunk_concrete": -5.0,
 	"chunk_metal": -6.0,
 	"chunk_stone": -7.0,
+	"robot_alert": -9.0,
+	"robot_death": -7.0,
+}
+
+# In-raid ambient bed per biome (the base "ambient" wind is the fallback + menu bed).
+const _AMB_BY_BIOME := {
+	"urban": "amb_urban",
+	"snow": "amb_snow",
+	"desert": "amb_desert",
+	"rain": "amb_rain",
 }
 
 ## Master toggle + trim.  Public so a settings menu can drive them later.
@@ -134,6 +151,10 @@ const HEARTBEAT_HP_THRESHOLD := 0.30  # ratio of max_health
 # ---------------------------------------------------------------------------
 var _ambient_player: AudioStreamPlayer = null
 var _music_player: AudioStreamPlayer = null
+# Biome-bed crossfade state: which bed id is playing + a 2 s poll of the player's biome.
+var _ambient_id := ""
+var _amb_poll := 0.0
+var _amb_tween: Tween = null
 # Underwater ambience bed + Master-bus lowpass for the muffled submerged effect.
 var _underwater_player: AudioStreamPlayer = null
 var _underwater_lowpass_idx := -1  # index of the lowpass effect we add to Master (-1 = none)
@@ -204,6 +225,7 @@ func _ready() -> void:
 	Events.water_state_changed.connect(_on_water_state_changed)
 	Events.glass_broken.connect(_on_glass_broken)
 	Events.chunk_broken.connect(_on_chunk_broken)
+	Events.enemy_chase_started.connect(_on_enemy_chase_started)
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
@@ -217,6 +239,12 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(_local_player):
 		_local_player = null
 		return
+
+	# Biome ambient bed: 2 s poll of the local player's biome → crossfade the bed.
+	_amb_poll -= delta
+	if _amb_poll <= 0.0:
+		_amb_poll = 2.0
+		_update_biome_bed()
 
 	# Footstep logic: player must be on the floor and moving.
 	if not _local_player.has_method("is_on_floor"):
@@ -337,6 +365,16 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 		_play_at("player_death", entity)
 	else:
 		_play_at("explosion", entity)
+		# Machine power-down chirp layered under the boom (pitch-jittered per kill).
+		_play_at_pitched("robot_death", entity, randf_range(0.88, 1.12))
+
+
+## A machine locked on (calm→CHASE, throttled at the enemy) — positional alert chirp.
+func _on_enemy_chase_started(enemy: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if enemy is Node3D:
+		_play_at_pitched("robot_alert", enemy, randf_range(0.9, 1.15))
 
 
 func _on_extraction_started(_player: Node, _zone: Node) -> void:
@@ -387,10 +425,44 @@ func _on_local_player_spawned(player: Node) -> void:
 	_on_match_started()
 
 
+## Crossfade the looping ambient bed to the local player's biome (urban wind stays the
+## fallback when a bed file is absent). Runs on a cheap 2 s poll; render/audio-only.
+func _update_biome_bed() -> void:
+	if _ambient_player == null or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if not (_local_player is Node3D):
+		return
+	var pos: Vector3 = (_local_player as Node3D).global_position
+	var biome: String = WorldBounds.biome_at(pos.x, pos.z)
+	var want: String = _AMB_BY_BIOME.get(biome, "ambient")
+	if _streams.get(want) == null:
+		want = "ambient"
+	if want == _ambient_id:
+		return
+	_ambient_id = want
+	if _amb_tween != null and _amb_tween.is_valid():
+		_amb_tween.kill()
+	_amb_tween = create_tween()
+	_amb_tween.tween_property(_ambient_player, "volume_db", -60.0, 1.2)
+	_amb_tween.tween_callback(_swap_ambient_stream.bind(want))
+	_amb_tween.tween_property(_ambient_player, "volume_db", AMBIENT_BASE_DB + master_db, 1.8)
+
+
+func _swap_ambient_stream(id: String) -> void:
+	var stream: AudioStream = _streams.get(id)
+	if stream == null or _ambient_player == null:
+		return
+	_set_stream_loop(stream)
+	_ambient_player.stream = stream
+	_ambient_player.play()
+
+
 func _on_match_started() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	# Start ambient + music beds.
+	# Start ambient + music beds (the biome poll swaps the bed a moment later).
+	_ambient_id = "ambient"
+	_amb_poll = 4.0
 	if _ambient_player != null and _streams.get("ambient") != null:
 		var amb: AudioStream = _streams["ambient"]
 		_set_stream_loop(amb)
