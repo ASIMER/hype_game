@@ -77,7 +77,8 @@ func _ready() -> void:
 	extract_panel.offset_bottom = -70.0
 	banner.visible = false
 	# Glass theme variations for the progress bars.
-	health_bar.theme_type_variation = "FillAmber"
+	# Design system: teal = vitals (the theme default fill); orange stays a WARNING
+	# color. A red fill swaps in only when critical (see _set_health).
 	extract_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(UIStyle.TEAL))
 	_set_health(Settings.PLAYER_MAX_HEALTH, Settings.PLAYER_MAX_HEALTH)
 	_update_wave_label(GameState.current_wave)
@@ -100,6 +101,14 @@ var _status_row: HBoxContainer  # status-effect chips (batch B), above the healt
 var _status_chips: Dictionary = {}  # effect name -> the chip Label
 var _storm_banner: Label
 var _storm_banner_t: float = 0.0
+# Adaptive combat fade (ARC pattern): the ammo group runs bright in combat and
+# translucent at rest; the key-hint sheet dims after the first minutes and yields
+# its corner to the storm alarm entirely.
+var _ammo_box: VBoxContainer = null
+var _hints_label: Label = null
+var _combat_heat: float = 0.0
+var _match_t: float = 0.0
+var _hp_crit: bool = false
 # World-event banner — stacked 44px below the storm banner (offset_top -76 vs -120).
 var _event_banner: Label
 var _event_banner_t: float = 0.0
@@ -204,7 +213,7 @@ func _build_hud_widgets() -> void:
 	_storm_banner.offset_top = -120.0
 	_storm_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_storm_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_storm_banner.add_theme_font_size_override("font_size", 30)
+	_storm_banner.add_theme_font_size_override("font_size", 34)
 	_storm_banner.add_theme_color_override("font_color", UIStyle.RED)
 	_storm_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_storm_banner.add_theme_constant_override("outline_size", 5)
@@ -268,6 +277,7 @@ func _build_hud_widgets() -> void:
 	# Ammo + weapon readout, pinned to the bottom-right corner and GROWING up-left
 	# (grow BEGIN) so multi-line content never clips off-screen at any resolution.
 	var ammo_box := VBoxContainer.new()
+	_ammo_box = ammo_box
 	ammo_box.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	ammo_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	ammo_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -296,6 +306,7 @@ func _build_hud_widgets() -> void:
 
 	# Key hints (bottom-right, above the ammo box, dim, right-aligned, grow up-left).
 	var hints := Label.new()
+	_hints_label = hints
 	hints.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	hints.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	hints.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -388,6 +399,7 @@ func _refresh_weapon_label() -> void:
 
 
 func _on_ammo_changed(ammo: int, reserve: int) -> void:
+	_combat_heat = 6.0  # firing/reloading = combat → keep the ammo group bright
 	_set_ammo(ammo, reserve)
 
 
@@ -537,15 +549,38 @@ func _process(delta: float) -> void:
 		_down_pulse += delta
 		if _down_overlay:
 			_down_overlay.queue_redraw()
-	# Fade the storm banner out after its flash.
-	if _storm_banner and _storm_banner.visible:
+	# STORM: while the final wave runs, the alarm stays ALIVE — a pulsing banner + a
+	# faint red screen-pulse floor (audit: the one-shot 4 s banner left the game's
+	# highest-stakes moment with no visible warning at all).
+	if _storm_banner and GameState.final_wave:
+		_storm_banner.visible = true
+		var pt: float = Time.get_ticks_msec() / 180.0
+		_storm_banner.modulate.a = 0.78 + 0.22 * sin(pt)
+		if _hurt_flash:
+			_hurt_flash.color.a = maxf(_hurt_flash.color.a, 0.04 + 0.03 * sin(pt * 0.7))
+	elif _storm_banner and _storm_banner.visible:
+		# Pre-storm warning flash: timed fade as before.
 		_storm_banner_t -= delta
 		_storm_banner.modulate.a = (
 			clampf(_storm_banner_t / 1.0, 0.0, 1.0) if _storm_banner_t < 1.0 else 1.0
 		)
-		# Keep a steady pulse while it lingers, then hide.
 		if _storm_banner_t <= 0.0:
 			_storm_banner.visible = false
+	# Adaptive combat fade (ARC): ammo group bright in combat, translucent at rest.
+	if _ammo_box:
+		_combat_heat = maxf(0.0, _combat_heat - delta)
+		var target_a: float = 1.0 if _combat_heat > 0.0 else 0.45
+		_ammo_box.modulate.a = move_toward(_ammo_box.modulate.a, target_a, delta * 2.0)
+	# Key-hint sheet: full for the first 75 s, then dims; hidden during the storm so
+	# the corner belongs to the alarm.
+	if _hints_label:
+		_match_t += delta
+		if GameState.final_wave:
+			_hints_label.visible = false
+		else:
+			_hints_label.visible = true
+			var target_h: float = 1.0 if _match_t < 75.0 else 0.35
+			_hints_label.modulate.a = move_toward(_hints_label.modulate.a, target_h, delta * 1.5)
 	# Fade the world-event banner.
 	if _event_banner and _event_banner.visible:
 		_event_banner_t -= delta
@@ -966,7 +1001,8 @@ func _on_local_player_spawned(player: Node) -> void:
 	# find either). Static flag → shows once per session, not every raid.
 	if not _view_tip_shown:
 		_view_tip_shown = true
-		Events.notify.emit(tr("V zooms the camera: close / medium / far / first-person"), 0)
+		if not MetaProgression.onboarding_done:  # veterans stop seeing the tip every match
+			Events.notify.emit(tr("V zooms the camera: close / medium / far / first-person"), 0)
 
 
 func _on_player_health_changed(player: Node, current: float, max_health: float) -> void:
@@ -977,9 +1013,21 @@ func _on_player_health_changed(player: Node, current: float, max_health: float) 
 
 
 func _set_health(current: float, max_health: float) -> void:
+	# Damage = combat: brighten the adaptive ammo group.
+	if current < _last_health:
+		_combat_heat = 6.0
+	_last_health = current
 	health_bar.max_value = max_health
 	health_bar.value = current
 	health_label.text = "%d / %d" % [int(round(current)), int(round(max_health))]
+	# Teal vitals by default; RED fill only when critical (<30%, the heartbeat line).
+	var crit: bool = max_health > 0.0 and current / max_health < 0.3
+	if crit != _hp_crit:
+		_hp_crit = crit
+		if crit:
+			health_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(UIStyle.RED))
+		else:
+			health_bar.remove_theme_stylebox_override("fill")
 
 
 # --- Waves -----------------------------------------------------------------

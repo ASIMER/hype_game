@@ -12,7 +12,9 @@ const PANEL_BG := Color(0.03, 0.05, 0.07, 0.78)
 const REVIVE_COL := Color(0.30, 0.85, 0.62, 1.0)  # teal-green revive accent
 const PANEL_W := 320.0
 const PANEL_H := 38.0
-const BOTTOM_GAP := 120.0
+# Phase 2 (ARC pattern): the prompt sits just BELOW the crosshair, not 300 px away at
+# the screen bottom — the player's eye never leaves the aim point.
+const CROSSHAIR_GAP := 46.0
 const CAP := 26.0  # key-cap size
 
 var _prompt: String = ""
@@ -22,15 +24,15 @@ var _revive_frac: float = -1.0  # >= 0 while channeling a teammate revive; -1 = 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Bottom-centre, fixed box, grow from centre so it stays put at any resolution.
+	# Crosshair-adjacent fixed box (screen centre + a small gap), any resolution.
 	anchor_left = 0.5
 	anchor_right = 0.5
-	anchor_top = 1.0
-	anchor_bottom = 1.0
+	anchor_top = 0.5
+	anchor_bottom = 0.5
 	offset_left = -PANEL_W * 0.5
 	offset_right = PANEL_W * 0.5
-	offset_top = -BOTTOM_GAP - PANEL_H
-	offset_bottom = -BOTTOM_GAP
+	offset_top = CROSSHAIR_GAP
+	offset_bottom = CROSSHAIR_GAP + PANEL_H
 	visible = false
 	Events.interaction_available.connect(_on_available)
 	Events.interaction_cleared.connect(_on_cleared)

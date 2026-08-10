@@ -119,6 +119,9 @@ func _rebuild(_a = null, _b = null) -> void:
 		var sk: Node = _player.get_node_or_null("Skills")
 		if sk != null and sk.has_method("slot_order"):
 			order = sk.slot_order()
+	# Adaptive HUD: five empty boxes are dead weight — the bar appears with the
+	# first harvested skill.
+	visible = not order.is_empty()
 	for i in _slots.size():
 		var s: Dictionary = _slots[i]
 		if i < order.size():

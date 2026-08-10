@@ -59,7 +59,8 @@ func _ready() -> void:
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
 		vp.size_changed.connect(_apply_hud_inset)
-	Events.wave_started.connect(func(w, _c): _push(tr("WAVE %d") % w, COL_WAVE))
+	# Wave STARTS are owned by the big top-center label (audit: the tiny top-left
+	# duplicate just added noise); the feed keeps only the positive CLEARED beat.
 	Events.wave_cleared.connect(func(w): _push(tr("WAVE %d CLEARED") % w, COL_GOOD))
 	Events.item_picked_up.connect(_on_pickup)
 	Events.entity_died.connect(_on_entity_died)
