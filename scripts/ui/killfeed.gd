@@ -121,9 +121,13 @@ func _on_pickup(_player: Node, item_id: String, count: int) -> void:
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
 	if entity != null and entity.is_in_group(Groups.ENEMIES):
+		# P0 fix (UI audit): entity.name is the raw node name ("RobotEnemy2",
+		# "RobotElite_modAV…") — derive a readable label from the archetype id
+		# instead ("robot_frosthound" → "Frosthound").
 		var label := tr("Enemy")
-		if entity is Node and entity.name != "":
-			label = String(entity.name)
+		var eid: String = String(entity.get("enemy_id")) if "enemy_id" in entity else ""
+		if eid != "":
+			label = eid.trim_prefix("robot_").capitalize()
 		_push(tr("%s destroyed") % label, COL_DIM)
 
 

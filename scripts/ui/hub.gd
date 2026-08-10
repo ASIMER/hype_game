@@ -267,18 +267,12 @@ func _build_squad_panel() -> void:
 		return
 	var panel := PanelContainer.new()
 	panel.name = "SquadPanel"
-	# Bottom strip: anchored to the bottom edge, stretched across, lifted clear of
-	# the footer row so the DEPLOY/START button stays unobstructed. The footer
-	# ($Layout/Footer PanelContainer in the VBox) is a flow element whose height
-	# grows with the DEPLOY button + wrapped difficulty description (~70–140px at
-	# larger HUD scales); GROW_BEGIN anchors the band's BOTTOM at -148 (clear of a
-	# tall footer) and lets it grow upward so its size is preserved at any scale.
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.offset_left = 24
-	panel.offset_right = -24
-	panel.offset_top = -184
-	panel.offset_bottom = -148
+	# P0 fix (UI audit): the strip used to be an ABSOLUTELY-ANCHORED overlay at a fixed
+	# y-band and painted OVER tab content on 6 of 8 tabs (shop BUY buttons, loadout
+	# rows, gunsmith dropdowns, cosmetic EQUIP…). It now lives IN the $Layout VBox flow
+	# between Body and Footer — the Body simply ends above it, so occlusion is
+	# impossible by construction at any HUD scale.
+	panel.custom_minimum_size = Vector2(0, 34)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.70))
 	var row := HBoxContainer.new()
@@ -296,7 +290,9 @@ func _build_squad_panel() -> void:
 	_squad_list.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_squad_list.add_theme_constant_override("separation", 18)
 	scroll.add_child(_squad_list)
-	add_child(panel)
+	var layout: Control = $Layout
+	layout.add_child(panel)
+	layout.move_child(panel, ($Layout/Footer as Control).get_index())
 	_squad_panel = panel
 
 

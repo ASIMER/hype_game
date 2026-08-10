@@ -177,8 +177,7 @@ func _handle_line(line: String) -> void:
 			_pending_look += Vector2(float(json.get("dx", 0.0)), float(json.get("dy", 0.0)))
 			_send({"ok": true})
 		"aim":
-			# Precisely point the player's camera at a target (engine-side math, exact). target:
-			# "nearest"(default) | enemy name | "weakpoint" | "point" (the world x,y,z).
+			# Exact engine-side aim. target: "nearest"(def) | enemy name | "weakpoint" | "point"(x,y,z).
 			var atgt := str(json.get("target", "nearest"))
 			var aimed := false
 			if atgt == "point":
@@ -568,8 +567,7 @@ func _handle_line(line: String) -> void:
 			_do_action(str(json.get("action", "")))
 			_send({"ok": true})
 		"hold":
-			# Sustained input hold (crouch/interact/carry/jump -> _held; fire/sprint/ads ->
-			# their own bools). The counterpart to tap-only `act`.
+			# Sustained hold (crouch/interact/… → _held; fire/sprint/ads → bools) vs tap-only `act`.
 			var hact := str(json.get("action", ""))
 			var hon := bool(json.get("on", true))
 			match hact:
@@ -581,6 +579,8 @@ func _handle_line(line: String) -> void:
 					ads = hon
 				_:
 					_held[hact] = hon
+					# Engine-level too so Input.is_action_pressed consumers (TAB scoreboard) see it.
+					(Input.action_press if hon else Input.action_release).call(hact)
 			_send({"ok": true})
 		"noise":
 			# QA: inject an AI-audible noise at the player ({loudness, kind}) — isolates
