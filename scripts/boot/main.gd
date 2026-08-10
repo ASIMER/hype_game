@@ -106,6 +106,9 @@ func _build_persistent_overlays() -> void:
 	add_child((load("res://scripts/ui/fx_overlay.gd") as GDScript).new())
 	# Cinematic raid vignette (dark cool edges) — the grade cue, shown only DURING a raid.
 	add_child((load("res://scripts/ui/raid_vignette.gd") as GDScript).new())
+	# Diegetic world-event beacons: a colored light pillar at every mid-raid event
+	# (the «не понимаю, где босс» fix) — render-only, listens to the Events bus.
+	add_child((load("res://scripts/fx/event_beacons.gd") as GDScript).new())
 	# Cold-cinematic colour grade (teal shadows / warm highlights / crushed blacks) — the
 	# headline "this world is graded" pass, world-only (below the HUD), raid-gated.
 	add_child((load("res://scripts/ui/cold_grade.gd") as GDScript).new())

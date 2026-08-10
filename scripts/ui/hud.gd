@@ -644,11 +644,16 @@ func _on_world_event_started(kind: int, _pos: Vector3, label: String) -> void:
 			col = Color(1.00, 0.55, 0.15)  # surge — orange
 		_:
 			col = UIStyle.WHITE
-	_event_banner.text = tr("⚠ %s") % label.to_upper()
+	# Distance in the announcement (panel consensus: WHAT + WHERE, not just a word) —
+	# the colored pillar (EventBeacons) + compass diamond carry the bearing.
+	var dist: int = 0
+	if _local_player != null and is_instance_valid(_local_player):
+		dist = int((_local_player as Node3D).global_position.distance_to(_pos))
+	_event_banner.text = tr("⚠ %s — %dm") % [label.to_upper(), dist]
 	_event_banner.add_theme_color_override("font_color", col)
 	_event_banner.visible = true
 	_event_banner.modulate.a = 1.0
-	_event_banner_t = 4.0
+	_event_banner_t = 6.0
 
 
 func _on_surge_changed(active: bool, kind: int) -> void:
@@ -753,9 +758,10 @@ func _on_final_wave_started() -> void:
 		_storm_banner_t = 4.0  # lingers ~4s, then fades in the final second
 
 
-func _flash_nemesis_banner(text: String, secs: float) -> void:
+func _flash_nemesis_banner(text: String, secs: float, col: Color = Color(0.95, 0.16, 0.16)) -> void:
 	if _nemesis_banner == null:
 		return
+	_nemesis_banner.add_theme_color_override("font_color", col)
 	_nemesis_banner.text = text
 	_nemesis_banner.visible = true
 	_nemesis_banner.modulate.a = 1.0
