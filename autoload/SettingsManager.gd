@@ -491,7 +491,8 @@ func _apply_ui_fx(enabled: bool) -> void:
 func _apply_camera() -> void:
 	Settings.camera_distance_scale = clampf(float(get_value("camera_distance")), 0.6, 1.4)
 	Settings.camera_shoulder_scale = clampf(float(get_value("camera_shoulder")), 0.0, 1.0)
-	Settings.default_first_person = int(get_value("default_view")) == 1
+	# First-person spawn view is REMOVED — the saved value is ignored permanently.
+	Settings.default_first_person = false
 	Events.camera_settings_changed.emit()
 
 

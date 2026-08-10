@@ -15,12 +15,12 @@ static func play(
 	if arena == null:
 		return
 	match ability:
-		"aoe_stagger":
-			_slam(arena, pos, color)
-		"mortar":
-			_mortar(arena, aim, color)
-		"whirlwind":
-			_whirlwind(arena, pos, color)
+		"leap_slam":
+			_leap_slam(arena, pos, aim, color)
+		"meteor":
+			_meteor(arena, aim, color)
+		"storm":
+			_storm(arena, pos, color)
 		"blink":
 			_blink_fx(arena, pos, facing, color)
 		"shield":
@@ -29,8 +29,8 @@ static func play(
 			_dash_fx(arena, pos, facing, color)
 		"recon_dash":
 			_recon_fx(arena, pos, color)
-		"ram_charge":
-			_ram_fx(arena, pos, facing, color)
+		"breach":
+			_breach_fx(arena, pos, facing, color)
 		"bite_cone":
 			_bite_fx(arena, pos, facing, color)
 		"chain":
@@ -50,66 +50,165 @@ static func emphasis(pos: Vector3, arena: Node) -> void:
 ## Camera-shake trauma appropriate to the ability (big slams punch harder).
 static func shake_for(ability: String) -> float:
 	match ability:
-		"aoe_stagger", "mortar", "ram_charge":
+		"meteor":
+			return 0.65
+		"leap_slam", "breach":
 			return 0.5
-		"whirlwind", "bite_cone", "chain":
-			return 0.3
+		"storm", "bite_cone", "chain":
+			return 0.32
 		_:
 			return 0.18
 
 
 # ------------------------------------------------------------ ability composites
-static func _slam(arena: Node, pos: Vector3, color: Color) -> void:
-	_ring(arena, pos, color, 12.0, 0.45)
-	_ring(arena, pos, Color(1, 1, 1), 7.0, 0.3)
-	_particles(arena, pos + Vector3(0, 0.2, 0), color, 28, 0.5, 10.0, -16.0, Vector3(0, 1, 0), 0.35)
-	_dust(arena, pos)
-	_flash(arena, pos + Vector3(0, 0.4, 0), color, 9.0)
+## LEAP SLAM: launch pop at the take-off + the LANDING shockwave at the aim point,
+## delayed to the touchdown (matches the server's SKILL_LEAP_TIME AoE).
+static func _leap_slam(arena: Node, pos: Vector3, aim: Vector3, color: Color) -> void:
+	_ring(arena, pos, color, 4.0, 0.3)
+	_particles(arena, pos + Vector3(0, 0.2, 0), color, 16, 0.4, 7.0, -12.0, Vector3(0, 1, 0), 0.3)
+	var t: SceneTreeTimer = arena.get_tree().create_timer(Settings.SKILL_LEAP_TIME)
+	t.timeout.connect(
+		func() -> void:
+			if not is_instance_valid(arena):
+				return
+			_ring(arena, aim, color, 12.0, 0.45)
+			_ring(arena, aim, Color(1, 1, 1), 7.0, 0.3)
+			_particles(
+				arena, aim + Vector3(0, 0.2, 0), color, 28, 0.5, 10.0, -16.0, Vector3(0, 1, 0), 0.35
+			)
+			_dust(arena, aim)
+			_flash(arena, aim + Vector3(0, 0.4, 0), color, 9.0)
+	)
 
 
-static func _mortar(arena: Node, aim: Vector3, color: Color) -> void:
-	_beam(arena, aim + Vector3(0, 14, 0), aim + Vector3(0, 0.2, 0), color, 0.12, 0.35)
-	_ring(arena, aim, color, 8.0, 0.4)
-	_flash(arena, aim + Vector3(0, 0.4, 0), color, 10.0)
-	_particles(arena, aim + Vector3(0, 0.2, 0), color, 24, 0.5, 9.0, -14.0, Vector3(0, 1, 0), 0.3)
+## METEOR: a pulsing telegraph ring at the aim point, then a flaming rock DROPS from
+## the sky (fire trail) and detonates — flash, double ring, embers, smoke.
+static func _meteor(arena: Node, aim: Vector3, color: Color) -> void:
+	# Telegraph — two nested rings that live until impact.
+	_ring(arena, aim, color, 5.2, Settings.SKILL_METEOR_DELAY)
+	_ring(arena, aim, Color(1.0, 0.9, 0.6), 2.4, Settings.SKILL_METEOR_DELAY)
+	# The rock: a dark sphere with a fire-emissive core, falling on a tween.
+	var rock := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.9
+	sm.height = 1.8
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(0.12, 0.08, 0.06)
+	rm.emission_enabled = true
+	rm.emission = Color(1.0, 0.45, 0.1)
+	rm.emission_energy_multiplier = 2.6
+	rm.roughness = 0.9
+	sm.material = rm
+	rock.mesh = sm
+	arena.add_child(rock)
+	var drop_t: float = maxf(0.25, Settings.SKILL_METEOR_DELAY * 0.35)
+	var start: Vector3 = aim + Vector3(3.0, 34.0, -2.0)
+	rock.global_position = start
+	# Fire trail rides the rock.
+	var trail := GPUParticles3D.new()
+	trail.amount = 60
+	trail.lifetime = 0.5
+	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var tpm := ParticleProcessMaterial.new()
+	tpm.direction = Vector3(0, 1, 0)
+	tpm.spread = 25.0
+	tpm.initial_velocity_min = 2.0
+	tpm.initial_velocity_max = 5.0
+	tpm.gravity = Vector3.ZERO
+	tpm.scale_min = 0.25
+	tpm.scale_max = 0.6
+	tpm.color = Color(1.0, 0.55, 0.15)
+	trail.process_material = tpm
+	var tmesh := BoxMesh.new()
+	tmesh.size = Vector3(0.16, 0.16, 0.16)
+	tmesh.material = _emat(Color(1.0, 0.55, 0.15), 1.0)
+	trail.draw_pass_1 = tmesh
+	rock.add_child(trail)
+	trail.emitting = true
+	# Fall starts so the rock ARRIVES exactly at SKILL_METEOR_DELAY (server impact).
+	var wait: float = maxf(0.0, Settings.SKILL_METEOR_DELAY - drop_t)
+	var tw := rock.create_tween()
+	tw.tween_interval(wait)
+	(
+		tw
+		. tween_property(rock, "global_position", aim + Vector3(0, 0.4, 0), drop_t)
+		. set_trans(Tween.TRANS_QUAD)
+		. set_ease(Tween.EASE_IN)
+	)
+	tw.tween_callback(
+		func() -> void:
+			if not is_instance_valid(arena):
+				return
+			_flash(arena, aim + Vector3(0, 0.6, 0), Color(1.0, 0.8, 0.4), 14.0)
+			_ring(arena, aim, Color(1.0, 0.55, 0.15), 11.0, 0.5)
+			_ring(arena, aim, Color(1.0, 0.9, 0.6), 6.0, 0.35)
+			_particles(
+				arena,
+				aim + Vector3(0, 0.3, 0),
+				Color(1.0, 0.5, 0.12),
+				42,
+				0.7,
+				12.0,
+				-16.0,
+				Vector3(0, 1, 0),
+				0.4
+			)
+			_dust(arena, aim)
+	)
+	tw.tween_callback(rock.queue_free)
 
 
-static func _whirlwind(arena: Node, pos: Vector3, color: Color) -> void:
+## STORM (Crystal-Maiden field): a swirling ring vortex around the cast point for
+## SKILL_STORM_TIME + random explosion pops raining inside the ring the whole time.
+static func _storm(arena: Node, pos: Vector3, color: Color) -> void:
 	var p := GPUParticles3D.new()
-	p.amount = 44
-	p.lifetime = 0.8
-	p.one_shot = true
-	p.explosiveness = 0.35
+	p.amount = 140
+	p.lifetime = 1.1
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
 	pm.emission_ring_axis = Vector3(0, 1, 0)
-	pm.emission_ring_radius = 2.6
-	pm.emission_ring_inner_radius = 1.4
-	pm.emission_ring_height = 0.3
+	pm.emission_ring_radius = Settings.SKILL_STORM_RING_MAX * 0.8
+	pm.emission_ring_inner_radius = Settings.SKILL_STORM_RING_MIN
+	pm.emission_ring_height = 0.4
 	pm.direction = Vector3(0, 1, 0)
-	pm.spread = 18.0
-	pm.initial_velocity_min = 1.0
-	pm.initial_velocity_max = 2.5
-	pm.tangential_accel_min = 14.0
-	pm.tangential_accel_max = 22.0
-	pm.radial_accel_min = -2.0
-	pm.radial_accel_max = -0.5
-	pm.gravity = Vector3(0, 3.0, 0)
-	pm.scale_min = 0.2
-	pm.scale_max = 0.5
+	pm.spread = 14.0
+	pm.initial_velocity_min = 1.5
+	pm.initial_velocity_max = 3.5
+	pm.tangential_accel_min = 16.0
+	pm.tangential_accel_max = 26.0
+	pm.radial_accel_min = -3.0
+	pm.radial_accel_max = -1.0
+	pm.gravity = Vector3(0, 2.5, 0)
+	pm.scale_min = 0.22
+	pm.scale_max = 0.55
 	pm.color = color
 	p.process_material = pm
 	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.12, 0.12, 0.12)
+	mesh.size = Vector3(0.14, 0.14, 0.14)
 	mesh.material = _emat(color, 1.0)
 	p.draw_pass_1 = mesh
 	arena.add_child(p)
 	p.global_position = pos + Vector3(0, 0.4, 0)
 	p.emitting = true
-	_free_after(p, 1.1)
-	_ring(arena, pos, color, 5.0, 0.5)
-	_ring(arena, pos, color, 9.0, 0.7)
+	_free_after(p, Settings.SKILL_STORM_TIME + 1.2)
+	_ring(arena, pos, color, Settings.SKILL_STORM_RING_MAX, 0.7)
+	# Random pops inside the ring for the storm's whole duration (the CM "rain").
+	var pops: int = int(Settings.SKILL_STORM_TIME / 0.35)
+	for i in pops:
+		var t: SceneTreeTimer = arena.get_tree().create_timer(0.25 + 0.35 * float(i))
+		t.timeout.connect(
+			func() -> void:
+				if not is_instance_valid(arena):
+					return
+				var ang: float = randf() * TAU
+				var r: float = randf_range(
+					Settings.SKILL_STORM_RING_MIN, Settings.SKILL_STORM_RING_MAX
+				)
+				var at: Vector3 = pos + Vector3(cos(ang) * r, 0.3, sin(ang) * r)
+				_flash(arena, at, color, 7.0)
+				_ring(arena, at, color, 2.6, 0.3)
+		)
 
 
 static func _blink_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color) -> void:
@@ -151,12 +250,16 @@ static func _recon_fx(arena: Node, pos: Vector3, color: Color) -> void:
 	_flash(arena, pos + Vector3(0, 1.0, 0), color, 6.0)
 
 
-static func _ram_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color) -> void:
-	var lp := pos + facing * 4.0
-	_ring(arena, lp, color, 6.0, 0.35)
+## BREACH: shock-cone at launch + speed-line bursts down the charge lane (the wall
+## chunks the server smashes provide the debris spectacle for free).
+static func _breach_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color) -> void:
+	_cone_flash(arena, pos + Vector3(0, 0.8, 0), facing, color)
+	for i in 3:
+		var lp: Vector3 = pos + facing * (2.5 * float(i + 1))
+		_ring(arena, lp, color, 3.5 + float(i), 0.3 + 0.08 * float(i))
 	var dp := pos + facing * 1.5 + Vector3(0, 0.3, 0)
-	_particles(arena, dp, color, 22, 0.45, 9.0, -6.0, facing + Vector3(0, 0.4, 0), 0.3)
-	_flash(arena, lp + Vector3(0, 0.5, 0), color, 8.0)
+	_particles(arena, dp, color, 30, 0.45, 12.0, -6.0, facing + Vector3(0, 0.3, 0), 0.3)
+	_flash(arena, pos + facing * 6.0 + Vector3(0, 0.5, 0), color, 8.0)
 
 
 static func _bite_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color) -> void:

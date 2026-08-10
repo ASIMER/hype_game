@@ -20,6 +20,9 @@ static func gear(json: Dictionary) -> Dictionary:
 			}
 		"drain":
 			MetaProgression.drain_armor(str(json.get("id", "")), float(json.get("amount", 10.0)))
+		"skill":
+			# QA: grant a Mutant-Harvest skill directly (skips the limb-pickup walk).
+			SkillDirector.grant_skill(GameState.local_peer_id(), str(json.get("id", "leap")))
 	return {
 		"ok": true,
 		"equipped": MetaProgression.get_equipped_gear(),

@@ -540,9 +540,12 @@ const DEFAULT_SPRING_LENGTH: float = 3.5  # legacy single 3rd-person distance (k
 # V cycles the camera through these THIRD-person distances (m, ×camera_distance_scale) then
 # first-person — so V "zooms out" instead of jumping into the head. Index 3 (size) = first-person.
 const VIEW_STEP_LENGTHS: Array = [3.0, 4.5, 6.5]  # 0 close · 1 medium · 2 far
-const VIEW_STEP_COUNT: int = 4  # the 3 distances above + first-person as the last step
+# First-person REMOVED from the cycle (the "helmet view" nobody wanted): V cycles
+# the three third-person zooms only. VIEW_STEP_FIRST_PERSON stays as a dead index
+# so the player's `_is_first_person()` comparisons remain valid (always false).
+const VIEW_STEP_COUNT: int = 3
 const DEFAULT_VIEW_STEP: int = 1  # spawn at MEDIUM (4.5 m) — the whole body is in frame
-const VIEW_STEP_FIRST_PERSON: int = 3  # the cycle index that means first-person
+const VIEW_STEP_FIRST_PERSON: int = 99
 const SHOULDER_OFFSET: float = 0.5  # over-the-shoulder camera x-offset (flipped by swap)
 const AIM_TWEEN_SPEED: float = 10.0  # lerp speed for fov/length/offset
 const PEEK_PROBE: float = 1.4  # side-raycast distance to detect a wall to lean past
@@ -1039,9 +1042,9 @@ const SKILL_DEFS := {
 	{
 		"part": "fist",
 		"color": Color(0.45, 0.74, 1.0),
-		"name_key": "SLAM",
-		"ability": "aoe_stagger",
-		"cooldown": 9.0,
+		"name_key": "LEAP SLAM",
+		"ability": "leap_slam",
+		"cooldown": 10.0,
 		"max_level": 5
 	},
 	"blink":
@@ -1057,10 +1060,10 @@ const SKILL_DEFS := {
 	"mortar":
 	{
 		"part": "barrel",
-		"color": Color(0.95, 0.62, 0.22),
-		"name_key": "MORTAR",
-		"ability": "mortar",
-		"cooldown": 11.0,
+		"color": Color(1.0, 0.5, 0.15),
+		"name_key": "METEOR",
+		"ability": "meteor",
+		"cooldown": 13.0,
 		"max_level": 5
 	},
 	"shield":
@@ -1076,8 +1079,8 @@ const SKILL_DEFS := {
 	{
 		"part": "horn",
 		"color": Color(0.92, 0.74, 0.30),
-		"name_key": "RAM",
-		"ability": "ram_charge",
+		"name_key": "BREACH",
+		"ability": "breach",
 		"cooldown": 10.0,
 		"max_level": 4
 	},
@@ -1102,10 +1105,10 @@ const SKILL_DEFS := {
 	"whirlwind":
 	{
 		"part": "vane",
-		"color": Color(0.95, 0.62, 0.22),
-		"name_key": "WHIRLWIND",
-		"ability": "whirlwind",
-		"cooldown": 10.0,
+		"color": Color(0.55, 0.85, 1.0),
+		"name_key": "STORM",
+		"ability": "storm",
+		"cooldown": 14.0,
 		"max_level": 5
 	},
 	"recon":
@@ -1163,6 +1166,30 @@ const SKILL_BITE_DAMAGE: float = 50.0
 const SKILL_WHIRL_RADIUS: float = 4.5
 const SKILL_WHIRL_DAMAGE: float = 35.0
 const SKILL_RECON_RADIUS: float = 22.0
+
+# MOBA-style rework (v0.4.5): targeted casts aim at the CAMERA CROSSHAIR ground
+# point («метеорит в точку куда смотрим»), spectacle-first VFX.
+const SKILL_TARGET_RANGE: float = 30.0  # max planar cast distance from the caster
+# METEOR (mortar family): telegraph ring → a flaming rock falls → impact breaks
+# WALLS (BreakableChunk) + burns machines (chemistry) — Invoker/Doomfist grammar.
+const SKILL_METEOR_DELAY: float = 0.9  # telegraph seconds before impact
+const SKILL_METEOR_RADIUS: float = 5.0
+const SKILL_METEOR_DAMAGE: float = 75.0
+const SKILL_METEOR_BREAK_R: float = 2.6  # wall-chunk demolition radius at impact
+const SKILL_METEOR_BURN: float = 4.0  # burn seconds applied to victims
+# STORM (whirlwind family): a Crystal-Maiden-style field — explosions rain in a
+# ring around the CAST POINT for several seconds, slowing machines caught inside.
+const SKILL_STORM_TIME: float = 4.0
+const SKILL_STORM_PULSES: int = 6
+const SKILL_STORM_RING_MIN: float = 2.5
+const SKILL_STORM_RING_MAX: float = 7.0
+const SKILL_STORM_PULSE_RADIUS: float = 3.0
+const SKILL_STORM_PULSE_DMG: float = 24.0
+const SKILL_STORM_SLOW: float = 2.5  # slow seconds per pulse hit
+# LEAP SLAM (slam family): a ballistic leap TO the aim point + a landing shockwave.
+const SKILL_LEAP_TIME: float = 0.55  # airtime — the server delays the AoE to landing
+# BREACH (ram family): the charge SMASHES THROUGH breakable walls along its path.
+const SKILL_BREACH_BREAK_R: float = 1.5
 
 # --- Mutant Harvest DEPTH (v0.4.1): passives, set synergies, combos, evolution -------------
 ## Each skill's archetype (drives SET bonuses) — melee / ranged / mobility / defense.

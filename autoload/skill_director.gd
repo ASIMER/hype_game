@@ -108,9 +108,17 @@ func _apply_owner_effect(
 		"recon_dash":
 			if me.has_method("_begin_roll"):
 				me.call("_begin_roll", facing)
-		"ram_charge":
+		"breach":
 			if me.has_method("_begin_roll"):
 				me.call("_begin_roll", facing)
+		"leap_slam":
+			# Ballistic leap TO the aim point (Malphite/Fist-of-Havoc): solve the launch
+			# velocity that lands on `aim` after SKILL_LEAP_TIME under gravity 20.
+			var t: float = Settings.SKILL_LEAP_TIME
+			var dp: Vector3 = aim - body.global_position
+			var v: Vector3 = dp / t
+			v.y = dp.y / t + 0.5 * 20.0 * t
+			body.velocity = v
 		"blink":
 			var rng: float = Settings.SKILL_BLINK_RANGE + float(lvl - 1) + (4.0 if big else 0.0)
 			_blink(body, body.global_position + facing * rng)
@@ -164,23 +172,35 @@ func _apply_server_effect(
 	var center: Vector3 = me.global_position
 	var rmul: float = 1.25 if big else 1.0  # evolved/combo casts hit a wider area
 	match ability:
-		"aoe_stagger":
+		"leap_slam":
+			# The AoE lands WITH the caster at the aim point (airtime-delayed).
 			var rad: float = (Settings.SKILL_SLAM_RADIUS + 0.4 * float(lvl - 1)) * rmul
 			var dmg: float = (Settings.SKILL_SLAM_DAMAGE + 12.0 * float(lvl - 1)) * dmg_power
 			var stun: float = Settings.SKILL_SLAM_STAGGER + 0.15 * float(lvl - 1)
-			_radial(center, rad, dmg, stun, caster)
-		"mortar":
-			var mr: float = (Settings.SKILL_MORTAR_RADIUS + 0.3 * float(lvl - 1)) * rmul
-			var md: float = (Settings.SKILL_MORTAR_DAMAGE + 15.0 * float(lvl - 1)) * dmg_power
-			_radial(aim, mr, md, 0.8, caster)
-		"whirlwind":
-			var wr: float = (Settings.SKILL_WHIRL_RADIUS + 0.3 * float(lvl - 1)) * rmul
-			var wd: float = (Settings.SKILL_WHIRL_DAMAGE + 8.0 * float(lvl - 1)) * dmg_power
-			_radial(center, wr, wd, 0.6, caster)
-		"ram_charge":
+			var t := get_tree().create_timer(Settings.SKILL_LEAP_TIME)
+			t.timeout.connect(_radial.bind(aim, rad, dmg, stun, caster))
+		"meteor":
+			# Telegraph → impact after SKILL_METEOR_DELAY: radial damage + BURN + the
+			# walls in the blast CRUMBLE (BreakableChunk) — the destruction IS the show.
+			var mr: float = (Settings.SKILL_METEOR_RADIUS + 0.3 * float(lvl - 1)) * rmul
+			var md: float = (Settings.SKILL_METEOR_DAMAGE + 15.0 * float(lvl - 1)) * dmg_power
+			var mt := get_tree().create_timer(Settings.SKILL_METEOR_DELAY)
+			mt.timeout.connect(_meteor_impact.bind(aim, mr, md, caster))
+		"storm":
+			_storm(center, lvl, dmg_power, rmul, caster)
+		"breach":
+			# The charge SMASHES THROUGH breakable walls along its path (The Finals
+			# charge-n-slam) + damages machines in the lane.
 			var rr: float = Settings.SKILL_RAM_RANGE
 			var rd: float = (Settings.SKILL_RAM_DAMAGE + 12.0 * float(lvl - 1)) * dmg_power
-			var rc: Vector3 = center + (aim - center).normalized() * (rr * 0.5)
+			var dir: Vector3 = (aim - center).normalized()
+			var steps: int = int(rr / 1.2) + 1
+			for i in steps:
+				BreakableChunk.break_in_radius(
+					center + dir * (1.2 * float(i)) + Vector3.UP * 1.2,
+					Settings.SKILL_BREACH_BREAK_R
+				)
+			var rc: Vector3 = center + dir * (rr * 0.5)
 			_radial(rc, rr * 0.5 * rmul, rd, 1.0, caster)
 		"bite_cone":
 			_cone(me, lvl, caster, dmg_power, rmul)
@@ -190,8 +210,52 @@ func _apply_server_effect(
 			pass
 
 
-## Radial damage + stagger to enemies (the grenade/old-burst pattern).
-func _radial(center: Vector3, radius: float, damage: float, stagger: float, caster: Node) -> void:
+## METEOR impact (server, delayed): radial damage + stagger, BURN chemistry on the
+## victims, and the walls inside the demolition radius crumble.
+func _meteor_impact(aim: Vector3, radius: float, damage: float, caster: Node) -> void:
+	_radial(aim, radius, damage, 1.0, caster, "burn", Settings.SKILL_METEOR_BURN)
+	BreakableChunk.break_in_radius(aim + Vector3.UP * 1.0, Settings.SKILL_METEOR_BREAK_R)
+	BreakableChunk.break_in_radius(aim + Vector3.UP * 2.4, Settings.SKILL_METEOR_BREAK_R * 0.8)
+
+
+## STORM (Crystal-Maiden field): SKILL_STORM_PULSES explosions rain in a ring around
+## the CAST POINT over SKILL_STORM_TIME — each pulse damages + SLOWS machines near it.
+func _storm(center: Vector3, lvl: int, dmg_power: float, rmul: float, caster: Node) -> void:
+	var pulses: int = Settings.SKILL_STORM_PULSES + (lvl - 1)
+	var gap: float = Settings.SKILL_STORM_TIME / float(maxi(1, pulses))
+	for i in pulses:
+		var t := get_tree().create_timer(gap * float(i) + 0.25)
+		t.timeout.connect(_storm_pulse.bind(center, lvl, dmg_power, rmul, caster))
+
+
+func _storm_pulse(center: Vector3, lvl: int, dmg_power: float, rmul: float, caster: Node) -> void:
+	var ang: float = randf() * TAU
+	var r: float = randf_range(Settings.SKILL_STORM_RING_MIN, Settings.SKILL_STORM_RING_MAX)
+	var at: Vector3 = center + Vector3(cos(ang) * r, 0.0, sin(ang) * r)
+	var dmg: float = (Settings.SKILL_STORM_PULSE_DMG + 5.0 * float(lvl - 1)) * dmg_power
+	_radial(
+		at,
+		Settings.SKILL_STORM_PULSE_RADIUS * rmul,
+		dmg,
+		0.4,
+		caster,
+		"slow",
+		Settings.SKILL_STORM_SLOW
+	)
+
+
+## Radial damage + stagger to enemies (the grenade/old-burst pattern). Optional
+## `chem` applies a machine-chemistry status to every victim (meteor→burn,
+## storm→slow) so the MOBA casts feed the status/reaction system.
+func _radial(
+	center: Vector3,
+	radius: float,
+	damage: float,
+	stagger: float,
+	caster: Node,
+	chem: String = "",
+	chem_dur: float = 0.0
+) -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
@@ -211,6 +275,8 @@ func _radial(center: Vector3, radius: float, damage: float, stagger: float, cast
 		health.take_damage(dmg, caster)
 		if stagger > 0.0 and e.has_method("apply_stun"):
 			e.apply_stun(stagger)
+		if chem != "" and e.has_method("apply_chemistry"):
+			e.apply_chemistry(chem, chem_dur, 0.5 if chem == "slow" else 1.0)
 	NetworkManager.report_noise(center, radius, 2)
 
 

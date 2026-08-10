@@ -83,7 +83,6 @@ var _camera_distance: HSlider
 var _camera_distance_value: Label
 var _camera_shoulder: HSlider
 var _camera_shoulder_value: Label
-var _default_view: OptionButton
 
 # Dynamic resolution list for the current monitor (built in _populate_options).
 var _res_list: Array = []
@@ -410,20 +409,9 @@ func _build_interface_rows() -> void:
 	_camera_shoulder.value_changed.connect(_on_camera_shoulder)
 	_interface_v.add_child(sh_row[0])
 
-	var view_row := HBoxContainer.new()
-	view_row.add_theme_constant_override("separation", 16)
-	var view_label := Label.new()
-	view_label.text = "Default View"
-	view_label.custom_minimum_size = Vector2(220, 0)
-	_default_view = OptionButton.new()
-	_default_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for s in ["Third Person", "First Person"]:
-		_default_view.add_item(s)
-	_default_view.item_selected.connect(func(i): _apply_setting("default_view", i))
-	view_row.add_child(view_label)
-	view_row.add_child(_default_view)
-	_interface_v.add_child(view_row)
-	_interface_v.add_child(_make_note("(toggle in-game with V)"))
+	# The "Default View" first-person picker is GONE (user verdict: the helmet view
+	# is deleted — V now cycles the three third-person zooms only).
+	_interface_v.add_child(_make_note("(camera zoom in-game: V)"))
 
 
 func _on_camera_distance(v: float) -> void:
@@ -644,7 +632,6 @@ func sync_from_settings() -> void:
 	var cam_sh: float = float(g.get_value("camera_shoulder"))
 	_camera_shoulder.value = cam_sh
 	_camera_shoulder_value.text = "%d%%" % roundi(cam_sh * 100.0)
-	_default_view.select(int(g.get_value("default_view")))
 
 	_master.value = float(g.get_value("master_volume"))
 	_master_value.text = "%d%%" % roundi(_master.value * 100.0)

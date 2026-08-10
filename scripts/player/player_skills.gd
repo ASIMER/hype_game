@@ -210,9 +210,34 @@ func _facing() -> Vector3:
 	return f.normalized() if f.length() > 0.01 else Vector3.FORWARD
 
 
-## A ground-aim point in front of the player (Phase-5 abilities refine this with the camera ray).
+## MOBA-style targeting: the CAMERA CROSSHAIR ray projected into the world — a
+## targeted cast lands «в точку куда смотрим». Clamped to SKILL_TARGET_RANGE from
+## the caster, then snapped to the ground below; falls back to 8 m ahead when the
+## camera is missing (headless/QA).
 func _aim_point() -> Vector3:
-	return _p.global_position + _facing() * 8.0
+	var cam := _p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") as Camera3D
+	if cam == null:
+		return _p.global_position + _facing() * 8.0
+	var space := _p.get_world_3d().direct_space_state
+	var from: Vector3 = cam.global_position
+	var to: Vector3 = from + (-cam.global_transform.basis.z) * (Settings.SKILL_TARGET_RANGE * 1.6)
+	var q := PhysicsRayQueryParameters3D.create(from, to, 1)  # world geometry only
+	var hit: Dictionary = space.intersect_ray(q)
+	var point: Vector3 = hit.get("position", to) if not hit.is_empty() else to
+	# Clamp the PLANAR reach from the caster (a sky-aimed shot stays castable nearby).
+	var flat: Vector3 = point - _p.global_position
+	flat.y = 0.0
+	if flat.length() > Settings.SKILL_TARGET_RANGE:
+		point = _p.global_position + flat.normalized() * Settings.SKILL_TARGET_RANGE
+		point.y = _p.global_position.y
+	# Snap to the ground below the point so ground-target AoEs sit ON the floor.
+	var gq := PhysicsRayQueryParameters3D.create(
+		point + Vector3.UP * 10.0, point + Vector3.DOWN * 40.0, 1
+	)
+	var ghit: Dictionary = space.intersect_ray(gq)
+	if not ghit.is_empty():
+		point = ghit["position"]
+	return point
 
 
 # ------------------------------------------------------------ limbs (every peer)

@@ -197,9 +197,9 @@ func _ready() -> void:
 	# Cache the camera pivot's authored base height (crouch/slide lerp down from this).
 	_cam_base_y = camera_pivot.position.y
 	_read_camera_settings()
+	# Always spawn in the third-person default — the first-person "helmet" view is
+	# REMOVED (user verdict; V cycles the three third-person zooms only).
 	_view_step = Settings.DEFAULT_VIEW_STEP
-	if Settings.default_first_person:
-		_view_step = Settings.VIEW_STEP_FIRST_PERSON
 	spring_arm.spring_length = Settings.FP_SPRING_LENGTH if _is_first_person() else _step_len()
 	spring_arm.position.x = _shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale
 	# Anti-cheat: the spring arm pulls the camera in against world geometry (layer 1, where
