@@ -62,6 +62,14 @@ const SOUNDS := {
 	"robot_death": "res://assets/audio/robot_death.ogg",
 	# 96 s evolving dark loop (gen_music_long) — swapped in when the STORM hits.
 	"music_storm": "res://assets/audio/music_storm.ogg",
+	# MOBA skill rework (v0.4.5): per-ability cast/impact sounds (gen_audio.py).
+	"skill_cast": "res://assets/audio/skill_cast.wav",
+	"skill_meteor": "res://assets/audio/skill_meteor.wav",
+	"skill_storm": "res://assets/audio/skill_storm.wav",
+	"skill_leap": "res://assets/audio/skill_leap.wav",
+	"skill_slam": "res://assets/audio/skill_slam.wav",
+	"skill_breach": "res://assets/audio/skill_breach.wav",
+	"skill_zap": "res://assets/audio/skill_zap.wav",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -96,6 +104,13 @@ const SOUND_DB := {
 	"chunk_stone": -7.0,
 	"robot_alert": -9.0,
 	"robot_death": -7.0,
+	"skill_cast": -8.0,
+	"skill_meteor": -5.0,
+	"skill_storm": -8.0,
+	"skill_leap": -7.0,
+	"skill_slam": -4.0,
+	"skill_breach": -6.0,
+	"skill_zap": -7.0,
 }
 
 # In-raid ambient bed per biome (the base "ambient" wind is the fallback + menu bed).
@@ -611,6 +626,12 @@ func _on_button_pressed() -> void:
 ## pitched down so no new asset is needed; open reads higher than close.
 func ui_panel(open: bool) -> void:
 	_play_pitched("ui_click", 0.8 if open else 0.65, -2.0)
+
+
+## Skill cast/impact one-shot with a little pitch life (SkillDirector/SkillVFX,
+## already distance-gated + headless-skipped upstream).
+func play_skill(id: String) -> void:
+	_play_pitched(id, randf_range(0.94, 1.06), 0.0)
 
 
 # ---------------------------------------------------------------------------

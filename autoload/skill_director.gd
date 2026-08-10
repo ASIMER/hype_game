@@ -347,6 +347,7 @@ func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3, facing: Vector3, bi
 	var color: Color = def["color"]
 	var ability: String = String(def["ability"])
 	SkillVFX.play(ability, color, pos, aim, facing, arena)
+	_play_cast_audio(ability)
 	if big:
 		# Evolved / combo-empowered cast — a bright shock-ring emphasis + a stronger shake.
 		var at: Vector3 = aim if ability == "mortar" else pos
@@ -354,6 +355,31 @@ func _cast_vfx(skill_id: String, pos: Vector3, aim: Vector3, facing: Vector3, bi
 		Events.screen_shake.emit(SkillVFX.shake_for(ability) * 1.5)
 	else:
 		Events.screen_shake.emit(SkillVFX.shake_for(ability))
+
+
+## Per-ability cast audio, with the payoff layer scheduled where the impact is
+## delayed (meteor boom at touchdown, slam thud at landing). Runs on every peer
+## already inside the _fx_near distance gate.
+func _play_cast_audio(ability: String) -> void:
+	match ability:
+		"meteor":
+			AudioManager.play_skill("skill_meteor")
+			get_tree().create_timer(Settings.SKILL_METEOR_DELAY).timeout.connect(
+				func() -> void: AudioManager.play_skill("explosion")
+			)
+		"leap_slam":
+			AudioManager.play_skill("skill_leap")
+			get_tree().create_timer(Settings.SKILL_LEAP_TIME).timeout.connect(
+				func() -> void: AudioManager.play_skill("skill_slam")
+			)
+		"storm":
+			AudioManager.play_skill("skill_storm")
+		"breach":
+			AudioManager.play_skill("skill_breach")
+		"chain":
+			AudioManager.play_skill("skill_zap")
+		_:
+			AudioManager.play_skill("skill_cast")
 
 
 # ------------------------------------------------------------ helpers

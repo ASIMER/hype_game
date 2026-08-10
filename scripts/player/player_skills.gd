@@ -115,6 +115,11 @@ func cooldown_remaining(skill_id: String) -> float:
 	return maxf(0.0, float(_cd.get(skill_id, 0.0)))
 
 
+## The hotbar slot currently HOLD-AIMED (1-based; -1 = none) — HUD highlight.
+func aiming_slot() -> int:
+	return _aiming_slot
+
+
 # ------------------------------------------------------------ passives + set synergies
 ## Aggregate passive bonuses from held skills (level-scaled) + archetype SET bonuses.
 ## Returns {"damage": bonus, "toughness": reduction} (0-based, capped). Cheap (≤5 skills).
@@ -203,10 +208,10 @@ func _poll_cast_input(delta: float) -> void:
 		return
 
 
-## Abilities that target the crosshair ground point (get the hold-to-aim circle).
+## Abilities that get a hold-to-aim indicator: ground-circle casts + the breach lane.
 func _is_aimed(sid: String) -> bool:
 	var ability: String = String(Settings.skill_def(sid)["ability"])
-	return ability == "meteor" or ability == "leap_slam"
+	return ability == "meteor" or ability == "leap_slam" or ability == "breach"
 
 
 ## The AoE radius the indicator previews (matches the server's damage radius).
@@ -218,13 +223,16 @@ func _indicator_radius(sid: String) -> float:
 	return Settings.SKILL_SLAM_RADIUS + 0.4 * float(lvl - 1)
 
 
-## Build the target circle: an emissive ring at the AoE radius + a faint fill disc
-## + a hot center dot, in the skill's signature color. Parented to the scene (world
-## space); repositioned every frame while aiming.
+## Build the aim indicator: a target CIRCLE (ring + fill + dot) for ground-point
+## casts, or a LANE rectangle + end chevron for the breach charge. Parented to the
+## scene (world space); repositioned every frame while aiming.
 func _show_indicator(sid: String) -> void:
 	_hide_indicator()
 	var def: Dictionary = Settings.skill_def(sid)
 	var col: Color = def["color"]
+	if String(def["ability"]) == "breach":
+		_show_lane(col)
+		return
 	var r: float = _indicator_radius(sid)
 	var root := Node3D.new()
 	root.name = "SkillAimIndicator"
@@ -272,10 +280,64 @@ func _show_indicator(sid: String) -> void:
 	_update_indicator(0.0)
 
 
+## The BREACH lane: a flat rectangle from the player along the aim direction
+## (length = charge range, width = the wall-smash swath) + an end chevron.
+func _show_lane(col: Color) -> void:
+	var lane_l: float = Settings.SKILL_RAM_RANGE
+	var lane_w: float = Settings.SKILL_BREACH_BREAK_R * 2.0
+	var root := Node3D.new()
+	root.name = "SkillAimIndicator"
+	var base := MeshInstance3D.new()
+	var bb := BoxMesh.new()
+	bb.size = Vector3(lane_w + 0.3, 0.02, lane_l)
+	base.mesh = bb
+	base.material_override = _indicator_mat(Color(0.03, 0.05, 0.07), 0.6)
+	base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	base.position = Vector3(0, 0.0, -lane_l * 0.5)
+	root.add_child(base)
+	var fill := MeshInstance3D.new()
+	var fb := BoxMesh.new()
+	fb.size = Vector3(lane_w, 0.02, lane_l)
+	fill.mesh = fb
+	fill.material_override = _indicator_mat(col, 0.28)
+	fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	fill.position = Vector3(0, 0.02, -lane_l * 0.5)
+	root.add_child(fill)
+	# End chevron: a flat "arrowhead" prism pointing down-lane.
+	var tip := MeshInstance3D.new()
+	var pm := PrismMesh.new()
+	pm.size = Vector3(lane_w + 0.6, 0.02, 1.2)
+	tip.mesh = pm
+	tip.material_override = _indicator_mat(col, 0.9)
+	tip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	tip.rotation_degrees = Vector3(0, 180, 0)
+	tip.position = Vector3(0, 0.03, -lane_l - 0.5)
+	root.add_child(tip)
+	var scene: Node = get_tree().current_scene
+	if scene == null:
+		return
+	scene.add_child(root)
+	root.set_meta("lane", true)
+	_indicator = root
+	_indicator_t = 0.0
+	_update_indicator(0.0)
+
+
 func _update_indicator(delta: float) -> void:
 	if _indicator == null or not is_instance_valid(_indicator):
 		return
 	_indicator_t += delta
+	if _indicator.has_meta("lane"):
+		# Lane: anchored at the player's feet, rotated toward the aim point.
+		_indicator.global_position = _p.global_position + Vector3(0, 0.14, 0)
+		var dir: Vector3 = _aim_point() - _p.global_position
+		dir.y = 0.0
+		if dir.length() > 0.05:
+			# Yaw that maps the node's local -Z (the lane axis) onto `dir`.
+			_indicator.rotation.y = atan2(-dir.x, -dir.z)
+		var lpulse: float = 1.0 + 0.04 * sin(_indicator_t * 8.0)
+		_indicator.scale = Vector3(lpulse, 1.0, 1.0)
+		return
 	_indicator.global_position = _aim_point() + Vector3(0, 0.12, 0)
 	var pulse: float = 1.0 + 0.05 * sin(_indicator_t * 7.0)
 	_indicator.scale = Vector3(pulse, 1.0, pulse)

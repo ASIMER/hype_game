@@ -61,7 +61,9 @@ func _process(_delta: float) -> void:
 	var sk: Node = _player.get_node_or_null("Skills")
 	if sk == null or not sk.has_method("cooldown_frac"):
 		return
-	for s in _slots:
+	var aim_slot: int = int(sk.aiming_slot()) if sk.has_method("aiming_slot") else -1
+	for i in _slots.size():
+		var s: Dictionary = _slots[i]
 		var sid: String = String(s["skill_id"])
 		if sid == "":
 			s["cd"].visible = false
@@ -78,6 +80,19 @@ func _process(_delta: float) -> void:
 			s["cdtext"].text = "%d" % int(ceil(rem))  # whole seconds left
 		else:
 			s["cdtext"].visible = false
+		# READY flash: the moment a cooldown finishes the slot pops bright (the MOBA
+		# "ability back up" beat); while HOLD-AIMING the slot stays lifted.
+		var ready_now: bool = f <= 0.0
+		if ready_now and not bool(s.get("ready", true)):
+			var pnl: Panel = s["panel"]
+			pnl.modulate = Color(1.8, 1.8, 1.8)
+			var tw := pnl.create_tween()
+			tw.tween_property(pnl, "modulate", Color(1, 1, 1), 0.4)
+		s["ready"] = ready_now
+		if aim_slot == i + 1:
+			s["panel"].modulate = Color(1.35, 1.35, 1.35)
+		elif bool(s.get("ready", true)) and s["panel"].modulate.r > 1.34:
+			s["panel"].modulate = Color(1, 1, 1)
 	_update_passive(sk)
 
 
@@ -158,6 +173,10 @@ func _slot_style(col: Color, filled: bool) -> StyleBoxFlat:
 	sb.set_border_width_all(2)
 	sb.border_color = Color(col.r, col.g, col.b, 1.0 if filled else 0.45)
 	sb.set_corner_radius_all(5)
+	if filled:
+		# Family-colour glow — the UIStyle accent language; a held skill reads "live".
+		sb.shadow_color = Color(col.r, col.g, col.b, 0.35)
+		sb.shadow_size = 6
 	return sb
 
 

@@ -14,6 +14,9 @@ static func play(
 ) -> void:
 	if arena == null:
 		return
+	# CAST BURST on the caster (every ability): a quick color pop + rising motes so
+	# the cast moment itself reads — the "hands glow" beat MOBA casts open with.
+	_caster_burst(arena, pos, color)
 	match ability:
 		"leap_slam":
 			_leap_slam(arena, pos, aim, color)
@@ -37,6 +40,71 @@ static func play(
 			_chain_fx(arena, pos)
 		_:
 			_ring(arena, pos, color, 6.0)
+
+
+## Quick cast pop at the caster: small ring + a handful of rising motes.
+static func _caster_burst(arena: Node, pos: Vector3, color: Color) -> void:
+	_ring(arena, pos, color, 2.2, 0.28)
+	_particles(arena, pos + Vector3(0, 1.0, 0), color, 10, 0.45, 3.0, 2.0, Vector3(0, 1, 0), 0.2)
+
+
+## Rising smoke column (meteor aftermath) — soft grey billboards drifting up.
+static func _smoke(arena: Node, pos: Vector3) -> void:
+	var p := GPUParticles3D.new()
+	p.amount = 26
+	p.lifetime = 1.8
+	p.one_shot = true
+	p.explosiveness = 0.55
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 1.2
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 20.0
+	pm.initial_velocity_min = 1.5
+	pm.initial_velocity_max = 3.5
+	pm.gravity = Vector3(0, 1.2, 0)
+	pm.scale_min = 0.8
+	pm.scale_max = 1.8
+	pm.color = Color(0.25, 0.24, 0.23, 0.55)
+	p.process_material = pm
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.4
+	mesh.height = 0.8
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(0.22, 0.21, 0.2, 0.4)
+	mesh.material = m
+	p.draw_pass_1 = mesh
+	arena.add_child(p)
+	p.global_position = pos + Vector3(0, 0.5, 0)
+	p.emitting = true
+	_free_after(p, 2.2)
+
+
+## Dark scorch mark on the ground (meteor / slam aftermath), fading over ~7 s.
+static func _scorch(arena: Node, pos: Vector3, radius: float) -> void:
+	var dec := Decal.new()
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.02, 0.02, 0.02, 0.85))
+	grad.set_color(1, Color(0.02, 0.02, 0.02, 0.0))
+	grad.set_offset(0, 0.25)
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(0.5, 0.0)
+	tex.width = 128
+	tex.height = 128
+	dec.texture_albedo = tex
+	dec.size = Vector3(radius * 2.0, 2.0, radius * 2.0)
+	arena.add_child(dec)
+	dec.global_position = pos + Vector3(0, 0.4, 0)
+	var tw := dec.create_tween()
+	tw.tween_interval(4.0)
+	tw.tween_property(dec, "albedo_mix", 0.0, 3.0)
+	tw.tween_callback(dec.queue_free)
 
 
 ## A bright white shock-ring overlay for an EVOLVED / COMBO-empowered cast (the "payoff" pop).
@@ -78,6 +146,7 @@ static func _leap_slam(arena: Node, pos: Vector3, aim: Vector3, color: Color) ->
 			)
 			_dust(arena, aim)
 			_flash(arena, aim + Vector3(0, 0.4, 0), color, 9.0)
+			_scorch(arena, aim, 2.6)
 	)
 
 
@@ -127,6 +196,10 @@ static func _meteor(arena: Node, aim: Vector3, color: Color) -> void:
 	trail.emitting = true
 	# Fall starts so the rock ARRIVES exactly at SKILL_METEOR_DELAY (server impact).
 	var wait: float = maxf(0.0, Settings.SKILL_METEOR_DELAY - drop_t)
+	# Tumble while falling (a static sphere read as a balloon — spin sells the rock).
+	var spin := rock.create_tween()
+	spin.tween_interval(wait)
+	spin.tween_property(rock, "rotation", Vector3(4.2, 2.6, 3.4), drop_t)
 	var tw := rock.create_tween()
 	tw.tween_interval(wait)
 	(
@@ -154,6 +227,8 @@ static func _meteor(arena: Node, aim: Vector3, color: Color) -> void:
 				0.4
 			)
 			_dust(arena, aim)
+			_smoke(arena, aim)
+			_scorch(arena, aim, Settings.SKILL_METEOR_RADIUS * 0.8)
 	)
 	tw.tween_callback(rock.queue_free)
 
@@ -193,6 +268,16 @@ static func _storm(arena: Node, pos: Vector3, color: Color) -> void:
 	p.emitting = true
 	_free_after(p, Settings.SKILL_STORM_TIME + 1.2)
 	_ring(arena, pos, color, Settings.SKILL_STORM_RING_MAX, 0.7)
+	# Central vortex column — a slim glowing beam marks the storm's eye for its
+	# whole duration (the CM channel visual anchor).
+	_beam(
+		arena,
+		pos + Vector3(0, 0.2, 0),
+		pos + Vector3(0, 9.0, 0),
+		color,
+		0.22,
+		Settings.SKILL_STORM_TIME
+	)
 	# Random pops inside the ring for the storm's whole duration (the CM "rain").
 	var pops: int = int(Settings.SKILL_STORM_TIME / 0.35)
 	for i in pops:
@@ -260,6 +345,15 @@ static func _breach_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color)
 	var dp := pos + facing * 1.5 + Vector3(0, 0.3, 0)
 	_particles(arena, dp, color, 30, 0.45, 12.0, -6.0, facing + Vector3(0, 0.3, 0), 0.3)
 	_flash(arena, pos + facing * 6.0 + Vector3(0, 0.5, 0), color, 8.0)
+	# End-of-lane shockwave a beat later — the "came out the other side" punch.
+	var endp: Vector3 = pos + facing * Settings.SKILL_RAM_RANGE
+	var t: SceneTreeTimer = arena.get_tree().create_timer(0.25)
+	t.timeout.connect(
+		func() -> void:
+			if is_instance_valid(arena):
+				_ring(arena, endp, color, 6.0, 0.4)
+				_flash(arena, endp + Vector3(0, 0.6, 0), color, 9.0)
+	)
 
 
 static func _bite_fx(arena: Node, pos: Vector3, facing: Vector3, color: Color) -> void:

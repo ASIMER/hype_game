@@ -815,6 +815,136 @@ def gen_robot_death() -> list[float]:
 # Main
 # ---------------------------------------------------------------------------
 
+def gen_skill_cast() -> list[float]:
+    """Generic ability cast: a bright two-tone energy chirp (dash/blink/shield…)."""
+
+    def chirp(f0: float, f1: float, dur: float, amp: float) -> list[float]:
+        n = int(SAMPLE_RATE * dur)
+        out = []
+        ph = 0.0
+        for i in range(n):
+            t = i / n
+            f = f0 + (f1 - f0) * t
+            ph += 2 * math.pi * f / SAMPLE_RATE
+            out.append(amp * (math.sin(ph) + 0.25 * math.sin(2 * ph)))
+        return _adsr(out, 0.004, 0.03, 0.7, dur * 0.5)
+
+    return _fade(_concat(chirp(520, 980, 0.1, 0.7), chirp(760, 1400, 0.12, 0.6)), 0.002, 0.04)
+
+
+def gen_skill_meteor() -> list[float]:
+    """Meteor call: a falling WHISTLE (1500→240 Hz) over a growing low rumble —
+    the impact itself reuses the existing explosion sample."""
+    dur = 0.9
+    n = int(SAMPLE_RATE * dur)
+    whistle = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 1500.0 - 1260.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        whistle.append(0.55 * math.sin(ph) * (0.4 + 0.6 * t))
+    rumble = _lowpass(_noise(dur, 0.8, seed=2100), 160)
+    rumble = [v * (i / n) for i, v in enumerate(rumble)]
+    return _fade(_mix(_adsr(whistle, 0.05, 0.1, 0.9, 0.2), rumble), 0.004, 0.05)
+
+
+def gen_skill_storm() -> list[float]:
+    """Storm field: 4 s of swirling wind with an icy shimmer tremolo."""
+    dur = 4.2
+    n = int(SAMPLE_RATE * dur)
+    wind = _lowpass(_noise(dur, 0.85, seed=2200), 900)
+    out = []
+    for i, v in enumerate(wind):
+        t = i / n
+        trem = 0.55 + 0.45 * math.sin(2 * math.pi * 5.2 * t * dur)
+        out.append(v * trem * (0.35 + 0.65 * math.sin(math.pi * t)))
+    shimmer = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 1800.0 + 700.0 * math.sin(2 * math.pi * 0.8 * t * dur)
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        shimmer.append(0.12 * math.sin(ph) * (0.5 + 0.5 * math.sin(2 * math.pi * 3.0 * t * dur)))
+    return _fade(_mix(out, shimmer), 0.05, 0.4)
+
+
+def gen_skill_leap() -> list[float]:
+    """Leap take-off: an upward whoosh (rising band of noise + sine sweep)."""
+    dur = 0.35
+    n = int(SAMPLE_RATE * dur)
+    woosh = _highpass(_noise(dur, 0.7, seed=2300), 500)
+    woosh = [v * (i / n) for i, v in enumerate(woosh)]
+    sweep = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 240.0 + 640.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        sweep.append(0.4 * math.sin(ph) * t)
+    return _fade(_mix(woosh, sweep), 0.004, 0.06)
+
+
+def gen_skill_slam() -> list[float]:
+    """Slam landing: a deep body thud + dirt burst."""
+    dur = 0.45
+    thud = []
+    ph = 0.0
+    n = int(SAMPLE_RATE * dur)
+    for i in range(n):
+        t = i / n
+        f = 82.0 - 40.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        thud.append(0.95 * math.sin(ph) * (1.0 - t) ** 1.6)
+    dirt = _lowpass(_noise(0.22, 0.7, seed=2400), 700)
+    dirt = _adsr(dirt, 0.002, 0.05, 0.4, 0.15)
+    return _fade(_mix(thud, dirt + _silence(dur - 0.22)), 0.002, 0.08)
+
+
+def gen_skill_breach() -> list[float]:
+    """Breach charge: a mean descending roar with metallic grit."""
+    dur = 0.55
+    n = int(SAMPLE_RATE * dur)
+    roar = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 220.0 - 130.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        v = math.sin(ph) + 0.45 * math.sin(2 * ph) + 0.2 * math.sin(3 * ph)
+        roar.append(0.6 * v * (1.0 - t * 0.5))
+    grit = _highpass(_noise(dur, 0.35, seed=2500), 1400)
+    grit = [v * (1.0 - i / n) for i, v in enumerate(grit)]
+    return _fade(_mix(_adsr(roar, 0.01, 0.08, 0.8, 0.2), grit), 0.003, 0.08)
+
+
+def gen_skill_zap() -> list[float]:
+    """Chain shock: electric crackle + two descending zap blips."""
+    dur = 0.35
+    n = int(SAMPLE_RATE * dur)
+    crackle = _highpass(_noise(dur, 0.6, seed=2600), 2400)
+    rng = random.Random(2601)
+    gate = 0.0
+    for i in range(n):
+        if i % 180 == 0:
+            gate = 1.0 if rng.random() < 0.4 else 0.1
+        crackle[i] *= gate * (1.0 - i / n)
+
+    def blip(f0: float, f1: float, dur_b: float, amp: float) -> list[float]:
+        nb = int(SAMPLE_RATE * dur_b)
+        out = []
+        ph = 0.0
+        for i in range(nb):
+            t = i / nb
+            f = f0 + (f1 - f0) * t
+            ph += 2 * math.pi * f / SAMPLE_RATE
+            out.append(amp * math.sin(ph))
+        return _adsr(out, 0.002, 0.02, 0.5, dur_b * 0.4)
+
+    blips = _concat(blip(1600, 700, 0.09, 0.55), _silence(0.05), blip(1300, 500, 0.09, 0.45))
+    return _fade(_mix(crackle, blips + _silence(max(0.0, dur - 0.23))), 0.002, 0.05)
+
+
 def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
     print(f"Output dir: {os.path.abspath(OUT_DIR)}\n")
@@ -859,6 +989,14 @@ def main() -> None:
         ("amb_rain.wav",       gen_amb_rain),
         ("robot_alert.wav",    gen_robot_alert),
         ("robot_death.wav",    gen_robot_death),
+        # MOBA skill rework (v0.4.5): per-ability cast/impact sounds.
+        ("skill_cast.wav",     gen_skill_cast),
+        ("skill_meteor.wav",   gen_skill_meteor),
+        ("skill_storm.wav",    gen_skill_storm),
+        ("skill_leap.wav",     gen_skill_leap),
+        ("skill_slam.wav",     gen_skill_slam),
+        ("skill_breach.wav",   gen_skill_breach),
+        ("skill_zap.wav",      gen_skill_zap),
     ]
 
     # Optional CLI filter: `python gen_audio.py music_long amb_rain` regenerates only

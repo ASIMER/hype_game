@@ -14,12 +14,14 @@ $Icons = [ordered]@{
   "leap"       = @("lorc/jump-across", "delapouite/leapfrog", "lorc/wingfoot", "lorc/run")
   "slam"       = @("lorc/falling-rocks", "lorc/ground-slam", "lorc/stomp", "lorc/war-axe")
   "blink"      = @("lorc/teleport", "delapouite/portal", "lorc/sparkle", "lorc/sprint")
-  "mortar"     = @("delapouite/mortar", "lorc/missile-mortar", "delapouite/incoming-rocket", "lorc/grenade")
+  # MOBA rework: mortar is now METEOR — a falling burning rock, not a tube.
+  "mortar"     = @("lorc/meteor-impact", "lorc/burning-meteor", "lorc/missile-mortar", "lorc/grenade")
   "shield"     = @("sbed/round-shield", "lorc/checked-shield", "delapouite/shield", "lorc/shield-reflect")
   "ram"        = @("lorc/charging-bull", "lorc/horned-helm", "delapouite/horn-internal", "lorc/bull-horns")
   "chainshock" = @("lorc/chain-lightning", "lorc/lightning-arc", "sbed/electric", "lorc/power-lightning")
   "bite"       = @("lorc/fangs", "lorc/sharp-smile", "lorc/spiked-tail", "lorc/saber-tooth")
-  "whirlwind"  = @("lorc/tornado", "delapouite/whirlwind", "lorc/cyclone", "lorc/wind-hole")
+  # MOBA rework: whirlwind is now STORM — the CM frost-field orb over a tornado.
+  "whirlwind"  = @("lorc/frozen-orb", "lorc/ice-bolt", "lorc/tornado", "lorc/cyclone")
   "recon"      = @("lorc/eye-target", "delapouite/semi-closed-eye", "lorc/all-seeing-eye", "lorc/eyeball")
 }
 
