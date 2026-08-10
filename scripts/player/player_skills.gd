@@ -22,6 +22,12 @@ var _slot_order: Array[String] = []  # acquisition order → hotbar slot index (
 var _cd: Dictionary = {}  # skill_id -> cooldown seconds remaining (authority-local)
 var _combo_until_ms: int = 0  # combo window deadline ms (authority-local)
 var _combo_last: String = ""  # last skill cast — a combo needs a DIFFERENT skill next
+# MOBA targeting indicator (hold-to-aim, release-to-cast for AIMED abilities): while a
+# skill key is HELD the AoE circle follows the crosshair ground point in the skill's
+# color; releasing casts there. Owner-local render only — never networked.
+var _aiming_slot: int = -1
+var _indicator: Node3D = null
+var _indicator_t: float = 0.0
 
 
 func _ready() -> void:
@@ -37,9 +43,11 @@ func _process(delta: float) -> void:
 		var sig: String = str(_p.skills)
 		if sig != _built or not is_instance_valid(_limbs):
 			_rebuild(sig)
-	# Cooldown tick — owner only.
+	# Cooldown tick + cast input — owner only. POLL-based (Input.is_action_*) so both
+	# real keys AND the harness `hold` verb (engine-state press) drive the aiming.
 	if _p.is_multiplayer_authority():
 		_tick_cooldowns(delta)
+		_poll_cast_input(delta)
 
 
 # ------------------------------------------------------------ acquisition (owner)
@@ -74,9 +82,16 @@ func acquire(skill_id: String) -> void:
 func reset() -> void:
 	_cd.clear()
 	_slot_order.clear()
+	_aiming_slot = -1
+	_hide_indicator()
 	if _p.is_multiplayer_authority():
 		_p.skills = {}
 	Events.skill_changed.emit()
+
+
+func _exit_tree() -> void:
+	# The indicator lives under the SCENE (not this node) — never leak it past death.
+	_hide_indicator()
 
 
 # ------------------------------------------------------------ hotbar / casting (owner)
@@ -157,14 +172,129 @@ func _tick_cooldowns(delta: float) -> void:
 			_cd[sid] = rem
 
 
-## Cast the skill in hotbar `slot` (1..5) — owner only, event-based (the harness `act` path).
-func _unhandled_input(event: InputEvent) -> void:
-	if _p == null or not _p.is_multiplayer_authority():
+## Poll the skill keys each frame: AIMED abilities (meteor / leap slam) enter a
+## hold-to-aim state showing the target circle and cast on RELEASE at the aimed
+## point; instant abilities cast on press as before.
+func _poll_cast_input(delta: float) -> void:
+	if _aiming_slot > 0:
+		if Input.is_action_pressed("skill_%d" % _aiming_slot):
+			_update_indicator(delta)
+		else:
+			var s: int = _aiming_slot
+			_aiming_slot = -1
+			_hide_indicator()
+			cast(s)
 		return
 	for slot in range(1, Settings.SKILL_MAX_SLOTS + 1):
-		if event.is_action_pressed("skill_%d" % slot):
-			cast(slot)
+		if not Input.is_action_just_pressed("skill_%d" % slot):
+			continue
+		if slot > _slot_order.size():
 			return
+		var sid: String = _slot_order[slot - 1]
+		if float(_cd.get(sid, 0.0)) > 0.0:
+			return
+		if _p.has_method("is_downed") and _p.is_downed():
+			return
+		if _is_aimed(sid):
+			_aiming_slot = slot
+			_show_indicator(sid)
+		else:
+			cast(slot)
+		return
+
+
+## Abilities that target the crosshair ground point (get the hold-to-aim circle).
+func _is_aimed(sid: String) -> bool:
+	var ability: String = String(Settings.skill_def(sid)["ability"])
+	return ability == "meteor" or ability == "leap_slam"
+
+
+## The AoE radius the indicator previews (matches the server's damage radius).
+func _indicator_radius(sid: String) -> float:
+	var ability: String = String(Settings.skill_def(sid)["ability"])
+	var lvl: int = int(_p.skills.get(sid, 1))
+	if ability == "meteor":
+		return Settings.SKILL_METEOR_RADIUS + 0.3 * float(lvl - 1)
+	return Settings.SKILL_SLAM_RADIUS + 0.4 * float(lvl - 1)
+
+
+## Build the target circle: an emissive ring at the AoE radius + a faint fill disc
+## + a hot center dot, in the skill's signature color. Parented to the scene (world
+## space); repositioned every frame while aiming.
+func _show_indicator(sid: String) -> void:
+	_hide_indicator()
+	var def: Dictionary = Settings.skill_def(sid)
+	var col: Color = def["color"]
+	var r: float = _indicator_radius(sid)
+	var root := Node3D.new()
+	root.name = "SkillAimIndicator"
+	# Dark contrast under-ring so the bright ring reads on ANY ground brightness.
+	var base := MeshInstance3D.new()
+	var bm := TorusMesh.new()
+	bm.inner_radius = maxf(0.1, r - 0.26)
+	bm.outer_radius = r + 0.1
+	base.mesh = bm
+	base.material_override = _indicator_mat(Color(0.03, 0.05, 0.07), 0.75)
+	base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(base)
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = maxf(0.1, r - 0.16)
+	tm.outer_radius = r
+	ring.mesh = tm
+	ring.position.y = 0.02
+	ring.material_override = _indicator_mat(col, 0.95)
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(ring)
+	var disc := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = r
+	cm.bottom_radius = r
+	cm.height = 0.02
+	disc.mesh = cm
+	disc.material_override = _indicator_mat(col, 0.14)
+	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(disc)
+	var dot := MeshInstance3D.new()
+	var dm := SphereMesh.new()
+	dm.radius = 0.18
+	dm.height = 0.36
+	dot.mesh = dm
+	dot.material_override = _indicator_mat(Color(1, 1, 1), 0.95)
+	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(dot)
+	var scene: Node = get_tree().current_scene
+	if scene == null:
+		return
+	scene.add_child(root)
+	_indicator = root
+	_indicator_t = 0.0
+	_update_indicator(0.0)
+
+
+func _update_indicator(delta: float) -> void:
+	if _indicator == null or not is_instance_valid(_indicator):
+		return
+	_indicator_t += delta
+	_indicator.global_position = _aim_point() + Vector3(0, 0.12, 0)
+	var pulse: float = 1.0 + 0.05 * sin(_indicator_t * 7.0)
+	_indicator.scale = Vector3(pulse, 1.0, pulse)
+
+
+func _hide_indicator() -> void:
+	if _indicator != null and is_instance_valid(_indicator):
+		_indicator.queue_free()
+	_indicator = null
+
+
+## Unshaded ALPHA-blend material for the indicator (additive washed out to nothing
+## on sunlit ground — the QA lesson; MOBA circles are solid-ish for exactly this).
+func _indicator_mat(col: Color, alpha: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(col.r, col.g, col.b, alpha)
+	return m
 
 
 func cast(slot: int) -> void:
