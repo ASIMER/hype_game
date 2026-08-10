@@ -15,7 +15,11 @@ uniform vec3 shadow_tint : source_color = vec3(0.62, 0.78, 1.0);
 uniform vec3 highlight_tint : source_color = vec3(1.1, 1.0, 0.85);
 uniform float split_lo : hint_range(0.0, 1.0) = 0.42;
 uniform float split_hi : hint_range(0.0, 1.0) = 0.88;
-uniform float crush : hint_range(0.0, 0.2) = 0.05; // lift the black floor DOWN → deeper shadows
+// 0.05 → 0.015 (texture-quality pass): the hard `max(orig - crush)` floor ZEROED every
+// screen value below 0.05 — shaded building faces (~0.03-0.05 after AgX) became pure
+// #000 and NO ambient/fill light could ever show through. A 0.015 toe keeps blacks rich
+// while letting the new shade-fill read as dark steel instead of coal.
+uniform float crush : hint_range(0.0, 0.2) = 0.015;
 uniform float desat : hint_range(0.0, 1.0) = 0.18; // pull toward luma (industrial drab)
 // A global cool bias so EVERY frame (not just stormy ones) reads cold-steel.
 uniform vec3 cool_bias : source_color = vec3(0.96, 0.99, 1.06);

@@ -44,6 +44,9 @@ static func grime_texture(sid: int, grime: float) -> NoiseTexture2D:
 	var g := Gradient.new()
 	g.set_color(0, Color(grime, grime, grime))
 	g.set_color(1, Color(1.0, 1.0, 1.0))
+	# Warm dirt mid-tone (texture-quality pass): a third stop keeps large surfaces from
+	# reading as a flat two-tone mask — subtle temperature variation under the cold grade.
+	g.add_point(0.55, Color(grime * 1.18, grime * 1.06, grime * 0.92))
 	nt.color_ramp = g
 	_tex_cache[key] = nt
 	return nt
@@ -208,7 +211,12 @@ static func corrugated(base: Color, sid: int) -> StandardMaterial3D:
 		for y in range(size):
 			var v: float = float(y) / float(size)
 			# --- albedo ---
-			var shade: float = 0.72 + 0.28 * (rib * 0.5 + 0.5)  # valleys darker
+			# Wider rib shading range so the corrugation READS even on the shaded side
+			# under the cold grade (0.72..1.0 was near-flat once the geometric decor ribs
+			# were removed in Destruction 2.3) + a per-rib brightness jitter so long
+			# container walls don't band uniformly.
+			var shade: float = 0.52 + 0.55 * (rib * 0.5 + 0.5)  # valleys clearly darker
+			shade += (float((rib_idx * 40503) & 0xff) / 255.0 - 0.5) * 0.10
 			var col: Color = base * shade
 			# Rust streak running DOWN from this rib's top with vertical falloff.
 			if rust_amt > 0.0:

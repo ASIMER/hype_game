@@ -121,12 +121,14 @@ static func glass_pool() -> Array[StandardMaterial3D]:
 static func mat_container(sid: int) -> StandardMaterial3D:
 	# Pick a faded shipping-container color deterministically from seed, then weather
 	# it with vertical streaks (rust running down the corrugated panels).
+	# Brightened +~25% in the texture-quality pass: the old values went near-black on
+	# shaded faces under the cold grade + linear bake («чёрные контейнеры»).
 	var palette: Array[Color] = [
-		Color(0.42, 0.20, 0.14),  # rust red
-		Color(0.20, 0.34, 0.27),  # faded green
-		Color(0.18, 0.28, 0.40),  # navy
-		Color(0.46, 0.40, 0.20),  # ochre
-		Color(0.36, 0.37, 0.40),  # gray
+		Color(0.56, 0.27, 0.19),  # rust red
+		Color(0.27, 0.45, 0.36),  # faded green
+		Color(0.25, 0.38, 0.53),  # navy
+		Color(0.60, 0.52, 0.27),  # ochre
+		Color(0.47, 0.48, 0.52),  # gray
 	]
 	var idx: int = ProcHash.h(sid) % palette.size()
 	var c: Color = palette[idx]

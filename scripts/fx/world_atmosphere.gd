@@ -34,6 +34,7 @@ var _dust_mat: ParticleProcessMaterial
 
 var _env: Environment
 var _sun: DirectionalLight3D
+var _fill: DirectionalLight3D = null  # weak shadowless counter-sun (shade legibility)
 # The WorldEnvironment NODE (carries `.camera_attributes`, where DOF lives). Captured
 # alongside `_env` in _find_env_and_light so the DOF lever has somewhere to write.
 var _world_env_node: WorldEnvironment
@@ -72,7 +73,10 @@ var _captured := false
 # back to these whenever a NEW match begins, so a raid never inherits the previous
 # raid's storm darkness after a restart. Capture then scales the storm tween from
 # the live values, but these are the source-of-truth fallbacks/resets.
-const DAY_AMBIENT := 0.48
+# 0.48 → 0.62 in the texture-quality pass: shaded building faces read as pure coal
+# under the cold grade (containers «чёрные» from the south-west) — a modest ambient
+# floor keeps shadow sides legible without breaking the moody look.
+const DAY_AMBIENT := 0.62
 const DAY_FOG_DENSITY := 0.001
 const DAY_FOG_COLOR := Color(0.54, 0.59, 0.67, 1.0)
 const DAY_GLOW := 0.5
@@ -88,7 +92,14 @@ const DAY_SKYDOME_EXPOSURE := 0.8
 # is the noon energy, so the drive never exceeds the authored day. Pitch sweeps shallow at
 # dawn/dusk to steep at noon (the sun rides high mid-day), yaw/roll kept from the captured base.
 const NIGHT_SUN_ENERGY := 0.15
-const NIGHT_AMBIENT := 0.4
+const NIGHT_AMBIENT := 0.46
+# Shadow-side fill light (see _apply_sun_ambient): weak, cool, shadowless, opposite the sun.
+# 0.55: the building albedos are PRE-LINEARIZED (srgb_to_linear bakes ≈0.1-0.2) — a
+# subtle 0.2-class fill vanishes under AgX; ~40% of sun energy reads as soft shade.
+# Tuned live: 0.55 vanishes against the pre-linearized dark albedos under the AgX toe,
+# 3.0 flattens the mood into a blue wash — 1.4 keeps shade legible ribbed steel.
+const FILL_ENERGY := 1.4
+const FILL_PITCH_DEG := -35.0
 const DAYNIGHT_PITCH_LOW := -8.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0) — low golden-hour rake
 const DAYNIGHT_PITCH_HIGH := -42.0  # sun pitch (deg) at noon — kept low so shadows stay long/dramatic
 
@@ -420,6 +431,7 @@ func _find_env_and_light() -> void:
 	# Our main shadow-casting sun lives at the scene root (NOT under Sky3D, whose
 	# own SunLight/MoonLight are disabled). Prefer that one.
 	_sun = _find_main_sun(root, we)
+	_ensure_fill_light()
 	if Settings and Settings.NET_DEBUG:
 		print(
 			"[atmosphere] env=",
@@ -489,6 +501,21 @@ func _find_directional_light_excluding(n: Node, exclude: Node) -> DirectionalLig
 		if r != null:
 			return r
 	return null
+
+
+## Create the weak cool shadow-side fill once (idempotent across arena reloads — the
+## node lives under this atmosphere instance and dies with it). Not a "second sun" in
+## the Sky3D sense: shadowless, ~1/6 the sun's energy, pure shade-legibility fill.
+func _ensure_fill_light() -> void:
+	if _fill != null and is_instance_valid(_fill):
+		return
+	_fill = DirectionalLight3D.new()
+	_fill.name = "ShadeFill"
+	_fill.light_color = Color(0.58, 0.66, 0.80)
+	_fill.light_energy = FILL_ENERGY
+	_fill.shadow_enabled = false
+	_fill.rotation = Vector3(deg_to_rad(FILL_PITCH_DEG), deg_to_rad(115.0), 0.0)
+	add_child(_fill)
 
 
 func _find_directional_light(n: Node) -> DirectionalLight3D:
@@ -742,6 +769,14 @@ func _apply_sun_ambient(s: float) -> void:
 			_sun.rotation = Vector3(pitch, _base_sun_rot.y, _base_sun_rot.z)
 	if _env != null:
 		_env.ambient_light_energy = lerpf(NIGHT_AMBIENT, DAY_AMBIENT, s)
+	# Cool shadow-side FILL (texture-quality pass): with SDFGI driving indirect light the
+	# env ambient barely reaches steep shaded faces — buildings read as pure coal from
+	# their south-west. A weak shadowless counter-sun keeps shade legible; scaled down at
+	# night so the dark identity survives.
+	if _fill != null:
+		_fill.light_energy = FILL_ENERGY * lerpf(0.35, 1.0, s)
+		if _captured:
+			_fill.rotation = Vector3(deg_to_rad(FILL_PITCH_DEG), _base_sun_rot.y + PI, 0.0)
 	# Night identity: warm window panes (shared glass pool) + street-lamp lights/heads
 	# fade IN as the sun fades OUT. Render-only; already throttled by the caller's
 	# sun_ratio change gate, so these writes only happen across the dawn/dusk ramps.
