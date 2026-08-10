@@ -119,13 +119,28 @@ func _on_join() -> void:
 ## Shared connect path used by the JOIN button AND the server browser. Parses/uses an
 ## explicit ip+port, wires success (open the client hub + remember the server) and
 ## FAILURE feedback (previously silent — the menu just hung on "Connecting…").
+## AUTO-RETRIES up to JOIN_ATTEMPTS: a big-map host mid-world-build can miss the ENet
+## handshake (the documented transient join-timeout quirk) — one manual retry always
+## worked, so the menu now does it for the player before surfacing failure.
 func _join(ip: String, port: int) -> void:
+	_join_attempt = 1
+	_join_try(ip, port)
+
+
+func _join_try(ip: String, port: int) -> void:
 	_apply_name()
 	if ip.strip_edges() == "":
 		ip = Settings.DEFAULT_IP
 	var err := NetworkManager.join_game(ip, port)
 	if err == OK:
-		status.text = tr("Connecting to %s:%d…") % [ip, port]
+		if _join_attempt == 1:
+			status.text = tr("Connecting to %s:%d…") % [ip, port]
+		else:
+			# gdlint: ignore=max-line-length
+			status.text = (
+				tr("Connecting to %s:%d… (attempt %d/%d)")
+				% [ip, port, _join_attempt, JOIN_ATTEMPTS]
+			)
 		_pending_ip = ip
 		_pending_port = port
 		# On connect, the client opens its OWN Hub to pick its loadout; DEPLOY loads the
@@ -136,6 +151,8 @@ func _join(ip: String, port: int) -> void:
 		status.text = tr("Join failed — check IP/port")
 
 
+const JOIN_ATTEMPTS := 3
+var _join_attempt: int = 0
 var _pending_ip: String = ""
 var _pending_port: int = 0
 
@@ -154,6 +171,12 @@ func _on_connected_to_host() -> void:
 func _on_join_failed() -> void:
 	if multiplayer.connected_to_server.is_connected(_on_connected_to_host):
 		multiplayer.connected_to_server.disconnect(_on_connected_to_host)
+	# Transient (host mid-build) — reset the half-open peer and retry silently.
+	if _join_attempt < JOIN_ATTEMPTS:
+		_join_attempt += 1
+		NetworkManager.disconnect_game()
+		_join_try(_pending_ip, _pending_port)
+		return
 	status.text = tr("Join failed — check IP/port (is the host up?)")
 
 
