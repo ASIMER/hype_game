@@ -811,6 +811,12 @@ func _on_health_changed(current: float, _max_health: float) -> void:
 ## knockback away from the likely shooter (nearest player) so the body reacts.
 func _start_stagger() -> void:
 	_stagger_t = STAGGER_TIME
+	# M1 feel: a quick scale-PUNCH so every single bullet visibly rocks the body
+	# (the rotation flinch alone read as nothing at range).
+	if _model_root != null and not _dying:
+		_model_root.scale = Vector3.ONE * 1.07
+		var tw := _model_root.create_tween()
+		tw.tween_property(_model_root, "scale", Vector3.ONE, 0.12)
 	if is_multiplayer_authority() and not _dying:
 		var shooter := _find_nearest_player()
 		if shooter and is_instance_valid(shooter):
@@ -1546,6 +1552,8 @@ func _start_death_fx() -> void:
 	# Kill any in-flight stagger so it stops fighting the death pop for ModelRoot.
 	_stagger_t = 0.0
 	_spawn_death_burst()
+	# The machine breaks into its family LIMBS (the same model the loot uses).
+	LimbBurst.burst(enemy_id, global_position, _loot_container(), _debris_scale())
 	if _is_boss():
 		Events.screen_shake.emit(0.6)
 

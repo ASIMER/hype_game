@@ -125,6 +125,17 @@ const _AMB_BY_BIOME := {
 var enabled := true
 var master_db := -3.0
 
+# Ducking (M1 audio mix): loud one-shots dip the "Bed" bus (music+ambient), then
+# it recovers at ~26 dB/s — combat reads punchy without a manual mix pass.
+var _duck_db: float = 0.0
+var _bed_bus_idx: int = -1
+
+
+## Duck the music/ambient bed by `db` (negative). Deeper requests win.
+func duck(db: float) -> void:
+	_duck_db = minf(_duck_db, db)
+
+
 # ---------------------------------------------------------------------------
 # Shot throttle (weapon_fired fires ~8/s in full auto)
 # ---------------------------------------------------------------------------
@@ -224,6 +235,17 @@ func _ready() -> void:
 		# Wire UI click to all buttons added after this point.
 		get_tree().node_added.connect(_on_node_added)
 
+		# AUDIO MIX (M1): the music/ambient beds live on their own "Bed" bus so loud
+		# one-shots can DUCK them (bus volume dip) without touching the per-player
+		# volume tweens (storm crossfade etc. keep owning player.volume_db).
+		_bed_bus_idx = AudioServer.bus_count
+		AudioServer.add_bus(_bed_bus_idx)
+		AudioServer.set_bus_name(_bed_bus_idx, "Bed")
+		AudioServer.set_bus_send(_bed_bus_idx, "Master")
+		_music_player.bus = "Bed"
+		_ambient_player.bus = "Bed"
+		_underwater_player.bus = "Bed"
+
 	# Events bus connections.
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.damage_dealt.connect(_on_damage_dealt)
@@ -252,6 +274,10 @@ func _ready() -> void:
 # _process — footstep ticker (independent of player input, reads velocity)
 # ---------------------------------------------------------------------------
 func _process(delta: float) -> void:
+	# Ducking recovery runs unconditionally (a duck must release even menu-side).
+	if _duck_db < 0.0 and _bed_bus_idx >= 0:
+		_duck_db = minf(_duck_db + 26.0 * delta, 0.0)
+		AudioServer.set_bus_volume_db(_bed_bus_idx, _duck_db)
 	if not enabled or _local_player == null:
 		return
 	if not is_instance_valid(_local_player):
@@ -295,6 +321,7 @@ func _process(delta: float) -> void:
 
 func _on_grenade_exploded(_world_pos: Vector3, _damage: float, _radius: float) -> void:
 	_play("explosion")
+	duck(-8.0)
 
 
 ## A window pane shattered (fires on every peer) — positional tinkle at the pane.
@@ -343,6 +370,7 @@ func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	if _last_shot_time >= 0.0 and now - _last_shot_time < SHOT_MIN_INTERVAL:
 		return
+	duck(-4.0)
 	_last_shot_time = now
 	var cfg: Dictionary = SHOT_CLASS.get(weapon_id, SHOT_CLASS["rifle"])
 	# Route to the class-specific recorded firearm; fall back to the generic shot if

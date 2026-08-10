@@ -76,6 +76,20 @@ func _ready() -> void:
 	Events.grenade_exploded.connect(_on_grenade_exploded)
 	Events.hit_stop.connect(_on_hit_stop)
 	Events.screen_shake.connect(_on_screen_shake)
+	# KILL beat (M1 feel): every OWN kill lands a hit-stop (solo; time_scale would
+	# desync the shared co-op sim → bigger shake there instead). player_kill fires
+	# on the KILLER's machine (Progression.credit_kill routing).
+	Events.player_kill.connect(_on_player_kill)
+
+
+func _on_player_kill(_enemy_id: String) -> void:
+	if _camera == null or not _camera.current:
+		return
+	if NetworkManager.is_offline:
+		_on_hit_stop(0.055)
+		add_trauma(0.3)
+	else:
+		add_trauma(0.42)
 
 
 ## Returns the transient FOV delta the lead adds to camera.fov in _update_camera:

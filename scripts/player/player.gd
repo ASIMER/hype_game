@@ -169,6 +169,10 @@ func _ready() -> void:
 	_gear = PlayerGear.new()
 	_gear.name = "Gear"
 	add_child(_gear)
+	# M1 body feel (landing squash / lean / dust) — owner-local render component.
+	var body_feel := PlayerBodyFeel.new()
+	body_feel.name = "BodyFeel"
+	add_child(body_feel)
 	_status = get_node_or_null("Status") as PlayerStatus
 
 	# Health is tuned from the central Settings and wired to the global bus so HUD
