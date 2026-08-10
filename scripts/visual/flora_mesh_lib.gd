@@ -55,32 +55,52 @@ static func emit_model_mm_tiled(
 	meshes: Array,
 	xforms: Array[Transform3D],
 	tile_m: float,
-	vis_end: float = 0.0
+	vis_end: float = 0.0,
+	out_map: Array = []
 ) -> void:
 	if meshes.is_empty() or xforms.is_empty():
 		return
+	# Optional out_map (destructible trees): index-aligned to `xforms`, each entry
+	# {"mmis": Array[MultiMeshInstance3D], "idx": int} — the tile MMIs holding that
+	# transform + its per-instance slot, so a caller can later zero-scale ONE instance.
+	var want_map: bool = out_map != null and not xforms.is_empty() and out_map.is_empty()
+	if want_map:
+		out_map.resize(xforms.size())
 	var buckets: Dictionary = {}
-	for xf in xforms:
+	var bucket_orig: Dictionary = {}
+	for i in xforms.size():
+		var xf: Transform3D = xforms[i]
 		var gx: int = int(floor((xf.origin.x - WorldBounds.X_MIN) / tile_m))
 		var gz: int = int(floor((xf.origin.z - WorldBounds.Z_MIN) / tile_m))
 		var key: int = gx * 1000 + gz
 		if not buckets.has(key):
 			buckets[key] = [] as Array[Transform3D]
+			bucket_orig[key] = []
 		(buckets[key] as Array[Transform3D]).append(xf)
+		(bucket_orig[key] as Array).append(i)
 	var keys: Array = buckets.keys()
 	keys.sort()  # deterministic node order across machines
 	for key in keys:
-		emit_model_mm(parent, "%s_t%d" % [nm, int(key)], meshes, buckets[key], vis_end)
+		var mmis: Array = emit_model_mm(
+			parent, "%s_t%d" % [nm, int(key)], meshes, buckets[key], vis_end
+		)
+		if want_map:
+			var origs: Array = bucket_orig[key]
+			for j in origs.size():
+				out_map[int(origs[j])] = {"mmis": mmis, "idx": j}
 
 
 ## Emit one MultiMeshInstance3D per mesh in `meshes` (suffix _s<i> when several),
 ## all sharing `xforms`. `vis_end` > 0 applies a visibility range (fade-self) so a
 ## distant layer culls; 0 = always-on (small clutter layers, one MMI map-wide).
+## Returns the created MMIs (destructible trees edit instances later; other callers
+## ignore the return).
 static func emit_model_mm(
 	parent: Node3D, nm: String, meshes: Array, xforms: Array[Transform3D], vis_end: float = 0.0
-) -> void:
+) -> Array:
+	var out: Array = []
 	if meshes.is_empty() or xforms.is_empty():
-		return
+		return out
 	for i in range(meshes.size()):
 		var mesh: Mesh = meshes[i]
 		if mesh == null:
@@ -100,3 +120,5 @@ static func emit_model_mm(
 			mmi.visibility_range_end_margin = 12.0
 			mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 		parent.add_child(mmi)
+		out.append(mmi)
+	return out

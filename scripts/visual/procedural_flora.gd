@@ -230,8 +230,12 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 	trunks.collision_mask = 0
 	trees.add_child(trunks)
 
-	# Per-model-id transform buckets (only ids actually used get an MMI).
+	# Destructible-tree registry: fresh per arena build (restart restores all trees).
+	FellableTree.reset()
+	# Per-model-id transform buckets (only ids actually used get an MMI) + the
+	# parallel tree-index buckets (aligned 1:1) for FellableTree instance binding.
 	var buckets: Dictionary = {}
+	var uid_buckets: Dictionary = {}
 
 	var placed: int = 0
 	var step: float = 4.0
@@ -255,22 +259,34 @@ static func _build_trees(root: Node3D, seed: int) -> int:
 			var gy: float = _ground_y(px, pz)
 			if gy < -0.05:  # not in the river
 				continue
-			_place_tree(trunks, buckets, cell, px, gy, pz)
+			_place_tree(trunks, buckets, uid_buckets, cell, px, gy, pz)
 			placed += 1
 
 	# Emit TILED MultiMeshes per model id (sorted for deterministic node order) — 64 m
 	# tiles so distant groves genuinely cull from the camera AND the shadow splits.
+	# The out_map binds each tree's MMI set + instance slot into FellableTree so a
+	# felled tree's standing visual can be zero-scaled on every peer.
 	var ids: Array = buckets.keys()
 	ids.sort()
 	for id in ids:
+		var fmap: Array = []
 		FloraMeshLib.emit_model_mm_tiled(
 			trees,
 			"Tree_%s" % String(id),
 			FloraMeshLib.model_meshes(String(id)),
 			buckets[id],
 			64.0,
-			_flora_vis_end()
+			_flora_vis_end(),
+			fmap
 		)
+		var uids: Array = uid_buckets.get(id, [])
+		for k in uids.size():
+			if k < fmap.size() and fmap[k] is Dictionary:
+				FellableTree.bind_instances(
+					int(uids[k]),
+					(fmap[k] as Dictionary)["mmis"],
+					int((fmap[k] as Dictionary)["idx"])
+				)
 	if Settings.NET_DEBUG:
 		print("[flora] trees placed=%d (target %d)" % [placed, Settings.FLORA_TREES])
 	return placed
@@ -289,8 +305,16 @@ static func _pick_tree_id(biome: String, roll: int) -> String:
 
 ## Pick the biome-mix model, append a yaw+scale-jittered Transform3D to its bucket, and
 ## add a trunk CylinderShape3D to the SHARED TreeTrunks body (layer 1, navmesh input).
+## Registers the tree as FELLABLE (index = the shape's TreeTrunks child order —
+## deterministic across peers, the glass/chunk discipline).
 static func _place_tree(
-	trunks: StaticBody3D, buckets: Dictionary, hseed: int, x: float, y: float, z: float
+	trunks: StaticBody3D,
+	buckets: Dictionary,
+	uid_buckets: Dictionary,
+	hseed: int,
+	x: float,
+	y: float,
+	z: float
 ) -> void:
 	var id: String = _pick_tree_id(WorldBounds.biome_at(x, z), ProcHash.h(hseed + 5) % 100)
 	var def: Array = _TREE_DEFS[id]
@@ -300,9 +324,11 @@ static func _place_tree(
 	# Wider per-instance scale variation so groves don't read as clone stamps.
 	var sc: float = base_scale * ProcHash.hrange(hseed + 13, 0.75, 1.25)
 	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0)).scaled(Vector3(sc, sc, sc))
+	var xform := Transform3D(basis, Vector3(x, y, z))
 	if not buckets.has(id):
 		buckets[id] = [] as Array[Transform3D]
-	(buckets[id] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y, z)))
+		uid_buckets[id] = []
+	(buckets[id] as Array[Transform3D]).append(xform)
 
 	var col := CollisionShape3D.new()
 	var cs := CylinderShape3D.new()
@@ -312,6 +338,9 @@ static func _place_tree(
 	col.shape = cs
 	col.position = Vector3(x, y + cs.height * 0.5, z)
 	trunks.add_child(col)
+	var tree_idx: int = col.get_index()
+	FellableTree.register(tree_idx, col, id, xform)
+	(uid_buckets[id] as Array).append(tree_idx)
 
 
 # ================================================================ BUSHES (Quaternius glTF)

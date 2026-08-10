@@ -34,6 +34,8 @@ var _cooldown: float = 0.0
 # _shoot right before `fired` is emitted; read synchronously in _on_fired to
 # orient the impact burst to the surface. Per-pellet, single-threaded — safe.
 var _last_hit_normal: Vector3 = Vector3.ZERO
+# Shape index of the final hit within its body (destructible trees: WHICH trunk).
+var _last_hit_shape: int = -1
 
 # --- VFX (purely visual/local, never networked) -----------------------------
 # Preloaded combat feedback scenes. Spawned from our own `fired` signal so the
@@ -238,6 +240,7 @@ func _shoot(
 			hit_point = rpos
 			hit_node = rnode
 			_last_hit_normal = rnorm
+			_last_hit_shape = int(result.get("shape", -1))
 			arc.append(hit_point)
 			resolved = true
 			break
@@ -305,6 +308,12 @@ func _shoot(
 			NetworkManager.request_damage_chunk(
 				(hit_node as BreakableChunk).index, dmg * dmg_scale, _last_hit_normal
 			)
+		elif hit_node is StaticBody3D and hit_node.name == "TreeTrunks":
+			# Destructible tree: the raycast's shape index resolves WHICH trunk shape
+			# was hit (child order = the deterministic tree id). Server tracks tree HP.
+			var tree_idx: int = _tree_index_of(hit_node as StaticBody3D, _last_hit_shape)
+			if tree_idx >= 0:
+				NetworkManager.request_fell_tree(tree_idx, dmg * dmg_scale, _last_hit_normal)
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)
@@ -473,6 +482,18 @@ func _is_enemy(node: Node) -> bool:
 			return true
 		n = n.get_parent()
 	return false
+
+
+## Resolve a raycast shape index on the shared TreeTrunks body to the trunk
+## CollisionShape3D's child index — the deterministic FellableTree id.
+func _tree_index_of(body: StaticBody3D, shape_idx: int) -> int:
+	if shape_idx < 0:
+		return -1
+	var owner_id: int = body.shape_find_owner(shape_idx)
+	var shape_node: Node = body.shape_owner_get_owner(owner_id)
+	if shape_node == null:
+		return -1
+	return shape_node.get_index()
 
 
 ## True when the bullet should PASS THROUGH `node` rather than stop: a METAL BreakableChunk

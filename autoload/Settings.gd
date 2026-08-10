@@ -131,6 +131,16 @@ const KNOCKDOWN_SHIELD_ITEM: String = "loot_knockdown_shield"
 const AMMO_DROP_CHANCE: float = 0.5  # chance an enemy death also drops an ammo shard
 const AMMO_SHARD_FRAC: float = 0.35  # reserve fraction one shard restores
 
+# Destructible trees ("разрушение-как-оружие"): shoot a trunk down — the falling
+# tree CRUSHES enemies, settles into cover, leaves a stump. Server-auth by index.
+const TREE_FELL_ENABLED: bool = true
+const TREE_HP: float = 30.0  # ~3 rifle hits fell a tree
+const TREE_CRUSH_DMG: float = 55.0  # crush cap for a fast-falling trunk
+const TREE_FALLEN_LIFETIME: float = 22.0  # seconds the fallen trunk persists as cover
+# Physics debris crush: chunk shards damage enemies they slam into (server-side).
+const DEBRIS_CRUSH_ENABLED: bool = true
+const DEBRIS_CRUSH_DMG_MAX: float = 16.0  # per-shard cap (a collapse = many shards)
+
 # Combat
 const WEAPON_NET_REPLICATION_HZ: float = 30.0
 

@@ -21,6 +21,9 @@ static var _active: int = 0
 var _t: float = 0.0
 var _spawned: int = 0  # shards this node owns (subtracted from _active on free)
 var _mats: Array[StandardMaterial3D] = []
+# Crush bookkeeping: each enemy takes damage from THIS burst at most once (shards
+# bounce and re-contact; one collapse should hurt once, not machine-gun).
+var _crushed: Dictionary = {}
 
 
 ## Spawn a falling-debris burst at `world_pos` under `host`. `color` tints the shards, `cell` is the
@@ -83,6 +86,14 @@ func _build(
 		body.continuous_cd = false
 		body.collision_layer = 0  # nothing collides INTO the shards
 		body.collision_mask = 1  # shards collide with WORLD only (floors/ground/walls)
+		# CRUSH ("разрушение-как-оружие"): on the SERVER, shards also collide with
+		# enemy bodies (layer 4) and report contacts — a wall dropped on a machine
+		# hurts it. Clients keep world-only shards (damage is server-authoritative).
+		if Settings.DEBRIS_CRUSH_ENABLED and GameState.is_local_authority_server():
+			body.collision_mask = 1 | 4
+			body.contact_monitor = true
+			body.max_contacts_reported = 3
+			body.body_entered.connect(_on_shard_contact.bind(body))
 		var box := BoxMesh.new()
 		box.size = Vector3(sx, sx * flat, sx)  # metal = flat panels, stone = chunky, concrete = mid
 		var mat := StandardMaterial3D.new()
@@ -114,6 +125,26 @@ func _build(
 		body.apply_impulse(dir * power)
 		body.angular_velocity = Vector3(rx - 0.5, ry - 0.5, rz - 0.5) * 14.0
 		_mats.append(mat)
+
+
+## SERVER: a shard slammed into something — enemies get crush damage scaled by
+## impact speed, once per enemy per burst (Hurtbox.apply_hit, the shot-damage site).
+func _on_shard_contact(other: Node, body: RigidBody3D) -> void:
+	if other == null or not is_instance_valid(body):
+		return
+	if not other.is_in_group(Groups.ENEMIES):
+		return
+	var eid: int = other.get_instance_id()
+	if _crushed.has(eid):
+		return
+	var speed: float = body.linear_velocity.length()
+	if speed < 2.0:
+		return
+	_crushed[eid] = true
+	var dmg: float = clampf(speed * 2.5, 3.0, Settings.DEBRIS_CRUSH_DMG_MAX)
+	var hb := other.get_node_or_null(Groups.NODE_HURTBOX)
+	if hb != null and hb.has_method("apply_hit"):
+		hb.apply_hit(dmg, body)
 
 
 func _process(delta: float) -> void:

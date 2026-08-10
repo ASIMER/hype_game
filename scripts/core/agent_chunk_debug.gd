@@ -43,6 +43,34 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 					ci = BreakableChunk.nearest_unbroken(_player_pos(tree))
 				NetworkManager.request_damage_chunk(ci, 1e9)
 			return BreakableChunk.debug_summary()
+		"tree_nearest":
+			# Nearest STANDING fellable tree to the local player (QA for tree felling).
+			var tn: int = FellableTree.nearest_standing(_player_pos(tree))
+			if tn < 0:
+				return {"index": -1, "total": FellableTree.count()}
+			var tp: Vector3 = FellableTree.position_of(tn)
+			return {
+				"index": tn,
+				"total": FellableTree.count(),
+				"pos": [tp.x, tp.y, tp.z],
+				"dist": _player_pos(tree).distance_to(tp),
+			}
+		"fell":
+			# Force-fell: nearest standing tree (or an explicit index) via the server
+			# path. Optional dx/dz = the FALL direction (normal points opposite).
+			if GameState.is_local_authority_server():
+				var fi: int = int(json.get("index", -1))
+				if fi < 0 or bool(json.get("nearest", false)):
+					fi = FellableTree.nearest_standing(_player_pos(tree))
+				if fi >= 0:
+					var fn := Vector3.ZERO
+					var dx: float = float(json.get("dx", 0.0))
+					var dz: float = float(json.get("dz", 0.0))
+					if absf(dx) > 0.01 or absf(dz) > 0.01:
+						fn = Vector3(-dx, 0.0, -dz).normalized()
+					NetworkManager.request_fell_tree(fi, 1e9, fn)
+				return {"felled": fi, "total": FellableTree.count()}
+			return {"felled": -1, "total": FellableTree.count()}
 		_:
 			return BreakableChunk.debug_summary()
 

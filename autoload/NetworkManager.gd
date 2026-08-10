@@ -444,6 +444,37 @@ func _chunk_broken_rpc(index: int, normal: Vector3) -> void:
 		chunk.crumble(normal)
 
 
+# ================================================== destructible trees (by index)
+## Shot damage to a tree trunk (index = TreeTrunks child order, deterministic on
+## every peer — the glass/chunk discipline). Server owns HP; the fell broadcasts.
+func request_fell_tree(index: int, dmg: float, normal: Vector3 = Vector3.ZERO) -> void:
+	if GameState.is_local_authority_server():
+		_server_fell_tree(index, dmg, normal)
+	else:
+		_fell_tree_request_rpc.rpc_id(1, index, dmg, normal)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _fell_tree_request_rpc(index: int, dmg: float, normal: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_fell_tree(index, dmg, normal)
+
+
+func _server_fell_tree(index: int, dmg: float, normal: Vector3) -> void:
+	if not FellableTree.server_take_damage(index, dmg):
+		return
+	report_noise(FellableTree.position_of(index), FellableTree.NOISE_LOUDNESS, 1)
+	_tree_felled_rpc.rpc(index, normal)
+
+
+@rpc("authority", "call_local", "reliable")
+func _tree_felled_rpc(index: int, normal: Vector3) -> void:
+	var host: Node = get_tree().current_scene
+	if host != null:
+		FellableTree.do_fell(host, index, normal)
+
+
 # ============================================== server-spawned throwables / gadgets
 ## ALL grenade throws + gadget placements spawn on the SERVER under Arena/Net/Gadgets
 ## (a MultiplayerSpawner with NetThrowables.spawn as its custom spawn_function), so
