@@ -265,6 +265,14 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 		SkillDirector.grant_skill(player.get_multiplayer_authority(), item_id.substr(9))
 		queue_free()
 		return
+	# Ammo shard: NOT inventory loot — resupplies the picker's weapons directly on
+	# ITS machine (reserve ammo lives in the owner's WeaponController).
+	if item_id == "loot_ammo_shard":
+		var gear := player.get_node_or_null("Gear")
+		if gear != null:
+			gear.grant_ammo.rpc_id(player.get_multiplayer_authority(), Settings.AMMO_SHARD_FRAC)
+		queue_free()
+		return
 	# Power cache: NOT inventory loot — consume it and trigger the opener's non-blocking
 	# reveal (the buff applies on THEIR client after the reveal animation finishes).
 	if item_id == "power_cache":

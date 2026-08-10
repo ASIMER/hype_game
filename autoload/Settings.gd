@@ -125,6 +125,12 @@ const KNOCKDOWN_SHIELD_ABSORB: float = 150.0  # damage a knockdown shield soaks 
 const SELF_REVIVE_ITEM: String = "loot_self_revive"  # consumable id that self-revives when downed
 const KNOCKDOWN_SHIELD_ITEM: String = "loot_knockdown_shield"
 
+# Ammo economy (the "ran dry mid-raid with no counterplay" fix): machines shed
+# usable rounds on death — a walk-up shard resupplies a FRACTION of every weapon's
+# reserve; an Ammo Box (inventory use) resupplies in full.
+const AMMO_DROP_CHANCE: float = 0.5  # chance an enemy death also drops an ammo shard
+const AMMO_SHARD_FRAC: float = 0.35  # reserve fraction one shard restores
+
 # Combat
 const WEAPON_NET_REPLICATION_HZ: float = 30.0
 

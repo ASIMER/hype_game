@@ -357,6 +357,17 @@ func current_recoil() -> float:
 	return d.recoil if d else 0.0
 
 
+## Adds `frac` of each weapon's reserve_max to its reserve (capped at max). The
+## mid-raid resupply hook: ammo shards call 0.35, an Ammo Box use calls 1.0.
+func add_reserve_frac(frac: float) -> void:
+	for w in _weapons:
+		var add: int = int(ceil(w.reserve_max * frac))
+		_reserve[w.id] = mini(w.reserve_max, int(_reserve.get(w.id, 0)) + add)
+	var d := current_weapon()
+	if d:
+		Events.ammo_changed.emit(int(_ammo.get(d.id, 0)), int(_reserve.get(d.id, 0)))
+
+
 ## Tops every loaded weapon back up to a full mag + full reserve. Used by the
 ## self-play harness ("refill") for sustained playtests; also a clean hook for a
 ## future ammo-resupply pickup.

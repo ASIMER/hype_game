@@ -210,7 +210,16 @@ func _park_window_offscreen() -> void:
 		return
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
-	DisplayServer.window_set_size(Vector2i(640, 360))
+	# Default agent window is tiny (fast); `--agent-res 1920x1080` sizes it for
+	# production-fidelity screenshots (players see ≥1080p — QA should too).
+	var res := Vector2i(640, 360)
+	var args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	for i in args.size():
+		if args[i] == "--agent-res" and i + 1 < args.size():
+			var parts := String(args[i + 1]).split("x")
+			if parts.size() == 2 and int(parts[0]) > 0 and int(parts[1]) > 0:
+				res = Vector2i(int(parts[0]), int(parts[1]))
+	DisplayServer.window_set_size(res)
 	# Far off any monitor so it never appears in front of the user. Offset each
 	# instance by its agent-port slot so multiple windows don't stack (only matters
 	# if someone drags them on-screen — off-screen they're invisible regardless).

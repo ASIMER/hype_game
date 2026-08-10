@@ -473,7 +473,10 @@ func _build_feedback_overlays() -> void:
 	hurt_tex.gradient = hurt_grad
 	hurt_tex.fill = GradientTexture2D.FILL_RADIAL
 	hurt_tex.fill_from = Vector2(0.5, 0.5)
-	hurt_tex.fill_to = Vector2(0.5, 0.0)
+	# Radius PAST the corners (0.5→-0.32 ≈ 0.82 of the texture): with the radius at
+	# the edge midpoint the corners sat beyond the gradient at full red — the
+	# "vignette" rendered as a hard red frame with a circular window.
+	hurt_tex.fill_to = Vector2(0.5, -0.32)
 	hurt_tex.width = 256
 	hurt_tex.height = 256
 	_hurt_flash.texture = hurt_tex

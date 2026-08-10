@@ -188,10 +188,12 @@ static func mat_timber(sid: int = 0) -> StandardMaterial3D:
 	return ProcMaterials.streaked(Color(0.34, 0.22, 0.13), 0.0, 0.85, 0.5, sid * 29 + 5, 0.7, true)
 
 
-## Bright snow — roof caps / lodge accents. Slightly glossy so it catches light.
+## Snow — roof caps / lodge accents. Albedo CAPPED at ~0.7 with a blue shadow lean
+## (art-panel P3: real snow reads white through CONTRAST — 0.9+ albedo under the
+## 2.8 sun merged sky/roof/ground into one blown sheet).
 static func mat_snow(sid: int = 0) -> StandardMaterial3D:
 	return ProcMaterials.weathered(
-		Color(0.90, 0.93, 0.98),
+		Color(0.68, 0.72, 0.80),
 		0.0,
 		0.62,
 		0.25,

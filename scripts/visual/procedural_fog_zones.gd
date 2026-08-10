@@ -19,7 +19,9 @@ extends RefCounted
 ##
 ## PARSE TRAP (warnings-as-errors): never `var x := <Variant>`; locals are explicitly typed.
 
-const ZONE_ALBEDO := Color(0.8, 0.85, 0.9)
+# Darker + thinner than v1 (art-panel: density 1.4 + bright albedo was "white soup"
+# that erased enemies at 8 m — fog should SHADE into silhouette theater, not glow).
+const ZONE_ALBEDO := Color(0.52, 0.58, 0.66)
 const ZONE_EDGE_FADE := 0.5  # high = SOFT, smooth-transition edges (walk-in feels gradual)
 # Zones whose CENTRE is closer than this to the player-spawn cluster are skipped, so the
 # start area is always clear (zone radius ~20 m → visible mist stays ~20 m+ further out).
@@ -33,14 +35,14 @@ const SPAWN_FALLBACK := Vector3(58.0, 0.0, 62.0)
 # The tower gets a TALL, dense plume (low height_falloff = a volumetric smoke column you
 # can see across the map); the south POIs + river get wide ground-hugging mist pools.
 const POI_ZONES := {
-	0: {"size": Vector3(44.0, 24.0, 44.0), "height": 8.0, "density": 1.4, "falloff": 0.08},  # NorthTower plume
-	3: {"size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 1.1, "falloff": 0.25},  # SWHouse mist
-	4: {"size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 1.1, "falloff": 0.25},  # SouthYard mist
+	0: {"size": Vector3(44.0, 24.0, 44.0), "height": 8.0, "density": 0.55, "falloff": 0.08},  # NorthTower plume
+	3: {"size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 0.45, "falloff": 0.25},  # SWHouse mist
+	4: {"size": Vector3(40.0, 14.0, 40.0), "height": 4.0, "density": 0.45, "falloff": 0.25},  # SouthYard mist
 }
 # Extra pools at river-valley centreline points (the deep channel collects mist).
 const RIVER_POINTS := [Vector3(16.0, 0.0, 38.0), Vector3(10.0, 0.0, 62.0)]
 const RIVER_ZONE := {
-	"size": Vector3(36.0, 12.0, 36.0), "height": 3.0, "density": 0.9, "falloff": 0.35
+	"size": Vector3(36.0, 12.0, 36.0), "height": 3.0, "density": 0.4, "falloff": 0.35
 }
 
 

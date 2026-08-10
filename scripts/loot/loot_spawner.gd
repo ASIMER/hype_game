@@ -70,6 +70,11 @@ static func drop_for_enemy(
 	if key_id != "":
 		var key_jitter := Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(-0.6, 0.6))
 		LootPickup.spawn_at(loot_root, pos + key_jitter, key_id, 1)
+	# Independent AMMO-shard roll — machines shed usable rounds (the "ran dry with
+	# no counterplay" fix). Walk-up resupply, never replaces the normal drop.
+	if randf() < Settings.AMMO_DROP_CHANCE:
+		var ammo_jitter := Vector3(randf_range(-0.8, 0.8), 0.0, randf_range(-0.8, 0.8))
+		LootPickup.spawn_at(loot_root, pos + ammo_jitter, "loot_ammo_shard", 1)
 	# Resolve auto tier.
 	var resolved_tier: int = tier if tier >= 1 else tier_at(pos)
 	var id: String = ""

@@ -80,7 +80,9 @@ const DAY_AMBIENT := 0.62
 const DAY_FOG_DENSITY := 0.001
 const DAY_FOG_COLOR := Color(0.54, 0.59, 0.67, 1.0)
 const DAY_GLOW := 0.5
-const DAY_SUN_ENERGY := 1.35
+# Art-panel "turn the sun on": the fill used to OUT-power the key (1.4 vs 1.35),
+# erasing all modeling — AgX wants a hot key + weak fill (~6:1) to sculpt shadows.
+const DAY_SUN_ENERGY := 2.8
 const DAY_CUMULUS_COVERAGE := 0.66
 const DAY_CUMULUS_THICKNESS := 0.04
 const DAY_CUMULUS_INTENSITY := 0.42
@@ -94,11 +96,10 @@ const DAY_SKYDOME_EXPOSURE := 0.8
 const NIGHT_SUN_ENERGY := 0.15
 const NIGHT_AMBIENT := 0.46
 # Shadow-side fill light (see _apply_sun_ambient): weak, cool, shadowless, opposite the sun.
-# 0.55: the building albedos are PRE-LINEARIZED (srgb_to_linear bakes ≈0.1-0.2) — a
-# subtle 0.2-class fill vanishes under AgX; ~40% of sun energy reads as soft shade.
-# Tuned live: 0.55 vanishes against the pre-linearized dark albedos under the AgX toe,
-# 3.0 flattens the mood into a blue wash — 1.4 keeps shade legible ribbed steel.
-const FILL_ENERGY := 1.4
+# Re-tuned with the 2.8 sun (art-panel key:fill ≈6:1): 1.4 against the old 1.35 sun
+# out-powered the key and flattened all modeling; 0.45 keeps shade legible without
+# fighting the sun. (History: 0.55 vanished only because the SUN was too weak.)
+const FILL_ENERGY := 0.45
 const FILL_PITCH_DEG := -35.0
 const DAYNIGHT_PITCH_LOW := -8.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0) — low golden-hour rake
 const DAYNIGHT_PITCH_HIGH := -42.0  # sun pitch (deg) at noon — kept low so shadows stay long/dramatic

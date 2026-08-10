@@ -879,7 +879,9 @@ void fragment() {
 	// still read WARM ochre, snow cold-bright — the grade pulls everything cool otherwise).
 	vec3 bc_urban = vec3(0.32, 0.33, 0.36);
 	vec3 bc_desert = vec3(0.70, 0.48, 0.20);
-	vec3 bc_snow = vec3(0.74, 0.80, 0.92);
+	// Snow capped below blowout (art-panel P3): 0.74+ ground under the 2.8 sun merged
+	// with the fog/sky into one white sheet — contrast carries "snow", not albedo.
+	vec3 bc_snow = vec3(0.58, 0.63, 0.74);
 	vec3 bc_rain = vec3(0.24, 0.29, 0.37);
 	vec3 biome_col = mix(mix(bc_urban, bc_desert, bz), mix(bc_snow, bc_rain, bz), bx);
 	float bl = dot(base, vec3(0.299, 0.587, 0.114));

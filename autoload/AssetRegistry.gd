@@ -306,6 +306,16 @@ const CATALOG := {
 		"size": Vector3(0.35, 0.25, 0.35),
 		"color": Color(0.7, 0.6, 0.25)
 	},
+	# Walk-up reserve resupply dropped by dying machines (never enters the inventory —
+	# LootPickup routes it straight to the picker's WeaponController).
+	"loot_ammo_shard":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.22, 0.14, 0.22),
+		"color": Color(0.95, 0.78, 0.3)
+	},
 	# --- Batch B/C gear + consumables (ProceduralModelsGear builders; prim = safety
 	# net). Without CATALOG entries these ids were invisible: the icon prewarm loops
 	# THIS dict, so get_icon returned null forever -> grey boxes in the shop/stash.
@@ -735,22 +745,20 @@ func _machine_reskin(node: Node, ident: Color) -> void:
 ## plastic). One fresh instance per part per enemy (the hit-flash duplicate contract).
 func _machine_mat(ident: Color) -> StandardMaterial3D:
 	var d := StandardMaterial3D.new()
-	# MID-value desaturated steel (not near-black): the flat-dark version read as a featureless
-	# "black blob" that blended into the dark ground — keep it gunmetal but bright enough to
-	# read as metal + contrast against terrain. Faintly tinted toward the identity hue.
-	var steel := Color(0.4, 0.43, 0.48)
-	d.albedo_color = steel.lerp(
-		Color(0.5 + ident.r * 0.3, 0.45 + ident.g * 0.25, 0.4 + ident.b * 0.25), 0.3
-	)
-	# Matte painted metal, not chrome: moderate metallic + high roughness so curved domes read
-	# as worn metal instead of mirroring the bright sky.
-	d.metallic = 0.45
-	d.roughness = 0.72
-	d.metallic_specular = 0.3
-	# A faint hot self-glow so a dark machine never collapses into a pure black silhouette.
-	d.emission_enabled = true
-	d.emission = Color(1.0, 0.45, 0.15)
-	d.emission_energy_multiplier = 0.18
+	# DARK gunmetal hull faintly carrying the identity hue (art-panel "kill the
+	# salmon", exact formula: ident.lerp(gunmetal, 0.75) — the old mid-grey ×
+	# warm-lift lerp read as pink vinyl under AgX).
+	d.albedo_color = ident.lerp(Color(0.15, 0.16, 0.19), 0.75)
+	# Real machine metal: harder metallic, tighter roughness so plates catch the sun.
+	d.metallic = 0.6
+	d.roughness = 0.45
+	d.metallic_specular = 0.4
+	# NO body emission. LESSON (two failed takes): ANY whole-surface emission tints
+	# the entire silhouette into a flat glow blob — with one material_override per
+	# part, per-part "eye" isolation is impossible, so threat color lives in the
+	# dark-tinted albedo instead. A dark machine never goes pure-black thanks to the
+	# metallic sky response.
+	d.emission_enabled = false
 	return d
 
 

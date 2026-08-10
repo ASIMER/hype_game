@@ -199,8 +199,9 @@ static func _build_decal(kind: String, radius: float) -> Decal:
 			dec.modulate = Color(0.16, 0.18, 0.22)  # dark wet sheen
 			dec.albedo_mix = 0.55
 		"snow":
-			dec.modulate = Color(0.93, 0.96, 1.0)  # white snow blanket
-			dec.albedo_mix = 0.88
+			# Capped below pure white (P3): the 0.93+ blanket blew out under the hot sun.
+			dec.modulate = Color(0.72, 0.76, 0.84)
+			dec.albedo_mix = 0.7
 		_:  # desert
 			dec.modulate = Color(0.80, 0.66, 0.38)  # warm sand
 			dec.albedo_mix = 0.6
@@ -234,19 +235,23 @@ static func _build_fog(kind: String, radius: float, top: float) -> FogVolume:
 	fog.position = Vector3(0.0, top * 0.35, 0.0)
 	var mat := FogMaterial.new()
 	mat.edge_fade = 0.5
+	# Fog SHADES, never glows (art-panel P3/P4): the old bright-albedo snow fog +
+	# the 2.8 sun multiplied into a total whiteout — the biome read as a white void.
 	var base: float = 0.5
 	match kind:
 		"rain":
-			mat.albedo = Color(0.55, 0.60, 0.68)
-			base = 0.7
+			mat.albedo = Color(0.48, 0.54, 0.62)
+			base = 0.55
 			mat.height_falloff = 0.2
 		"snow":
-			mat.albedo = Color(0.90, 0.93, 0.98)
-			base = 0.5
+			# 0.28 still read as milk from INSIDE the 35 m zone — 0.12 keeps a cold
+			# haze while the lodge/enemies stay readable silhouettes.
+			mat.albedo = Color(0.62, 0.67, 0.75)
+			base = 0.12
 			mat.height_falloff = 0.25
 		_:  # desert
-			mat.albedo = Color(0.84, 0.71, 0.45)
-			base = 0.55
+			mat.albedo = Color(0.66, 0.56, 0.38)
+			base = 0.4
 			mat.height_falloff = 0.18
 	mat.density = base * clampf(Settings.climate_density, 0.0, 2.0)
 	fog.material = mat

@@ -228,7 +228,7 @@ func _ready() -> void:
 		# current — guards against the client "grey screen" (no active camera).
 		_ensure_camera_current.call_deferred()
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-		Events.item_use_requested.connect(_on_item_use)
+		Events.item_use_requested.connect(_gear.on_item_use)
 		# Re-read camera distance/shoulder when the player changes them in Settings.
 		if not Events.camera_settings_changed.is_connected(_read_camera_settings):
 			Events.camera_settings_changed.connect(_read_camera_settings)
@@ -1095,30 +1095,6 @@ func _update_interaction() -> void:
 
 
 ## Inventory UI -> player: use a carried item by id.
-func _on_item_use(item_id: String) -> void:
-	if not is_multiplayer_authority():
-		return
-	match item_id:
-		"loot_medkit", "medkit":
-			_try_heal()
-		"loot_grenade", "grenade":
-			# Inventory-Use throws a FRAG specifically (the G key throws the selection).
-			_grenade_sel = "frag"
-			if int(_grenade_counts.get("frag", 0)) <= 0:
-				_grenade_counts["frag"] = 1
-			_gear.throw_selected()
-		Settings.SELF_REVIVE_ITEM, "self_revive":
-			if downed:
-				_self_revive()
-		_:
-			# Any utility grenade id (smoke/emp/decoy/incendiary/cryo) selects + throws its type.
-			if item_id.begins_with("loot_grenade_"):
-				_grenade_sel = item_id.trim_prefix("loot_grenade_")
-				if int(_grenade_counts.get(_grenade_sel, 0)) <= 0:
-					_grenade_counts[_grenade_sel] = 1
-				_gear.throw_selected()
-
-
 # --- Active power-cache buffs ------------------------------------------------
 ## Server → opener: roll a power, play the NON-BLOCKING reveal, then apply it AFTER the reveal.
 ## Runs on the opener's own client (its authority), so it rolls from THAT player's unlocked pool

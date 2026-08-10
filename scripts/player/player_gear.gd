@@ -14,6 +14,49 @@ func _ready() -> void:
 	_p = get_parent() as Node3D
 
 
+## Inventory-Use dispatch (moved from player.gd verbatim — the god file hit the
+## 1800-line ceiling). Authority-gated like the original; state stays ON the player.
+func on_item_use(item_id: String) -> void:
+	if _p == null or not _p.is_multiplayer_authority():
+		return
+	match item_id:
+		"loot_medkit", "medkit":
+			_p._try_heal()
+		"loot_ammo":
+			# The Ammo Box existed but its Use was silently a no-op (item wasted).
+			grant_ammo(1.0)
+		"loot_grenade", "grenade":
+			# Inventory-Use throws a FRAG specifically (the G key throws the selection).
+			_p._grenade_sel = "frag"
+			if int(_p._grenade_counts.get("frag", 0)) <= 0:
+				_p._grenade_counts["frag"] = 1
+			throw_selected()
+		Settings.SELF_REVIVE_ITEM, "self_revive":
+			if _p.downed:
+				_p._self_revive()
+		_:
+			# Any utility grenade id (smoke/emp/decoy/incendiary/cryo) selects + throws its type.
+			if item_id.begins_with("loot_grenade_"):
+				_p._grenade_sel = item_id.trim_prefix("loot_grenade_")
+				if int(_p._grenade_counts.get(_p._grenade_sel, 0)) <= 0:
+					_p._grenade_counts[_p._grenade_sel] = 1
+				throw_selected()
+
+
+## Server → owner: resupply reserve ammo (`frac` of every weapon's reserve_max).
+## Fired by an ammo-shard pickup (0.35) or an Ammo Box inventory use (1.0). RPC so
+## the server-side pickup handler can grant it to a co-op CLIENT's own machine
+## (ammo lives in the owner's WeaponController, like keys/flares).
+@rpc("any_peer", "call_local", "reliable")
+func grant_ammo(frac: float) -> void:
+	if _p == null or not _p.is_multiplayer_authority():
+		return
+	var wc := _p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D/WeaponController")
+	if wc != null and wc.has_method("add_reserve_frac"):
+		wc.add_reserve_frac(frac)
+	Events.notify.emit(tr("+ AMMO"), 0)
+
+
 ## Fill the player's consumable counts from the committed bring-list (moved here from
 ## player.gd verbatim for size discipline — state stays ON the player; see header).
 func apply_loadout() -> void:
