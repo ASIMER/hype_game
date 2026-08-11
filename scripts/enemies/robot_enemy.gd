@@ -174,6 +174,7 @@ var hunter: bool = false
 # Last-heard world position the enemy is walking toward while investigating.
 var _investigate_point: Vector3 = Vector3.ZERO
 var _investigate_timer: float = 0.0  # counts DOWN from INVESTIGATE_GIVEUP
+var _leash_calm_ms: int = 0  # M3: after a leash break, ignore re-acquire until this tick
 var _investigate_arrived: bool = false  # true once within INVESTIGATE_ARRIVE
 
 # Cascading alert refractory: monotonic counter decremented each physics tick.
@@ -460,7 +461,12 @@ func _physics_process(delta: float) -> void:
 		# within detect — or the player gets close. evaluate() has no INVESTIGATE case (it
 		# would return INVESTIGATE unchanged), so seed the FSM into CHASE first, then let
 		# evaluate resolve CHASE→ATTACK (or back to PATROL if the gap reopens).
-		if _target != null and (has_los or near) and dist <= detect:
+		if (
+			_target != null
+			and (has_los or near)
+			and dist <= detect
+			and Time.get_ticks_msec() >= _leash_calm_ms
+		):
 			_fsm.state = State.CHASE
 			current_state = _fsm.evaluate(
 				_target, dist, has_los or near, detect, _stat_attack_range
@@ -470,6 +476,14 @@ func _physics_process(delta: float) -> void:
 	if current_state == State.CHASE and not _was_chasing:
 		_cascade_alert()
 	_was_chasing = (current_state == State.CHASE)
+
+	# M3 territoriality: a non-hunter defends its spawn spot — a chase dragging it past
+	# the leash breaks off toward home (calm window stops boundary flip-flop). Hunters exempt.
+	var engaged := current_state == State.CHASE or current_state == State.ATTACK
+	if not hunter and engaged and global_position.distance_to(_home) > Settings.ENEMY_LEASH_RADIUS:
+		_target = null
+		_leash_calm_ms = Time.get_ticks_msec() + 4000
+		_start_investigate(_home)
 
 	match current_state:
 		State.PATROL:
@@ -869,6 +883,7 @@ func _setup_health_bar() -> void:
 	_hp_bar.bar_y = _health_bar_height()
 	add_child(_hp_bar)
 	_hp_bar.setup(_health)
+	_hp_bar.set_modifier_label(modifiers)  # M3: elite tag over the bar
 
 
 ## Default bar height; flyers/bosses override to clear taller models. OVERRIDE.
@@ -1304,6 +1319,10 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	# enemies can never reach melee (looks like "they run in place and won't attack").
 	# So we clamp the separation magnitude well below 1.0 AND fade it out as the enemy
 	# closes on its target, letting the swarm commit to a dogpile within attack range.
+	# M3 combat dance: shooters strafe-orbit in ATTACK, anyone jukes when aimed
+	# at (helper keeps its state in node meta; boss excluded — BossBrain leads).
+	if enemy_id != "robot_boss":
+		dir = EnemyDance.adjust(self, _target, dir, _stat_attack_range, int(current_state))
 	var sep := _separation_steer()
 	if sep.length() > SEPARATION_MAX:
 		sep = sep.normalized() * SEPARATION_MAX

@@ -19,6 +19,36 @@ var _fill: MeshInstance3D
 var _fill_mat: StandardMaterial3D
 var _health: Health = null
 var _ratio: float = 1.0
+var _label: Label3D = null  # M3: elite-modifier tag over the bar (set_label)
+
+
+## M3: build the elite tag from the raw modifier id list («ARMORED · SWIFT»).
+## Owner passes its parsed modifiers; empty list clears the tag.
+func set_modifier_label(mods: Array) -> void:
+	var tags: Array[String] = []
+	for m in mods:
+		tags.append(tr(String(m).to_upper()))
+	set_label(" · ".join(tags))
+
+
+## M3 elite readability: show WHY a machine is special («ARMORED · SWIFT») right
+## over its health bar. Lazy Label3D; reveals/hides together with the bar.
+func set_label(text: String) -> void:
+	if text.strip_edges() == "":
+		if _label != null:
+			_label.visible = false
+		return
+	if _label == null:
+		_label = Label3D.new()
+		_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_label.no_depth_test = false
+		_label.font_size = 34
+		_label.pixel_size = 0.004
+		_label.modulate = Color(0.98, 0.72, 0.25)
+		_label.outline_size = 8
+		_label.position = Vector3(0, bar_y + 0.24, 0)
+		add_child(_label)
+	_label.text = text
 
 
 func _ready() -> void:

@@ -218,6 +218,9 @@ const NOISE_CHASE_FRACTION: float = 0.45
 # loud footsteps (so a patrol you walk right up to engages instead of standing idle). Beyond it,
 # the normal hearing/LOS stealth applies. Read by robot_enemy's perception.
 const PROXIMITY_AGGRO_RADIUS: float = 9.0
+# M3 territoriality: a NON-hunter chased past this far from its spawn point breaks
+# off and returns home (patrols garrison their POI instead of cross-map pursuits).
+const ENEMY_LEASH_RADIUS: float = 28.0
 # INVESTIGATE behaviour: move to the last-heard point at this speed mult, look around,
 # then give up after GIVEUP seconds with no confirmation and return to PATROL.
 const INVESTIGATE_SPEED_MULT: float = 0.8

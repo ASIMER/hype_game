@@ -555,6 +555,7 @@ func _spawn_xform(index: int) -> Transform3D:
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
 	var ok: Array[int] = []
 	var near: Array[int] = []
+	var near_hidden: Array[int] = []
 	for i in n:
 		var origin: Vector3 = _arena.get_enemy_spawn_point(i).origin
 		if not _spawn_ok_for_players(origin, players):
@@ -573,10 +574,30 @@ func _spawn_xform(index: int) -> Transform3D:
 		ok.append(i)
 		if is_near:
 			near.append(i)
-	var pick_from: Array[int] = near if not near.is_empty() else ok
+			# M3: prefer near markers the squad can't SEE («материализовался прямо
+			# передо мной» killer) — soft preference, visible markers stay a fallback.
+			if not _spawn_visible_to_players(origin, players):
+				near_hidden.append(i)
+	var pick_from: Array[int] = near_hidden
+	if pick_from.is_empty():
+		pick_from = near if not near.is_empty() else ok
 	if pick_from.is_empty():
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
 	return _jittered_spawn(_arena.get_enemy_spawn_point(pick_from[index % pick_from.size()]))
+
+
+## True when ANY player has a clear world-geometry line to the marker (an enemy
+## appearing there would pop into existence on someone's screen).
+func _spawn_visible_to_players(origin: Vector3, players: Array) -> bool:
+	if _arena == null:
+		return false
+	var space := _arena.get_world_3d().direct_space_state
+	var spot: Vector3 = origin + Vector3.UP * 1.4
+	for p in players:
+		var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 1.6, spot, 1)
+		if space.intersect_ray(q).is_empty():
+			return true
+	return false
 
 
 ## Spread each spawn around its marker on a small golden-angle DISC so a burst of enemies that

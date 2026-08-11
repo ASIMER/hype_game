@@ -475,6 +475,60 @@ var _bark_chip: PanelContainer = null
 var _bark_label: Label = null
 var _bark_tween: Tween = null
 
+# M3 stealth detect-meter: are the machines aware of ME right now?
+var _eye_poll_t: float = 0.0
+var _eye_label: Label = null
+# M3 night hint: one notify per nightfall («machines see worse in the dark»).
+var _was_night: bool = false
+
+
+## Poll enemy awareness of the LOCAL player: red «SPOTTED» when something in
+## CHASE/ATTACK targets us (host reads the real target; a client falls back to
+## distance since _target never replicates), amber «SEARCHING» when an
+## INVESTIGATE walk is closing on our position. Legalizes crouch-stealth+decoy.
+func _update_stealth_eye() -> void:
+	var lp := _local_player as Node3D
+	if lp == null or not is_instance_valid(lp):
+		if _eye_label != null:
+			_eye_label.visible = false
+		return
+	var seen := false
+	var searching := false
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if not (e is Node3D) or not is_instance_valid(e):
+			continue
+		var st: int = int(e.get("current_state")) if "current_state" in e else 0
+		if st == 1 or st == 2:
+			var tgt: Variant = e.get("_target")
+			if tgt is Node:
+				if tgt == _local_player:
+					seen = true
+					break
+			elif (e as Node3D).global_position.distance_to(lp.global_position) < 45.0:
+				seen = true
+				break
+		elif st == 3 and (e as Node3D).global_position.distance_to(lp.global_position) < 30.0:
+			searching = true
+	if _eye_label == null:
+		_eye_label = Label.new()
+		_eye_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_eye_label.offset_left = 14.0
+		_eye_label.offset_top = -112.0
+		_eye_label.offset_bottom = -90.0
+		_eye_label.theme_type_variation = "HeaderSmall"
+		_eye_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_eye_label)
+	if seen:
+		_eye_label.text = tr("▲ SPOTTED")
+		_eye_label.add_theme_color_override("font_color", Color(1.0, 0.32, 0.28))
+		_eye_label.visible = true
+	elif searching:
+		_eye_label.text = tr("◉ SEARCHING")
+		_eye_label.add_theme_color_override("font_color", Color(0.98, 0.72, 0.25))
+		_eye_label.visible = true
+	else:
+		_eye_label.visible = false
+
 
 func _on_boss_bark(text: String) -> void:
 	if _bark_chip == null:
@@ -670,6 +724,15 @@ func _process(delta: float) -> void:
 	if _boss_poll_t <= 0.0:
 		_boss_poll_t = 0.4
 		_update_boss_bar()
+	# M3 stealth: awareness eye (throttled ~3 Hz) + the nightfall stealth hint.
+	_eye_poll_t -= delta
+	if _eye_poll_t <= 0.0:
+		_eye_poll_t = 0.34
+		_update_stealth_eye()
+		var night: bool = DayNight.is_night(DayNight.current_hour())
+		if night and not _was_night and GameState.phase == GameState.Phase.IN_MATCH:
+			Events.notify.emit(tr("NIGHT: machine optics degraded — they see worse"), 0)
+		_was_night = night
 	# Keep the teammate arrow pulsing while shown (even when the local player is up).
 	if _team_down_shown and not _down_active:
 		_down_pulse += delta
