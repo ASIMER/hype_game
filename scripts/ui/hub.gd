@@ -134,35 +134,6 @@ func _ready() -> void:
 		UIStyle.hover_lift(_deploy_btn)
 		_add_hunter_taunt()
 
-
-## M7.9 body-fantasy beat: while a HUNTER is alive it TAUNTS you right over the
-## deploy button — the grudge follows you into the menu. Reads the codex mirror
-## (host + synced clients both have GameState.nemesis_active).
-func _add_hunter_taunt() -> void:
-	var nem: Dictionary = GameState.nemesis_active
-	if nem.is_empty():
-		return
-	var serial: String = String(nem.get("serial", ""))
-	if serial == "":
-		return
-	var taunt := Label.new()
-	taunt.text = tr("⚠ %s IS OUT THERE. IT REMEMBERS.") % serial
-	taunt.theme_type_variation = "HeaderSmall"
-	taunt.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
-	taunt.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	taunt.anchor_left = 1.0
-	taunt.anchor_top = 1.0
-	taunt.offset_left = -420.0
-	taunt.offset_right = -24.0
-	taunt.offset_top = -92.0
-	taunt.offset_bottom = -72.0
-	taunt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	taunt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(taunt)
-	var tw := taunt.create_tween().set_loops()
-	tw.tween_property(taunt, "modulate:a", 0.55, 1.1)
-	tw.tween_property(taunt, "modulate:a", 1.0, 1.1)
-
 	# ── Wire difficulty selector ──────────────────────────────────────────────
 	if _diff_option:
 		_diff_option.clear()
@@ -235,6 +206,37 @@ func _add_hunter_taunt() -> void:
 	# ── Live currency updates (reconnect-safe) ────────────────────────────────
 	if not Events.currency_changed.is_connected(_on_currency_changed):
 		Events.currency_changed.connect(_on_currency_changed)
+
+
+## M7.9 body-fantasy beat: while a HUNTER is alive it TAUNTS you right over the
+## deploy button — the grudge follows you into the menu. Reads the codex mirror
+## (host + synced clients both have GameState.nemesis_active). NOTE: added as a
+## STANDALONE function BELOW _ready — inserting it mid-_ready once orphaned the
+## whole tab-instantiation tail («хаб пустой» regression).
+func _add_hunter_taunt() -> void:
+	var nem: Dictionary = GameState.nemesis_active
+	if nem.is_empty():
+		return
+	var serial: String = String(nem.get("serial", ""))
+	if serial == "":
+		return
+	var taunt := Label.new()
+	taunt.text = tr("⚠ %s IS OUT THERE. IT REMEMBERS.") % serial
+	taunt.theme_type_variation = "HeaderSmall"
+	taunt.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+	taunt.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	taunt.anchor_left = 1.0
+	taunt.anchor_top = 1.0
+	taunt.offset_left = -420.0
+	taunt.offset_right = -24.0
+	taunt.offset_top = -92.0
+	taunt.offset_bottom = -72.0
+	taunt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	taunt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(taunt)
+	var tw := taunt.create_tween().set_loops()
+	tw.tween_property(taunt, "modulate:a", 0.55, 1.1)
+	tw.tween_property(taunt, "modulate:a", 1.0, 1.1)
 
 
 # Insurance maturity poll (batch B): returns can mature WHILE the Hub is open, so

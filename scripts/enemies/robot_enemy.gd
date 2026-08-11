@@ -241,18 +241,18 @@ func _ready() -> void:
 	var model := AssetRegistry.get_model(enemy_id)
 	if model:
 		_model_root.add_child(model)
-		# M1 feel: the machine ASSEMBLES on spawn (scale-up + spin-settle + ring).
-		LimbBurst.assemble(_model_root, self)
 		_setup_animation()
 		_collect_flash_materials(model)
 		# Procedural idle motion only when the model has NO AnimationPlayer (the .glb
 		# grunt/heavy animate themselves). Subclasses override _cache_proc_parts.
 		if _anim_player == null:
 			_cache_proc_parts()
-	# Remember the model's rest transform so the hit flinch can return to it.
+	# Rest transform for the flinch — capture BEFORE assemble (rest at 0.05 shrank enemies).
 	if _model_root:
 		_model_rest_pos = _model_root.position
 		_model_rest_scale = _model_root.scale
+	if model:
+		LimbBurst.assemble(_model_root, self)  # M1: spawn-assembly (scale-up + ring)
 
 	# Elite modifier visuals (tint + feet glow ring). Runs on every peer; tints the
 	# already-duplicated _flash_mats so it never bleeds onto other instances. Headless-guarded.

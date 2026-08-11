@@ -543,7 +543,11 @@ const NEAR_SPAWN_RADIUS: float = 70.0  # markers within this of a player are "lo
 # Never MATERIALIZE an enemy in a player's face (playtest: «спавнятся прямо возле
 # меня, словно телепортировались») — markers closer than this to ANY player are
 # excluded entirely; enemies arrive from outside the immediate bubble instead.
-const SPAWN_MIN_PLAYER_DIST: float = 24.0
+const SPAWN_MIN_PLAYER_DIST: float = 32.0
+# Spawn grace: for the first N seconds of a match the near-player marker BIAS is
+# suspended (waves draw from the full ok-pool instead) — the near+hidden combo
+# was landing the whole wave-1 pack on the player ~13 s after deploy.
+const SPAWN_GRACE_TIME: float = 60.0
 
 
 func _spawn_xform(index: int) -> Transform3D:
@@ -578,9 +582,16 @@ func _spawn_xform(index: int) -> Transform3D:
 			# передо мной» killer) — soft preference, visible markers stay a fallback.
 			if not _spawn_visible_to_players(origin, players):
 				near_hidden.append(i)
-	var pick_from: Array[int] = near_hidden
+	# Spawn grace: early in the match ignore the near-bias entirely — the squad
+	# gets breathing room to orient before the hunt closes in.
+	var elapsed: float = GameState.match_duration - GameState.match_time_left
+	var pick_from: Array[int] = []
+	if elapsed >= SPAWN_GRACE_TIME:
+		pick_from = near_hidden
+		if pick_from.is_empty():
+			pick_from = near
 	if pick_from.is_empty():
-		pick_from = near if not near.is_empty() else ok
+		pick_from = ok
 	if pick_from.is_empty():
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
 	# M4.3 HEAT: a raider hauling >50% of carry weight draws the hunt — when any
@@ -669,6 +680,12 @@ func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -
 		enemy.add_to_group(Groups.ENEMIES)
 	# Apply hunter flag only when the property exists (guard against scene variants
 	# that may not have it — prevents "Invalid set index" at runtime).
+	# SPAWN GRACE: during the opening SPAWN_GRACE_TIME the wave spawns as PATROLS
+	# (perception-driven) instead of beeline hunters — pre-fix a cross-biome pack
+	# force-chased the freshly-spawned player and downed them ~15 s into the raid.
+	var elapsed_g: float = GameState.match_duration - GameState.match_time_left
+	if as_hunter and elapsed_g < SPAWN_GRACE_TIME and not GameState.final_wave:
+		as_hunter = false
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
 	# Elite modifiers (batch D): NAME-ENCODE the rolled prefixes — auto-spawn replicates
