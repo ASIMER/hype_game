@@ -47,6 +47,7 @@ var _noise: FastNoiseLite  # smooth random source for shake
 var _recoil_offset: Vector2 = Vector2.ZERO  # x = yaw, y = pitch (radians), springs to 0
 
 var _fov_punch: float = 0.0  # current extra FOV degrees (decays to 0)
+var _sprint_fov: float = 0.0  # sustained sprint FOV widening (lerps in/out)
 
 var _hit_stop_active: bool = false  # guard against stacked hit-stops
 
@@ -95,7 +96,7 @@ func _on_player_kill(_enemy_id: String) -> void:
 ## Returns the transient FOV delta the lead adds to camera.fov in _update_camera:
 ##   camera.fov += $CameraFX.fov_offset()
 func fov_offset() -> float:
-	return _fov_punch
+	return _fov_punch + _sprint_fov
 
 
 # --- Public API ---------------------------------------------------------------
@@ -123,6 +124,17 @@ func _process(delta: float) -> void:
 	# 2. Decay recoil spring toward zero.
 	var spring_factor := clampf(1.0 - RECOIL_SPRING * delta, 0.0, 1.0)
 	_recoil_offset *= spring_factor
+
+	# 2b. Sprint FOV widening (M1 body feel): the world stretches slightly at full
+	# sprint — speed you can SEE. Smooth in/out; reads on top of the ADS baseline.
+	var sprint_target: float = 0.0
+	if _player is CharacterBody3D:
+		var pb := _player as CharacterBody3D
+		var hv: Vector3 = pb.velocity
+		hv.y = 0.0
+		if pb.is_on_floor() and hv.length() > Settings.PLAYER_SPRINT_SPEED * 0.75:
+			sprint_target = 3.6
+	_sprint_fov = lerpf(_sprint_fov, sprint_target, clampf(6.0 * delta, 0.0, 1.0))
 
 	# 3. Decay FOV punch.
 	if _fov_punch != 0.0:

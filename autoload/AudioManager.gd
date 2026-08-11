@@ -62,6 +62,8 @@ const SOUNDS := {
 	"robot_death": "res://assets/audio/robot_death.ogg",
 	# 96 s evolving dark loop (gen_music_long) — swapped in when the STORM hits.
 	"music_storm": "res://assets/audio/music_storm.ogg",
+	# M1 music layers: percussive combat overlay stem faded in while machines fight.
+	"music_combat": "res://assets/audio/music_combat.ogg",
 	# MOBA skill rework (v0.4.5): per-ability cast/impact sounds (gen_audio.py).
 	"skill_cast": "res://assets/audio/skill_cast.wav",
 	"skill_meteor": "res://assets/audio/skill_meteor.wav",
@@ -130,10 +132,82 @@ var master_db := -3.0
 var _duck_db: float = 0.0
 var _bed_bus_idx: int = -1
 
+# M1 music layers: the combat percussion stem rides OVER the calm bed, mixed by
+# live threat (any machine in CHASE/ATTACK within 45 m). Own player — never
+# touched by the storm-swap tweens.
+var _combat_player: AudioStreamPlayer = null
+var _combat_mix: float = 0.0
+var _combat_poll: float = 0.0
+var _combat_hot: bool = false
+
+# M1 reverb zones: one-shots live on an "SFX" bus whose reverb wet/room blends
+# between OUTDOOR (airy, low) and INDOOR (roomy) from a ceiling raycast.
+var _sfx_bus_idx: int = -1
+var _reverb: AudioEffectReverb = null
+var _indoor_mix: float = 0.0
+var _indoor_target: float = 0.0
+var _indoor_poll: float = 0.0
+
 
 ## Duck the music/ambient bed by `db` (negative). Deeper requests win.
 func duck(db: float) -> void:
 	_duck_db = minf(_duck_db, db)
+
+
+## Combat music layer: fade the percussion stem in while any machine actively
+## fights the local player (CHASE/ATTACK within 45 m), out ~4× slower.
+func _tick_combat_layer(delta: float) -> void:
+	if _combat_player == null:
+		return
+	var in_combat := false
+	if (
+		_local_player != null
+		and is_instance_valid(_local_player)
+		and GameState.phase == GameState.Phase.IN_MATCH
+	):
+		_combat_poll -= delta
+		if _combat_poll <= 0.0:
+			_combat_poll = 0.5
+			_combat_hot = false
+			var ppos: Vector3 = (_local_player as Node3D).global_position
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if not (e is Node3D):
+					continue
+				var st: int = int(e.get("current_state")) if "current_state" in e else 0
+				if st != 1 and st != 2:
+					continue
+				if (e as Node3D).global_position.distance_to(ppos) <= 45.0:
+					_combat_hot = true
+					break
+		in_combat = _combat_hot
+	var rate: float = 1.6 if in_combat else 0.35
+	_combat_mix = clampf(_combat_mix + (1.0 if in_combat else -1.0) * rate * delta, 0.0, 1.0)
+	if _combat_mix <= 0.01:
+		if _combat_player.playing:
+			_combat_player.stop()
+		return
+	if not _combat_player.playing:
+		_combat_player.play()
+	_combat_player.volume_db = lerpf(-46.0, -9.0, _combat_mix)
+
+
+## Reverb-zone blend: a ceiling above the player → INDOOR (roomier, wetter).
+func _tick_reverb_zone(delta: float) -> void:
+	if _reverb == null or _local_player == null or not is_instance_valid(_local_player):
+		return
+	_indoor_poll -= delta
+	if _indoor_poll <= 0.0:
+		_indoor_poll = 1.0
+		var body := _local_player as Node3D
+		if body != null and body.is_inside_tree():
+			var space := body.get_world_3d().direct_space_state
+			var from: Vector3 = body.global_position + Vector3.UP * 0.6
+			var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.UP * 8.0, 1)
+			var hit: Dictionary = space.intersect_ray(q)
+			_indoor_target = 1.0 if not hit.is_empty() else 0.0
+	_indoor_mix = lerpf(_indoor_mix, _indoor_target, clampf(2.5 * delta, 0.0, 1.0))
+	_reverb.wet = lerpf(0.06, 0.3, _indoor_mix)
+	_reverb.room_size = lerpf(0.3, 0.72, _indoor_mix)
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +320,23 @@ func _ready() -> void:
 		_ambient_player.bus = "Bed"
 		_underwater_player.bus = "Bed"
 
+		# Combat overlay stem (starts silent; mixed in _process by live threat).
+		_combat_player = _make_looping_player("music_combat", -9.0)
+		_combat_player.volume_db = -80.0
+		_combat_player.bus = "Bed"
+
+		# "SFX" bus with a blendable reverb (outdoor air ↔ indoor room).
+		_sfx_bus_idx = AudioServer.bus_count
+		AudioServer.add_bus(_sfx_bus_idx)
+		AudioServer.set_bus_name(_sfx_bus_idx, "SFX")
+		AudioServer.set_bus_send(_sfx_bus_idx, "Master")
+		_reverb = AudioEffectReverb.new()
+		_reverb.wet = 0.06
+		_reverb.room_size = 0.3
+		AudioServer.add_bus_effect(_sfx_bus_idx, _reverb)
+		for p in _pool:
+			p.bus = "SFX"
+
 	# Events bus connections.
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.damage_dealt.connect(_on_damage_dealt)
@@ -278,6 +369,8 @@ func _process(delta: float) -> void:
 	if _duck_db < 0.0 and _bed_bus_idx >= 0:
 		_duck_db = minf(_duck_db + 26.0 * delta, 0.0)
 		AudioServer.set_bus_volume_db(_bed_bus_idx, _duck_db)
+	_tick_combat_layer(delta)
+	_tick_reverb_zone(delta)
 	if not enabled or _local_player == null:
 		return
 	if not is_instance_valid(_local_player):
@@ -693,7 +786,7 @@ func _play_at(id: String, where: Node) -> void:
 	if where is Node3D and (where as Node3D).is_inside_tree():
 		var p := AudioStreamPlayer3D.new()
 		p.stream = stream
-		p.bus = "Master"
+		p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
 		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
 		p.max_distance = 60.0
 		p.finished.connect(p.queue_free)
@@ -714,7 +807,7 @@ func _play_at_pitched(id: String, where: Node, pitch: float) -> void:
 	if where is Node3D and (where as Node3D).is_inside_tree():
 		var p := AudioStreamPlayer3D.new()
 		p.stream = stream
-		p.bus = "Master"
+		p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
 		p.pitch_scale = clampf(pitch, 0.5, 2.0)
 		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
 		p.max_distance = 60.0

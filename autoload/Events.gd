@@ -254,6 +254,8 @@ signal interaction_available(prompt: String, target: Node)
 signal interaction_cleared
 ## Transient HUD notification / killfeed line. kind: 0 info, 1 good, 2 bad, 3 wave.
 signal notify(text: String, kind: int)
+## Talking boss (M2): one spoken line from the boss bark engine → the HUD speech chip.
+signal boss_bark(text: String)
 ## Sprint stamina for the stamina bar.
 signal stamina_changed(current: float, max_stamina: float)
 ## Inventory UI -> player: use an item (medkit/grenade/...).

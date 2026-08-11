@@ -77,12 +77,23 @@ static func kit(id: String) -> Dictionary:
 	var energy: float = spec[4]
 	var ident: Color = AssetRegistry.get_color(id)
 	return {
-		"hull": ProcPlating.plated(hull_col, arch, sid),
+		"hull": _rimmed(ProcPlating.plated(hull_col, arch, sid)),
 		"frame": ProcPlating.rubber(sec_col, sid + 1),
 		"steel": ProcPlating.steel(),
 		"accent": _accent(ident),
 		"glow": ProcPlating.glow(ident, energy),
 	}
+
+
+## Cheap fresnel RIM on the painted shell: grazing angles pick up a light edge, so a
+## machine keeps a readable silhouette against fog, forest and the cold grade instead of
+## melting into them. Pure lighting — it does NOT disturb the neutral-bake × albedo_color
+## tint pattern (rim is added after the albedo term) nor the hit-flash duplicate contract.
+static func _rimmed(m: StandardMaterial3D) -> StandardMaterial3D:
+	m.rim_enabled = true
+	m.rim = 0.28
+	m.rim_tint = 0.6
+	return m
 
 
 ## The identity hue as RESTRAINED paint (×0.85 value, modest metal/rough) — keeps each

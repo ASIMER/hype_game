@@ -176,6 +176,8 @@ var weapon_perks: Dictionary = {}
 var unlocked_cosmetics: Array[String] = []
 # First-raid onboarding hint sequence completed (per profile; see onboarding_hints.gd).
 var onboarding_done := false
+# First HUNTER (nemesis) teaching card shown (per profile; hud.gd shows it once).
+var nemesis_intro_done := false
 var equipped_cosmetics: Dictionary = {}
 ## Worn gear (AT-RISK): slot (Settings.GEAR_SLOTS) -> armor item id. Empty slot = none.
 var equipped_gear: Dictionary = {}
@@ -384,6 +386,14 @@ func mark_onboarding_done() -> void:
 	if onboarding_done:
 		return
 	onboarding_done = true
+	save_profile()
+
+
+## Stamp the first-hunter teaching card as seen (persisted immediately).
+func mark_nemesis_intro_done() -> void:
+	if nemesis_intro_done:
+		return
+	nemesis_intro_done = true
 	save_profile()
 
 
@@ -1093,6 +1103,7 @@ func save_profile() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("meta", "save_version", Settings.GAME_VERSION)
 	cfg.set_value("meta", "onboarding_done", onboarding_done)
+	cfg.set_value("meta", "nemesis_intro_done", nemesis_intro_done)
 	cfg.set_value("meta", "currency", currency)
 	cfg.set_value("meta", "unlocked", unlocked)
 	cfg.set_value("meta", "upgrades", upgrades)
@@ -1151,6 +1162,7 @@ func load_profile() -> void:
 	else:
 		_migrate(cfg, save_ver)
 	onboarding_done = bool(cfg.get_value("meta", "onboarding_done", false))
+	nemesis_intro_done = bool(cfg.get_value("meta", "nemesis_intro_done", false))
 	currency = int(cfg.get_value("meta", "currency", 0))
 	var raw_unlocked: Array = cfg.get_value("meta", "unlocked", [])
 	unlocked.clear()

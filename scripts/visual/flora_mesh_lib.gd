@@ -14,6 +14,21 @@ extends RefCounted
 
 static var _mesh_cache: Dictionary = {}
 
+# --- canopy life ------------------------------------------------------------
+# Foliage in the Quaternius kit is a FROZEN set of named materials whose colour lives in a
+# 2-tone atlas — the imported albedo_color is plain WHITE, so a "lift dark albedos" test
+# reading albedo_color would always see 1.0 and do nothing. The gain is therefore keyed by
+# material name. Values are the intended LINEAR albedo gain (see _light_foliage).
+const _CANOPY_GAIN := {
+	"Leaves_Pine": 1.45,  # (51,88,0) — darkest canopy of the kit, reads black in shade
+	"Leaf_Pine": 1.45,  # same atlas, name fallback
+	"Leaves_TwistedTree": 1.40,  # red maple
+	"Leaves_NormalTree": 1.20,
+}
+## Light bleeding THROUGH a leaf card — the single biggest fix for "flat dark blob" canopies.
+const _BACKLIGHT := Color(0.30, 0.38, 0.22)
+const _LIT_META := "flora_lit"
+
 
 ## Every Mesh inside the glTF (depth-first MeshInstance3D order — deterministic).
 ## Returns [] when the model is missing or in headless. Cached per id.
@@ -26,8 +41,53 @@ static func model_meshes(id: String) -> Array:
 		var inst: Node = ps.instantiate()
 		_collect_meshes(inst, meshes)
 		inst.free()
+	_light_foliage(meshes)
 	_mesh_cache[id] = meshes
 	return meshes
+
+
+## Give every foliage surface backlight + a canopy-specific albedo lift, ONCE per material
+## (meta-guarded — the gain multiplies, so a second pass would compound it). Done here so
+## every flora consumer (trees, bushes, ferns, flowers) gets it from the one load path.
+static func _light_foliage(meshes: Array) -> void:
+	for i in meshes.size():
+		var m: Mesh = meshes[i]
+		if m == null:
+			continue
+		for s in range(m.get_surface_count()):
+			var mat: StandardMaterial3D = m.surface_get_material(s) as StandardMaterial3D
+			if mat == null or mat.has_meta(_LIT_META):
+				continue
+			var key: String = _foliage_key(mat)
+			if key.is_empty():
+				continue
+			mat.set_meta(_LIT_META, true)
+			mat.backlight_enabled = true
+			mat.backlight = _BACKLIGHT
+			var gain: float = float(_CANOPY_GAIN.get(key, 1.0))
+			if gain <= 1.0:
+				continue
+			# albedo_color is authored in sRGB and LINEARISED by the engine (the same trap
+			# ProcMaterials documents), so writing ×1.40 straight would land as ×2.2 of
+			# actual light — push the intended LINEAR gain back through linear_to_srgb.
+			var g: Color = Color(gain, gain, gain).linear_to_srgb()
+			var a: Color = mat.albedo_color
+			mat.albedo_color = Color(a.r * g.r, a.g * g.g, a.b * g.b, a.a)
+
+
+## "" when the material is not foliage, else its lookup key: the material name, or the
+## atlas texture's file stem when an import drops the name (Leaves_NormalTree_C → …Tree).
+static func _foliage_key(mat: StandardMaterial3D) -> String:
+	var nm: String = str(mat.resource_name)
+	if nm.is_empty():
+		var tex: Texture2D = mat.albedo_texture
+		nm = tex.resource_path.get_file().get_basename() if tex != null else ""
+		if nm.ends_with("_C"):
+			nm = nm.left(nm.length() - 2)
+	# "Leaves*" AND "Leaf*" — the kit uses both spellings ("Leaves_Pine" material on a
+	# "Leaf_Pine_C" atlas), and "Leaves" does NOT begin with "Leaf".
+	var foliage: bool = nm.begins_with("Leaves") or nm.begins_with("Leaf") or nm == "Flowers"
+	return nm if foliage else ""
 
 
 ## Back-compat single-mesh accessor (the first mesh, or null).

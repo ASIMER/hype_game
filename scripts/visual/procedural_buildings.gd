@@ -106,12 +106,17 @@ static func glass_pool() -> Array[StandardMaterial3D]:
 		# channel; metallic 0.4 + low roughness keeps the specular sky reflection that
 		# sells "glass" through the transparency. Panes are small → default alpha
 		# sorting is fine (fallback if shimmer vs water shows: ALPHA_DEPTH_PRE_PASS).
-		var warm := Color(1.0, 0.78, 0.5)
+		# INHABITED IN DAYLIGHT: the dim/lit panes carry a warm, more OPAQUE albedo (a room
+		# behind the glass rather than reflected sky), because the daytime warmth cannot come
+		# from emission — world_atmosphere drives emission_energy_multiplier to `k * night`,
+		# so anything set here is zeroed on the first sun ramp. The energies below are the
+		# pre-ramp/day baseline (what a model render or a pre-atmosphere frame shows).
+		var warm := Color(1.0, 0.85, 0.55)
 		var dark := ProceduralModels._mat(Color(0.30, 0.39, 0.48, 0.42), 0.4, 0.08)
-		var dim := ProceduralModels._mat(Color(0.32, 0.40, 0.47, 0.34), 0.4, 0.10, warm, 0.001)
-		var lit := ProceduralModels._mat(Color(0.32, 0.40, 0.47, 0.30), 0.4, 0.10, warm, 0.001)
-		dim.emission_energy_multiplier = 0.0
-		lit.emission_energy_multiplier = 0.0
+		var dim := ProceduralModels._mat(Color(0.40, 0.42, 0.44, 0.40), 0.4, 0.10, warm, 0.001)
+		var lit := ProceduralModels._mat(Color(0.60, 0.50, 0.36, 0.58), 0.3, 0.14, warm, 0.001)
+		dim.emission_energy_multiplier = 0.45
+		lit.emission_energy_multiplier = 1.6
 		for m: StandardMaterial3D in [dark, dim, lit]:
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_glass_pool = [dark, dim, lit]
@@ -504,10 +509,11 @@ static func wall(
 	with_door: bool = false
 ) -> Node3D:
 	var root := Node3D.new()
-	# Deterministic dark/dim/lit window pick (5/3/2 of 10) from the shared glass pool.
+	# Deterministic dark/dim/lit window pick (4/3/3 of 10) from the shared glass pool —
+	# 30% lit so a skyline reads as an inhabited city instead of a grid of dead panes.
 	_glass_seq += 1
 	var gpick: int = ProcHash.h(_glass_seq * 53 + int(length * 7.0 + height * 11.0)) % 10
-	var glass: StandardMaterial3D = glass_pool()[0 if gpick < 5 else (1 if gpick < 8 else 2)]
+	var glass: StandardMaterial3D = glass_pool()[0 if gpick < 4 else (1 if gpick < 7 else 2)]
 	if with_door:
 		# Door gap centered, 1.6 wide × 2.2 tall. Left pier, right pier, lintel above.
 		var dw: float = 1.6

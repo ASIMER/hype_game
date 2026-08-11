@@ -54,6 +54,9 @@ func _ready() -> void:
 	Events.world_event_started.connect(_on_world_event_started)
 	Events.environmental_surge_changed.connect(_on_surge_changed)
 
+	# M2 talking boss — spoken lines get their own speech chip under the boss bar.
+	Events.boss_bark.connect(_on_boss_bark)
+
 	# Machine Nemesis — the rival's story beats (born / returns / defeated).
 	Events.nemesis_born.connect(_on_nemesis_born)
 	Events.nemesis_returned.connect(_on_nemesis_returned)
@@ -461,6 +464,105 @@ var _team_down_angle: float = 0.0  # screen radians toward the nearest downed te
 var _team_down_shown: bool = false
 var _team_poll_t: float = 0.0
 
+# M2 boss fight: top-center boss HP bar (code-built; visible while a boss lives).
+var _boss_poll_t: float = 0.0
+var _boss_bar_root: Control = null
+var _boss_bar: ProgressBar = null
+var _boss_name_label: Label = null
+
+# M2 talking boss: the speech chip under the boss bar (Events.boss_bark).
+var _bark_chip: PanelContainer = null
+var _bark_label: Label = null
+var _bark_tween: Tween = null
+
+
+func _on_boss_bark(text: String) -> void:
+	if _bark_chip == null:
+		_bark_chip = PanelContainer.new()
+		_bark_chip.add_theme_stylebox_override("panel", UIStyle.chip(UIStyle.RED))
+		_bark_chip.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_bark_chip.anchor_left = 0.5
+		_bark_chip.anchor_right = 0.5
+		_bark_chip.offset_top = 98.0
+		_bark_chip.offset_bottom = 124.0
+		_bark_chip.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_bark_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_bark_label = Label.new()
+		_bark_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_bark_label.add_theme_color_override("font_color", Color(1.0, 0.62, 0.55))
+		_bark_chip.add_child(_bark_label)
+		add_child(_bark_chip)
+	_bark_label.text = "▸ %s" % text
+	_bark_chip.visible = true
+	_bark_chip.modulate.a = 0.0
+	if _bark_tween != null and _bark_tween.is_valid():
+		_bark_tween.kill()
+	_bark_tween = _bark_chip.create_tween()
+	_bark_tween.tween_property(_bark_chip, "modulate:a", 1.0, 0.14)
+	_bark_tween.tween_interval(3.6)
+	_bark_tween.tween_property(_bark_chip, "modulate:a", 0.0, 0.5)
+	_bark_tween.tween_callback(func() -> void: _bark_chip.visible = false)
+
+
+## Build the boss bar lazily; poll the enemies group for a live robot_boss and
+## drive the bar. Color shifts with the fight phase (amber → orange → red).
+func _update_boss_bar() -> void:
+	var boss: Node = null
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if not is_instance_valid(e):
+			continue
+		if "enemy_id" in e and str(e.get("enemy_id")) == "robot_boss":
+			boss = e
+			break
+	if boss == null:
+		if _boss_bar_root != null:
+			_boss_bar_root.visible = false
+		return
+	var hp: Node = boss.get_node_or_null(Groups.NODE_HEALTH)
+	if hp == null or bool(hp.get("is_dead")):
+		if _boss_bar_root != null:
+			_boss_bar_root.visible = false
+		return
+	if _boss_bar_root == null:
+		_build_boss_bar()
+	_boss_bar_root.visible = true
+	var ratio: float = float(hp.get("current")) / maxf(1.0, float(hp.get("max_health")))
+	_boss_bar.value = ratio * 100.0
+	var col := Color(0.95, 0.62, 0.2)
+	if ratio <= 0.33:
+		col = Color(1.0, 0.25, 0.2)
+	elif ratio <= 0.66:
+		col = Color(1.0, 0.45, 0.15)
+	_boss_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(col))
+
+
+func _build_boss_bar() -> void:
+	_boss_bar_root = PanelContainer.new()
+	_boss_bar_root.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.RED))
+	_boss_bar_root.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_boss_bar_root.anchor_left = 0.5
+	_boss_bar_root.anchor_right = 0.5
+	_boss_bar_root.offset_left = -230.0
+	_boss_bar_root.offset_right = 230.0
+	_boss_bar_root.offset_top = 46.0
+	_boss_bar_root.offset_bottom = 92.0
+	_boss_bar_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	_boss_bar_root.add_child(vb)
+	_boss_name_label = Label.new()
+	_boss_name_label.text = "REAPER"
+	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_name_label.theme_type_variation = "HeaderSmall"
+	_boss_name_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+	vb.add_child(_boss_name_label)
+	_boss_bar = ProgressBar.new()
+	_boss_bar.show_percentage = false
+	_boss_bar.custom_minimum_size = Vector2(0, 14)
+	_boss_bar.max_value = 100.0
+	vb.add_child(_boss_bar)
+	add_child(_boss_bar_root)
+
 
 func _build_feedback_overlays() -> void:
 	# Full-screen red vignette pulse when the local player takes damage.
@@ -563,6 +665,11 @@ func _process(delta: float) -> void:
 	if _team_poll_t <= 0.0:
 		_team_poll_t = 0.16
 		_update_teammate_down()
+	# M2 boss fight: top-center boss HP bar (throttled poll for a live boss).
+	_boss_poll_t -= delta
+	if _boss_poll_t <= 0.0:
+		_boss_poll_t = 0.4
+		_update_boss_bar()
 	# Keep the teammate arrow pulsing while shown (even when the local player is up).
 	if _team_down_shown and not _down_active:
 		_down_pulse += delta
@@ -769,16 +876,58 @@ func _flash_nemesis_banner(text: String, secs: float, col: Color = Color(0.95, 0
 
 
 func _on_nemesis_born(serial: String, _title: String) -> void:
-	_flash_nemesis_banner(tr("%s ESCAPED — IT WILL REMEMBER") % serial, 4.0)
+	_flash_nemesis_banner(tr("MACHINE ESCAPED: %s — IT LEARNS. IT WILL HUNT YOU") % serial, 5.0)
+	_show_hunter_intro()
 
 
 func _on_nemesis_returned(serial: String, title: String, _node: Node) -> void:
 	var who: String = "%s, %s" % [serial, title] if title != "" else serial
-	_flash_nemesis_banner(tr("%s — HUNTING YOU") % who.to_upper(), 5.0)
+	_flash_nemesis_banner(tr("YOUR HUNTER IS HERE: %s") % who.to_upper(), 5.0)
+	_show_hunter_intro()
 
 
 func _on_nemesis_defeated(serial: String) -> void:
-	_flash_nemesis_banner(tr("%s IS SCRAP") % serial, 4.0)
+	_flash_nemesis_banner(tr("HUNTER DESTROYED: %s — BOUNTY + YOUR GEAR BACK") % serial, 4.5)
+
+
+## One-time HUNTER teaching card (the mechanic read as noise before it was explained).
+## Auto-dismisses; stamped per profile so veterans never see it again.
+func _show_hunter_intro() -> void:
+	if MetaProgression.nemesis_intro_done:
+		return
+	MetaProgression.mark_nemesis_intro_done()
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.RED))
+	card.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	card.anchor_left = 1.0
+	card.anchor_right = 1.0
+	card.offset_left = -420.0
+	card.offset_right = -36.0
+	card.offset_top = -110.0
+	card.offset_bottom = 110.0
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	card.add_child(vb)
+	var title := Label.new()
+	title.text = tr("THE HUNTER")
+	title.theme_type_variation = "HeaderSmall"
+	title.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+	vb.add_child(title)
+	var body := Label.new()
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.text = tr(
+		"A machine that SURVIVES your raid remembers how you fought it.\nNext raid it returns: stronger, scarred, adapted to your tactics.\nKill it to win back the gear you lost — plus a bounty.\nTrack it: the red skull on your map."  # gdlint: ignore=max-line-length
+	)
+	body.add_theme_font_size_override("font_size", 13)
+	vb.add_child(body)
+	add_child(card)
+	card.modulate.a = 0.0
+	var tw := card.create_tween()
+	tw.tween_property(card, "modulate:a", 1.0, 0.3)
+	tw.tween_interval(11.0)
+	tw.tween_property(card, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(card.queue_free)
 
 
 func _on_power_core_spawned(_node: Node) -> void:

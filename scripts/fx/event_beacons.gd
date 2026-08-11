@@ -67,7 +67,7 @@ func _build_pillar(root: Node3D, col: Color) -> void:
 	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	bm.albedo_color = Color(col.r, col.g, col.b, 0.16)
+	bm.albedo_color = Color(col.r, col.g, col.b, 0.10)
 	bm.emission_enabled = true
 	bm.emission = col
 	bm.emission_energy_multiplier = 1.6
@@ -97,10 +97,13 @@ func _build_pillar(root: Node3D, col: Color) -> void:
 	tw.tween_property(ring, "scale", Vector3.ONE, 0.0)
 	tw.parallel().tween_property(ring, "transparency", 0.0, 0.0)
 
+	# Kept deliberately SMALL: at energy 2.4 / range 14 the marker repainted whole
+	# courtyards in the event hue, so the beacon read as level lighting instead of a
+	# signal. It only has to tint the ground the pillar stands on.
 	var light := OmniLight3D.new()
 	light.light_color = col
-	light.light_energy = 2.4
-	light.omni_range = 14.0
+	light.light_energy = 1.1
+	light.omni_range = 8.0
 	light.position = Vector3(0, 3.0, 0)
 	light.shadow_enabled = false
 	root.add_child(light)

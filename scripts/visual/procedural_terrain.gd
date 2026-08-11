@@ -1086,19 +1086,37 @@ static func _arc_v(samples: Array[Vector2], i: int) -> float:
 
 
 # ---------------------------------------------------------------- backdrop
-## Render-only mountain ring well OUTSIDE the walls (radius 115-170), 8-12 deterministic
-## grey rocky peaks with snowy tops. NO collision. Sells «горы» on the DISTANT horizon —
-## peak height scales with distance (closer ones small ~18-25 m, far ones up to ~45 m) so
-## the ring reads as a far-off range, never a wall-side pyramid looming over the player.
+# Peak shell tuning. The top RING sits at 0.92 of the height and a single jittered apex
+# vertex closes the cap, so the summit is a faceted point instead of a lathe spike.
+const PEAK_SEGMENTS: int = 16
+const PEAK_RINGS: int = 5
+const PEAK_T_TOP: float = 0.92
+const PEAK_RIDGE_AMP: float = 0.34  # radial displacement as a fraction of the local radius
+const PEAK_SNOW_T: float = 0.62  # snow line as a fraction of the height (wobbled per column)
+const PEAK_SNOW_PROUD: float = 0.35  # metres the snow shell floats over the rock (no z-fight)
+
+
+## Render-only mountain ring well OUTSIDE the walls, 14 deterministic peaks with snow
+## caps. NO collision. Sells «горы» on the DISTANT horizon — peak height scales with
+## distance (closer ones ~30 m, far ones up to ~68 m) so the ring reads as a far-off
+## range, never a wall-side pyramid looming over the player. Each peak is a RIDGED shell
+## (a noise-displaced cone with faceted flanks), NOT a smooth cone: on the skyline a
+## smooth cone reads as a folded paper pyramid, which is exactly what a silhouette this
+## far away is judged on.
 static func _build_backdrop(root: Node3D) -> void:
 	var container := Node3D.new()
 	container.name = "MountainBackdrop"
 	# Ring the bigger 320×320 map: centre on the world centre (80,80), well outside the walls.
 	container.position = Vector3(WorldBounds.CX, 0.0, WorldBounds.CZ)
 	root.add_child(container)
+	# Two-stop height look, shared by every peak: dark slate rock body + a RESTRAINED snow
+	# cap (the old 0.85/0.90 whites blew out against the cold grade and read as plastic).
 	var rock_mat := StandardMaterial3D.new()
-	rock_mat.albedo_color = Color(0.32, 0.33, 0.36)
-	rock_mat.roughness = 1.0
+	rock_mat.albedo_color = Color(0.22, 0.24, 0.27)
+	rock_mat.roughness = 0.9
+	var snow_mat := StandardMaterial3D.new()
+	snow_mat.albedo_color = Color(0.62, 0.66, 0.74)
+	snow_mat.roughness = 0.9
 	var count: int = 14
 	for i in range(count):
 		var ang: float = (TAU * float(i) / float(count)) + ProcHash.hf(i * 7 + 1) * 0.4
@@ -1113,37 +1131,102 @@ static func _build_backdrop(root: Node3D) -> void:
 		var pz: float = sin(ang) * rad
 		var peak := MeshInstance3D.new()
 		peak.name = "Peak%d" % i
-		var cone := CylinderMesh.new()
-		cone.top_radius = base_r * 0.04
-		cone.bottom_radius = base_r
-		cone.height = height
-		cone.radial_segments = 7
-		peak.mesh = cone
 		peak.material_override = rock_mat
-		# Sit the cone so its base is near the ground level (slightly sunk).
+		# Sit the shell so its base is near the ground level (slightly sunk).
 		peak.position = Vector3(px, height * 0.5 - 4.0, pz)
 		# Slight tilt + scale jitter so the ring isn't a uniform fan.
 		peak.rotation = Vector3(
 			0.0, ProcHash.hf(i * 23 + 9) * TAU, deg_to_rad((ProcHash.hf(i * 29 + 4) - 0.5) * 10.0)
 		)
 		peak.scale = Vector3(1.0, 1.0 + ProcHash.hf(i * 31) * 0.3, 0.85 + ProcHash.hf(i * 37) * 0.4)
+		peak.mesh = _peak_shell(i, height, base_r, 0.0, 0.0, Transform3D.IDENTITY)
 		peak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		container.add_child(peak)
-		# Snowy cap: a smaller white cone near the top.
+		# Snowy cap: the SAME ridged shell clipped to its top third and floated slightly
+		# proud, so the snow line follows the ridges instead of ringing the peak. It stays
+		# a SIBLING with an identity basis (the node layout + transforms are what the
+		# golden snapshot folds), so the peak's own yaw/tilt/scale are baked into the cap's
+		# VERTICES instead — that is the only way the two shells stay glued together.
 		var snow := MeshInstance3D.new()
-		var scone := CylinderMesh.new()
-		scone.top_radius = base_r * 0.03
-		scone.bottom_radius = base_r * 0.32
-		scone.height = height * 0.34
-		scone.radial_segments = 7
-		snow.mesh = scone
-		var snow_mat := StandardMaterial3D.new()
-		snow_mat.albedo_color = Color(0.85, 0.87, 0.90)
-		snow_mat.roughness = 0.85
+		var snow_xf := Transform3D(peak.transform.basis, Vector3(0.0, -height * 0.33, 0.0))
+		snow.mesh = _peak_shell(i, height, base_r, PEAK_SNOW_T, PEAK_SNOW_PROUD, snow_xf)
 		snow.material_override = snow_mat
 		snow.position = Vector3(px, height * 0.5 - 4.0 + height * 0.33, pz)
 		snow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		container.add_child(snow)
+
+
+## ONE ridged peak shell: a low-poly cone spanning `t_lo`..1 of `height`, its radius pushed
+## in and out by a RIDGED FastNoiseLite seeded from the peak INDEX (a fixed integer seed —
+## deterministic, no randf/randi/Time anywhere in the world path) and closed by a jittered
+## apex. Normals are per-FACE, so the flanks read as rock planes rather than a lathe.
+## `proud` floats a shell that many metres over the one beneath it (the snow over the
+## rock); `xf` is baked into the vertices. Vertices are centred on the cone's mid-height —
+## the CylinderMesh convention the peak node positions were authored against.
+static func _peak_shell(
+	idx: int, height: float, base_r: float, t_lo: float, proud: float, xf: Transform3D
+) -> ArrayMesh:
+	var noise := FastNoiseLite.new()
+	noise.seed = 9173 + idx * 131
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
+	noise.fractal_octaves = 3
+	noise.frequency = 1.0
+	# Columns of ring points, bottom → top. A shell that starts ABOVE the base (the snow
+	# cap) wobbles its bottom ring per column; the rock keeps t_lo = 0 exactly so its skirt
+	# never lifts off the ground and exposes the open underside.
+	var cols: Array = []
+	for j in range(PEAK_SEGMENTS):
+		var ang: float = TAU * float(j) / float(PEAK_SEGMENTS)
+		var dir := Vector3(cos(ang), 0.0, sin(ang))
+		var t0: float = t_lo
+		if t_lo > 0.0:
+			t0 = clampf(t_lo + noise.get_noise_2d(dir.x * 2.2, dir.z * 2.2) * 0.07, 0.05, 0.8)
+		var col: Array[Vector3] = []
+		for k in range(PEAK_RINGS):
+			var t: float = lerpf(t0, PEAK_T_TOP, float(k) / float(PEAK_RINGS - 1))
+			col.append(xf * _peak_point(noise, dir, t, height, base_r, proud))
+		cols.append(col)
+	var apex: Vector3 = (
+		xf
+		* Vector3(
+			ProcHash.hrange(idx * 57 + 3, -0.07, 0.07) * base_r,
+			height * 0.5 + proud * 0.5,
+			ProcHash.hrange(idx * 57 + 4, -0.07, 0.07) * base_r
+		)
+	)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in range(PEAK_SEGMENTS):
+		var a: Array[Vector3] = cols[j]
+		var b: Array[Vector3] = cols[(j + 1) % PEAK_SEGMENTS]
+		for k in range(PEAK_RINGS - 1):
+			_peak_tri(st, a[k], b[k], a[k + 1])
+			_peak_tri(st, a[k + 1], b[k], b[k + 1])
+		_peak_tri(st, a[PEAK_RINGS - 1], b[PEAK_RINGS - 1], apex)
+	return st.commit()
+
+
+## One shell vertex: ridged radial displacement + a vertical wobble that fades out toward
+## the summit, laid on a concave flank profile. PURE — a function of (dir, t) alone.
+static func _peak_point(
+	noise: FastNoiseLite, dir: Vector3, t: float, height: float, base_r: float, proud: float
+) -> Vector3:
+	var d: float = noise.get_noise_3d(dir.x * 2.2, t * 1.7, dir.z * 2.2)
+	var prof: float = pow(1.0 - t, 1.35)  # concave flanks: broad skirt, steep shoulders
+	var rad: float = base_r * prof * (1.0 + d * PEAK_RIDGE_AMP) + proud
+	var y: float = height * (t - 0.5) + d * height * 0.05 * (1.0 - t) + proud * 0.5
+	return Vector3(dir.x * rad, y, dir.z * rad)
+
+
+## One flat-shaded triangle. Winding matches the terrain mesh (Godot front faces are CW),
+## and the face normal is derived from that same winding — (v0-v2)×(v0-v1) — so it always
+## points OUT of the shell no matter how the noise pushed the vertices around.
+static func _peak_tri(st: SurfaceTool, v0: Vector3, v1: Vector3, v2: Vector3) -> void:
+	st.set_normal((v0 - v2).cross(v0 - v1).normalized())
+	st.add_vertex(v0)
+	st.add_vertex(v1)
+	st.add_vertex(v2)
 
 
 # ---------------------------------------------------------------- river props

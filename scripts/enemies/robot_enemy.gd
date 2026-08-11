@@ -240,6 +240,8 @@ func _ready() -> void:
 	var model := AssetRegistry.get_model(enemy_id)
 	if model:
 		_model_root.add_child(model)
+		# M1 feel: the machine ASSEMBLES on spawn (scale-up + spin-settle + ring).
+		LimbBurst.assemble(_model_root, self)
 		_setup_animation()
 		_collect_flash_materials(model)
 		# Procedural idle motion only when the model has NO AnimationPlayer (the .glb
@@ -279,6 +281,13 @@ func _ready() -> void:
 
 	_fsm = EnemyStateMachine.new()
 	_fsm.setup(self)
+
+	# M2 boss fight: the staged-encounter brain (added on EVERY peer — its FX rpcs
+	# need the same node path everywhere; logic self-gates to the server inside).
+	if enemy_id == "robot_boss":
+		var brain := BossBrain.new()
+		brain.name = "BossBrain"
+		add_child(brain)
 
 	_agent.path_desired_distance = 0.6
 	_agent.target_desired_distance = maxf(1.0, _stat_attack_range * 0.6)

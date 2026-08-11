@@ -815,6 +815,52 @@ def gen_robot_death() -> list[float]:
 # Main
 # ---------------------------------------------------------------------------
 
+def gen_music_combat() -> list[float]:
+    """COMBAT overlay stem (M1 music layers): 24 s percussive dark loop — kick
+    pulse + metallic hats + a tense low drone. Faded IN over the calm bed while
+    machines are actively fighting the player; loops seamlessly."""
+    dur = 24.0
+    n = int(SAMPLE_RATE * dur)
+    bpm = 132.0
+    beat = 60.0 / bpm
+
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Kick: pitch-dropping sine thump every beat.
+    kick = []
+    kn = int(SAMPLE_RATE * 0.16)
+    ph = 0.0
+    for i in range(kn):
+        t = i / kn
+        f = 120.0 - 75.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        kick.append(0.9 * math.sin(ph) * (1.0 - t) ** 1.5)
+    # Metallic hat: short highpassed noise tick.
+    hat = _adsr(_highpass(_noise(0.05, 0.5, seed=3100), 4000), 0.001, 0.02, 0.2, 0.028)
+    total_beats = int(dur / beat)
+    for b in range(total_beats):
+        t0 = b * beat
+        add(kick, t0, 1.0 if b % 4 != 3 else 0.7)
+        add(hat, t0 + beat * 0.5, 0.5)
+        if b % 8 in (2, 6):
+            add(hat, t0 + beat * 0.75, 0.35)
+    # Tense drone: slow-beating detuned low pair, present the whole loop.
+    drone_a = _sine(55.0, dur, 0.16)
+    drone_b = _sine(55.9, dur, 0.14)
+    drone = _lowpass(_mix(drone_a, drone_b), 300)
+    for i in range(n):
+        out[i] += drone[i]
+    # Gentle loop-safe fade only at the extreme edges (kept tiny for looping).
+    return _fade([math.tanh(s * 0.9) for s in out], 0.01, 0.01)
+
+
 def gen_skill_cast() -> list[float]:
     """Generic ability cast: a bright two-tone energy chirp (dash/blink/shield…)."""
 
@@ -989,6 +1035,8 @@ def main() -> None:
         ("amb_rain.wav",       gen_amb_rain),
         ("robot_alert.wav",    gen_robot_alert),
         ("robot_death.wav",    gen_robot_death),
+        # M1 music layers: combat overlay stem (converted to .ogg for the loop).
+        ("music_combat.wav",   gen_music_combat),
         # MOBA skill rework (v0.4.5): per-ability cast/impact sounds.
         ("skill_cast.wav",     gen_skill_cast),
         ("skill_meteor.wav",   gen_skill_meteor),

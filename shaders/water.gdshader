@@ -26,6 +26,8 @@ uniform float ripple_strength = 0.85;// how hard ripple noise perturbs the norma
 uniform float foam_amount = 0.85;    // bank/crest foam intensity
 uniform float sparkle = 1.2;         // sun-glint intensity
 uniform float edge_softness = 0.6;   // metres over which the shallow edge fades to clear
+uniform float fade_start = 70.0;     // metres — the surface starts thinning with camera distance
+uniform float fade_end = 130.0;      // metres — fully faded (kills the dark horizon band)
 
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
 uniform sampler2D depth_tex : hint_depth_texture, filter_linear_mipmap;
@@ -69,6 +71,16 @@ void vertex() {
 }
 
 void fragment() {
+	// --- DISTANCE FADE ---------------------------------------------------------------------
+	// Seen from far away the ribbon is viewed edge-on, the reconstructed water depth saturates
+	// and the whole river renders as a near-opaque dark strip lying across the horizon. Fade
+	// the surface out with camera distance instead; once it is invisible DISCARD, so it also
+	// stops writing depth under depth_draw_always. VERTEX is view space here, so its length is
+	// the distance to the camera.
+	float far_fade = 1.0 - smoothstep(fade_start, fade_end, length(VERTEX));
+	if (far_fade < 0.004) {
+		discard;
+	}
 	vec2 uv = v_uv;
 	// Two ripple layers scrolling DOWNSTREAM (subtract TIME from the V/flow axis). UV.x*2
 	// packs ripples across the channel; the V scale gives metre-scale streaks travelling
@@ -141,6 +153,6 @@ void fragment() {
 	// Opacity ramps with depth: near-clear at the waterline (bed visible), nearly opaque in
 	// the deep centre. Foam + fresnel add their own coverage on top.
 	float opacity = mix(0.32, 0.94, deep);
-	ALPHA = clamp(opacity + foam * 0.30 + fres * 0.10, 0.0, 0.97);
-	EMISSION = foam_color * (foam * 0.08 + glint * 0.16) + shallow_tint * fres * 0.10;
+	ALPHA = clamp(opacity + foam * 0.30 + fres * 0.10, 0.0, 0.97) * far_fade;
+	EMISSION = (foam_color * (foam * 0.08 + glint * 0.16) + shallow_tint * fres * 0.10) * far_fade;
 }
