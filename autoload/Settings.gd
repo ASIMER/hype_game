@@ -543,12 +543,14 @@ const DEFAULT_SPRING_LENGTH: float = 3.5  # legacy single 3rd-person distance (k
 # V cycles the camera through these THIRD-person distances (m, ×camera_distance_scale) then
 # first-person — so V "zooms out" instead of jumping into the head. Index 3 (size) = first-person.
 const VIEW_STEP_LENGTHS: Array = [3.0, 4.5, 6.5]  # 0 close · 1 medium · 2 far
-# First-person REMOVED from the cycle (the "helmet view" nobody wanted): V cycles
-# the three third-person zooms only. VIEW_STEP_FIRST_PERSON stays as a dead index
-# so the player's `_is_first_person()` comparisons remain valid (always false).
-const VIEW_STEP_COUNT: int = 3
+# FIRST-PERSON RESTORED as the 4th V-step (user: «мог видеть оружие и руку, но не
+# видел шлем — переключался на тот вид»): the local ModelRoot hides in FP so the
+# helmet NEVER shows — you see the weapon viewmodel + hands only. The spawn view
+# is still ALWAYS third-person medium (DEFAULT_VIEW_STEP + the SettingsManager
+# default_view force) — FP is opt-in per press, never the spawn state.
+const VIEW_STEP_COUNT: int = 4
 const DEFAULT_VIEW_STEP: int = 1  # spawn at MEDIUM (4.5 m) — the whole body is in frame
-const VIEW_STEP_FIRST_PERSON: int = 99
+const VIEW_STEP_FIRST_PERSON: int = 3
 const SHOULDER_OFFSET: float = 0.5  # over-the-shoulder camera x-offset (flipped by swap)
 const AIM_TWEEN_SPEED: float = 10.0  # lerp speed for fov/length/offset
 const PEEK_PROBE: float = 1.4  # side-raycast distance to detect a wall to lean past

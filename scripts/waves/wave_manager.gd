@@ -943,6 +943,11 @@ func _tick_camp_detection(delta: float) -> void:
 	if not _wave_active or _storm:
 		_camp_timer = 0.0
 		return
+	# Spawn grace also covers anti-camp: sorting your inventory 25 s after deploy
+	# must not summon a flank squad onto the spawn yard.
+	if GameState.match_duration - GameState.match_time_left < SPAWN_GRACE_TIME:
+		_camp_timer = 0.0
+		return
 
 	# Tick the camp cooldown.
 	if _camp_cooldown > 0.0:

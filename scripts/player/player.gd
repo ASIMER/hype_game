@@ -785,13 +785,24 @@ func _read_camera_settings() -> void:
 	_cam_shoulder_scale = Settings.camera_shoulder_scale
 
 
+# WeaponMount poses: third-person hand height vs the FP eye-line hold (right-low-
+# forward of the 1.5 m CameraPivot so the gun reads bottom-right like classic FP).
+const _WM_POSE_TP := Vector3(0.35, 1.1, -0.35)
+const _WM_POSE_FP := Vector3(0.3, 1.3, -0.55)
+
+
 ## Show/hide the LOCAL body mesh for first/third-person. Only the authority toggles its own
-## visibility — a remote peer's body must stay visible to everyone else.
+## visibility — a remote peer's body must stay visible to everyone else. In FP the
+## WeaponMount also lifts to the eye line — the hand-height hold sat below the frame,
+## so first-person showed NO weapon at all.
 func _apply_view_visibility() -> void:
 	if not is_multiplayer_authority():
 		return
 	if model_root:
 		model_root.visible = not _is_first_person()
+	var mount := get_node_or_null("WeaponMount") as Node3D
+	if mount:
+		mount.position = _WM_POSE_FP if _is_first_person() else _WM_POSE_TP
 
 
 func _unhandled_input(event: InputEvent) -> void:
