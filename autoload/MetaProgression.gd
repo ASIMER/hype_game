@@ -178,6 +178,8 @@ var unlocked_cosmetics: Array[String] = []
 var onboarding_done := false
 # First HUNTER (nemesis) teaching card shown (per profile; hud.gd shows it once).
 var nemesis_intro_done := false
+# M4.7 KIA gestalt: best single-raid personal kill count (records beat consolation).
+var best_run_kills: int = 0
 var equipped_cosmetics: Dictionary = {}
 ## Worn gear (AT-RISK): slot (Settings.GEAR_SLOTS) -> armor item id. Empty slot = none.
 var equipped_gear: Dictionary = {}
@@ -395,6 +397,15 @@ func mark_nemesis_intro_done() -> void:
 		return
 	nemesis_intro_done = true
 	save_profile()
+
+
+## M4.7: fold a finished raid's kill count into the record. True when it's a NEW best.
+func record_run_kills(kills: int) -> bool:
+	if kills <= best_run_kills or kills <= 0:
+		return false
+	best_run_kills = kills
+	save_profile()
+	return true
 
 
 func unlock_cosmetic(variant_id: String) -> bool:
@@ -1104,6 +1115,7 @@ func save_profile() -> void:
 	cfg.set_value("meta", "save_version", Settings.GAME_VERSION)
 	cfg.set_value("meta", "onboarding_done", onboarding_done)
 	cfg.set_value("meta", "nemesis_intro_done", nemesis_intro_done)
+	cfg.set_value("meta", "best_run_kills", best_run_kills)
 	cfg.set_value("meta", "currency", currency)
 	cfg.set_value("meta", "unlocked", unlocked)
 	cfg.set_value("meta", "upgrades", upgrades)
@@ -1163,6 +1175,7 @@ func load_profile() -> void:
 		_migrate(cfg, save_ver)
 	onboarding_done = bool(cfg.get_value("meta", "onboarding_done", false))
 	nemesis_intro_done = bool(cfg.get_value("meta", "nemesis_intro_done", false))
+	best_run_kills = int(cfg.get_value("meta", "best_run_kills", 0))
 	currency = int(cfg.get_value("meta", "currency", 0))
 	var raw_unlocked: Array = cfg.get_value("meta", "unlocked", [])
 	unlocked.clear()

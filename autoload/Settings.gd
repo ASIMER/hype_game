@@ -1446,7 +1446,9 @@ const PAINKILLER_DURATION: float = 60.0  # suppresses status PENALTIES (not the 
 # Insure equipped gear/attachments for a fraction of value; a DEATH converts insured
 # items to "pending" and they return to the stash after the real-time delay.
 const INSURANCE_COST_FRAC: float = 0.30
-const INSURANCE_RETURN_MINUTES: float = 10.0  # real minutes until a lost item returns
+# M5.6: was 10 real minutes — a friction timer nobody enjoyed. Insured gear now
+# returns by the time you're back in the Hub (30 s covers the summary screen).
+const INSURANCE_RETURN_MINUTES: float = 0.5
 
 # Biomes: WorldBounds.biome_at(x,z) (scripts/core/world_bounds.gd) classifies the 4×
 # map quadrants (NW urban / NE snow / SW desert / SE rain) for biome-EXCLUSIVE spawning.

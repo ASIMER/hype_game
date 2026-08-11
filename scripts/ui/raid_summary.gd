@@ -253,6 +253,37 @@ func _on_match_lost() -> void:
 	_show_summary(false)
 
 
+## M4.7: the death-screen hook line. Priority: a contract ≥50% done («2/3 — one
+## more!») → a kills personal record → the plain old consolation.
+func _kia_gestalt() -> String:
+	var best_ratio: float = 0.0
+	var best_line: String = ""
+	var pool: Array = []
+	pool.append_array(Quests.accepted())
+	pool.append_array(Quests.get_daily_quests())
+	for item in pool:
+		var q: QuestData = item as QuestData
+		if q == null or Quests.is_complete(q) or Quests.is_claimed(q.id):
+			continue
+		var cur: int = Quests.progress(q.id)
+		if cur <= 0 or q.obj_count <= 0:
+			continue
+		var ratio: float = float(cur) / float(q.obj_count)
+		if ratio > best_ratio:
+			best_ratio = ratio
+			best_line = (
+				tr("Contract «%s»: %d/%d — finish it next raid!") % [tr(q.title), cur, q.obj_count]
+			)  # gdlint: ignore=max-line-length
+	if best_ratio >= 0.5 and best_line != "":
+		return best_line
+	var my_kills: int = int(GameState.kills.get(GameState.local_peer_id(), 0))
+	if MetaProgression.record_run_kills(my_kills):
+		return tr("NEW PERSONAL RECORD: %d kills in one raid!") % my_kills
+	if best_line != "":
+		return best_line
+	return tr("Gear lost. Better luck next time.")
+
+
 ## Guard against STALE/teardown re-fires of match_won/match_lost: during a restart/
 ## redeploy the old arena's despawn can re-trigger a win/lose check while GameState is
 ## already LOADING the next match — showing (and solo-PAUSING) a ghost summary over the
@@ -281,7 +312,9 @@ func _show_summary(won: bool) -> void:
 	else:
 		_title.text = tr("KIA")
 		_title.add_theme_color_override("font_color", COL_LOSS)
-		_subtitle.text = tr("Gear lost. Better luck next time.")
+		# M4.7 KIA gestalt: replace the shrug with a REASON to redeploy — the
+		# closest-to-done contract, or a personal-record note, else the old line.
+		_subtitle.text = _kia_gestalt()
 		_subtitle.add_theme_color_override("font_color", COL_LOSS)
 
 	# Run-stats strip: time survived · wave reached · your kills · team mobs.
