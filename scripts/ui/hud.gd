@@ -76,6 +76,8 @@ func _ready() -> void:
 	add_child((load("res://scripts/ui/raid_levelup.gd") as GDScript).new())
 	add_child((load("res://scripts/ui/xp_popup.gd") as GDScript).new())
 	add_child((load("res://scripts/ui/quest_tracker.gd") as GDScript).new())
+	# M5.1 raid contracts: deploy-time 1-of-3 offer + progress chip.
+	add_child((load("res://scripts/ui/raid_contract_offer.gd") as GDScript).new())
 
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
