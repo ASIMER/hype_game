@@ -583,7 +583,37 @@ func _spawn_xform(index: int) -> Transform3D:
 		pick_from = near if not near.is_empty() else ok
 	if pick_from.is_empty():
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
+	# M4.3 HEAT: a raider hauling >50% of carry weight draws the hunt — when any
+	# candidate marker sits near the HOTTEST player, spawn among those instead.
+	var hot: Vector3 = _hottest_player_pos()
+	if hot != Vector3.INF:
+		var hot_marks: Array[int] = []
+		for i in pick_from:
+			if _arena.get_enemy_spawn_point(i).origin.distance_to(hot) <= NEAR_SPAWN_RADIUS:
+				hot_marks.append(i)
+		if not hot_marks.is_empty():
+			pick_from = hot_marks
 	return _jittered_spawn(_arena.get_enemy_spawn_point(pick_from[index % pick_from.size()]))
+
+
+## Position of the up player with the highest carried-weight ratio, if anyone is
+## over the 0.5 heat threshold; Vector3.INF when nobody is hot (no bias).
+func _hottest_player_pos() -> Vector3:
+	var best: float = 0.5
+	var pos: Vector3 = Vector3.INF
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
+		if not (p is Node3D) or not is_instance_valid(p):
+			continue
+		if p.has_method("is_downed") and p.is_downed():
+			continue
+		var inv: Node = p.get_node_or_null("Inventory")
+		if inv == null or not inv.has_method("total_weight"):
+			continue
+		var ratio: float = float(inv.total_weight()) / maxf(0.001, float(inv.weight_capacity()))
+		if ratio > best:
+			best = ratio
+			pos = (p as Node3D).global_position
+	return pos
 
 
 ## True when ANY player has a clear world-geometry line to the marker (an enemy

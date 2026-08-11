@@ -344,7 +344,8 @@ func _show_summary(won: bool) -> void:
 		_btn_restart.visible = false
 	else:
 		_btn_restart.visible = true
-		_btn_restart.text = tr("RESTART SQUAD") if coop else tr("RESTART")
+		# M4.4: sell the loop — one press puts you straight back into a raid, no Hub.
+	_btn_restart.text = tr("REDEPLOY SQUAD") if coop else tr("QUICK REDEPLOY")
 
 	# Bound the scrollable middle to ~62% of the screen height so the panel (header + scroll +
 	# footer buttons) always fits on-screen and a big haul scrolls instead of pushing the

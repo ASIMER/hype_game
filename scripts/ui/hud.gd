@@ -72,6 +72,11 @@ func _ready() -> void:
 	# Status-effect chips (batch B: bleed / fracture / painkiller, local player only).
 	Events.status_changed.connect(_on_status_changed)
 
+	# M4 return-loop widgets (lane files; each is a self-contained Control).
+	add_child((load("res://scripts/ui/raid_levelup.gd") as GDScript).new())
+	add_child((load("res://scripts/ui/xp_popup.gd") as GDScript).new())
+	add_child((load("res://scripts/ui/quest_tracker.gd") as GDScript).new())
+
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
 	# interaction prompt (interaction_prompt.gd sits at offset_top=-158..bottom=-120).
@@ -481,6 +486,54 @@ var _eye_label: Label = null
 # M3 night hint: one notify per nightfall («machines see worse in the dark»).
 var _was_night: bool = false
 
+# M4.3 HEAT: the loot you carry makes you a target — a live meter of haul weight.
+var _heat_poll_t: float = 0.0
+var _heat_bar: ProgressBar = null
+var _heat_row: HBoxContainer = null
+
+
+## Heat = carried-weight ratio of the LOCAL player (the server biases hunts
+## toward the hottest raider — wave_manager reads the same ratio). Meter sits
+## by the health readout; hidden while empty-handed.
+func _update_heat_meter() -> void:
+	var lp := _local_player as Node
+	if lp == null or not is_instance_valid(lp):
+		if _heat_row != null:
+			_heat_row.visible = false
+		return
+	var inv: Node = lp.get_node_or_null("Inventory")
+	if inv == null or not inv.has_method("total_weight"):
+		return
+	var cap: float = float(inv.weight_capacity()) if inv.has_method("weight_capacity") else 1.0
+	var ratio: float = clampf(float(inv.total_weight()) / maxf(0.001, cap), 0.0, 1.0)
+	if _heat_row == null:
+		_heat_row = HBoxContainer.new()
+		_heat_row.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_heat_row.offset_left = 14.0
+		_heat_row.offset_top = -136.0
+		_heat_row.offset_bottom = -118.0
+		_heat_row.add_theme_constant_override("separation", 6)
+		_heat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var cap_label := Label.new()
+		cap_label.text = tr("HEAT")
+		cap_label.theme_type_variation = "HeaderSmall"
+		_heat_row.add_child(cap_label)
+		_heat_bar = ProgressBar.new()
+		_heat_bar.show_percentage = false
+		_heat_bar.max_value = 1.0
+		_heat_bar.custom_minimum_size = Vector2(110, 10)
+		_heat_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_heat_row.add_child(_heat_bar)
+		add_child(_heat_row)
+	_heat_row.visible = ratio > 0.02
+	_heat_bar.value = ratio
+	var col := Color(0.35, 0.78, 0.72)
+	if ratio > 0.7:
+		col = Color(1.0, 0.32, 0.25)
+	elif ratio > 0.4:
+		col = Color(0.98, 0.66, 0.2)
+	_heat_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(col))
+
 
 ## Poll enemy awareness of the LOCAL player: red «SPOTTED» when something in
 ## CHASE/ATTACK targets us (host reads the real target; a client falls back to
@@ -729,6 +782,11 @@ func _process(delta: float) -> void:
 	if _eye_poll_t <= 0.0:
 		_eye_poll_t = 0.34
 		_update_stealth_eye()
+	# M4.3 heat meter (1 Hz).
+	_heat_poll_t -= delta
+	if _heat_poll_t <= 0.0:
+		_heat_poll_t = 1.0
+		_update_heat_meter()
 		var night: bool = DayNight.is_night(DayNight.current_hour())
 		if night and not _was_night and GameState.phase == GameState.Phase.IN_MATCH:
 			Events.notify.emit(tr("NIGHT: machine optics degraded — they see worse"), 0)

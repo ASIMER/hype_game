@@ -15,6 +15,31 @@ func _ready() -> void:
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 	Events.entity_died.connect(_on_entity_died)
+	# M6: world events are server-directed, so their Events fires never reached
+	# co-op clients (no banner/beacon/marker on the join side). Mirror them.
+	Events.world_event_started.connect(_relay_world_event_started)
+	Events.world_event_ended.connect(_relay_world_event_ended)
+
+
+# ----------------------------------------------------- world-event client sync
+func _relay_world_event_started(kind: int, pos: Vector3, label: String) -> void:
+	if GameState.is_local_authority_server() and not multiplayer.get_peers().is_empty():
+		_rpc_world_event_started.rpc(kind, pos, label)
+
+
+func _relay_world_event_ended(kind: int, success: bool) -> void:
+	if GameState.is_local_authority_server() and not multiplayer.get_peers().is_empty():
+		_rpc_world_event_ended.rpc(kind, success)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_world_event_started(kind: int, pos: Vector3, label: String) -> void:
+	Events.world_event_started.emit(kind, pos, label)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_world_event_ended(kind: int, success: bool) -> void:
+	Events.world_event_ended.emit(kind, success)
 
 
 # ---------------------------------------------------------------- host / join

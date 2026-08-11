@@ -111,7 +111,14 @@ func add_trauma(amount: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if _camera == null or not _camera.current:
+	if _camera == null:
+		return
+	# Late player bind: our _ready runs BEFORE the player's (child-first order), so
+	# the "players" group isn't joined yet at that point — recoil/damage-FOV/sprint
+	# handlers all need _player, so keep resolving until an ancestor shows up.
+	if _player == null:
+		_player = _find_player()
+	if not _camera.current:
 		# Not the active local camera — zero everything and skip.
 		_camera.position = Vector3.ZERO
 		_camera.rotation = Vector3.ZERO
