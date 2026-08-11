@@ -1644,10 +1644,13 @@ func _spawn_loot() -> void:
 	# saw the wrong model (or nothing) for every enemy drop.
 	LootPickup.spawn_at(container, global_position, loot_id, 1)
 	# Mutant Harvest: every enemy ALSO drops its signature body-part as a pickup-able skill.
+	# M4.1: count SMUGGLES the limb tier (1 common / 2 rare 14% / 3 exotic 2%).
 	if Settings.SKILL_DROP_GUARANTEED:
 		var skill_id: String = Settings.skill_for_enemy(enemy_id)
+		var troll: float = randf()
+		var part_tier: int = 3 if troll < 0.02 else (2 if troll < 0.16 else 1)
 		LootPickup.spawn_at(
-			container, global_position + Vector3(-0.6, 0.0, 0.0), "bodypart_" + skill_id, 1
+			container, global_position + Vector3(-0.6, 0.0, 0.0), "bodypart_" + skill_id, part_tier
 		)
 		# Loud on-screen toast so the drop is unmissable (the floating part + beam can be easy to miss).
 		# Throttled so a full wave of kills doesn't spam the feed (UI-only — not a deterministic path).
@@ -1688,14 +1691,12 @@ func _parse_modifiers_from_name() -> void:
 ## harmless to compute everywhere). Called right after _load_stats(), before the refill +
 ## avoidance setup. Also caches the regen rate for _physics_process.
 func _apply_modifier_stats() -> void:
-	if modifiers.is_empty():
-		return
-	if "armored" in modifiers:
-		_stat_health *= float(EnemyModifiers.stats_for("armored").get("health_mult", 1.0))
-	if "swift" in modifiers:
-		_stat_speed *= float(EnemyModifiers.stats_for("swift").get("speed_mult", 1.0))
-	if "regenerating" in modifiers:
-		_regen_rate = float(EnemyModifiers.stats_for("regenerating").get("regen", 0.0))
+	# Generic field-driven fold so a new modifier (e.g. golden) needs no code here.
+	for m in modifiers:
+		var ms: Dictionary = EnemyModifiers.stats_for(m)
+		_stat_health *= float(ms.get("health_mult", 1.0))
+		_stat_speed *= float(ms.get("speed_mult", 1.0))
+		_regen_rate = maxf(_regen_rate, float(ms.get("regen", 0.0)))
 
 
 ## Detonate the volatile death blast: a flat-falloff radial hit on nearby players (downed

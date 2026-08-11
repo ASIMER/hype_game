@@ -16,6 +16,7 @@ const _FLAG_TO_MOD := {
 	"S": "swift",
 	"V": "volatile",
 	"R": "regenerating",
+	"G": "golden",  # M5.2 rare encounter: the loot-piñata elite (~1%)
 }
 
 

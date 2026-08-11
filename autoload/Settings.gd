@@ -957,19 +957,26 @@ const ELITE_MOD_STATS := {
 	"swift": {"speed_mult": 1.4},
 	"volatile": {"aoe_damage": 25.0, "aoe_radius": 4.0},
 	"regenerating": {"regen": 2.0},
+	"golden": {"health_mult": 1.8, "speed_mult": 1.25},
 }
 const ELITE_MOD_COLORS := {
 	"armored": Color(0.45, 0.62, 0.95),
 	"swift": Color(0.95, 0.85, 0.25),
 	"volatile": Color(0.95, 0.45, 0.15),
 	"regenerating": Color(0.35, 0.9, 0.45),
+	"golden": Color(1.0, 0.82, 0.1),
 }
+# M5.2 rare encounter: ~1% of ANY non-boss spawn is a GOLDEN elite (loot piñata:
+# tanky+fast; its death rains GOLDEN_ELITE_DROPS bonus rare pickups).
+const GOLDEN_ELITE_CHANCE: float = 0.01
+const GOLDEN_ELITE_DROPS: int = 4
 
 # --- Machine Nemesis (signature mechanic) ------------------------------------
 ## A robot that SURVIVES a fight with the squad persists across raids, adapts to how it
 ## was fought (learned counters), wears scars, and hunts the squad. Server-authoritative;
 ## traits + scars ride the node NAME (the EnemyModifiers channel) so co-op replicates free.
-const NEMESIS_MIN_SCORE: int = 25  # only "substantial" archetypes (heavy/bastion/elite+) qualify
+# M2.5: lowered 25→18 so mid archetypes qualify too — rivals birth noticeably more often.
+const NEMESIS_MIN_SCORE: int = 18
 const NEMESIS_MAX_TIER: int = 5  # leveling cap (each survival = +1 tier)
 const NEMESIS_TIER_HEALTH: float = 0.35  # health_mult = 1 + tier * this (a returning rival is tankier)
 const NEMESIS_RETURN_DELAY: float = 25.0  # s after match start before the rival is injected

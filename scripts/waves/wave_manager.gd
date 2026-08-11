@@ -706,6 +706,11 @@ func _roll_modifiers(xform: Transform3D, scene_path: String, bonus: float = 0.0)
 		+ (Settings.ELITE_MOD_BIOME_BONUS if biome != "urban" else 0.0)
 		+ bonus
 	)
+	# M5.2 rare encounter: the GOLDEN elite — ~1% of any spawn, independent of the
+	# elite chance. Tanky, fast, and its death showers bonus loot (loot_spawner
+	# reads the G flag). The jackpot moment slot machines are made of.
+	if randf() < Settings.GOLDEN_ELITE_CHANCE:
+		return "G"
 	if randf() > chance:
 		return ""
 	var letters := ["A", "S", "V", "R"]

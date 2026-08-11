@@ -14,27 +14,35 @@ extends Node
 
 # ------------------------------------------------------------ pickup → skill (server entry)
 ## Called SERVER-ONLY when a player picks up a body-part. Routes the grant to that peer's machine.
-func grant_skill(peer: int, skill_id: String) -> void:
+func grant_skill(peer: int, skill_id: String, tier: int = 1) -> void:
 	if not GameState.is_local_authority_server() or peer <= 0 or skill_id == "":
 		return
 	if peer == _local_peer():
-		_do_grant(skill_id)
+		_do_grant(skill_id, tier)
 	else:
-		_grant_skill_rpc.rpc_id(peer, skill_id)
+		_grant_skill_rpc.rpc_id(peer, skill_id, tier)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _grant_skill_rpc(skill_id: String) -> void:
-	_do_grant(skill_id)
+func _grant_skill_rpc(skill_id: String, tier: int = 1) -> void:
+	_do_grant(skill_id, tier)
 
 
-func _do_grant(skill_id: String) -> void:
+## M4.1 limb tiers: tier 1 = one level (the classic grant); tier 2 «RARE» = the
+## grant counts twice (level +2 total); tier 3 «EXOTIC» = three levels + a toast.
+func _do_grant(skill_id: String, tier: int = 1) -> void:
 	var pl: Node = _local_player()
 	if pl == null:
 		return
 	var sk: Node = pl.get_node_or_null("Skills")
-	if sk != null and sk.has_method("acquire"):
+	if sk == null or not sk.has_method("acquire"):
+		return
+	for _i in maxi(1, tier):
 		sk.acquire(skill_id)
+	if tier == 2:
+		Events.notify.emit(tr("◆ RARE limb — double growth!"), 1)
+	elif tier >= 3:
+		Events.notify.emit(tr("◆◆ EXOTIC limb — TRIPLE growth!"), 1)
 
 
 # ------------------------------------------------------------ cast (owner → server)

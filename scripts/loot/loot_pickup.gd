@@ -262,7 +262,9 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 	# Mutant Harvest: a body-part is NOT inventory loot — grant the skill to the picker (routed
 	# to its own machine) and despawn. Goes BEFORE the inventory logic (like power_cache).
 	if item_id.begins_with("bodypart_"):
-		SkillDirector.grant_skill(player.get_multiplayer_authority(), item_id.substr(9))
+		# M4.1: the pickup's `count` smuggles the limb TIER (1 common / 2 rare /
+		# 3 exotic) through the existing replication — no new fields.
+		SkillDirector.grant_skill(player.get_multiplayer_authority(), item_id.substr(9), count)
 		queue_free()
 		return
 	# Ammo shard: NOT inventory loot — resupplies the picker's weapons directly on

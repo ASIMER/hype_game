@@ -75,6 +75,18 @@ static func drop_for_enemy(
 	if randf() < Settings.AMMO_DROP_CHANCE:
 		var ammo_jitter := Vector3(randf_range(-0.8, 0.8), 0.0, randf_range(-0.8, 0.8))
 		LootPickup.spawn_at(loot_root, pos + ammo_jitter, "loot_ammo_shard", 1)
+	# M5.2 GOLDEN elite piñata: its death rains bonus tier-3 rare pickups in a ring.
+	if enemy != null and EnemyModifiers.parse_from_name(str(enemy.name)).has("golden"):
+		for gi in Settings.GOLDEN_ELITE_DROPS:
+			var gid: String = LootTables.roll_for_enemy(3)
+			if gid == "":
+				gid = _roll(ENEMY_DROP_TABLE)
+			if gid == "":
+				continue
+			var ang: float = TAU * float(gi) / float(maxi(1, Settings.GOLDEN_ELITE_DROPS))
+			var ring := Vector3(cos(ang) * 1.2, 0.0, sin(ang) * 1.2)
+			LootPickup.spawn_at(loot_root, pos + ring, gid, 1)
+		Events.notify.emit(tr("★ GOLDEN MACHINE DOWN — jackpot!"), 1)
 	# Resolve auto tier.
 	var resolved_tier: int = tier if tier >= 1 else tier_at(pos)
 	var id: String = ""
