@@ -507,6 +507,9 @@ func _on_match_started() -> void:
 	# pickups actually replicate to clients. Guarded internally + idempotent.
 	_populate_world_loot()
 	_populate_locked_loot()
+	# M5.4 micro-vignettes: runtime hand-feel scenes (server props + replicated loot;
+	# runtime-only so the golden snapshot never sees them). Idempotent inside.
+	MicroVignettes.spawn_all(self, loot, randi())
 	# NOTE: players are spawned ONLY here, after the synchronized deploy guarantees
 	# EVERY peer has loaded its arena (and thus its MultiplayerSpawner). We deliberately
 	# do NOT spawn on peer-register/connect anymore: doing so created a peer's player on

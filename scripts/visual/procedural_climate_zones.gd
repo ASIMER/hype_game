@@ -200,8 +200,13 @@ static func _build_decal(kind: String, radius: float) -> Decal:
 			dec.albedo_mix = 0.55
 		"snow":
 			# Capped below pure white (P3): the 0.93+ blanket blew out under the hot sun.
-			dec.modulate = Color(0.72, 0.76, 0.84)
-			dec.albedo_mix = 0.7
+			# M6.10 — pushed further DOWN and colder (0.72 grey → 0.58 blue-grey): from INSIDE
+			# the zone the ground still out-shone the deliberately thin fog, so every prop and
+			# enemy read as a dark cut-out on a white sheet. The lower albedo_mix (0.70 → 0.60)
+			# also lets the terrain's own rock/gravel splat through, so the field has texture
+			# to sit against instead of one flat blanket.
+			dec.modulate = Color(0.58, 0.62, 0.72)
+			dec.albedo_mix = 0.6
 		_:  # desert
 			dec.modulate = Color(0.80, 0.66, 0.38)  # warm sand
 			dec.albedo_mix = 0.6
@@ -245,9 +250,12 @@ static func _build_fog(kind: String, radius: float, top: float) -> FogVolume:
 			mat.height_falloff = 0.2
 		"snow":
 			# 0.28 still read as milk from INSIDE the 35 m zone — 0.12 keeps a cold
-			# haze while the lodge/enemies stay readable silhouettes.
-			mat.albedo = Color(0.62, 0.67, 0.75)
-			base = 0.12
+			# haze while the lodge/enemies stay readable silhouettes. M6.10: with the
+			# ground decal darkened the fog can carry a little more weight (0.12 → 0.16)
+			# and go colder/dimmer, so it SHADES the depth between the player and the
+			# lodge instead of sitting as a separate bright veil.
+			mat.albedo = Color(0.56, 0.62, 0.72)
+			base = 0.16
 			mat.height_falloff = 0.25
 		_:  # desert
 			mat.albedo = Color(0.66, 0.56, 0.38)

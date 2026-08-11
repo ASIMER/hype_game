@@ -12,11 +12,75 @@ var _server_browser: Control = null
 var _credits: Node = null  # CanvasLayer overlay (credits_screen.gd)
 
 
+## M7.1 hangar backdrop: a live 3D pedestal with YOUR robot (equipped cosmetics)
+## slowly turning behind the menu rail. Transparent viewport over the flat dark
+## Background; the vignette + panels stay above. Render-only, headless-inert.
+func _build_hangar() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var svc := SubViewportContainer.new()
+	svc.name = "Hangar"
+	svc.stretch = true
+	svc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	svc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(svc)
+	move_child(svc, 1)  # just above the Background ColorRect, below everything else
+	var vp := SubViewport.new()
+	vp.transparent_bg = true
+	vp.msaa_3d = Viewport.MSAA_2X
+	svc.add_child(vp)
+	var world := Node3D.new()
+	vp.add_child(world)
+	var robot: Node3D = AssetRegistry.get_model("player", MetaProgression.get_cosmetics())
+	if robot == null:
+		return
+	var pivot := Node3D.new()
+	world.add_child(pivot)
+	pivot.position = Vector3(0.9, 0.0, 0.0)  # right of centre — the rail sits left
+	pivot.add_child(robot)
+	var tw := pivot.create_tween().set_loops()
+	tw.tween_property(pivot, "rotation:y", TAU, 16.0).from(0.0)
+	# Plinth disc under the feet.
+	var plinth := MeshInstance3D.new()
+	var pm := CylinderMesh.new()
+	pm.top_radius = 0.85
+	pm.bottom_radius = 0.95
+	pm.height = 0.12
+	plinth.mesh = pm
+	var plm := StandardMaterial3D.new()
+	plm.albedo_color = Color(0.12, 0.14, 0.17)
+	plm.metallic = 0.6
+	plm.roughness = 0.4
+	plinth.material_override = plm
+	plinth.position = Vector3(0.9, -0.07, 0.0)
+	world.add_child(plinth)
+	# Key light (warm) + teal rim — the cold-cinematic two-point look.
+	var key := SpotLight3D.new()
+	key.light_color = Color(1.0, 0.9, 0.75)
+	key.light_energy = 5.0
+	key.spot_range = 8.0
+	key.position = Vector3(2.4, 2.6, 2.2)
+	key.look_at_from_position(key.position, Vector3(0.9, 1.0, 0.0), Vector3.UP)
+	world.add_child(key)
+	var rim := OmniLight3D.new()
+	rim.light_color = Color(0.35, 0.75, 0.72)
+	rim.light_energy = 2.2
+	rim.omni_range = 6.0
+	rim.position = Vector3(-0.8, 1.6, -1.8)
+	world.add_child(rim)
+	var cam := Camera3D.new()
+	cam.position = Vector3(0.55, 1.35, 3.1)
+	world.add_child(cam)
+	cam.look_at(Vector3(0.9, 1.0, 0.0))
+	cam.current = true
+
+
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	# Show the real build version (single source of truth) so it never drifts from VERSION.
 	if has_node("Version"):
 		$Version.text = "v" + Settings.GAME_VERSION
+	_build_hangar()
 	Events.all_players_ready.connect(_on_all_ready)
 	$Panel/VBox/SinglePlayerBtn.pressed.connect(_on_single_player)
 	$Panel/VBox/HostBtn.pressed.connect(_on_host)

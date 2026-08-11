@@ -57,6 +57,17 @@ func _ready() -> void:
 	# M2 talking boss — spoken lines get their own speech chip under the boss bar.
 	Events.boss_bark.connect(_on_boss_bark)
 
+	# M7.9 first contact (one per raid; flag resets with the match).
+	Events.enemy_chase_started.connect(_on_first_contact)
+	Events.match_started.connect(func() -> void: _first_contact_done = false)
+
+	# M7.7 controller affordance: acknowledge pad hot-plug in the feed.
+	Input.joy_connection_changed.connect(
+		func(_dev: int, connected: bool) -> void:
+			if connected:
+				Events.notify.emit(tr("Controller connected"), 0)
+	)
+
 	# Machine Nemesis — the rival's story beats (born / returns / defeated).
 	Events.nemesis_born.connect(_on_nemesis_born)
 	Events.nemesis_returned.connect(_on_nemesis_returned)
@@ -78,6 +89,8 @@ func _ready() -> void:
 	add_child((load("res://scripts/ui/quest_tracker.gd") as GDScript).new())
 	# M5.1 raid contracts: deploy-time 1-of-3 offer + progress chip.
 	add_child((load("res://scripts/ui/raid_contract_offer.gd") as GDScript).new())
+	# M6.8 offscreen world-event chevrons + sonar sting.
+	add_child((load("res://scripts/ui/event_chevrons.gd") as GDScript).new())
 
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
@@ -487,6 +500,70 @@ var _eye_poll_t: float = 0.0
 var _eye_label: Label = null
 # M3 night hint: one notify per nightfall («machines see worse in the dark»).
 var _was_night: bool = false
+# M7.9 first-contact stinger: fires once per raid on the first machine CHASE.
+var _first_contact_done: bool = false
+
+# M7.5 squad cards (co-op only): teammate name + live HP at the left edge.
+var _squad_poll_t: float = 0.0
+var _squad_box: VBoxContainer = null
+
+
+func _update_squad_cards() -> void:
+	var offline: bool = not multiplayer.has_multiplayer_peer() or multiplayer.get_peers().is_empty()
+	if offline or GameState.phase != GameState.Phase.IN_MATCH:
+		if _squad_box != null:
+			_squad_box.visible = false
+		return
+	if _squad_box == null:
+		_squad_box = VBoxContainer.new()
+		_squad_box.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+		_squad_box.anchor_top = 0.5
+		_squad_box.anchor_bottom = 0.5
+		_squad_box.offset_left = 14.0
+		_squad_box.offset_top = -80.0
+		_squad_box.add_theme_constant_override("separation", 6)
+		_squad_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_squad_box)
+	for c in _squad_box.get_children():
+		c.queue_free()
+	var my_id: int = multiplayer.get_unique_id()
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
+		if not is_instance_valid(p) or str(p.name).to_int() == my_id:
+			continue
+		var hp: Node = p.get_node_or_null(Groups.NODE_HEALTH)
+		if hp == null:
+			continue
+		var peer_info: Dictionary = GameState.peers.get(str(p.name).to_int(), {})
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 1)
+		var nick := Label.new()
+		nick.text = String(peer_info.get("name", str(p.name)))
+		nick.add_theme_font_size_override("font_size", 11)
+		var downed: bool = p.has_method("is_downed") and p.is_downed()
+		nick.add_theme_color_override(
+			"font_color", Color(1.0, 0.35, 0.3) if downed else Color(0.85, 0.9, 0.92)
+		)
+		row.add_child(nick)
+		var bar := ProgressBar.new()
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(96, 6)
+		bar.max_value = maxf(1.0, float(hp.get("max_health")))
+		bar.value = float(hp.get("current"))
+		bar.add_theme_stylebox_override(
+			"fill", UIStyle.glow_fill(Color(1.0, 0.4, 0.3) if downed else UIStyle.TEAL)
+		)
+		row.add_child(bar)
+		_squad_box.add_child(row)
+	_squad_box.visible = _squad_box.get_child_count() > 0
+
+
+func _on_first_contact(_enemy: Node) -> void:
+	if _first_contact_done or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	_first_contact_done = true
+	_flash_nemesis_banner(tr("⚠ FIRST CONTACT — THE MACHINES KNOW YOU ARE HERE"), 3.5)
+	Events.screen_shake.emit(0.18)
+
 
 # M4.3 HEAT: the loot you carry makes you a target — a live meter of haul weight.
 var _heat_poll_t: float = 0.0
@@ -789,6 +866,11 @@ func _process(delta: float) -> void:
 	if _heat_poll_t <= 0.0:
 		_heat_poll_t = 1.0
 		_update_heat_meter()
+	# M7.5 squad cards (2 Hz, co-op only — hides itself offline).
+	_squad_poll_t -= delta
+	if _squad_poll_t <= 0.0:
+		_squad_poll_t = 0.5
+		_update_squad_cards()
 		var night: bool = DayNight.is_night(DayNight.current_hour())
 		if night and not _was_night and GameState.phase == GameState.Phase.IN_MATCH:
 			Events.notify.emit(tr("NIGHT: machine optics degraded — they see worse"), 0)

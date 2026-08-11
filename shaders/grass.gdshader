@@ -36,6 +36,14 @@ uniform float sway_strength : hint_range(0.0, 1.0) = 0.18;
 uniform float sway_speed : hint_range(0.0, 5.0) = 1.6;
 uniform float widen_strength : hint_range(0.0, 4.0) = 1.6;         // view-space thickening
 
+group_uniforms NearFade;
+// Blades this close to the camera shrink to nothing, so the third-person camera never
+// pushes THROUGH an opaque blade in a close-up (crouch/slide/wall-hugging). Done by
+// scaling the blade in vertex() rather than fading ALPHA: the grass pass stays fully
+// opaque, so no alpha sorting/depth-prepass cost and no shimmer against the ground.
+uniform float near_fade_start : hint_range(0.0, 4.0) = 0.6;        // fully collapsed below
+uniform float near_fade_end : hint_range(0.0, 6.0) = 1.4;          // full size above
+
 // Cheap 2D value hash for the per-tuft tint variation.
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 345.45));
@@ -97,6 +105,16 @@ void vertex() {
 	float wdir = sign(VERTEX.x + 1e-6);
 	float widen = ease_in_quartic(edge_on) * (1.0 - UV.y * 0.5) * widen_strength * 0.02;
 	VERTEX.x += wdir * widen;
+
+	// --- NEAR-CAMERA COLLAPSE ---
+	// The tuft mesh has its root at model y=0 (procedural_flora._grass_card_mesh), so a
+	// UNIFORM scale shrinks each blade toward its own root — the tuft sinks into the ground
+	// instead of flattening into a fan. Applied last so the wind sway and the widening scale
+	// with it. At near_k = 0 every vertex collapses onto the root and the triangles degenerate
+	// away, which costs nothing to rasterize.
+	float near_k = smoothstep(near_fade_start, near_fade_end,
+		distance(CAMERA_POSITION_WORLD, wpos));
+	VERTEX *= near_k;
 }
 
 void fragment() {

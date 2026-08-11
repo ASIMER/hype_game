@@ -32,6 +32,12 @@ var _popup_item_count: int = 0
 # Capacity bar — built once in _ready, refreshed in _refresh().
 var _cap_bar: ProgressBar = null
 var _cap_label: Label = null
+# Inspector side-panel (M7.4) — built once in _ready, hosts one ItemCard.
+var _inspector: PanelContainer = null
+var _card_host: VBoxContainer = null
+# The pinned stack. Empty id = nothing selected = the inspector is collapsed.
+var _selected_id: String = ""
+var _selected_count: int = 0
 
 const SLOT_SIZE := Vector2(64, 64)
 const GRID_COLS := 6
@@ -50,6 +56,7 @@ func _ready() -> void:
 	_build_popup()
 	_build_capacity_bar()
 	_build_footer()
+	_build_inspector()
 	Events.stash_changed.connect(_refresh)
 	Events.currency_changed.connect(_on_currency_changed)
 	# Apply Russo One to the scene-defined header value label.
@@ -190,6 +197,116 @@ func _build_footer() -> void:
 	footer.add_child(recycle_all_btn)
 
 
+# ------------------------------------------------------------------ inspector panel
+# Width of the INSPECT column: ItemCard.CARD_MIN_SIZE.x + the glass panel's margins.
+const INSPECTOR_WIDTH := 292
+
+
+## Wraps the item ScrollContainer in an HBox and parks a collapsible INSPECT panel to
+## its right. Runtime-only surgery: StashTab.tscn stays untouched (one scene = one
+## owner) and no other script addresses these node paths. The @onready %ItemGrid /
+## %EmptyLabel references are already resolved when this runs, so reparenting the
+## scroll view cannot orphan them.
+func _build_inspector() -> void:
+	var layout: VBoxContainer = get_node_or_null("Layout") as VBoxContainer
+	if layout == null:
+		return
+	var scroll: Control = layout.get_node_or_null("ScrollContainer") as Control
+	if scroll == null:
+		return
+
+	# Insert the row exactly where the scroll view sat (indices shift on removal, so
+	# the captured index lands the row back in the same slot of the VBox).
+	var at := scroll.get_index()
+	var row := HBoxContainer.new()
+	row.name = "GridRow"
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 10)
+	layout.remove_child(scroll)
+	layout.add_child(row)
+	layout.move_child(row, at)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(scroll)
+
+	_inspector = PanelContainer.new()
+	_inspector.name = "Inspector"
+	_inspector.custom_minimum_size = Vector2(INSPECTOR_WIDTH, 0)
+	_inspector.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_inspector.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.72))
+	_inspector.visible = false
+	row.add_child(_inspector)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	_inspector.add_child(col)
+
+	var head := HBoxContainer.new()
+	col.add_child(head)
+	# Raw (untranslated) header text: micro_header preserves it so Godot's auto-translate
+	# resolves the key and re-translates live on a locale change.
+	var title := UIStyle.micro_header("INSPECT", UIStyle.AMBER, UIStyle.FONT_CAPTION)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+
+	var close_btn := Button.new()
+	close_btn.name = "CloseBtn"
+	close_btn.text = "X"
+	close_btn.custom_minimum_size = Vector2(26, 22)
+	close_btn.tooltip_text = "CLOSE"
+	close_btn.pressed.connect(_clear_selection)
+	UIStyle.hover_lift(close_btn)
+	head.add_child(close_btn)
+
+	_card_host = VBoxContainer.new()
+	_card_host.name = "CardHost"
+	col.add_child(_card_host)
+
+
+## Pin `id` in the inspector and re-highlight the grid. Called from the slot click
+## ALONGSIDE (never instead of) the existing sell/recycle action popup.
+func _select_item(id: String, cnt: int) -> void:
+	_selected_id = id
+	_selected_count = cnt
+	_refresh_inspector()
+	_apply_selection_styles()
+
+
+## Collapse the inspector — the close button, or a pinned stack leaving the stash.
+func _clear_selection() -> void:
+	_selected_id = ""
+	_selected_count = 0
+	_refresh_inspector()
+	_apply_selection_styles()
+
+
+## Rebuilds the pinned ItemCard. Children are removed BEFORE queue_free so the host
+## never lays out the outgoing card alongside the incoming one.
+func _refresh_inspector() -> void:
+	if _inspector == null or _card_host == null:
+		return
+	for c in _card_host.get_children():
+		_card_host.remove_child(c)
+		c.queue_free()
+	if _selected_id.is_empty():
+		_inspector.visible = false
+		return
+	_inspector.visible = true
+	_card_host.add_child(ItemCard.make(_selected_id, _selected_count))
+	UIStyle.pop_in(_inspector, UIStyle.Dir.LEFT, 10.0, 0.12)
+
+
+## Re-skins the live grid slots so the pinned stack carries the amber selection halo.
+## Cheaper and flicker-free versus rebuilding the whole grid on every click.
+func _apply_selection_styles() -> void:
+	for c in _grid.get_children():
+		var slot := c as Panel
+		if slot == null or not slot.has_meta("item_id"):
+			continue
+		var id: String = String(slot.get_meta("item_id"))
+		var item: ItemData = ItemCatalog.get_item(id)
+		slot.add_theme_stylebox_override("panel", _slot_stylebox(item, id == _selected_id))
+
+
 # ------------------------------------------------------------------ signal handlers
 func _on_currency_changed(_amount: int) -> void:
 	## Refresh the header value when currency changes (sell ripple).
@@ -202,6 +319,17 @@ func _refresh() -> void:
 	_clear_grid()
 	_refresh_header()
 	_refresh_capacity()
+
+	# Re-validate the pinned stack against the live stash: a sold-out stack collapses
+	# the inspector, a partially sold one re-renders its card at the new count.
+	if not _selected_id.is_empty():
+		var live: int = Stash.count_of(_selected_id)
+		if live <= 0:
+			_selected_id = ""
+			_selected_count = 0
+		else:
+			_selected_count = live
+	_refresh_inspector()
 
 	if Stash.is_empty():
 		_empty_label.visible = true
@@ -264,7 +392,9 @@ func _make_placeholder_slot() -> Panel:
 func _make_slot(id: String, cnt: int, item: ItemData) -> Control:
 	var slot := Panel.new()
 	slot.custom_minimum_size = SLOT_SIZE
-	slot.add_theme_stylebox_override("panel", _slot_stylebox(item))
+	# The meta is what _apply_selection_styles() re-skins by (placeholders carry none).
+	slot.set_meta("item_id", id)
+	slot.add_theme_stylebox_override("panel", _slot_stylebox(item, id == _selected_id))
 	slot.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Tooltip: name / rarity / value / description (plain text; no BBCode in tooltips).
@@ -314,12 +444,19 @@ func _make_slot(id: String, cnt: int, item: ItemData) -> Control:
 
 
 ## Dark slot fill with a rarity-colored border (matches inventory_ui.gd style).
-func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
+## `selected` adds the inspector halo: warmer fill + amber glow, but the border KEEPS
+## its rarity color so the tier read is never traded away for the selection read.
+func _slot_stylebox(item: ItemData, selected: bool = false) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.10, 0.11, 0.14, 0.92)
 	sb.set_border_width_all(2)
 	sb.border_color = item.rarity_color() if item != null else Color(0.62, 0.62, 0.66)
 	sb.set_corner_radius_all(4)
+	if selected:
+		sb.set_border_width_all(3)
+		sb.bg_color = Color(0.17, 0.15, 0.11, 0.96)
+		sb.shadow_color = Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.40)
+		sb.shadow_size = 6
 	return sb
 
 
@@ -343,6 +480,8 @@ func _on_slot_input(event: InputEvent, id: String, cnt: int) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_RIGHT:
+			# Selecting is ADDITIVE — the sell/recycle popup still opens exactly as before.
+			_select_item(id, cnt)
 			_popup_item_id = id
 			_popup_item_count = cnt
 			# Grey out SELL actions when ItemData is missing (no value known).

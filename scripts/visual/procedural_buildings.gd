@@ -27,31 +27,96 @@ class_name ProceduralBuildings
 ## `streaked()` (vertical rain-stain weathering) is used for TALL wall surfaces so
 ## stains run down; `weathered()` (broad grime mask) for slabs/roofs/horizontals.
 
+# --- MACRO GRADIENT (M6.9) — "grime settles low" -----------------------------------
+# Wall-class surfaces darken toward the ground and clear toward the roofline. Walls render
+# as ONE merged ArrayMesh per (parent, material) group (ChunkMeshMerger) baked from a SHARED
+# BoxMesh via SurfaceTool.append_from — there are no per-cell mesh nodes to tint and no
+# vertex-colour channel to write into. The gradient therefore rides the material's SECOND UV
+# projection: AO on UV2, with UV2 world-triplanar scaled to ZERO on X/Z so the texture's V
+# axis IS world height. Materials are not folded by the golden snapshot (GoldenSnapshot
+# ._fold_node folds node name/class/transform + MultiMesh buffers only) and the material
+# COUNT is unchanged, so the merge groups — and their ChunkMesh_N node names — stay identical.
+#
+# The ramp is SYMMETRIC about v=0.5 (dark) with v=0 clear, which buys three things:
+#   * seamless tiling — the sampler repeats every GRIME_PERIOD_M metres;
+#   * sign-independence — Godot negates the triplanar Y, and a symmetric ramp reads the
+#     same either way;
+#   * a no-op fallback — horizontal faces (and any surface without a UV2 projection) sample
+#     texel (0,0) = 1.0, i.e. completely untouched.
+# The NEXT dark band sits a full GRIME_PERIOD_M up; the tallest structure tops out near 35 m.
+const GRIME_PERIOD_M := 60.0  # world metres per ramp cycle
+const GRIME_REACH := 0.13  # ramp fraction the dark→clear rise spans (≈7.8 m of wall)
+const GRIME_FLOOR := 0.65  # darkest AO at ground level (1.0 = untouched)
+const GRIME_LIGHT_AFFECT := 0.3  # how much the skirt dims DIRECT light too (0 = ambient only)
+
+static var _grime_ramp_tex: ImageTexture = null
+
+
+## Gives a wall-class material the shared ground-grime skirt (see the block above). Mutates
+## and returns the SAME material — callers wrap their ProcMaterials result — so the material
+## count per building, and therefore the merged-chunk grouping, is unchanged.
+static func _ground_grime(m: StandardMaterial3D) -> StandardMaterial3D:
+	m.ao_enabled = true
+	m.ao_texture = _grime_ramp()
+	m.ao_on_uv2 = true
+	m.ao_light_affect = GRIME_LIGHT_AFFECT
+	m.uv2_triplanar = true
+	m.uv2_world_triplanar = true
+	# X/Z scale 0 → the triplanar U axis is constant and ONLY world Y drives the ramp; the
+	# horizontal (Y-plane) projection collapses onto texel (0,0), which is the clear end.
+	m.uv2_scale = Vector3(0.0, 1.0 / GRIME_PERIOD_M, 0.0)
+	m.uv2_offset = Vector3(0.0, 0.5, 0.0)  # world y=0 lands on the ramp's dark band
+	return m
+
+
+## The AO ramp: clear at v=0 and v=1, darkest at v=0.5, rising back over GRIME_REACH.
+## Grayscale and read LINEAR (runtime ImageTextures have no sRGB variant) — which is exactly
+## what AO wants, so unlike ProcMaterials' albedo bakes this one must NOT be srgb_to_linear'd.
+static func _grime_ramp() -> ImageTexture:
+	if _grime_ramp_tex != null:
+		return _grime_ramp_tex
+	var rows: int = 256
+	var img := Image.create(4, rows, false, Image.FORMAT_RGB8)
+	for y in range(rows):
+		var d: float = absf(float(y) / float(rows - 1) - 0.5)
+		var ao: float = lerpf(GRIME_FLOOR, 1.0, smoothstep(0.0, GRIME_REACH, d))
+		for x in range(4):
+			img.set_pixel(x, y, Color(ao, ao, ao))
+	img.generate_mipmaps()
+	_grime_ramp_tex = ImageTexture.create_from_image(img)
+	return _grime_ramp_tex
+
 
 ## Light worn concrete — broad grime, fully matte. Used for general walls/piers.
 ## Fine normal map + boosted relief (last arg) for crisp, detailed up-close concrete.
 static func mat_concrete(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.40, 0.40, 0.42), 0.0, 0.92, 0.5, sid * 7 + 3, 0.7, true)
+	return _ground_grime(
+		ProcMaterials.streaked(Color(0.40, 0.40, 0.42), 0.0, 0.92, 0.5, sid * 7 + 3, 0.7, true)
+	)
 
 
 ## Darker concrete for slabs/floors/roofs — horizontal grime (not streaked) + relief.
 static func mat_concrete_dark(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.27, 0.28, 0.30),
-		0.0,
-		0.94,
-		0.45,
-		sid * 13 + 5,
-		Vector3(0.13, 0.13, 0.13),
-		true,
-		0.7,
-		true
+	return _ground_grime(
+		ProcMaterials.weathered(
+			Color(0.27, 0.28, 0.30),
+			0.0,
+			0.94,
+			0.45,
+			sid * 13 + 5,
+			Vector3(0.13, 0.13, 0.13),
+			true,
+			0.7,
+			true
+		)
 	)
 
 
 ## Stained warehouse concrete — heavier dirt streaks + relief.
 static func mat_concrete_stained(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.33, 0.32, 0.30), 0.05, 0.9, 0.38, sid * 17 + 9, 0.7, true)
+	return _ground_grime(
+		ProcMaterials.streaked(Color(0.33, 0.32, 0.30), 0.05, 0.9, 0.38, sid * 17 + 9, 0.7, true)
+	)
 
 
 ## Mottled rust — broad noise so the corrosion patches read as blotchy, not striped.
@@ -175,22 +240,26 @@ static func mat_roofwood(sid: int = 0) -> StandardMaterial3D:
 
 ## Off-white temple/lodge plaster wall — light grime.
 static func mat_plaster(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.84, 0.81, 0.74),
-		0.0,
-		0.9,
-		0.38,
-		sid * 41 + 9,
-		Vector3(0.07, 0.07, 0.07),
-		true,
-		0.6,
-		true
+	return _ground_grime(
+		ProcMaterials.weathered(
+			Color(0.84, 0.81, 0.74),
+			0.0,
+			0.9,
+			0.38,
+			sid * 41 + 9,
+			Vector3(0.07, 0.07, 0.07),
+			true,
+			0.6,
+			true
+		)
 	)
 
 
 ## Warm timber logs — alpine lodge walls. Vertical streaks read as plank/log grain.
 static func mat_timber(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.34, 0.22, 0.13), 0.0, 0.85, 0.5, sid * 29 + 5, 0.7, true)
+	return _ground_grime(
+		ProcMaterials.streaked(Color(0.34, 0.22, 0.13), 0.0, 0.85, 0.5, sid * 29 + 5, 0.7, true)
+	)
 
 
 ## Snow — roof caps / lodge accents. Albedo CAPPED at ~0.7 with a blue shadow lean
@@ -213,31 +282,35 @@ static func mat_snow(sid: int = 0) -> StandardMaterial3D:
 ## Warm sandstone — desert ruins walls/columns/obelisk. Saturated tan with lighter grime so
 ## it reads sandy (not blown-out white) under the strong sun.
 static func mat_sandstone(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.74, 0.55, 0.31),
-		0.0,
-		0.9,
-		0.4,
-		sid * 19 + 7,
-		Vector3(0.11, 0.11, 0.11),
-		true,
-		0.75,
-		true
+	return _ground_grime(
+		ProcMaterials.weathered(
+			Color(0.74, 0.55, 0.31),
+			0.0,
+			0.9,
+			0.4,
+			sid * 19 + 7,
+			Vector3(0.11, 0.11, 0.11),
+			true,
+			0.75,
+			true
+		)
 	)
 
 
 ## Darker weathered sandstone for caps / shadowed blocks.
 static func mat_sandstone_dark(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.56, 0.41, 0.23),
-		0.0,
-		0.92,
-		0.42,
-		sid * 17 + 4,
-		Vector3(0.12, 0.12, 0.12),
-		true,
-		0.75,
-		true
+	return _ground_grime(
+		ProcMaterials.weathered(
+			Color(0.56, 0.41, 0.23),
+			0.0,
+			0.92,
+			0.42,
+			sid * 17 + 4,
+			Vector3(0.12, 0.12, 0.12),
+			true,
+			0.75,
+			true
+		)
 	)
 
 

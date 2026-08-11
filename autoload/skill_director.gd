@@ -60,6 +60,7 @@ func request_cast(
 	big: bool = false
 ) -> void:
 	var ability: String = String(Settings.skill_def(skill_id)["ability"])
+	MetaProgression.count_usage("skill_casts")  # M7.8 usage telemetry (owner-side)
 	_apply_owner_effect(ability, lvl, pos, aim, facing, big)
 	if GameState.is_local_authority_server():
 		_server_cast(_local_peer(), skill_id, lvl, pos, aim, facing, dmg_power, big)

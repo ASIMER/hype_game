@@ -163,10 +163,9 @@ func _draw() -> void:
 		var alpha := 1.0 if t > FADE else clampf(t / FADE, 0.0, 1.0)
 		var base: Color = l["color"]
 		var col := Color(base.r, base.g, base.b, base.a * alpha)
-		# Subtle glass chip background behind each line.
-		var bg_col := Color(
-			UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.55 * alpha
-		)
+		# Glass chip background behind each line. M6.6: 0.55 washed out to pale
+		# grey over bright sky/snow biomes — 0.8 keeps the dark-smoke read.
+		var bg_col := Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.8 * alpha)
 		draw_rect(
 			Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(WIDTH + 8.0, LINE_H - 2.0)), bg_col, true
 		)

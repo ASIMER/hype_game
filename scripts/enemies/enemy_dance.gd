@@ -43,6 +43,18 @@ static func adjust(
 		var jd: Vector3 = e.get_meta(META_JUKE_DIR, Vector3.ZERO)
 		return jd if jd != Vector3.ZERO else dir
 	_maybe_start_juke(e, target, now_ms)
+	# M3.1 wounded RETREAT: a melee unit below 30% HP backs out of the pocket on
+	# half its flip-buckets (then recommits) — reads as self-preservation, not a
+	# permanent flee. Shooters keep their orbit (the band-hold already kites).
+	if state == 2 and rng_range < RANGED_MIN_RANGE:
+		var hp: Node = e.get_node_or_null("Health")
+		if hp != null and float(hp.get("current")) < float(hp.get("max_health")) * 0.3:
+			var rb: int = int(float(now_ms) / 1000.0 / FLIP_BUCKET)
+			if ((int(e.get_instance_id()) * 13 + rb * 7) & 2) == 0:
+				var away := e.global_position - target.global_position
+				away.y = 0.0
+				if away.length() > 0.1:
+					return (away.normalized() * 0.8 + dir * 0.2).normalized()
 	# Strafe-orbit only for shooters actually IN combat.
 	if state != 2 or rng_range < RANGED_MIN_RANGE:
 		return dir

@@ -118,6 +118,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_open and event.is_action_pressed("ui_cancel"):
 		set_open(false)
 		get_viewport().set_input_as_handled()
+	elif _is_open and event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		# M7.7 zoom: wheel scales the projection about the player (1×..3×).
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			zoom = clampf(zoom * 1.25, 1.0, 3.0)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			zoom = clampf(zoom / 1.25, 1.0, 3.0)
+		else:
+			return
+		if _draw:
+			_draw.queue_redraw()
+		get_viewport().set_input_as_handled()
 
 
 ## Shows/hides the map, frees/recaptures the mouse, and announces on the Events bus.
@@ -132,6 +144,7 @@ func set_open(open: bool) -> void:
 	AudioManager.ui_panel(open)
 	if open:
 		_mutator = GameState.raid_mutator
+		zoom = 1.0  # M7.7: every open starts at full-map view
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		if _draw:
 			UIStyle.pop_in(_draw, UIStyle.Dir.DOWN, 0.0, 0.15)
@@ -314,14 +327,73 @@ func _poi_tier(index: int) -> int:
 
 ## World (x,z) → panel-local pixel coords. NORTH-UP, world-aligned (no yaw):
 ## +x → right, +z (south) → down. Maps the 320×320 world rectangle onto the panel rect.
+## M7.7 map zoom: mouse wheel scales the projection about the PLAYER (1×..3×).
+var zoom: float = 1.0
+
+
 func world_to_panel(wpos: Vector3, panel: Rect2) -> Vector2:
 	var nx: float = clampf((wpos.x - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0)
 	var nz: float = clampf((wpos.z - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0)
-	return panel.position + Vector2(nx * panel.size.x, nz * panel.size.y)
+	var p := Vector2(nx, nz)
+	if zoom > 1.001 and _player != null and is_instance_valid(_player):
+		var cx: float = clampf(
+			(_player.global_position.x - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+		)
+		var cz: float = clampf(
+			(_player.global_position.z - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+		)
+		p = Vector2(cx, cz) + (p - Vector2(cx, cz)) * zoom
+	var out := panel.position + Vector2(p.x * panel.size.x, p.y * panel.size.y)
+	# Zoomed projections can leave the panel — pin markers to the frame edge so
+	# they read as off-view indicators instead of spilling over the gutters.
+	out.x = clampf(out.x, panel.position.x, panel.position.x + panel.size.x)
+	out.y = clampf(out.y, panel.position.y, panel.position.y + panel.size.y)
+	return out
 
 
 func get_player() -> Node3D:
 	return _player
+
+
+# --- M7.3 ortho terrain underlay ---------------------------------------------
+# Baked ONCE (lazy, first map open) straight from the same functions the terrain
+# builds with (height_at / water_surface_at / biome_at) — no viewport capture,
+# deterministic, and it can never disagree with the real ground.
+var _underlay: ImageTexture = null
+
+
+func underlay() -> Texture2D:
+	if _underlay == null:
+		_bake_underlay()
+	return _underlay
+
+
+func _bake_underlay() -> void:
+	var n: int = 176
+	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+	for iz in n:
+		for ix in n:
+			var wx: float = WorldBounds.X_MIN + WorldBounds.SPAN * (float(ix) + 0.5) / float(n)
+			var wz: float = WorldBounds.Z_MIN + WorldBounds.SPAN * (float(iz) + 0.5) / float(n)
+			img.set_pixel(ix, iz, _underlay_color(wx, wz))
+	_underlay = ImageTexture.create_from_image(img)
+
+
+func _underlay_color(wx: float, wz: float) -> Color:
+	var h: float = ProceduralTerrain.height_at(wx, wz)
+	var ws: float = ProceduralTerrain.water_surface_at(wx, wz)
+	if not is_nan(ws) and ws > h:
+		return Color(0.12, 0.2, 0.26)
+	var base := Color(0.17, 0.19, 0.18)
+	match WorldBounds.biome_at(wx, wz):
+		"snow":
+			base = Color(0.3, 0.33, 0.38)
+		"desert":
+			base = Color(0.31, 0.26, 0.18)
+		"rain":
+			base = Color(0.15, 0.21, 0.19)
+	var shade: float = clampf(0.78 + h * 0.05, 0.55, 1.3)
+	return base * shade
 
 
 func get_arena() -> Node:
@@ -365,6 +437,24 @@ class MapDraw:
 		draw_rect(
 			panel, Color(UIStyle.PANEL_BG.r, UIStyle.PANEL_BG.g, UIStyle.PANEL_BG.b, 0.92), true
 		)
+		# M7.3 ortho terrain underlay (zoom-aware texture region about the player).
+		var terrain_tex: Texture2D = owner_ui.underlay()
+		if terrain_tex != null:
+			var ts: Vector2 = terrain_tex.get_size()
+			var region := Rect2(Vector2.ZERO, ts)
+			var pl: Node3D = owner_ui.get_player()
+			if owner_ui.zoom > 1.001 and pl != null and is_instance_valid(pl):
+				var cxn: float = clampf(
+					(pl.global_position.x - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+				)
+				var czn: float = clampf(
+					(pl.global_position.z - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+				)
+				var half: float = 0.5 / owner_ui.zoom
+				region = Rect2(
+					Vector2(cxn - half, czn - half) * ts, Vector2(half * 2.0, half * 2.0) * ts
+				)
+			draw_texture_rect_region(terrain_tex, panel, region, Color(1, 1, 1, 0.55))
 		# Amber accent border with thin inner light edge (glass frame).
 		draw_rect(panel, Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.55), false, 2.0)
 		var inset: float = 2.0
@@ -386,11 +476,15 @@ class MapDraw:
 		_draw_extractions(font, panel)
 		# --- World events (supply cache / miniboss / contested POI / surge).
 		_draw_world_events(font, panel)
-		# --- Enemies.
+		# --- Enemies. (M7.6: hi-contrast markers grow + outline every dot.)
+		var hi_c: bool = bool(SettingsManager.get_value("hi_contrast_markers"))
+		var er: float = 4.5 if hi_c else 3.0
 		for e in owner_ui.get_tree().get_nodes_in_group(Groups.ENEMIES):
 			if e is Node3D:
 				var ep := owner_ui.world_to_panel((e as Node3D).global_position, panel)
-				draw_circle(ep, 3.0, Color(1.0, 0.32, 0.32, 0.95))
+				if hi_c:
+					draw_circle(ep, er + 1.5, Color(0, 0, 0, 0.85))
+				draw_circle(ep, er, Color(1.0, 0.32, 0.32, 0.95))
 		# --- Machine Nemesis (the rival): a bigger blood-red ring + core so it stands out.
 		for n in owner_ui.get_tree().get_nodes_in_group(Groups.NEMESIS):
 			if n is Node3D:

@@ -145,6 +145,10 @@ func _close_all() -> void:
 # ── Templates / rolling ─────────────────────────────────────────────────────
 func _roll_contracts() -> Array:
 	var pool: Array = TEMPLATES.duplicate()
+	# M5.5 meta-content: progression UNLOCKS richer contracts — the pool grows
+	# with raider level instead of staying static forever.
+	if MetaProgression.raider_level >= 5:
+		pool.append("marathon")
 	pool.shuffle()
 	var out: Array = []
 	for tid in pool:
@@ -182,6 +186,14 @@ func _make_contract(tid: String) -> Dictionary:
 				"target": 5,
 				"reward": 180,
 				"biome": b,
+			}
+		"marathon":
+			return {
+				"id": "wave",
+				"title": tr("MARATHON"),
+				"desc": tr("Survive to wave 4"),
+				"target": 4,
+				"reward": 260,
 			}
 		_:
 			return {
@@ -249,6 +261,7 @@ func _complete() -> void:
 	_done = true
 	var reward: int = int(_active.get("reward", 0))
 	MetaProgression.earn(reward)
+	MetaProgression.count_usage("contracts_done")  # M7.8 usage telemetry
 	Events.notify.emit(
 		tr("✔ CONTRACT COMPLETE: %s — +%d CR") % [String(_active.get("title", "")), reward], 1
 	)

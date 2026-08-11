@@ -375,4 +375,9 @@ func _to_radar(wpos: Vector3, ppos: Vector3, yaw: float) -> Vector2:
 
 
 func _blip(center: Vector2, offset: Vector2, color: Color, r: float) -> void:
+	# M7.6 colorblind assist: the hi-contrast toggle grows every blip and gives it
+	# a dark outline, so hue stops being the only channel.
+	if bool(SettingsManager.get_value("hi_contrast_markers")):
+		r *= 1.45
+		draw_circle(center + offset, r + 1.5, Color(0.0, 0.0, 0.0, 0.85))
 	draw_circle(center + offset, r, color)

@@ -180,6 +180,16 @@ var onboarding_done := false
 var nemesis_intro_done := false
 # M4.7 KIA gestalt: best single-raid personal kill count (records beat consolation).
 var best_run_kills: int = 0
+# M7.8 usage telemetry: counter name → int (raids/extracts/deaths/skill_casts/…).
+# Local-profile only; read back via the harness quest-stats verb for data-driven tuning.
+var usage: Dictionary = {}
+
+
+## Bump a usage counter (persisted with the profile on the next save).
+func count_usage(key: String, by: int = 1) -> void:
+	usage[key] = int(usage.get(key, 0)) + by
+
+
 var equipped_cosmetics: Dictionary = {}
 ## Worn gear (AT-RISK): slot (Settings.GEAR_SLOTS) -> armor item id. Empty slot = none.
 var equipped_gear: Dictionary = {}
@@ -1116,6 +1126,7 @@ func save_profile() -> void:
 	cfg.set_value("meta", "onboarding_done", onboarding_done)
 	cfg.set_value("meta", "nemesis_intro_done", nemesis_intro_done)
 	cfg.set_value("meta", "best_run_kills", best_run_kills)
+	cfg.set_value("meta", "usage", usage)
 	cfg.set_value("meta", "currency", currency)
 	cfg.set_value("meta", "unlocked", unlocked)
 	cfg.set_value("meta", "upgrades", upgrades)
@@ -1176,6 +1187,8 @@ func load_profile() -> void:
 	onboarding_done = bool(cfg.get_value("meta", "onboarding_done", false))
 	nemesis_intro_done = bool(cfg.get_value("meta", "nemesis_intro_done", false))
 	best_run_kills = int(cfg.get_value("meta", "best_run_kills", 0))
+	var raw_usage: Variant = cfg.get_value("meta", "usage", {})
+	usage = raw_usage if raw_usage is Dictionary else {}
 	currency = int(cfg.get_value("meta", "currency", 0))
 	var raw_unlocked: Array = cfg.get_value("meta", "unlocked", [])
 	unlocked.clear()

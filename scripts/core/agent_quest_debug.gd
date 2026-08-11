@@ -87,7 +87,9 @@ static func handle(json: Dictionary, tree: SceneTree) -> Dictionary:
 				"ok": true,
 				"kills_by_type": MetaProgression.kills_by_type,
 				"extractions": MetaProgression.extractions_total,
-				"quest_states": MetaProgression.quest_states
+				"quest_states": MetaProgression.quest_states,
+				"usage": MetaProgression.usage,  # M7.8 usage telemetry (QA verb)
+				"best_run_kills": MetaProgression.best_run_kills
 			}
 		"grantrep":
 			# QA: bump a giver's reputation to test tier unlocks + exclusive-contract offers.

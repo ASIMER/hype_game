@@ -708,8 +708,10 @@ func _roll_modifiers(xform: Transform3D, scene_path: String, bonus: float = 0.0)
 	)
 	# M5.2 rare encounter: the GOLDEN elite — ~1% of any spawn, independent of the
 	# elite chance. Tanky, fast, and its death showers bonus loot (loot_spawner
-	# reads the G flag). The jackpot moment slot machines are made of.
-	if randf() < Settings.GOLDEN_ELITE_CHANCE:
+	# reads the G flag). M5.5: the host's raider level feeds the pool — veterans
+	# see the jackpot a bit more often (caps at 1.6× around level 10).
+	var gold_meta: float = 1.0 + 0.06 * float(mini(MetaProgression.raider_level, 10))
+	if randf() < Settings.GOLDEN_ELITE_CHANCE * gold_meta:
 		return "G"
 	if randf() > chance:
 		return ""

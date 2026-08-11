@@ -31,12 +31,29 @@ func _ready() -> void:
 	# Quest completion rep.
 	Events.quest_completed.connect(_on_quest_completed)
 
+	# M7.8 usage telemetry: personal extracts + deaths (local player only).
+	Events.extraction_completed.connect(_count_extract)
+	Events.player_bleedout.connect(_count_death)
+
+
+func _count_extract(player: Node) -> void:
+	if player != null and player.has_method("is_multiplayer_authority"):
+		if player.is_multiplayer_authority():
+			MetaProgression.count_usage("extracts")
+
+
+func _count_death(player: Node) -> void:
+	if player != null and player.has_method("is_multiplayer_authority"):
+		if player.is_multiplayer_authority():
+			MetaProgression.count_usage("deaths")
+
 
 # ── Per-run reset ─────────────────────────────────────────────────────────────
 
 
 func _on_match_started() -> void:
 	_rare_haul_rep_granted = false
+	MetaProgression.count_usage("raids")
 
 
 # ── Kill XP + weapon mastery ──────────────────────────────────────────────────

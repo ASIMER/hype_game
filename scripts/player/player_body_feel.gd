@@ -27,6 +27,19 @@ var _headless := false
 func _ready() -> void:
 	_p = get_parent() as CharacterBody3D
 	_headless = DisplayServer.get_name() == "headless"
+	# M7.9 drop-pod beat: the OWN body assembles on deploy (same language as the
+	# machines' spawn-assembly) + a landing ring — deploy feels like an ARRIVAL.
+	# Deferred one frame so the (replicated-cosmetics) model exists.
+	if not _headless and _p != null:
+		call_deferred("_drop_pod_intro")
+
+
+func _drop_pod_intro() -> void:
+	if _p == null or not is_instance_valid(_p):
+		return
+	var model := _p.get_node_or_null("ModelRoot") as Node3D
+	if model != null:
+		LimbBurst.assemble(model, _p)
 
 
 func _process(delta: float) -> void:

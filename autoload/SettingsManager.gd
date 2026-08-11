@@ -57,6 +57,8 @@ const DEFAULTS := {
 	"show_detailed_stats": false,  # full perf + network panel
 	"stats_display_mode": 0,  # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
 	"ui_fx_enabled": true,  # "military glass" UI FX: scanline/grain/vignette + modal blur
+	"hi_contrast_markers": false,  # M7.6 colorblind assist: bigger outlined map markers
+	"input_overrides": {},  # M7.6 remap: action name -> keycode (applied at boot)
 	# Interface / HUD layout (ultrawide comfort — lives in the Interface settings tab).
 	"ui_edge_margin": 0.0,  # 0.0..0.2 pull edge-anchored UI in toward center (frac of width)
 	"ui_top_margin": 0.0,  # 0.0..0.2 vertical inset for top/bottom-anchored UI (frac of height)
@@ -206,8 +208,30 @@ var _warned_newer := false
 
 func _ready() -> void:
 	load_config()
+	_apply_input_overrides()
 	# Apply after the first frame so the root viewport exists.
 	apply_all.call_deferred()
+
+
+## M7.6 remap: re-apply saved key overrides to the InputMap every boot. Only the
+## action's KEY events are swapped — mouse/pad events stay authored.
+func _apply_input_overrides() -> void:
+	var raw: Variant = get_value("input_overrides")
+	if not (raw is Dictionary):
+		return
+	for action in raw as Dictionary:
+		var act: String = String(action)
+		if not InputMap.has_action(act):
+			continue
+		var keycode: int = int((raw as Dictionary)[action])
+		if keycode <= 0:
+			continue
+		for ev in InputMap.action_get_events(act).duplicate():
+			if ev is InputEventKey:
+				InputMap.action_erase_event(act, ev)
+		var nk := InputEventKey.new()
+		nk.keycode = keycode as Key
+		InputMap.action_add_event(act, nk)
 
 
 ## Semantic-version compare: -1 if a<b, 0 if equal, 1 if a>b. Splits on ".",
@@ -255,6 +279,10 @@ func load_config() -> void:
 	_values = DEFAULTS.duplicate(true)
 	var cfg := ConfigFile.new()
 	if cfg.load(_path()) != OK:
+		# M7.6 GPU auto-preset: a FRESH profile (no settings.cfg) shouldn't launch
+		# the Ultra+RT default on weak hardware — pick a tier from the adapter name
+		# once; every later boot loads whatever the player saved.
+		_values["graphics_quality"] = _auto_quality_for_gpu()
 		return
 	# Version resilience: stamp lives in a "_meta" section (kept out of the settings
 	# key space). Missing = legacy save (compatible). NEWER than this build → warn once.
@@ -310,6 +338,25 @@ func load_config() -> void:
 			_values[key] = QUALITY_PRESETS[key][4]
 		_values["graphics_quality"] = 4
 		save()
+
+
+## M7.6: coarse first-boot preset from the adapter string. Discrete/recent GPUs
+## (RTX / RX 6-9 / Arc) take the authored Ultra+RT; older discrete cards High;
+## anything integrated/unknown Medium. Headless keeps the default (never renders).
+func _auto_quality_for_gpu() -> int:
+	if DisplayServer.get_name() == "headless":
+		return int(DEFAULTS["graphics_quality"])
+	var gpu: String = RenderingServer.get_video_adapter_name().to_upper()
+	if gpu.contains("RTX") or gpu.contains("ARC"):
+		return 4
+	for tag in ["RX 6", "RX 7", "RX 8", "RX 9"]:
+		if gpu.contains(tag):
+			return 4
+	if gpu.contains("GTX") or gpu.contains("RX 5") or gpu.contains("VEGA"):
+		return 2
+	if gpu.contains("IRIS") or gpu.contains("UHD") or gpu.contains("RADEON(TM) GRAPHICS"):
+		return 1
+	return 2
 
 
 func save() -> void:
