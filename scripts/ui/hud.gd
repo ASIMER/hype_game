@@ -495,6 +495,10 @@ var _bark_chip: PanelContainer = null
 var _bark_label: Label = null
 var _bark_tween: Tween = null
 
+# Hijack & Pilot (v0.5-B2): the hack prompt / pilot chip (polled at the boss cadence).
+var _hijack_chip: PanelContainer = null
+var _hijack_chip_label: Label = null
+
 # M3 stealth detect-meter: are the machines aware of ME right now?
 var _eye_poll_t: float = 0.0
 var _eye_label: Label = null
@@ -690,6 +694,45 @@ func _on_boss_bark(text: String) -> void:
 	_bark_tween.tween_callback(func() -> void: _bark_chip.visible = false)
 
 
+## Hijack & Pilot (v0.5-B2): bottom-center chip — the hack prompt near a stunned machine,
+## the pilot timer + eject hint while flying a stolen hull. Polled at the boss cadence.
+func _update_hijack_chip() -> void:
+	var text := ""
+	var hj: Node = null
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
+		if p.is_multiplayer_authority():
+			hj = p.get_node_or_null(Groups.NODE_HIJACK)
+			break
+	if hj != null:
+		if bool(hj.call("is_piloting")):
+			var secs: int = int(ceil(float(hj.call("time_left"))))
+			text = tr("PILOTING %s — %ds · [X] EJECT") % [String(hj.call("pilot_label")), secs]
+		else:
+			text = String(hj.call("prompt_text"))
+	if text == "":
+		if _hijack_chip != null:
+			_hijack_chip.visible = false
+		return
+	if _hijack_chip == null:
+		_hijack_chip = PanelContainer.new()
+		_hijack_chip.add_theme_stylebox_override("panel", UIStyle.chip(UIStyle.TEAL))
+		_hijack_chip.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_hijack_chip.anchor_left = 0.5
+		_hijack_chip.anchor_right = 0.5
+		_hijack_chip.anchor_top = 0.68
+		_hijack_chip.anchor_bottom = 0.68
+		_hijack_chip.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_hijack_chip.grow_vertical = Control.GROW_DIRECTION_BOTH
+		_hijack_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_hijack_chip_label = Label.new()
+		_hijack_chip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_hijack_chip_label.add_theme_color_override("font_color", Color(0.45, 0.95, 0.88))
+		_hijack_chip.add_child(_hijack_chip_label)
+		add_child(_hijack_chip)
+	_hijack_chip_label.text = text
+	_hijack_chip.visible = true
+
+
 ## Build the boss bar lazily; poll the enemies group for a live robot_boss and
 ## drive the bar. Color shifts with the fight phase (amber → orange → red).
 func _update_boss_bar() -> void:
@@ -856,6 +899,7 @@ func _process(delta: float) -> void:
 	if _boss_poll_t <= 0.0:
 		_boss_poll_t = 0.4
 		_update_boss_bar()
+		_update_hijack_chip()
 	# M3 stealth: awareness eye (throttled ~3 Hz) + the nightfall stealth hint.
 	_eye_poll_t -= delta
 	if _eye_poll_t <= 0.0:

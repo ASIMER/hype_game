@@ -626,6 +626,21 @@ const CHEM_AMMO_SLOW_STEP: float = 0.12  # each cryo hit deepens the slow by thi
 const CHEM_AMMO_SLOW_FLOOR: float = 0.42  # ramp floor — BELOW freeze threshold (shatter combo)
 # Nemesis learned counter (Phase 6): a rival the squad kept dousing in statuses.
 const NEMESIS_CHEM_MULT: float = 0.35  # status duration ×this on a chemistry_resist rival
+# --- Hijack & Pilot (v0.5-B2) — steal a SHOCK/EMP-stunned machine and drive it.
+const HIJACK_HOLD_TIME: float = 1.2  # hold-X seconds on a stunned machine to crack it
+const HIJACK_RANGE: float = 4.5  # max distance to hack (big hulls have 1.5-2m body radii)
+const HIJACK_TIME: float = 25.0  # pilot window; expiry = the machine blows from inside
+const HIJACK_SPEED_MULT: float = 1.15  # stolen machines drive a little hot
+const HIJACK_ATTACK_CD: float = 0.9  # piloted slam cooldown (fire button)
+const HIJACK_ATTACK_DMG_MULT: float = 1.4  # machine attack stat ×this per slam
+const HIJACK_ATTACK_RANGE: float = 3.6  # slam radius ahead of the hull
+const HIJACK_EXIT_BLAST_RADIUS: float = 6.0  # leaving the hull detonates it from inside
+const HIJACK_EXIT_BLAST_DMG: float = 70.0  # blast hits MACHINES only — the pilot hops clear
+const HIJACK_EJECT_IFRAMES: float = 1.0  # enemy-source safety after ejecting
+# Never hijackable: the boss, the burrower, and the true flyers (camera/motion breaks).
+const HIJACK_EXCLUDE: Array[String] = [
+	"robot_boss", "robot_sandworm", "robot_wasp", "robot_specter"
+]
 
 # --- Source: Incendiary grenade (Phase 5) — applies BURN in radius.
 const INCENDIARY_RADIUS: float = 5.0

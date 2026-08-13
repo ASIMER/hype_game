@@ -937,3 +937,6 @@ Track it: the red skull on your map.","Машина, ПЕРЕЖИВШАЯ тво
 "Thermite-tipped rounds that set machines burning. The fire cooks hotter in the desert — and rain or river water puts it out. Slightly lighter loads.","Термитные пули поджигают машины. В пустыне огонь жжёт сильнее — а дождь и речная вода его гасят. Чуть облегчённые заряды."
 "Coolant-jacketed rounds. Sustained fire slows a machine deeper and deeper — freeze it solid and it turns BRITTLE, shattering under the next hits. Slightly lighter loads.","Пули в хладагентной рубашке. Непрерывный огонь замедляет машину всё сильнее — замёрзшая насквозь становится ХРУПКОЙ и раскалывается под следующими попаданиями. Чуть облегчённые заряды."
 "SEALED CHASSIS","ГЕРМОКОРПУС"
+"HOLD [X] — HACK THE MACHINE","ДЕРЖИ [X] — ВЗЛОМ МАШИНЫ"
+"Machine in reach — stun it (shock/EMP) to hack [X]","Машина рядом — оглуши её (ток/ЭМИ), чтобы взломать [X]"
+"PILOTING %s — %ds · [X] EJECT","ПИЛОТИРУЕШЬ %s — %dс · [X] ВЫЙТИ"

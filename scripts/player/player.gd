@@ -169,6 +169,7 @@ func _ready() -> void:
 	_gear = PlayerGear.new()
 	_gear.name = "Gear"
 	add_child(_gear)
+	PlayerHijack.attach(self)  # Hijack & Pilot (v0.5-B2) — same component discipline
 	# M1 body feel (landing squash / lean / dust) — owner-local render component.
 	var body_feel := PlayerBodyFeel.new()
 	body_feel.name = "BodyFeel"
@@ -490,6 +491,10 @@ func _physics_process(delta: float) -> void:
 ## Fires the active weapon. Uses the WeaponController once wired (multi-weapon +
 ## ammo); falls back to the single legacy Weapon until then.
 func _fire_current() -> void:
+	var hj := get_node_or_null(Groups.NODE_HIJACK)
+	if hj != null and bool(hj.call("is_piloting")):
+		hj.call("pilot_fire")  # fire while piloting = the stolen hull's slam
+		return
 	if _weapon_controller and _weapon_controller.has_method("try_fire"):
 		_weapon_controller.try_fire(camera)
 

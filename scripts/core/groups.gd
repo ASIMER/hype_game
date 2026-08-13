@@ -27,3 +27,4 @@ const NODE_HEALTH := "Health"
 const NODE_HURTBOX := "Hurtbox"
 const NODE_WEAKPOINT := "WeakPoint"
 const NODE_MODEL_ROOT := "ModelRoot"
+const NODE_HIJACK := "Hijack"  # the player's code-built Hijack&Pilot component

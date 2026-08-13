@@ -140,6 +140,12 @@ func extracted_consumables() -> Array:
 ## (batch B) → status-effect rolls. Runs authority-local (the Hurtbox forwards
 ## hits to the owner).
 func filter_incoming_damage(amount: float, source: Node) -> float:
+	# Hijack & Pilot: while piloting, the HULL is the armor — the hit is routed into the
+	# machine's Health (server-side via HijackDirector) and the pilot takes nothing.
+	var hj: Node = _p.get_node_or_null(Groups.NODE_HIJACK)
+	if hj != null and bool(hj.call("is_piloting")):
+		HijackDirector.redirect_damage(amount)
+		return 0.0
 	# Dodge-roll i-frames: brief immunity vs ENEMY damage only. Self-damage and the
 	# harness `hurt` QA path carry a non-enemy source, so they still land.
 	var from_enemy := (

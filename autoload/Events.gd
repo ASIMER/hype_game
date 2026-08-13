@@ -256,6 +256,10 @@ signal interaction_cleared
 signal notify(text: String, kind: int)
 ## Talking boss (M2): one spoken line from the boss bark engine → the HUD speech chip.
 signal boss_bark(text: String)
+## Hijack & Pilot (v0.5-B2): `peer` stole / left a machine. Fired on EVERY peer by the
+## director's FX broadcast, so any HUD can react; the pilot's HUD shows the chip.
+signal hijack_started(peer: int, label: String)
+signal hijack_ended(peer: int)
 ## Sprint stamina for the stamina bar.
 signal stamina_changed(current: float, max_stamina: float)
 ## Inventory UI -> player: use an item (medkit/grenade/...).
