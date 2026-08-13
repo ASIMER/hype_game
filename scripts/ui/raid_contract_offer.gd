@@ -220,7 +220,7 @@ func _on_player_kill(_enemy_id: String) -> void:
 				_bump(1)
 
 
-func _on_wave_started(wave: int) -> void:
+func _on_wave_started(wave: int, _enemy_count: int) -> void:
 	if _done or String(_active.get("id", "")) != "wave":
 		return
 	_active["progress"] = maxi(int(_active.get("progress", 0)), wave)

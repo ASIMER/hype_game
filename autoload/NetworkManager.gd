@@ -356,6 +356,31 @@ func _do_hit(target_path: NodePath, amount: float, attacker_peer: int) -> void:
 		hb.apply_hit(amount, _player_for_peer(attacker_peer))
 
 
+## Elemental-ammo chemistry (Phase 6): a landed elemental hit routes the ELEMENT KIND only —
+## the SERVER derives every number from Settings.CHEM_AMMO_* (mirrors request_hit's shape,
+## but with zero client-supplied magnitudes). Host applies directly; a client RPCs.
+func request_chemistry(target_path: NodePath, kind: String) -> void:
+	if GameState.is_local_authority_server():
+		_do_chemistry(target_path, kind)
+	else:
+		_chemistry_rpc.rpc_id(1, target_path, kind)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _chemistry_rpc(target_path: NodePath, kind: String) -> void:
+	if not multiplayer.is_server():
+		return
+	_do_chemistry(target_path, kind)
+
+
+func _do_chemistry(target_path: NodePath, kind: String) -> void:
+	if kind not in ["shock", "burn", "slow"]:
+		return
+	var enemy := get_node_or_null(target_path)
+	if enemy != null:
+		MachineChemistry.apply_ammo(enemy, kind)
+
+
 func _player_for_peer(peer_id: int) -> Node:
 	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if str(p.name).to_int() == peer_id:
@@ -910,6 +935,7 @@ func _on_peer_connected(id: int) -> void:
 	# Server: a new client joined the ENet session. Roster is filled once the
 	# client calls _register_self. WS-G wires entity spawning off match_started.
 	if multiplayer.is_server():
+		_relax_peer_timeout(id)
 		if Settings.NET_DEBUG:
 			print("[net] peer %d connected to server" % id)
 		_broadcast_roster.rpc_id(id, _serialize_roster())
@@ -931,7 +957,22 @@ func _on_peer_disconnected(id: int) -> void:
 
 
 func _on_connected_to_server() -> void:
+	_relax_peer_timeout(1)
 	_register_self.rpc_id(1, local_player_name)
+
+
+## Widen the ENet inactivity window for one link (both ends call this on connect).
+## The arena build stalls the main thread for seconds at a time (5k+ breakable chunks,
+## merged-mesh bakes, navmesh) — at ENet's ~5–30s defaults the OTHER side times the
+## frozen peer out mid-load, the server begins the match without it, and the dropped
+## client zombies in an empty world. 20s min / 90s max survives the heaviest load.
+func _relax_peer_timeout(peer_id: int) -> void:
+	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if enet == null:
+		return
+	var link: ENetPacketPeer = enet.get_peer(peer_id)
+	if link != null:
+		link.set_timeout(64, 20000, 90000)
 
 
 func _on_connection_failed() -> void:

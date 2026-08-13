@@ -262,11 +262,12 @@ func _build_preview_viewport(parent: Control) -> void:
 	cam.name = "PreviewCam"
 	# Position slightly above center, pulled back enough to see the full figure.
 	cam.position = Vector3(0.0, 0.9, 2.6)
-	cam.look_at(Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	cam.fov = 42.0
 	cam.near = 0.1
 	cam.far = 30.0
 	_preview_vp.add_child(cam)
+	# look_at only works INSIDE the tree — calling it before add_child errors every hub open.
+	cam.look_at(Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	cam.current = true
 	cam.make_current()
 

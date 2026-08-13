@@ -28,12 +28,14 @@ const TRAIT_TO_LETTER := {
 	"blast_hard": "B",
 	"weakpoint_armored": "W",
 	"keen": "K",
+	"chemistry_resist": "C",
 }
 const LETTER_TO_TRAIT := {
 	"E": "emp_hard",
 	"B": "blast_hard",
 	"W": "weakpoint_armored",
 	"K": "keen",
+	"C": "chemistry_resist",
 }
 
 ## Serial-name word bank + title ladder (deterministic from scar_seed / tier).

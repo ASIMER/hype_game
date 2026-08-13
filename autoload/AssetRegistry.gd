@@ -594,6 +594,30 @@ const CATALOG := {
 		"size": Vector3(0.12, 0.24, 0.09),
 		"color": Color(0.46, 0.48, 0.5)
 	},
+	"att_mag_shock":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.13, 0.28, 0.1),
+		"color": Color(0.3, 0.7, 0.95)
+	},
+	"att_mag_incendiary":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.13, 0.28, 0.1),
+		"color": Color(0.9, 0.45, 0.14)
+	},
+	"att_mag_cryo":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.13, 0.28, 0.1),
+		"color": Color(0.72, 0.88, 1.0)
+	},
 	"att_long_barrel":
 	{
 		"model": "",

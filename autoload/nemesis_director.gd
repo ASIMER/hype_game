@@ -11,9 +11,9 @@ extends Node
 ## node NAME (NemesisProfile token), so co-op clients rebuild the IDENTICAL body for free —
 ## the director never sends a bespoke RPC, and clients never own/save a profile.
 ##
-## Phase 2 scope: FOUR learned counters via a damage-type histogram + argmax (emp_hard /
-## weakpoint_armored / blast_hard / keen), tier-leveling that adds one new counter + scars
-## per survival. No extraction ambush / lost-gear-core drop / codex yet (Phase 3).
+## FIVE learned counters via a damage-type histogram + argmax (emp_hard / weakpoint_armored
+## / blast_hard / keen / chemistry_resist — the last is Phase 6), tier-leveling that adds
+## one new counter + scars per survival.
 ##
 ## Registered in project.godot as autoload "NemesisDirector". The WaveManager registers
 ## itself here on _ready (parallel to AIDirector). (No class_name — the singleton name would
@@ -165,8 +165,8 @@ func _on_enemy_stunned(enemy: Node, _duration: float) -> void:
 		_tracked_emp += 1  # the squad keeps EMP-locking it → it learns "emp_hard"
 
 
-## Machine Chemistry (Phase 5): count each status turned ON on the tracked candidate. The
-## data accrues now; the "chemistry_resist" learned trait lands in Phase 6 (see _pick_learned_trait).
+## Machine Chemistry: count each status turned ON on the tracked candidate — feeds the
+## "chemistry_resist" learned counter (Phase 6) in _pick_learned_trait's argmax.
 func _on_enemy_chemistry_applied(enemy: Node, _kind: String, active: bool) -> void:
 	if active and GameState.is_local_authority_server() and enemy == _tracked:
 		_tracked_chemistry += 1
@@ -336,6 +336,9 @@ func _pick_learned_trait(owned: Array) -> String:
 		scored.append(["blast_hard", float(_tracked_blast)])
 	if _tracked_stealth >= Settings.NEMESIS_KEEN_THRESHOLD:
 		scored.append(["keen", _tracked_stealth / Settings.NEMESIS_KEEN_THRESHOLD])
+	# Phase 6: each status EDGE ≈ one tactic use, so the raw count is argmax-comparable.
+	if _tracked_chemistry > 0:
+		scored.append(["chemistry_resist", float(_tracked_chemistry)])
 	scored.sort_custom(func(a, b): return float(a[1]) > float(b[1]))
 	for entry in scored:
 		if String(entry[0]) not in owned:

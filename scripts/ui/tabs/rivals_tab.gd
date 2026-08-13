@@ -15,6 +15,7 @@ const _TRAIT_LABELS := {
 	"weakpoint_armored": "ARMORED CORE",
 	"blast_hard": "BLAST-PLATED",
 	"keen": "KEEN SENSORS",
+	"chemistry_resist": "SEALED CHASSIS",
 }
 
 var _list: VBoxContainer = null

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattmagincen01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_mag_incendiary"
+display_name = "Incendiary Mag"
+kind = 4
+rarity = 2
+weight = 0.8
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Thermite-tipped rounds that set machines burning. The fire cooks hotter in the desert — and rain or river water puts it out. Slightly lighter loads."
+value = 240
+slot = "mag"
+damage_mult = 0.9
+element = "burn"

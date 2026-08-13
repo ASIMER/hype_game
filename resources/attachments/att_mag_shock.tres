@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattmagshock01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_mag_shock"
+display_name = "Shock Cell Mag"
+kind = 4
+rarity = 3
+weight = 0.8
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Capacitor-lined magazine that charges every round. Hits can arc-stun a machine — and a shocked WET machine chains the discharge to its neighbours. Slightly lighter loads."
+value = 320
+slot = "mag"
+damage_mult = 0.92
+element = "shock"

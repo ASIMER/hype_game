@@ -615,6 +615,17 @@ const CHEM_BRITTLE_DUR: float = 4.0  # seconds the amplifier lasts (auto-latched
 const CHEM_BRITTLE_MULT: float = 1.5  # incoming damage ×this while brittle
 # Visual gate.
 const CHEM_FX_DIST: float = 45.0  # status FX spawns only within this range of the camera (m)
+# --- Elemental ammo (Chemistry Phase 6) — SERVER-side numbers; clients only send the kind.
+const CHEM_AMMO_SHOCK_CHANCE: float = 0.25  # proc roll per landed shock-mag shot
+const CHEM_AMMO_SHOCK_STUN: float = 0.4  # seconds per proc (vs 1.0 for the EMP shock)
+const CHEM_AMMO_SHOCK_ICD: float = 2.5  # per-enemy cooldown between procs (anti-stunlock)
+const CHEM_AMMO_BURN_DUR: float = 2.5  # incendiary DoT window, refreshed per hit
+const CHEM_AMMO_BURN_DPS: float = 7.0  # incendiary DoT dps
+const CHEM_AMMO_SLOW_DUR: float = 1.8  # cryo slow window per hit
+const CHEM_AMMO_SLOW_STEP: float = 0.12  # each cryo hit deepens the slow by this much
+const CHEM_AMMO_SLOW_FLOOR: float = 0.42  # ramp floor — BELOW freeze threshold (shatter combo)
+# Nemesis learned counter (Phase 6): a rival the squad kept dousing in statuses.
+const NEMESIS_CHEM_MULT: float = 0.35  # status duration ×this on a chemistry_resist rival
 
 # --- Source: Incendiary grenade (Phase 5) — applies BURN in radius.
 const INCENDIARY_RADIUS: float = 5.0

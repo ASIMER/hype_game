@@ -16,6 +16,9 @@ const _COLORS := {
 	"brittle": Color(0.85, 0.92, 1.0),
 }
 
+## Node-meta key for the per-enemy elemental-ammo shock ICD (the EnemyDance meta pattern).
+const _AMMO_ICD_META := "chem_ammo_icd"
+
 
 ## Apply a status to one machine, resolving climate/wetness first, then firing reactions.
 ## `dur`/`mag` are the RAW source values; biome amplifiers adjust them here. Returns true
@@ -39,6 +42,16 @@ static func apply(enemy: Node, kind: String, dur: float, mag: float) -> bool:
 				d *= Settings.CHEM_SLOW_SNOW_MULT  # cold lengthens the freeze
 	if kind == "burn" and d <= 0.0:
 		return false  # extinguished outright by wetness
+	# Nemesis "chemistry_resist" learned counter (Phase 6): a rival the squad kept dousing
+	# in statuses shrugs most of every element off — durations cut (shock's stun rides the
+	# MAGNITUDE, so that is what gets cut), and a deep freeze can never latch on it.
+	var nt: Variant = enemy.get("nemesis_traits")
+	if nt is Array and "chemistry_resist" in (nt as Array):
+		d *= Settings.NEMESIS_CHEM_MULT
+		if kind == "shock":
+			m *= Settings.NEMESIS_CHEM_MULT
+		elif kind == "slow":
+			m = maxf(m, Settings.CHEM_FREEZE_THRESHOLD + 0.05)
 	enemy.apply_chemistry(kind, d, m)
 	# Freeze→shatter: a deep enough slow latches BRITTLE (snow widens the window for free).
 	if kind == "slow" and m <= Settings.CHEM_FREEZE_THRESHOLD:
@@ -47,6 +60,38 @@ static func apply(enemy: Node, kind: String, dur: float, mag: float) -> bool:
 	if kind == "shock" and wet:
 		discharge(enemy, Settings.CHEM_CHAIN_JUMPS, [enemy], maxf(m, Settings.CHEM_SHOCK_STUN))
 	return true
+
+
+## One landed hit from an ELEMENTAL mag (Chemistry Phase 6). Server-side; every number is
+## derived HERE from Settings — clients only ever claim the kind (request_chemistry). Shock
+## procs behind a chance + a per-enemy ICD (node meta) so autofire can't stunlock; cryo
+## RAMPS: each hit deepens the current slow by a step until the floor crosses the freeze
+## threshold. Routes through apply() so climate, reactions, and nemesis resist all fire.
+static func apply_ammo(enemy: Node, kind: String) -> bool:
+	if not _alive(enemy):
+		return false
+	match kind:
+		"shock":
+			var now: int = Time.get_ticks_msec()
+			if now < int(enemy.get_meta(_AMMO_ICD_META, 0)):
+				return false
+			if randf() > Settings.CHEM_AMMO_SHOCK_CHANCE:
+				return false
+			var icd_ms: int = int(Settings.CHEM_AMMO_SHOCK_ICD * 1000.0)
+			enemy.set_meta(_AMMO_ICD_META, now + icd_ms)
+			return apply(enemy, "shock", 0.0, Settings.CHEM_AMMO_SHOCK_STUN)
+		"burn":
+			return apply(enemy, "burn", Settings.CHEM_AMMO_BURN_DUR, Settings.CHEM_AMMO_BURN_DPS)
+		"slow":
+			var status: Node = enemy.get("_status") as Node
+			var cur: float = 1.0
+			if status != null and status.has_method("speed_mult"):
+				cur = float(status.speed_mult())
+			var next_mag: float = maxf(
+				Settings.CHEM_AMMO_SLOW_FLOOR, cur - Settings.CHEM_AMMO_SLOW_STEP
+			)
+			return apply(enemy, "slow", Settings.CHEM_AMMO_SLOW_DUR, next_mag)
+	return false
 
 
 ## Arc a shock from `origin` to the nearest unvisited WET machine within reach, with a

@@ -53,6 +53,9 @@ var _muzzle_smoke_script: GDScript
 var _shell_script: GDScript
 ## Last WeaponData fired through fire_with — drives the per-class muzzle FX scale / shell count.
 var _last_data: WeaponData = null
+## Elemental ammo latch: the element applies once per SHOT (first landing pellet), so a
+## shotgun blast can't instant-freeze / multi-proc off a single trigger pull.
+var _element_done: bool = false
 
 
 func _ready() -> void:
@@ -102,6 +105,7 @@ func fire_with(from_node: Node3D, data: WeaponData, eff_spread: float = -1.0) ->
 	if from_node == null or data == null:
 		return false
 	_last_data = data
+	_element_done = false
 	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
 	var pellets: int = maxi(1, data.pellets)
 	# Optional per-weapon muzzle velocity override (flatter trajectory for rifles,
@@ -284,6 +288,16 @@ func _shoot(
 			else:
 				NetworkManager.request_hit(hb.get_path(), dealt, _shooter_peer(shooter))
 			hit.emit(hb.get_parent(), dealt)
+			# Elemental ammo (Chemistry Phase 6): the mag's element tags the machine —
+			# kind-only routing; the server derives every number and rolls shock's proc.
+			if (
+				not _element_done
+				and _is_enemy(hit_node)
+				and _last_data != null
+				and _last_data.element != ""
+			):
+				_element_done = true
+				NetworkManager.request_chemistry(hb.get_parent().get_path(), _last_data.element)
 			# Crit juice: a punch of camera shake everywhere, plus a brief hit-stop in
 			# single-player only (hit-stop scales Engine.time_scale, which would desync
 			# the shared co-op simulation — gate it to offline).
