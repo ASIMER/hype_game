@@ -334,7 +334,7 @@ func _shoot(
 	# Co-op: let teammates SEE this shot. Our own FX already spawned via the `fired`
 	# signal above; broadcast the shot so the OTHER peers spawn the tracer/impact too.
 	NetworkManager.broadcast_shot(
-		_muzzle_position(), hit_point, arc, _is_enemy(hit_node), _last_hit_normal
+		_muzzle_position(), hit_point, arc, _is_enemy(hit_node), _last_hit_normal, wid
 	)
 
 

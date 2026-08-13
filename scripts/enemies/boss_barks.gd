@@ -23,6 +23,7 @@ extends Node
 ## so the engine is pause-proof and needs no _process.
 
 const BANK_PATH: String = "res://resources/barks/boss_barks.json"
+const BANK_PATH_EN: String = "res://resources/barks/boss_barks_en.json"
 const RECENT_MAX: int = 6  # how many just-said lines are blocked from re-selection
 const DEFAULT_COOLDOWN: float = 6.0
 const GLOBAL_GAP: float = 2.5  # min seconds between ANY two barks
@@ -145,19 +146,30 @@ func _emit(text: String) -> void:
 
 
 # ------------------------------------------------------------------------- bank loading
-## Read the JSON bank. Raw FileAccess first (how it lives in the repo + in an export that
-## ships the file); if that yields nothing, try it as a JSON *resource* so the engine still
-## finds it when the exporter imported it instead. Anything unexpected → {} (inert).
+## Pick the bank for the CURRENT locale (v0.5-B3: EN bank added; RU keeps the original
+## file). Falls back to the RU bank when the localized file is missing/corrupt, so a
+## broken translation can never silence the boss. Locale is sampled per boss spawn.
 static func _read_bank() -> Dictionary:
+	if not TranslationServer.get_locale().begins_with("ru"):
+		var en: Dictionary = _read_bank_at(BANK_PATH_EN)
+		if not en.is_empty():
+			return en
+	return _read_bank_at(BANK_PATH)
+
+
+## Read one JSON bank file. Raw FileAccess first (how it lives in the repo + in an export
+## that ships the file); if that yields nothing, try it as a JSON *resource* so the engine
+## still finds it when the exporter imported it instead. Anything unexpected → {} (inert).
+static func _read_bank_at(path: String) -> Dictionary:
 	var text: String = ""
-	if FileAccess.file_exists(BANK_PATH):
-		var f: FileAccess = FileAccess.open(BANK_PATH, FileAccess.READ)
+	if FileAccess.file_exists(path):
+		var f: FileAccess = FileAccess.open(path, FileAccess.READ)
 		if f != null:
 			text = f.get_as_text()
 	if text.strip_edges() == "":
-		if not ResourceLoader.exists(BANK_PATH):
+		if not ResourceLoader.exists(path):
 			return {}
-		var res: Resource = load(BANK_PATH)
+		var res: Resource = load(path)
 		if res is JSON:
 			var data: Variant = (res as JSON).data
 			if data is Dictionary:

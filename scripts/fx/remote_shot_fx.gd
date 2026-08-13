@@ -38,11 +38,19 @@ func _ready() -> void:
 
 
 func _on_remote_shot(
-	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	enemy_hit: bool,
+	normal: Vector3,
+	wid: String = ""
 ) -> void:
 	var host := _fx_host()
 	if host == null:
 		return
+	# v0.5-B3: teammates' gunfire was VISUAL-ONLY since the co-op FX pass — squad fire
+	# was mute. One positional crack per broadcast, per-class via the shot's weapon id.
+	AudioManager.play_remote_shot(muzzle, wid)
 	# Muzzle flash at the teammate's barrel (pooled when the FXPool exists — PERF).
 	var mf := FXPool.acquire_or_new("muzzle_flash", _muzzle_flash_ps, host)
 	if mf != null:

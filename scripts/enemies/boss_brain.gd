@@ -162,8 +162,16 @@ func _charge_step(dir: Vector3, steps_left: int, step_t: float) -> void:
 		_damage_players_near(_boss.global_position, 4.5, CHARGE_DAMAGE)
 		NetworkManager.report_noise(_boss.global_position, 16.0, 2)
 		return
-	var next: Vector3 = _boss.global_position + dir * 1.2
-	next.y = _boss.global_position.y
+	# Step WITH collision instead of raw position writes: stepping the body INTO the
+	# unbreakable perimeter wall interpenetrated it and the physics solver CATAPULTED
+	# the boss kilometres out of the world (dist 17 km — caught by the v0.5-B3
+	# music-layer QA). move_and_collide stops at solids; zeroing velocity discards any
+	# residual solver impulse so the charge can never launch the hull.
+	_boss.move_and_collide(dir * 1.2)
+	_boss.velocity = Vector3.ZERO
+	var next: Vector3 = _boss.global_position
+	next.x = clampf(next.x, WorldBounds.X_MIN + 3.0, WorldBounds.X_MAX - 3.0)
+	next.z = clampf(next.z, WorldBounds.Z_MIN + 3.0, WorldBounds.Z_MAX - 3.0)
 	_boss.global_position = next
 	BreakableChunk.break_in_radius(next + Vector3.UP * 1.2, CHARGE_BREAK_R)
 	BreakableChunk.break_in_radius(next + Vector3.UP * 2.8, CHARGE_BREAK_R * 0.8)

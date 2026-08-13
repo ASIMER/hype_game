@@ -18,6 +18,17 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 			"biome": WorldBounds.biome_at(bx, bz),
 			"wet": MachineChemistry.is_wet(bx, bz),
 		}
+	# Music-layer QA (v0.5-B3): read the threat-stem mixes/flags on THIS instance.
+	if action == "music_state":
+		var am: Node = tree.root.get_node_or_null("AudioManager")
+		if am == null:
+			return {"ok": false, "error": "no AudioManager"}
+		return {
+			"ok": true,
+			"combat": [float(am.get("_combat_mix")), bool(am.get("_combat_hot"))],
+			"tension": [float(am.get("_tension_mix")), bool(am.get("_tension_hot"))],
+			"boss": [float(am.get("_boss_mix")), bool(am.get("_boss_hot"))],
+		}
 	# Hijack & Pilot QA (v0.5-B2 — chemistry's cousin verb; AgentBridge is at its ceiling):
 	#   hijack_state              → server pilot map {peer: enemy_name}
 	#   hijack_force + target+peer → server-side _try_start bypassing the client hold path

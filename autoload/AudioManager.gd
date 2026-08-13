@@ -64,6 +64,9 @@ const SOUNDS := {
 	"music_storm": "res://assets/audio/music_storm.ogg",
 	# M1 music layers: percussive combat overlay stem faded in while machines fight.
 	"music_combat": "res://assets/audio/music_combat.ogg",
+	# v0.5-B3 music layers: TENSION (machines searching nearby) + BOSS (live boss) stems.
+	"music_tension": "res://assets/audio/music_tension.ogg",
+	"music_boss": "res://assets/audio/music_boss.ogg",
 	# MOBA skill rework (v0.4.5): per-ability cast/impact sounds (gen_audio.py).
 	"skill_cast": "res://assets/audio/skill_cast.wav",
 	"skill_meteor": "res://assets/audio/skill_meteor.wav",
@@ -140,6 +143,16 @@ var _combat_mix: float = 0.0
 var _combat_poll: float = 0.0
 var _combat_hot: bool = false
 
+# v0.5-B3 music layers: two more stems over the SAME 0.5 s threat poll — TENSION
+# (machines searching close by / a fight brewing at range) and BOSS (a live robot_boss
+# ≤90 m REPLACES the combat stem with the heavy one). Priority: boss > combat > tension.
+var _tension_player: AudioStreamPlayer = null
+var _tension_mix: float = 0.0
+var _tension_hot: bool = false
+var _boss_player: AudioStreamPlayer = null
+var _boss_mix: float = 0.0
+var _boss_hot: bool = false
+
 # M1 reverb zones: one-shots live on an "SFX" bus whose reverb wet/room blends
 # between OUTDOOR (airy, low) and INDOOR (roomy) from a ceiling raycast.
 var _sfx_bus_idx: int = -1
@@ -154,41 +167,72 @@ func duck(db: float) -> void:
 	_duck_db = minf(_duck_db, db)
 
 
-## Combat music layer: fade the percussion stem in while any machine actively
-## fights the local player (CHASE/ATTACK within 45 m), out ~4× slower.
-func _tick_combat_layer(delta: float) -> void:
+## Music layers (M1 combat + v0.5-B3 tension/boss): ONE 0.5 s threat poll drives three
+## stems over the calm bed. Priority boss > combat > tension; each fades in fast, out slow.
+func _tick_music_layers(delta: float) -> void:
 	if _combat_player == null:
 		return
-	var in_combat := false
-	if (
+	var live: bool = (
 		_local_player != null
 		and is_instance_valid(_local_player)
 		and GameState.phase == GameState.Phase.IN_MATCH
-	):
+	)
+	if live:
 		_combat_poll -= delta
 		if _combat_poll <= 0.0:
 			_combat_poll = 0.5
-			_combat_hot = false
-			var ppos: Vector3 = (_local_player as Node3D).global_position
-			for e in get_tree().get_nodes_in_group("enemies"):
-				if not (e is Node3D):
-					continue
-				var st: int = int(e.get("current_state")) if "current_state" in e else 0
-				if st != 1 and st != 2:
-					continue
-				if (e as Node3D).global_position.distance_to(ppos) <= 45.0:
-					_combat_hot = true
-					break
-		in_combat = _combat_hot
-	var rate: float = 1.6 if in_combat else 0.35
-	_combat_mix = clampf(_combat_mix + (1.0 if in_combat else -1.0) * rate * delta, 0.0, 1.0)
-	if _combat_mix <= 0.01:
-		if _combat_player.playing:
-			_combat_player.stop()
-		return
-	if not _combat_player.playing:
-		_combat_player.play()
-	_combat_player.volume_db = lerpf(-46.0, -9.0, _combat_mix)
+			_poll_threat()
+	var boss_on: bool = live and _boss_hot
+	var combat_on: bool = live and _combat_hot and not boss_on
+	var tension_on: bool = live and _tension_hot and not combat_on and not boss_on
+	_combat_mix = _drive_stem(_combat_player, _combat_mix, combat_on, 1.6, 0.35, -9.0, delta)
+	_boss_mix = _drive_stem(_boss_player, _boss_mix, boss_on, 1.6, 0.35, -8.0, delta)
+	_tension_mix = _drive_stem(_tension_player, _tension_mix, tension_on, 0.9, 0.5, -14.0, delta)
+
+
+## Classify the local threat picture into the three stem "hot" flags (0.5 s cadence).
+func _poll_threat() -> void:
+	_combat_hot = false
+	_tension_hot = false
+	_boss_hot = false
+	var ppos: Vector3 = (_local_player as Node3D).global_position
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if not (e is Node3D):
+			continue
+		var d: float = (e as Node3D).global_position.distance_to(ppos)
+		if d <= 90.0 and String(e.get("enemy_id")) == "robot_boss":
+			_boss_hot = true
+		var st: int = int(e.get("current_state")) if "current_state" in e else 0
+		if (st == 1 or st == 2) and d <= 45.0:
+			_combat_hot = true
+		elif st == 3 and d <= 35.0:
+			_tension_hot = true  # machines SEARCHING close by — unease creeps in
+		elif (st == 1 or st == 2) and d <= 70.0:
+			_tension_hot = true  # a fight brewing just out of earshot
+
+
+## Fade one stem toward hot/cold and manage its play/stop. Returns the new mix.
+func _drive_stem(
+	p: AudioStreamPlayer,
+	mix: float,
+	hot: bool,
+	in_rate: float,
+	out_rate: float,
+	hi_db: float,
+	delta: float
+) -> float:
+	if p == null:
+		return 0.0
+	var rate: float = in_rate if hot else out_rate
+	var m: float = clampf(mix + (1.0 if hot else -1.0) * rate * delta, 0.0, 1.0)
+	if m <= 0.01:
+		if p.playing:
+			p.stop()
+		return m
+	if not p.playing:
+		p.play()
+	p.volume_db = lerpf(-46.0, hi_db, m)
+	return m
 
 
 ## Reverb-zone blend: a ceiling above the player → INDOOR (roomier, wetter).
@@ -320,10 +364,22 @@ func _ready() -> void:
 		_ambient_player.bus = "Bed"
 		_underwater_player.bus = "Bed"
 
-		# Combat overlay stem (starts silent; mixed in _process by live threat).
+		# Threat stems (start silent; mixed in _process by the live threat poll).
+		# NOTE the stream ASSIGNMENT here: the M1 combat stem was created but never
+		# stream-assigned — .play() was a silent no-op and the layer never sounded
+		# (latent bug caught by the v0.5-B3 layer work).
 		_combat_player = _make_looping_player("music_combat", -9.0)
 		_combat_player.volume_db = -80.0
 		_combat_player.bus = "Bed"
+		_assign_stem_stream(_combat_player, "music_combat")
+		_tension_player = _make_looping_player("music_tension", -14.0)
+		_tension_player.volume_db = -80.0
+		_tension_player.bus = "Bed"
+		_assign_stem_stream(_tension_player, "music_tension")
+		_boss_player = _make_looping_player("music_boss", -8.0)
+		_boss_player.volume_db = -80.0
+		_boss_player.bus = "Bed"
+		_assign_stem_stream(_boss_player, "music_boss")
 
 		# "SFX" bus with a blendable reverb (outdoor air ↔ indoor room).
 		_sfx_bus_idx = AudioServer.bus_count
@@ -369,7 +425,7 @@ func _process(delta: float) -> void:
 	if _duck_db < 0.0 and _bed_bus_idx >= 0:
 		_duck_db = minf(_duck_db + 26.0 * delta, 0.0)
 		AudioServer.set_bus_volume_db(_bed_bus_idx, _duck_db)
-	_tick_combat_layer(delta)
+	_tick_music_layers(delta)
 	_tick_reverb_zone(delta)
 	if not enabled or _local_player == null:
 		return
@@ -472,6 +528,39 @@ func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
 	if _streams.get(shot_id, null) == null:
 		shot_id = "shot"
 	_play_pitched(shot_id, float(cfg["pitch"]) * randf_range(0.96, 1.04), float(cfg["vol"]))
+
+
+## Teammate gunfire (v0.5-B3): a POSITIONAL shot crack at a remote muzzle. The co-op FX
+## broadcast rendered tracers/flash since the co-op pass, but the audio was silently
+## missing — squad fire was mute. One self-freeing 3D player per shot, SFX bus.
+func play_remote_shot(world_pos: Vector3, weapon_id: String) -> void:
+	if not enabled or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	var cfg: Dictionary = SHOT_CLASS.get(weapon_id, SHOT_CLASS["rifle"])
+	var sid: String = "shot_" + weapon_id
+	var stream: AudioStream = _streams.get(sid, null)
+	if stream == null:
+		sid = "shot"
+		stream = _streams.get("shot", null)
+	if stream == null:
+		return
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX"
+	p.max_db = 0.0
+	p.unit_size = 14.0
+	p.max_distance = 120.0
+	p.volume_db = master_db + SOUND_DB.get(sid, 0.0) + float(cfg["vol"]) - 2.0
+	p.pitch_scale = clampf(float(cfg["pitch"]) * randf_range(0.96, 1.04), 0.2, 3.0)
+	scene.add_child(p)
+	p.global_position = world_pos
+	p.finished.connect(p.queue_free)
+	p.play()
 
 
 ## Like _play but with a pitch_scale + extra volume trim (for layered gunfire).
@@ -829,6 +918,16 @@ func _make_looping_player(id: String, vol_db: float) -> AudioStreamPlayer:
 	# We stash the id so we can re-apply it when the stream is loaded.
 	p.set_meta("sound_id", id)
 	return p
+
+
+## Give a threat-stem player its looping stream once at boot (streams are cached before
+## the player block in _ready). Stems keep their stream forever — only volume mixes.
+func _assign_stem_stream(p: AudioStreamPlayer, id: String) -> void:
+	var stream: AudioStream = _streams.get(id)
+	if p == null or stream == null:
+		return
+	_set_stream_loop(stream)
+	p.stream = stream
 
 
 ## Force a stream to loop, regardless of WAV vs Ogg Vorbis backing.

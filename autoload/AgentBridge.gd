@@ -1088,9 +1088,8 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array 
 	var path: String = scene_map.get(eid, "")
 	if path == "" or not ResourceLoader.exists(path):
 		return false
-	# Resolve the replicated enemy container from the ARENA first — deriving it from
-	# "any live enemy's parent" fails on a fully swept field (QA kill-sweeps), which
-	# made the FIRST debug spawn after a sweep silently no-op.
+	# Resolve the replicated enemy container from the ARENA first — "any live enemy's
+	# parent" fails on a swept field (the FIRST spawn after a QA sweep no-op'd).
 	var container: Node = null
 	var arena_node: Node = get_tree().get_first_node_in_group(Groups.ARENA)
 	if arena_node != null:
@@ -1106,8 +1105,7 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array 
 	var enemy: Node = (load(path) as PackedScene).instantiate()
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
-	# Forced elite modifiers: encode prefix letters into the node name (the same
-	# replication channel the wave roll uses; robot_enemy parses it in _ready).
+	# Forced elite modifiers: letters ride the node name (robot_enemy parses in _ready).
 	if not mods.is_empty():
 		var flags := ""
 		var letter := {"armored": "A", "swift": "S", "volatile": "V", "regenerating": "R"}
@@ -1121,9 +1119,11 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array 
 	if fwd.length_squared() < 0.0001:
 		fwd = Vector3.FORWARD
 	var spot: Vector3 = (p as Node3D).global_position + fwd.normalized() * dist
-	# Snap Y to the TERRAIN at the target XZ — the player's own Y is wrong on slopes
-	# (an offset spawn ended inside a dune / in the air and fell through the world,
-	# leaving 'ghost' enemies kilometres below that polluted every QA state dump).
+	# Clamp XZ into the world rect (an edge-facing spawn landed OUTSIDE the perimeter
+	# wall — the boss fell into the void forever, v0.5-B3 QA), then snap Y to TERRAIN
+	# (the player's own Y is wrong on slopes; offset spawns fell through the world).
+	spot.x = clampf(spot.x, WorldBounds.X_MIN + 4.0, WorldBounds.X_MAX - 4.0)
+	spot.z = clampf(spot.z, WorldBounds.Z_MIN + 4.0, WorldBounds.Z_MAX - 4.0)
 	spot.y = ProceduralTerrain.height_at(spot.x, spot.z) + 0.5
 	(enemy as Node3D).global_position = spot
 	return true

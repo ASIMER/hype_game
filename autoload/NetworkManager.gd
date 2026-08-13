@@ -391,17 +391,27 @@ func _player_for_peer(peer_id: int) -> Node:
 ## Broadcast a fired shot to OTHER peers so teammates see the tracer/muzzle/impact
 ## (the shooter already spawned its own FX locally). Unreliable — purely cosmetic.
 func broadcast_shot(
-	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	enemy_hit: bool,
+	normal: Vector3,
+	wid: String = ""
 ) -> void:
 	if multiplayer.has_multiplayer_peer() and not is_offline:
-		_shot_rpc.rpc(muzzle, hit_point, arc, enemy_hit, normal)
+		_shot_rpc.rpc(muzzle, hit_point, arc, enemy_hit, normal, wid)
 
 
 @rpc("any_peer", "call_remote", "unreliable")
 func _shot_rpc(
-	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	enemy_hit: bool,
+	normal: Vector3,
+	wid: String = ""
 ) -> void:
-	Events.remote_shot.emit(muzzle, hit_point, arc, enemy_hit, normal)
+	Events.remote_shot.emit(muzzle, hit_point, arc, enemy_hit, normal, wid)
 
 
 # =========================================================== noise -> server AI

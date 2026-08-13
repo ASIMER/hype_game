@@ -861,6 +861,131 @@ def gen_music_combat() -> list[float]:
     return _fade([math.tanh(s * 0.9) for s in out], 0.01, 0.01)
 
 
+def gen_music_tension() -> list[float]:
+    """TENSION stem (v0.5-B3 music layers): ~36 s sparse unease between calm and combat —
+    a slow sub heartbeat, a barely-there detuned shimmer, sparse metallic pings and a
+    breathing air swell. Faded IN while machines SEARCH near the player; loops seamlessly."""
+    dur = 36.0
+    n = int(SAMPLE_RATE * dur)
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Slow sub heartbeat: a soft pitch-dropping thump pair every 2.4 s.
+    thump = []
+    tn = int(SAMPLE_RATE * 0.22)
+    ph = 0.0
+    for i in range(tn):
+        t = i / tn
+        f = 52.0 - 18.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        thump.append(0.5 * math.sin(ph) * (1.0 - t) ** 2)
+    beat_period = 2.4
+    for b in range(int(dur / beat_period)):
+        t0 = b * beat_period
+        add(thump, t0, 0.9)
+        add(thump, t0 + 0.34, 0.55)
+    # Detuned high shimmer with a slow breathing LFO (very quiet — unease, not melody).
+    shimmer_a = _sine(659.3, dur, 0.022)
+    shimmer_b = _sine(663.1, dur, 0.020)
+    for i in range(n):
+        lfo = 0.5 + 0.5 * math.sin(2 * math.pi * i / SAMPLE_RATE / 9.0)
+        out[i] += (shimmer_a[i] + shimmer_b[i]) * lfo
+    # Sparse metallic pings on an irregular (but loop-stable) grid.
+    ping = _adsr(_highpass(_noise(0.5, 0.30, seed=4200), 2600), 0.002, 0.1, 0.25, 0.4)
+    for t0 in (3.1, 8.7, 13.4, 19.9, 26.2, 31.8):
+        add(ping, t0, 0.8)
+    # Breathing air bed: lowpassed noise with an 18 s swell cycle.
+    air = _lowpass(_noise(dur, 0.10, seed=4300), 500)
+    for i in range(n):
+        swell = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(2 * math.pi * i / SAMPLE_RATE / 18.0))
+        out[i] += air[i] * swell
+    return _fade([math.tanh(s) for s in out], 0.02, 0.02)
+
+
+def gen_music_boss() -> list[float]:
+    """BOSS stem (v0.5-B3 music layers): ~24 s heavy industrial assault — driving kick,
+    a two-note low riff, dense metallic hats, a dissonant alarm stab and a constant sub.
+    REPLACES the combat stem while a live boss is near; loops seamlessly."""
+    dur = 24.0
+    n = int(SAMPLE_RATE * dur)
+    bpm = 140.0
+    beat = 60.0 / bpm
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Hard kick: deeper + punchier than the combat stem's.
+    kick = []
+    kn = int(SAMPLE_RATE * 0.18)
+    ph = 0.0
+    for i in range(kn):
+        t = i / kn
+        f = 135.0 - 90.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        kick.append(1.0 * math.sin(ph) * (1.0 - t) ** 1.4)
+    hat = _adsr(_highpass(_noise(0.04, 0.55, seed=5100), 5000), 0.001, 0.015, 0.2, 0.022)
+    # Low riff note: buzzy stacked-harmonic pulse (saw-ish), lowpassed.
+    def riff_note(freq: float, note_dur: float) -> list[float]:
+        m = int(SAMPLE_RATE * note_dur)
+        buf = []
+        phase = 0.0
+        for i in range(m):
+            phase += 2 * math.pi * freq / SAMPLE_RATE
+            v = (
+                math.sin(phase)
+                + 0.5 * math.sin(2 * phase)
+                + 0.33 * math.sin(3 * phase)
+                + 0.25 * math.sin(4 * phase)
+            )
+            buf.append(0.30 * v)
+        return _adsr(_lowpass(buf, 700), 0.004, 0.05, 0.75, 0.08)
+
+    riff_a = riff_note(55.0, beat * 0.45)  # A1
+    riff_c = riff_note(65.4, beat * 0.45)  # C2
+    total_beats = int(dur / beat)
+    for b in range(total_beats):
+        t0 = b * beat
+        add(kick, t0, 1.0)
+        if b % 4 == 3:
+            add(kick, t0 + beat * 0.5, 0.8)  # driving double on the bar end
+        add(hat, t0 + beat * 0.5, 0.5)
+        if b % 2 == 1:
+            add(hat, t0 + beat * 0.25, 0.3)
+            add(hat, t0 + beat * 0.75, 0.35)
+        # Two-note riff: A1 pumping eighths, C2 lift on the last bar of each 4.
+        note = riff_c if (b % 16) >= 12 else riff_a
+        add(note, t0, 1.0)
+        add(note, t0 + beat * 0.5, 0.75)
+    # Dissonant alarm stab every 4 bars (392+415 Hz — a minor-second scream).
+    stab_n = int(SAMPLE_RATE * 0.5)
+    stab = []
+    ph_a = 0.0
+    ph_b = 0.0
+    for i in range(stab_n):
+        t = i / stab_n
+        ph_a += 2 * math.pi * 392.0 / SAMPLE_RATE
+        ph_b += 2 * math.pi * 415.3 / SAMPLE_RATE
+        stab.append(0.16 * (math.sin(ph_a) + math.sin(ph_b)) * (1.0 - t))
+    for bar4 in range(int(total_beats / 16)):
+        add(stab, bar4 * 16 * beat + 8 * beat, 1.0)
+    # Constant sub dread.
+    sub = _lowpass(_sine(41.2, dur, 0.14), 120)
+    for i in range(n):
+        out[i] += sub[i]
+    return _fade([math.tanh(s * 0.85) for s in out], 0.01, 0.01)
+
+
 def gen_skill_cast() -> list[float]:
     """Generic ability cast: a bright two-tone energy chirp (dash/blink/shield…)."""
 
@@ -1037,6 +1162,9 @@ def main() -> None:
         ("robot_death.wav",    gen_robot_death),
         # M1 music layers: combat overlay stem (converted to .ogg for the loop).
         ("music_combat.wav",   gen_music_combat),
+        # v0.5-B3 music layers: tension + boss stems (converted to .ogg, WAVs deleted).
+        ("music_tension.wav",  gen_music_tension),
+        ("music_boss.wav",     gen_music_boss),
         # MOBA skill rework (v0.4.5): per-ability cast/impact sounds.
         ("skill_cast.wav",     gen_skill_cast),
         ("skill_meteor.wav",   gen_skill_meteor),

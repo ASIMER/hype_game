@@ -207,9 +207,15 @@ signal extraction_window_changed(zone: Node, open: bool, remaining: float)
 signal map_toggled(open: bool)
 
 # --- Co-op combat / scoreboard ---
-## A teammate's shot, broadcast so everyone sees the tracer/muzzle/impact.
+## A teammate's shot, broadcast so everyone sees the tracer/muzzle/impact — and, since
+## v0.5-B3, HEARS it (wid picks the per-class positional crack; "" = generic).
 signal remote_shot(
-	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	enemy_hit: bool,
+	normal: Vector3,
+	wid: String
 )
 ## Per-player kill counts changed (synced) — the TAB leaderboard refreshes.
 signal scoreboard_changed
