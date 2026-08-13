@@ -306,7 +306,7 @@ func _handle_line(line: String) -> void:
 			# (kept out of this file — it's at the 1800-line ceiling).
 			_send(NemesisQA.run(get_tree(), json))
 		"chemistry":  # QA: Machine Chemistry (Phase 5) — logic in ChemistryQA (file at the ceiling).
-			_send(ChemistryQA.run(get_tree(), json))
+			_send(await ChemistryQA.run(get_tree(), json))
 		"chunk":  # QA: BreakableChunk wall destruction — logic in AgentChunkDebug (file at ceiling).
 			_send(AgentChunkDebug.run(get_tree(), json))
 		"perf":
