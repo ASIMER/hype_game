@@ -37,32 +37,23 @@ const CATALOG := {
 		"model_scale": 1.55,
 		"model_rot_deg": Vector3(0, 180, 0)
 	},
-	# three.js RobotExpressive.glb (Quaternius / Tomás Laulhé, CC0). ~4.6m tall,
+	# v0.5-B4: the starter troopers are PROCEDURAL now (ProceduralModelsTroopers) — the
+	# old RobotExpressive .glbs left a dark toy blob with unpainted eyes after the reskin.
 	"robot_grunt":
 	{
-		# feet at y=0; ModelRoot sits at capsule centre (y=0.8) so drop the feet to ground.
-		"model": "res://assets/models/robots/grunt.glb",
+		"model": "",
 		"icon": "",
 		"prim": Prim.CAPSULE,
 		"size": Vector3(0.9, 1.6, 0.9),
-		"color": Color(0.85, 0.25, 0.2),
-		"reskin_machine": true,
-		"model_scale": 0.33,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.7, 0)
+		"color": Color(0.85, 0.25, 0.2)
 	},
 	"robot_heavy":
 	{
-		# Same RobotExpressive, scaled for the heavy variant (BOX hitbox, ~1.8m tall).
-		"model": "res://assets/models/robots/heavy.glb",
+		"model": "",
 		"icon": "",
 		"prim": Prim.BOX,
 		"size": Vector3(1.4, 1.8, 1.4),
-		"color": Color(0.6, 0.15, 0.15),
-		"reskin_machine": true,
-		"model_scale": 0.36,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.9, 0)
+		"color": Color(0.6, 0.15, 0.15)
 	},
 	# Kenney Starter-Kit-FPS blaster.glb (CC0). ~1.6m long down +Z; shrink to a held weapon.
 	# Weapons: Kenney Blaster Kit (CC0) glTF view-models. Barrel faces +Z so held guns
@@ -196,16 +187,12 @@ const CATALOG := {
 	},
 	"robot_elite":
 	{
-		# Elite — a bigger variant of the RobotExpressive grunt model (like heavy), de-toyed.
-		"model": "res://assets/models/robots/grunt.glb",
+		# Elite — procedural commander trooper (v0.5-B4; crest fin + gold trims).
+		"model": "",
 		"icon": "",
 		"prim": Prim.BOX,
 		"size": Vector3(1.0, 1.7, 1.0),
-		"color": Color(0.92, 0.72, 0.18),
-		"reskin_machine": true,
-		"model_scale": 0.42,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.85, 0)
+		"color": Color(0.92, 0.72, 0.18)
 	},
 	# --- Biome fauna (v0.3, all-procedural ProceduralModels builders; the `color` also
 	"robot_sandworm":

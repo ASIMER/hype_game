@@ -101,6 +101,8 @@ static func has_builder(id: String) -> bool:
 		return true
 	if id in FAUNA_BUILDERS:
 		return true
+	if id in ProceduralModelsTroopers.IDS:
+		return true
 	return id.begins_with("schematic_")
 
 
@@ -110,6 +112,9 @@ static func build(id: String) -> Node3D:
 		return ProceduralModelsGear.build(id)
 	if id in FAUNA_BUILDERS:
 		return ProceduralModelsFauna.build(id)
+	# v0.5-B4: the three starter bots (the last .glb enemies) — split file, fauna pattern.
+	if id in ProceduralModelsTroopers.IDS:
+		return ProceduralModelsTroopers.build(id)
 	match id:
 		"robot_tick":
 			return build_robot_tick()

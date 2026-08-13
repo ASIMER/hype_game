@@ -18,6 +18,13 @@ extends RefCounted
 # glow_energy 3.5 = gameplay signage (kill windows / weak domes / arming blinks);
 # 2.5-3.0 = ambient identity glow.
 const _SPECS: Dictionary = {
+	# v0.5-B4: the starter troopers (rebuilt procedural — were the last .glb enemies).
+	"robot_grunt":
+	[Color(0.46, 0.49, 0.47), Color(0.19, 0.20, 0.22), ProcPlating.Arch.MECH_HULL, 137, 3.5],
+	"robot_heavy":
+	[Color(0.42, 0.35, 0.33), Color(0.18, 0.17, 0.17), ProcPlating.Arch.ARMOR_PLATE, 139, 3.5],
+	"robot_elite":
+	[Color(0.40, 0.38, 0.43), Color(0.17, 0.17, 0.19), ProcPlating.Arch.ARMOR_PLATE, 149, 3.5],
 	"robot_tick":
 	[Color(0.30, 0.34, 0.36), Color(0.16, 0.18, 0.20), ProcPlating.Arch.MECH_HULL, 11, 2.5],
 	"robot_wasp":
