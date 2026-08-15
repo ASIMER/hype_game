@@ -76,7 +76,7 @@ var _captured := false
 # 0.48 → 0.62 in the texture-quality pass: shaded building faces read as pure coal
 # under the cold grade (containers «чёрные» from the south-west) — a modest ambient
 # floor keeps shadow sides legible without breaking the moody look.
-const DAY_AMBIENT := 0.62
+const DAY_AMBIENT := 0.70
 const DAY_FOG_DENSITY := 0.001
 const DAY_FOG_COLOR := Color(0.54, 0.59, 0.67, 1.0)
 const DAY_GLOW := 0.5
@@ -93,13 +93,27 @@ const DAY_SKYDOME_EXPOSURE := 0.8
 # lerp between a NIGHT floor (sun_ratio 0) and the bright-DAY top (sun_ratio 1) — DAY_SUN_ENERGY
 # is the noon energy, so the drive never exceeds the authored day. Pitch sweeps shallow at
 # dawn/dusk to steep at noon (the sun rides high mid-day), yaw/roll kept from the captured base.
-const NIGHT_SUN_ENERGY := 0.15
-const NIGHT_AMBIENT := 0.46
+# D1 RELIGHT: the photostand measured night frames at 97-99% of world pixels under the
+# grade's readable floor — night was not "moody", it was unlit. Moonlight and the ambient
+# floor both come up so silhouettes, ground and facades stay legible while staying clearly
+# night (day noon still runs 12× the moon energy).
+const NIGHT_SUN_ENERGY := 0.26
+const NIGHT_AMBIENT := 0.60
+# How much of the ambient comes from the SKY vs the explicit `ambient_light_color`
+# (see _apply_sun_ambient). Day leans on the sky; night leans on the authored colour.
+const NIGHT_SKY_CONTRIB := 0.28
+# Day stays sky-dominated: pulling it to 0.82 measurably DARKENED the daylight biomes whose
+# ambient colour is cooler than their sky (rain lost 0.08 of median luma), which is the
+# opposite of the intent. The blend is a night lever, not a day one.
+const DAY_SKY_CONTRIB := 0.96
 # Shadow-side fill light (see _apply_sun_ambient): weak, cool, shadowless, opposite the sun.
 # Re-tuned with the 2.8 sun (art-panel key:fill ≈6:1): 1.4 against the old 1.35 sun
 # out-powered the key and flattened all modeling; 0.45 keeps shade legible without
 # fighting the sun. (History: 0.55 vanished only because the SUN was too weak.)
-const FILL_ENERGY := 0.45
+# D1 RELIGHT 0.45 → 0.72: still well under the 2.8 key (≈4:1, modeling intact) but enough
+# that the shadow side of a machine or a facade resolves as cold steel instead of one flat
+# value — the "readable but not flat" point the ratio is actually protecting.
+const FILL_ENERGY := 0.72
 const FILL_PITCH_DEG := -35.0
 const DAYNIGHT_PITCH_LOW := -8.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0) — low golden-hour rake
 const DAYNIGHT_PITCH_HIGH := -42.0  # sun pitch (deg) at noon — kept low so shadows stay long/dramatic
@@ -136,6 +150,40 @@ var _last_sun_ratio: float = -1.0
 # dust/embers are deliberately NOT gated — the player is always inside those fields.
 var _climate_gate_accum: float = 1.0
 var _climate_root: Node3D = null
+
+# D1 RELIGHT — per-biome light TEMPERATURE (see _apply_biome_look). Colour only: energy,
+# rotation, fog and sky density all belong to _restore_day / the storm tween, and anything
+# written here that they also write would be reverted on the next match start.
+# Urban stays the neutral cold-steel reference the identity was tuned on; snow goes bluer
+# and brighter in ambient (snow bounces), desert warms hard (sand bounces warm), rain goes
+# cold and dim (overcast). The fill is the counter-sun, so it leans OPPOSITE the key.
+const _BIOME_LOOK := {
+	"urban":
+	{
+		"sun": Color(1.0, 0.965, 0.905),
+		"fill": Color(0.58, 0.66, 0.80),
+		"ambient": Color(0.50, 0.56, 0.66),
+	},
+	"snow":
+	{
+		"sun": Color(0.955, 0.975, 1.0),
+		"fill": Color(0.62, 0.72, 0.88),
+		"ambient": Color(0.58, 0.65, 0.78),
+	},
+	"desert":
+	{
+		"sun": Color(1.0, 0.925, 0.795),
+		"fill": Color(0.66, 0.66, 0.72),
+		"ambient": Color(0.64, 0.60, 0.53),
+	},
+	"rain":
+	{
+		"sun": Color(0.90, 0.945, 1.0),
+		"fill": Color(0.54, 0.64, 0.78),
+		"ambient": Color(0.48, 0.545, 0.63),
+	},
+}
+var _biome_look_accum: float = 0.0
 
 
 func _ready() -> void:
@@ -709,6 +757,10 @@ func _process(delta: float) -> void:
 	if _climate_gate_accum >= 1.0:
 		_climate_gate_accum = 0.0
 		_gate_climate_zones()
+	_biome_look_accum += delta
+	if _biome_look_accum >= 0.25:
+		_apply_biome_look(_biome_look_accum)
+		_biome_look_accum = 0.0
 
 
 ## Apply one day-night frame for the given in-game hour: spin the Sky3D dome to that hour and
@@ -722,6 +774,41 @@ func _apply_daynight(hour: float) -> void:
 	var s: float = DayNight.sun_ratio(hour)
 	_last_sun_ratio = s
 	_apply_sun_ambient(s)
+
+
+## D1 RELIGHT — per-biome LIGHT COLOUR (not energy): the four quadrants shared one white
+## sun and one ambient, so snow, desert, rain and urban only differed by ground tint and
+## particles. Each biome now carries its own sun/fill/ambient temperature, which is what
+## actually makes a place read as somewhere.
+##
+## THREE CONSTRAINTS THIS FUNCTION IS BUILT AROUND:
+##  1. `_restore_day()` and the storm tween own `light_energy`, `rotation`, `ambient_energy`,
+##     `fog_*`, `glow_intensity` and the SkyDome cumulus/darkness/exposure — writing any of
+##     those here would be silently reverted on every match start. So this touches ONLY
+##     colour: sun colour, fill colour, ambient colour.
+##  2. `WorldBounds.biome_at` is a hard split at the map centre with no seam, so blending by
+##     POSITION would pop. We blend in TIME instead (exponential approach), which reads as
+##     the light changing as you walk into a region.
+##  3. `_apply_sun_ambient` only runs when `sun_ratio` CHANGES, and that ratio plateaus for
+##     most of the match — anything put in there would freeze mid-day. Hence the own tick.
+func _apply_biome_look(delta: float) -> void:
+	if _sun == null:
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var p: Vector3 = cam.global_position
+	var look: Dictionary = _BIOME_LOOK.get(WorldBounds.biome_at(p.x, p.z), _BIOME_LOOK["urban"])
+	# Exponential approach — frame-rate independent, ~1.5 s to cross a biome border.
+	var k: float = 1.0 - exp(-delta * 2.2)
+	var sun_c: Color = look["sun"]
+	var fill_c: Color = look["fill"]
+	var amb_c: Color = look["ambient"]
+	_sun.light_color = _sun.light_color.lerp(sun_c, k)
+	if _fill != null:
+		_fill.light_color = _fill.light_color.lerp(fill_c, k)
+	if _env != null:
+		_env.ambient_light_color = _env.ambient_light_color.lerp(amb_c, k)
 
 
 ## PERF: pause the landmark climate systems (precip particles / fog volume / ground
@@ -770,6 +857,14 @@ func _apply_sun_ambient(s: float) -> void:
 			_sun.rotation = Vector3(pitch, _base_sun_rot.y, _base_sun_rot.z)
 	if _env != null:
 		_env.ambient_light_energy = lerpf(NIGHT_AMBIENT, DAY_AMBIENT, s)
+		# D1 RELIGHT — the ambient SOURCE is SKY (default_env.tres `ambient_light_source = 3`),
+		# which means `ambient_light_color` was inert and raising `ambient_light_energy` at
+		# night only scaled a nearly-black night sky: measured night frames sat at 97-99% of
+		# world pixels under the readable floor no matter what the energy said. Blending the
+		# sky DOWN at night hands those frames the explicit (cool, per-biome) ambient colour
+		# instead, which is the only ambient with any level in it after dusk. Daylight keeps
+		# a sky-dominated blend so outdoor shading still picks up real sky colour.
+		_env.ambient_light_sky_contribution = lerpf(NIGHT_SKY_CONTRIB, DAY_SKY_CONTRIB, s)
 	# Cool shadow-side FILL (texture-quality pass): with SDFGI driving indirect light the
 	# env ambient barely reaches steep shaded faces — buildings read as pure coal from
 	# their south-west. A weak shadowless counter-sun keeps shade legible; scaled down at
@@ -792,7 +887,9 @@ func _apply_sun_ambient(s: float) -> void:
 		var lamp := ln as OmniLight3D
 		if lamp == null:
 			continue
-		lamp.light_energy = 2.2 * night
+		# D1 RELIGHT 2.2 → 3.4: a night frame is legitimately dark overall, so what makes it
+		# NAVIGABLE is not a raised floor but readable pools of light to move between.
+		lamp.light_energy = 3.4 * night
 		var gm: Variant = lamp.get_meta("night_glow_mat", null)
 		if gm is StandardMaterial3D:
 			(gm as StandardMaterial3D).emission_energy_multiplier = 3.0 * night

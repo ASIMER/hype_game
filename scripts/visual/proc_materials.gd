@@ -19,6 +19,11 @@ class_name ProcMaterials
 ## as LINEAR (no sRGB format variant), so ALBEDO image colours are baked through
 ## `Color.srgb_to_linear()` (matching the terrain code). NORMAL/height images stay raw.
 
+## How strongly the fine-grime detail-albedo speckle blends over the tinted base, in the
+## grimiest lows (clean areas stay at 0). See `grime_fine_texture` — this used to be an
+## effective 1.0, which erased every building's albedo.
+const FINE_DETAIL_ALPHA := 0.26
+
 static var _tex_cache: Dictionary = {}
 
 
@@ -55,6 +60,16 @@ static func grime_texture(sid: int, grime: float) -> NoiseTexture2D:
 ## FINE grime: ~8-10× the base frequency of `grime` → 1-3 m features (the base mask is
 ## 30-80 m blobs). Used as a low-blend detail-albedo speckle so surfaces read sharp up
 ## close. Cached by sid. Higher contrast ramp than the broad mask so the speckle pops.
+##
+## ALPHA IS LOAD-BEARING (D1 relight fix): a detail-albedo layer in BLEND_MODE_MIX blends
+## by the DETAIL TEXTURE'S ALPHA. This ramp used to be fully opaque (Color defaults to a=1),
+## so the speckle REPLACED the albedo outright — `albedo_color` and the broad grime mask were
+## both thrown away and every building rendered as this grey noise regardless of its authored
+## palette (concrete / plaster / sandstone / snow / rust all looked like the same grey stone).
+## That is the exact defect already documented and removed on the machine side
+## (`proc_plating.gd` "NO detail-albedo layer here"). Here the layer is KEPT — it is what makes
+## surfaces read crisp up close — but the alpha now ramps so it only tints the grimy lows and
+## leaves clean areas untouched, which is what "low blend" meant all along.
 static func grime_fine_texture(sid: int, grime: float) -> NoiseTexture2D:
 	var key := "grimefine_%d_%.2f" % [sid, grime]
 	if _tex_cache.has(key):
@@ -71,8 +86,8 @@ static func grime_fine_texture(sid: int, grime: float) -> NoiseTexture2D:
 	nt.seamless = true
 	nt.noise = n
 	var g := Gradient.new()
-	g.set_color(0, Color(grime, grime, grime))
-	g.set_color(1, Color(1.0, 1.0, 1.0))
+	g.set_color(0, Color(grime, grime, grime, FINE_DETAIL_ALPHA))
+	g.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
 	nt.color_ramp = g
 	_tex_cache[key] = nt
 	return nt

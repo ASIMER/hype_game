@@ -37,3 +37,6 @@ desktop.ini
 # Debug screenshots (local)
 /debug_screens/
 assets/models/test_candidates/
+
+# photostand raw frames (big); the contact sheet + reports are what we keep
+showcase/quality2/*/*.png

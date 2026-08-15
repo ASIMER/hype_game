@@ -877,15 +877,20 @@ void fragment() {
 	float bz = smoothstep(72.0, 88.0, v_wpos.z);
 	// Saturated/distinct biome hues so each biome survives the global cold grade (desert must
 	// still read WARM ochre, snow cold-bright — the grade pulls everything cool otherwise).
-	vec3 bc_urban = vec3(0.32, 0.33, 0.36);
-	vec3 bc_desert = vec3(0.70, 0.48, 0.20);
+	// D1 RELIGHT: urban and rain sat at luma ~0.33 / ~0.29 and, multiplied by the texture's
+	// own luminance, landed the ground far under the grade's readable floor — both quadrants
+	// read as one dark slate with no material in it. Raised to keep the SAME hue relationships
+	// while clearing that floor; the blend weight also drops (0.80 → 0.66) so the ambientCG
+	// gravel/rock detail survives instead of being flattened into a single tinted value.
+	vec3 bc_urban = vec3(0.44, 0.45, 0.48);
+	vec3 bc_desert = vec3(0.74, 0.54, 0.26);
 	// Snow capped below blowout (art-panel P3): 0.74+ ground under the 2.8 sun merged
 	// with the fog/sky into one white sheet — contrast carries "snow", not albedo.
-	vec3 bc_snow = vec3(0.58, 0.63, 0.74);
-	vec3 bc_rain = vec3(0.24, 0.29, 0.37);
+	vec3 bc_snow = vec3(0.66, 0.71, 0.80);
+	vec3 bc_rain = vec3(0.35, 0.40, 0.47);
 	vec3 biome_col = mix(mix(bc_urban, bc_desert, bz), mix(bc_snow, bc_rain, bz), bx);
 	float bl = dot(base, vec3(0.299, 0.587, 0.114));
-	base = mix(base, biome_col * bl * 2.0, 0.8);
+	base = mix(base, biome_col * bl * 2.0, 0.66);
 	// Wet sheen for the rain quadrant: lower the floor roughness so it reads glossy/wet.
 	float wet = bx * bz;
 	rough = mix(rough, rough * 0.55, wet * 0.6);
