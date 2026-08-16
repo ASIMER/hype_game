@@ -32,11 +32,16 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 		var am: Node = tree.root.get_node_or_null("AudioManager")
 		if am == null:
 			return {"ok": false, "error": "no AudioManager"}
+		# `hangar` is the shell theme: volume_db + playing, because unlike the threat stems
+		# it has no mix float — it is driven straight off the phase. -80 while a raid runs.
+		var hang: Node = am.get("_hangar_player") as Node
 		return {
 			"ok": true,
 			"combat": [float(am.get("_combat_mix")), bool(am.get("_combat_hot"))],
 			"tension": [float(am.get("_tension_mix")), bool(am.get("_tension_hot"))],
 			"boss": [float(am.get("_boss_mix")), bool(am.get("_boss_hot"))],
+			"hangar":
+			[float(hang.get("volume_db")), bool(hang.get("playing"))] if hang != null else [],
 		}
 	# Hijack & Pilot QA (v0.5-B2 — chemistry's cousin verb; AgentBridge is at its ceiling):
 	#   hijack_state              → server pilot map {peer: enemy_name}

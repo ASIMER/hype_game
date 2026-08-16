@@ -908,6 +908,54 @@ def gen_music_tension() -> list[float]:
     return _fade([math.tanh(s) for s in out], 0.02, 0.02)
 
 
+def gen_music_hangar() -> list[float]:
+    """HANGAR theme: the menu/hub bed, ~40 s.
+
+    The shell used to borrow the raid's `music` bed, which is a tense in-mission drone —
+    it made standing in your own hangar feel like being hunted, and it left the player no
+    contrast to arrive from when the raid actually started. This is the opposite pole of
+    the same world: still cold and mechanical, but at REST. A slow major-ish drone chord,
+    a distant hall reverb wash, and the machine shop's own idle — a soft compressor cycle
+    and rare tool clinks. No pulse and no rhythm on purpose: a beat here would compete
+    with the menu, and the moment the raid's percussive stems come in has to feel new.
+    """
+    dur = 40.0
+    n = int(SAMPLE_RATE * dur)
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Sustained chord (A2 / E3 / C#4) with slow independent LFOs so it never sits still.
+    for freq, amp, lfo_s in ((110.0, 0.085, 13.0), (164.8, 0.055, 17.0), (277.2, 0.030, 21.0)):
+        tone = _sine(freq, dur, amp)
+        for i in range(n):
+            lfo = 0.62 + 0.38 * math.sin(2 * math.pi * i / SAMPLE_RATE / lfo_s)
+            out[i] += tone[i] * lfo
+    # A fifth an octave down, very quiet — gives the chord a floor without muddying it.
+    sub = _sine(82.4, dur, 0.045)
+    for i in range(n):
+        out[i] += sub[i]
+    # Hall wash: heavily lowpassed noise breathing on a 24 s cycle (the empty big room).
+    hall = _lowpass(_noise(dur, 0.075, seed=7710), 380)
+    for i in range(n):
+        swell = 0.4 + 0.6 * (0.5 + 0.5 * math.sin(2 * math.pi * i / SAMPLE_RATE / 24.0))
+        out[i] += hall[i] * swell
+    # Shop idle: a compressor that cycles on and off, softer than the chord.
+    hum = _lowpass(_noise(3.4, 0.06, seed=7720), 900)
+    for t0 in (1.5, 15.2, 28.6):
+        add(_fade(hum, 0.6, 0.9), t0, 0.9)
+    # Rare tool clinks, placed off the LFO periods so the loop seam stays unpredictable.
+    clink = _adsr(_highpass(_noise(0.35, 0.22, seed=7730), 3100), 0.001, 0.06, 0.18, 0.28)
+    for t0 in (6.3, 19.1, 33.7):
+        add(clink, t0, 0.7)
+    return _fade([math.tanh(s) for s in out], 0.03, 0.03)
+
+
 def gen_music_boss() -> list[float]:
     """BOSS stem (v0.5-B3 music layers): ~24 s heavy industrial assault — driving kick,
     a two-note low riff, dense metallic hats, a dissonant alarm stab and a constant sub.
@@ -1258,6 +1306,8 @@ def main() -> None:
         # v0.5-B3 music layers: tension + boss stems (converted to .ogg, WAVs deleted).
         ("music_tension.wav",  gen_music_tension),
         ("music_boss.wav",     gen_music_boss),
+        # Hangar theme: the shell/menu bed, so the hub stops borrowing the raid's drone.
+        ("music_hangar.wav",   gen_music_hangar),
         # D5.1 gunfire body: the distant boom that rolls back in, the indoor slap-back
         # and the bullet whizz-by (two variants so a burst of near misses is not one clip).
         ("shot_tail_far.wav",  gen_shot_tail_far),

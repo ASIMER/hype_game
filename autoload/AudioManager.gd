@@ -67,6 +67,7 @@ const SOUNDS := {
 	# v0.5-B3 music layers: TENSION (machines searching nearby) + BOSS (live boss) stems.
 	"music_tension": "res://assets/audio/music_tension.ogg",
 	"music_boss": "res://assets/audio/music_boss.ogg",
+	"music_hangar": "res://assets/audio/music_hangar.ogg",
 	# MOBA skill rework (v0.4.5): per-ability cast/impact sounds (gen_audio.py).
 	"skill_cast": "res://assets/audio/skill_cast.wav",
 	"skill_meteor": "res://assets/audio/skill_meteor.wav",
@@ -184,6 +185,28 @@ var _indoor_poll: float = 0.0
 ## Duck the music/ambient bed by `db` (negative). Deeper requests win.
 func duck(db: float) -> void:
 	_duck_db = minf(_duck_db, db)
+
+
+## The hangar/shell theme, driven by PHASE rather than by signals. Every route into and out
+## of the shell — boot, deploy, death, the summary screen, a restart, a co-op client dropping
+## back to the menu — is a phase change, so reading the phase covers all of them; wiring this
+## to `match_started` alone would have left the theme silent after a raid ended.
+## Runs unconditionally in `_process` (like the duck recovery) because the shell has no local
+## player and the rest of `_process` returns early without one.
+func _tick_hangar(delta: float) -> void:
+	if _hangar_player == null:
+		return
+	var want: bool = GameState.phase != GameState.Phase.IN_MATCH and enabled
+	var target: float = (MUSIC_HANGAR_DB + master_db) if want else -80.0
+	if want and not _hangar_player.playing:
+		_hangar_player.play()
+	var cur: float = _hangar_player.volume_db
+	if is_equal_approx(cur, target):
+		if not want and _hangar_player.playing:
+			_hangar_player.stop()  # silent AND stopped, so it costs nothing in a raid
+		return
+	var step: float = HANGAR_FADE_DB_PER_S * delta
+	_hangar_player.volume_db = clampf(target, cur - step, cur + step)
 
 
 ## Music layers (M1 combat + v0.5-B3 tension/boss): ONE 0.5 s threat poll drives three
@@ -414,6 +437,7 @@ const HEARTBEAT_HP_THRESHOLD := 0.30  # ratio of max_health
 # ---------------------------------------------------------------------------
 var _ambient_player: AudioStreamPlayer = null
 var _music_player: AudioStreamPlayer = null
+var _hangar_player: AudioStreamPlayer = null
 # Biome-bed crossfade state: which bed id is playing + a 2 s poll of the player's biome.
 var _ambient_id := ""
 var _amb_poll := 0.0
@@ -426,6 +450,11 @@ const UNDERWATER_BASE_DB := -12.0
 const AMBIENT_BASE_DB := -19.0  # real wind-loop bed — quiet, atmospheric
 const MUSIC_BASE_DB := -23.0  # tense dark-ambient music — deliberately quiet
 const MUSIC_WAVE_DB := -18.0  # slight raise during active waves
+## Hangar/shell theme. Louder than the raid bed on purpose: the shell has no
+## gunfire to sit under, and arriving into a raid should feel like the music
+## LEFT rather than like nothing changed.
+const MUSIC_HANGAR_DB := -19.0
+const HANGAR_FADE_DB_PER_S := 9.0
 
 # D5.3 footsteps/foley: surface classification, jump-land-mantle and the weight-scaled gear
 # rattle live in the component (scripts/core/footstep_surfaces.gd) — this file only routes
@@ -510,6 +539,15 @@ func _ready() -> void:
 		_boss_player.volume_db = -80.0
 		_boss_player.bus = "Bed"
 		_assign_stem_stream(_boss_player, "music_boss")
+		# Hangar/shell theme. The menu and hub used to borrow the raid's tense drone,
+		# which made standing in your own hangar feel like being hunted and left the
+		# raid nothing to arrive from. Driven by PHASE in _process (below) rather than
+		# by signals, so every route into and out of the shell — boot, deploy, death,
+		# summary, restart — is covered without hunting for the matching event.
+		_hangar_player = _make_looping_player("music_hangar", MUSIC_HANGAR_DB)
+		_hangar_player.volume_db = -80.0
+		_hangar_player.bus = "Bed"
+		_assign_stem_stream(_hangar_player, "music_hangar")
 
 		# "SFX" bus with a blendable reverb (outdoor air ↔ indoor room).
 		_sfx_bus_idx = AudioServer.bus_count
@@ -578,6 +616,7 @@ func _process(delta: float) -> void:
 		_duck_db = minf(_duck_db + 26.0 * delta, 0.0)
 		AudioServer.set_bus_volume_db(_bed_bus_idx, _duck_db)
 	_tick_music_layers(delta)
+	_tick_hangar(delta)
 	_tick_reverb_zone(delta)
 	_tick_ambience(delta)
 	_tick_shot_layers(delta)
