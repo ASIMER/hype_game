@@ -1,8 +1,8 @@
 {
   "meta": {
-    "label": "d3",
+    "label": "d5",
     "port": 24702,
-    "captured": "2026-08-16 03:07:34",
+    "captured": "2026-08-16 03:36:01",
     "mutator": "",
     "contaminated": false,
     "status": "clean",
@@ -28,15 +28,15 @@
         -40.0,
         -25.0
       ],
-      "hour": 13.0059259259259,
+      "hour": 13.0059255333333,
       "night": false,
       "player_pos": [
         -40.0,
         -2.07,
         -25.0
       ],
-      "enemies_visible": 6,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_urban_day.png",
+      "enemies_visible": 13,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_urban_day.png",
       "png": "urban_day.png",
       "stats": {
         "ok": true,
@@ -45,22 +45,22 @@
           720
         ],
         "world": {
-          "p05": 0.2533,
-          "p25": 0.4519,
-          "p50": 0.513,
-          "p75": 0.6023,
-          "p95": 0.7293,
-          "mean": 0.5179,
-          "dark_frac": 0.7271,
-          "saturation": 0.182
+          "p05": 0.2161,
+          "p25": 0.4525,
+          "p50": 0.5228,
+          "p75": 0.5998,
+          "p95": 0.7326,
+          "mean": 0.5091,
+          "dark_frac": 0.7206,
+          "saturation": 0.1782
         },
         "sky": {
-          "p50": 0.5561,
-          "mean": 0.529
+          "p50": 0.5552,
+          "mean": 0.4932
         },
-        "range": 0.476,
+        "range": 0.5165,
         "fail": true,
-        "fail_why": "under floor (73% > 50%)"
+        "fail_why": "under floor (72% > 50%)"
       }
     },
     {
@@ -76,8 +76,8 @@
         -2.07,
         -25.0
       ],
-      "enemies_visible": 6,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_urban_night.png",
+      "enemies_visible": 13,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_urban_night.png",
       "png": "urban_night.png",
       "stats": {
         "ok": true,
@@ -86,22 +86,22 @@
           720
         ],
         "world": {
-          "p05": 0.0553,
-          "p25": 0.0922,
-          "p50": 0.1417,
-          "p75": 0.1886,
-          "p95": 0.2658,
-          "mean": 0.1496,
-          "dark_frac": 0.998,
-          "saturation": 0.4019
+          "p05": 0.0188,
+          "p25": 0.0855,
+          "p50": 0.1236,
+          "p75": 0.1765,
+          "p95": 0.2549,
+          "mean": 0.1343,
+          "dark_frac": 0.9953,
+          "saturation": 0.4362
         },
         "sky": {
-          "p50": 0.1348,
-          "mean": 0.1351
+          "p50": 0.1349,
+          "mean": 0.1353
         },
-        "range": 0.2106,
+        "range": 0.2361,
         "fail": true,
-        "fail_why": "no anchors (p95 0.27 < 0.30)"
+        "fail_why": "no anchors (p95 0.25 < 0.30)"
       }
     },
     {
@@ -110,15 +110,15 @@
         160.0,
         14.0
       ],
-      "hour": 13.0059259259259,
+      "hour": 13.0062962962963,
       "night": false,
       "player_pos": [
         160.0,
         0.039,
         14.0
       ],
-      "enemies_visible": 6,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_snow_day.png",
+      "enemies_visible": 16,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_snow_day.png",
       "png": "snow_day.png",
       "stats": {
         "ok": true,
@@ -127,22 +127,22 @@
           720
         ],
         "world": {
-          "p05": 0.3365,
-          "p25": 0.478,
-          "p50": 0.5668,
-          "p75": 0.6715,
-          "p95": 0.7902,
-          "mean": 0.568,
-          "dark_frac": 0.5898,
-          "saturation": 0.1746
+          "p05": 0.2402,
+          "p25": 0.5111,
+          "p50": 0.5878,
+          "p75": 0.6903,
+          "p95": 0.8017,
+          "mean": 0.5833,
+          "dark_frac": 0.5002,
+          "saturation": 0.1547
         },
         "sky": {
-          "p50": 0.5827,
-          "mean": 0.5476
+          "p50": 0.5869,
+          "mean": 0.5312
         },
-        "range": 0.4537,
+        "range": 0.5615,
         "fail": true,
-        "fail_why": "under floor (59% > 50%)"
+        "fail_why": "under floor (50% > 50%)"
       }
     },
     {
@@ -158,8 +158,8 @@
         0.039,
         14.0
       ],
-      "enemies_visible": 6,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_snow_night.png",
+      "enemies_visible": 16,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_snow_night.png",
       "png": "snow_night.png",
       "stats": {
         "ok": true,
@@ -168,22 +168,22 @@
           720
         ],
         "world": {
-          "p05": 0.0592,
-          "p25": 0.1116,
-          "p50": 0.1442,
-          "p75": 0.1682,
-          "p95": 0.2655,
-          "mean": 0.1483,
-          "dark_frac": 0.9983,
-          "saturation": 0.5822
+          "p05": 0.0446,
+          "p25": 0.1096,
+          "p50": 0.1422,
+          "p75": 0.1677,
+          "p95": 0.2613,
+          "mean": 0.1463,
+          "dark_frac": 0.9964,
+          "saturation": 0.5916
         },
         "sky": {
-          "p50": 0.1444,
-          "mean": 0.1395
+          "p50": 0.1489,
+          "mean": 0.1444
         },
-        "range": 0.2063,
+        "range": 0.2166,
         "fail": true,
-        "fail_why": "no anchors (p95 0.27 < 0.30)"
+        "fail_why": "no anchors (p95 0.26 < 0.30)"
       }
     },
     {
@@ -199,8 +199,8 @@
         -0.159,
         182.0
       ],
-      "enemies_visible": 6,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_desert_day.png",
+      "enemies_visible": 16,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_desert_day.png",
       "png": "desert_day.png",
       "stats": {
         "ok": true,
@@ -209,22 +209,22 @@
           720
         ],
         "world": {
-          "p05": 0.2989,
-          "p25": 0.4358,
-          "p50": 0.5059,
-          "p75": 0.6464,
-          "p95": 0.7824,
-          "mean": 0.5329,
-          "dark_frac": 0.6714,
-          "saturation": 0.2755
+          "p05": 0.0669,
+          "p25": 0.1909,
+          "p50": 0.3964,
+          "p75": 0.5094,
+          "p95": 0.7551,
+          "mean": 0.3781,
+          "dark_frac": 0.8066,
+          "saturation": 0.407
         },
         "sky": {
-          "p50": 0.5296,
-          "mean": 0.4874
+          "p50": 0.0263,
+          "mean": 0.1805
         },
-        "range": 0.4835,
+        "range": 0.6882,
         "fail": true,
-        "fail_why": "under floor (67% > 50%)"
+        "fail_why": "under floor (81% > 50%)"
       }
     },
     {
@@ -240,8 +240,8 @@
         -0.159,
         182.0
       ],
-      "enemies_visible": 9,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_desert_night.png",
+      "enemies_visible": 16,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_desert_night.png",
       "png": "desert_night.png",
       "stats": {
         "ok": true,
@@ -250,22 +250,22 @@
           720
         ],
         "world": {
-          "p05": 0.0434,
-          "p25": 0.0897,
-          "p50": 0.1149,
-          "p75": 0.1565,
-          "p95": 0.3562,
-          "mean": 0.153,
-          "dark_frac": 0.9727,
-          "saturation": 0.3895
+          "p05": 0.0,
+          "p25": 0.04,
+          "p50": 0.0835,
+          "p75": 0.1289,
+          "p95": 0.2867,
+          "mean": 0.106,
+          "dark_frac": 0.9906,
+          "saturation": 0.4052
         },
         "sky": {
-          "p50": 0.1196,
-          "mean": 0.1402
+          "p50": 0.0,
+          "mean": 0.0474
         },
-        "range": 0.3128,
-        "fail": false,
-        "fail_why": ""
+        "range": 0.2867,
+        "fail": true,
+        "fail_why": "no anchors (p95 0.29 < 0.30)"
       }
     },
     {
@@ -274,15 +274,15 @@
         160.0,
         143.0
       ],
-      "hour": 13.0059259259259,
+      "hour": 13.0059274666667,
       "night": false,
       "player_pos": [
         160.0,
         -0.049,
         143.0
       ],
-      "enemies_visible": 9,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_rain_day.png",
+      "enemies_visible": 16,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_rain_day.png",
       "png": "rain_day.png",
       "stats": {
         "ok": true,
@@ -291,22 +291,22 @@
           720
         ],
         "world": {
-          "p05": 0.2983,
-          "p25": 0.4534,
-          "p50": 0.5705,
-          "p75": 0.6753,
-          "p95": 0.7958,
-          "mean": 0.5604,
-          "dark_frac": 0.5455,
-          "saturation": 0.1899
+          "p05": 0.2545,
+          "p25": 0.3789,
+          "p50": 0.5171,
+          "p75": 0.6575,
+          "p95": 0.7748,
+          "mean": 0.5137,
+          "dark_frac": 0.6332,
+          "saturation": 0.2097
         },
         "sky": {
-          "p50": 0.6256,
-          "mean": 0.6211
+          "p50": 0.6753,
+          "mean": 0.6592
         },
-        "range": 0.4975,
+        "range": 0.5203,
         "fail": true,
-        "fail_why": "under floor (55% > 50%)"
+        "fail_why": "under floor (63% > 50%)"
       }
     },
     {
@@ -315,15 +315,15 @@
         160.0,
         143.0
       ],
-      "hour": 21.0059277925926,
+      "hour": 21.0059259259259,
       "night": true,
       "player_pos": [
         160.0,
         -0.049,
         143.0
       ],
-      "enemies_visible": 9,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_rain_night.png",
+      "enemies_visible": 16,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_rain_night.png",
       "png": "rain_night.png",
       "stats": {
         "ok": true,
@@ -332,22 +332,22 @@
           720
         ],
         "world": {
-          "p05": 0.0351,
-          "p25": 0.0687,
-          "p50": 0.0956,
-          "p75": 0.1887,
-          "p95": 0.2192,
-          "mean": 0.1235,
-          "dark_frac": 0.9984,
-          "saturation": 0.608
+          "p05": 0.0003,
+          "p25": 0.0054,
+          "p50": 0.0303,
+          "p75": 0.0718,
+          "p95": 0.1988,
+          "mean": 0.0525,
+          "dark_frac": 0.9956,
+          "saturation": 0.7928
         },
         "sky": {
-          "p50": 0.0953,
-          "mean": 0.1049
+          "p50": 0.0373,
+          "mean": 0.0597
         },
-        "range": 0.1841,
+        "range": 0.1985,
         "fail": true,
-        "fail_why": "no anchors (p95 0.22 < 0.30)"
+        "fail_why": "no anchors (p95 0.20 < 0.30)"
       }
     },
     {
@@ -356,15 +356,15 @@
         -38.0,
         -43.0
       ],
-      "hour": 13.0059259259259,
+      "hour": 13.0059247407407,
       "night": false,
       "player_pos": [
         -38.0,
         0.0,
         -43.0
       ],
-      "enemies_visible": 9,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_interior_day.png",
+      "enemies_visible": 16,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_interior_day.png",
       "png": "interior_day.png",
       "stats": {
         "ok": true,
@@ -373,20 +373,20 @@
           720
         ],
         "world": {
-          "p05": 0.1892,
-          "p25": 0.2503,
-          "p50": 0.3009,
-          "p75": 0.3649,
-          "p95": 0.4939,
-          "mean": 0.3151,
-          "dark_frac": 0.9912,
-          "saturation": 0.2669
+          "p05": 0.1903,
+          "p25": 0.2525,
+          "p50": 0.3018,
+          "p75": 0.3651,
+          "p95": 0.4973,
+          "mean": 0.3167,
+          "dark_frac": 0.9906,
+          "saturation": 0.2672
         },
         "sky": {
-          "p50": 0.3738,
-          "mean": 0.3737
+          "p50": 0.3766,
+          "mean": 0.3752
         },
-        "range": 0.3047,
+        "range": 0.307,
         "fail": true,
         "fail_why": "under floor (99% > 50%)"
       }
@@ -397,15 +397,15 @@
         -40.0,
         -25.0
       ],
-      "hour": 13.0060001037037,
+      "hour": 13.0062962962963,
       "night": false,
       "player_pos": [
         -40.0,
         -2.07,
         -25.0
       ],
-      "enemies_visible": 12,
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_combat_day.png",
+      "enemies_visible": 19,
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_combat_day.png",
       "png": "combat_day.png",
       "stats": {
         "ok": true,
@@ -414,29 +414,29 @@
           720
         ],
         "world": {
-          "p05": 0.2793,
-          "p25": 0.4679,
-          "p50": 0.5769,
-          "p75": 0.6755,
-          "p95": 0.7441,
-          "mean": 0.5593,
-          "dark_frac": 0.5169,
-          "saturation": 0.1769
+          "p05": 0.2508,
+          "p25": 0.4718,
+          "p50": 0.5688,
+          "p75": 0.6749,
+          "p95": 0.7461,
+          "mean": 0.5582,
+          "dark_frac": 0.529,
+          "saturation": 0.1755
         },
         "sky": {
-          "p50": 0.5122,
-          "mean": 0.4871
+          "p50": 0.5174,
+          "mean": 0.4776
         },
-        "range": 0.4648,
+        "range": 0.4953,
         "fail": true,
-        "fail_why": "under floor (52% > 50%)"
+        "fail_why": "under floor (53% > 50%)"
       }
     }
   ],
   "machines": [
     {
       "id": "robot_grunt",
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_hero_robot_grunt.png",
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_hero_robot_grunt.png",
       "png": "hero_robot_grunt.png",
       "stats": {
         "ok": true,
@@ -454,7 +454,7 @@
     },
     {
       "id": "robot_heavy",
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_hero_robot_heavy.png",
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_hero_robot_heavy.png",
       "png": "hero_robot_heavy.png",
       "stats": {
         "ok": true,
@@ -472,7 +472,7 @@
     },
     {
       "id": "robot_elite",
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_hero_robot_elite.png",
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_hero_robot_elite.png",
       "png": "hero_robot_elite.png",
       "stats": {
         "ok": true,
@@ -490,7 +490,7 @@
     },
     {
       "id": "robot_frosthound",
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_hero_robot_frosthound.png",
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_hero_robot_frosthound.png",
       "png": "hero_robot_frosthound.png",
       "stats": {
         "ok": true,
@@ -508,7 +508,7 @@
     },
     {
       "id": "robot_oni",
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_hero_robot_oni.png",
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_hero_robot_oni.png",
       "png": "hero_robot_oni.png",
       "stats": {
         "ok": true,
@@ -526,7 +526,7 @@
     },
     {
       "id": "robot_boss",
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_hero_robot_boss.png",
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_hero_robot_boss.png",
       "png": "hero_robot_boss.png",
       "stats": {
         "ok": true,
@@ -544,7 +544,7 @@
     },
     {
       "id": "player",
-      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d3_hero_player.png",
+      "src": "C:/Users/illya/AppData/Roaming/Godot/app_userdata/Hype Raiders/agent/24702/d5_hero_player.png",
       "png": "hero_player.png",
       "stats": {
         "ok": true,
