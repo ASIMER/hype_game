@@ -1,6 +1,10 @@
 ## M5.4 RUNTIME micro-vignettes — 4-7 tiny "someone was here" scenes scattered across the
 ## 320×320 rect each raid (a wrecked convoy, a roadside shrine, a downed drone, a warning
-## totem, a cracked stash), so wandering between the authored POIs keeps paying off.
+## totem, a cracked stash, an abandoned evac point, a machine salvage line, a last-stand
+## firing line, a dead comms mast, a spent drop pod), so wandering between the authored POIs
+## keeps paying off. Every scene is a SILENT diorama: it has to read from 10-15 m with no
+## text at all, so each one is built around ONE silhouette (a shape you can name from a
+## distance) plus ONE accent (a light, a smoke column, a painted ground mark).
 ##
 ## GOLDEN-SNAPSHOT CONTRACT: nothing in here may run at arena BUILD time. This is a RUNTIME
 ## server-side spawn (exactly like wave enemies and the field loot) invoked from the
@@ -18,12 +22,14 @@
 ## PARSE TRAP (warnings-as-errors): never `var x := <Variant>` — every local is typed.
 class_name MicroVignettes
 
-enum Template { CONVOY, SHRINE, DRONE, TOTEM, STASH }
+## APPEND-ONLY: templates are picked by INDEX, so a new scene goes on the END of this enum
+## (an insert would silently re-map every existing case).
+enum Template { CONVOY, SHRINE, DRONE, TOTEM, STASH, EVAC, HARVEST, BARRICADE, MAST, POD }
 
 const ROOT_NAME: String = "MicroVignettes"
 const COUNT_MIN: int = 4
 const COUNT_MAX: int = 7
-const TEMPLATE_COUNT: int = 5
+const TEMPLATE_COUNT: int = 10
 
 # Placement rules (all metres, flat XZ distances).
 const EDGE_INSET: float = 16.0  # keep off the perimeter berm/walls
@@ -45,9 +51,13 @@ const LOOT_CELL: String = "loot_cell"
 const LOOT_CHEMICALS: String = "loot_chemicals"
 const LOOT_MEDKIT: String = "loot_medkit"
 const LOOT_ARTIFACT: String = "loot_artifact"
+const LOOT_AMMO: String = "loot_ammo"
+const LOOT_DATA_CHIP: String = "loot_data_chip"
 
 # Shared material cache — 7 vignettes must not allocate 40 near-identical materials.
 static var _mat_cache: Dictionary = {}
+# Ground-paint ring, generated once per session (see _ring_texture).
+static var _ring_tex: ImageTexture = null
 
 
 ## Server-only entry point: place the raid's micro-vignettes and return how many landed.
@@ -167,6 +177,16 @@ static func _build_one(holder: Node3D, loot_root: Node, rng: RandomNumberGenerat
 			_build_drone(holder, loot_root, rng)
 		Template.TOTEM:
 			_build_totem(holder, rng)
+		Template.EVAC:
+			_build_evac(holder, loot_root, rng)
+		Template.HARVEST:
+			_build_harvest(holder, loot_root, rng)
+		Template.BARRICADE:
+			_build_barricade(holder, loot_root, rng)
+		Template.MAST:
+			_build_mast(holder, loot_root, rng)
+		Template.POD:
+			_build_pod(holder, loot_root, rng)
 		_:
 			_build_stash(holder, loot_root, rng)
 
@@ -299,6 +319,260 @@ static func _build_stash(holder: Node3D, loot_root: Node, rng: RandomNumberGener
 	_drop(loot_root, holder, Vector3(-0.38, 0.5, 1.25), second, 1)
 
 
+## ABANDONED EVAC POINT — a painted landing circle, a queue of dropped duffels that never
+## got loaded, a toppled crowd barrier, and one flare still burning itself out. The dropship
+## came, it filled up, and it left. Read at range: the ground ring + the smoke column.
+static func _build_evac(holder: Node3D, loot_root: Node, rng: RandomNumberGenerator) -> void:
+	# The circle is a DECAL, not a disc mesh: the placer tolerates 1.6 m of drop across the
+	# footprint and a flat mesh at the holder's single Y would clip into or float over it.
+	_decal(holder, true, 11.0, Color(0.86, 0.78, 0.42), 0.45)
+	var canvas: StandardMaterial3D = _mat(Color(0.26, 0.25, 0.19), 0.95, 0.0)
+	var strap: StandardMaterial3D = _mat(Color(0.14, 0.13, 0.11), 0.95, 0.0)
+	# A queue of duffels along one edge — a LINE of bags reads as "people stood here" in a
+	# way a scatter never does, so the row is deliberate and only the jitter is random.
+	for i in range(6):
+		var bx: float = -2.6 + float(i) * 1.05 + rng.randf_range(-0.16, 0.16)
+		var bz: float = 3.3 + rng.randf_range(-0.5, 0.5)
+		var bag: MeshInstance3D = _box(
+			holder, Vector3(0.78, 0.42, 0.46), Vector3(bx, 0.21, bz), canvas
+		)
+		bag.rotation = Vector3(0.0, rng.randf_range(-0.6, 0.6), rng.randf_range(-0.1, 0.1))
+		var band: MeshInstance3D = _box(
+			holder, Vector3(0.80, 0.07, 0.12), Vector3(bx, 0.30, bz), strap
+		)
+		band.rotation.y = bag.rotation.y
+	# Two crowd barriers knocked flat in the rush for the ramp.
+	var rail: StandardMaterial3D = _mat(Color(0.55, 0.42, 0.12), 0.7, 0.4)
+	for i in range(2):
+		var rx: float = -1.4 + float(i) * 2.9
+		var bar: MeshInstance3D = _box(
+			holder, Vector3(2.3, 0.09, 0.16), Vector3(rx, 0.06, 1.5 + float(i) * 0.4), rail
+		)
+		var byaw: float = rng.randf_range(-0.5, 0.5)
+		bar.rotation = Vector3(0.0, byaw, 0.0)
+		var leg: MeshInstance3D = _box(
+			holder, Vector3(0.12, 0.09, 0.62), bar.position + Vector3(0.0, 0.02, 0.0), rail
+		)
+		leg.rotation.y = byaw
+	# The flare: the accent that finds the scene from 15 m out.
+	var flare_pos := Vector3(rng.randf_range(-1.0, 1.0), 0.14, rng.randf_range(-1.6, -0.6))
+	_cyl(holder, 0.06, 0.28, flare_pos, strap)
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.34, 0.18)
+	glow.light_energy = 1.9
+	glow.omni_range = 6.5
+	holder.add_child(glow)
+	glow.position = flare_pos + Vector3(0.0, 0.25, 0.0)
+	_blink(glow)
+	_smoke(holder, flare_pos + Vector3(0.0, 0.3, 0.0), Color(0.72, 0.36, 0.24, 0.34), 14)
+	_drop(loot_root, holder, Vector3(-3.7, 0.4, 3.1), LOOT_MEDKIT, 1)
+	_drop(loot_root, holder, Vector3(3.5, 0.4, 2.6), LOOT_PLASTIC, 2)
+
+
+## SALVAGE LINE — machines taken apart on purpose: torsos laid out in a row on a tarp, limbs
+## sorted into piles by type, one hull still hanging from a field gantry. Not a battlefield —
+## a WORKSHOP. Somebody was farming the things that hunt you, and then stopped.
+static func _build_harvest(holder: Node3D, loot_root: Node, rng: RandomNumberGenerator) -> void:
+	var tarp: StandardMaterial3D = _mat(Color(0.15, 0.19, 0.15), 0.98, 0.0)
+	var hull: StandardMaterial3D = _mat(Color(0.19, 0.20, 0.22), 0.7, 0.6)
+	var limb: StandardMaterial3D = _mat(Color(0.15, 0.16, 0.17), 0.8, 0.5)
+	var frame: StandardMaterial3D = _mat(Color(0.33, 0.30, 0.26), 0.9, 0.2)
+	_box(holder, Vector3(4.4, 0.05, 3.0), Vector3(0.0, 0.03, 0.0), tarp)
+	# Three torsos in a ROW on the tarp — the order is the whole story.
+	for i in range(3):
+		var tz: float = -1.0 + float(i) * 1.0
+		var torso: MeshInstance3D = _box(
+			holder, Vector3(1.05, 0.5, 0.62), Vector3(-0.9, 0.3, tz), hull
+		)
+		torso.rotation.y = rng.randf_range(-0.09, 0.09)
+		torso.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		_box(holder, Vector3(0.3, 0.16, 0.3), Vector3(-0.42, 0.36, tz), limb)
+	# Two SORTED piles: rods in one, plates in the other. Sorting is what reads as deliberate.
+	for i in range(5):
+		var rod: MeshInstance3D = _cyl(
+			holder,
+			0.09,
+			0.95,
+			Vector3(1.05 + rng.randf_range(-0.12, 0.12), 0.1 + float(i) * 0.16, -0.9),
+			limb
+		)
+		rod.rotation = Vector3(0.0, 0.0, PI * 0.5 + rng.randf_range(-0.12, 0.12))
+	for i in range(4):
+		var plate: MeshInstance3D = _box(
+			holder, Vector3(0.62, 0.06, 0.46), Vector3(1.15, 0.06 + float(i) * 0.08, 0.9), hull
+		)
+		plate.rotation.y = rng.randf_range(-0.3, 0.3)
+	# The gantry: two posts + a beam, one hull still slung under it. The vertical read.
+	_cyl(holder, 0.09, 2.6, Vector3(-2.3, 1.3, -1.5), frame)
+	_cyl(holder, 0.09, 2.6, Vector3(-2.3, 1.3, 1.5), frame)
+	var beam: MeshInstance3D = _box(
+		holder, Vector3(0.16, 0.16, 3.3), Vector3(-2.3, 2.65, 0.0), frame
+	)
+	beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_cyl(holder, 0.03, 0.95, Vector3(-2.3, 2.1, 0.35), limb)
+	var slung: MeshInstance3D = _box(
+		holder, Vector3(0.9, 0.85, 0.6), Vector3(-2.3, 1.2, 0.35), hull
+	)
+	slung.rotation = Vector3(0.0, rng.randf_range(-0.4, 0.4), rng.randf_range(-0.2, 0.2))
+	slung.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_drop(loot_root, holder, Vector3(2.6, 0.4, 0.2), LOOT_SCRAP, 3)
+	_drop(loot_root, holder, Vector3(2.4, 0.4, -1.5), LOOT_CIRCUIT, 1)
+
+
+## FIRING LINE — a crate barricade dug in facing ONE way, brass all over the ground behind
+## it, a deployable knocked on its side, and the machine that got within five metres anyway.
+## The direction everything faces is the story: they knew what was coming and from where.
+static func _build_barricade(holder: Node3D, loot_root: Node, rng: RandomNumberGenerator) -> void:
+	var sack: StandardMaterial3D = _mat(Color(0.31, 0.29, 0.22), 0.98, 0.0)
+	var steel: StandardMaterial3D = _mat(Color(0.17, 0.18, 0.19), 0.65, 0.65)
+	var brass: StandardMaterial3D = _mat(Color(0.62, 0.48, 0.16), 0.35, 0.9)
+	# A shallow arc, every block square to the arc — a wall, not a heap.
+	for i in range(6):
+		var a: float = -0.75 + float(i) * 0.30
+		var p := Vector3(sin(a) * 3.4, 0.0, -cos(a) * 3.4)
+		var blk: MeshInstance3D = _box(
+			holder,
+			Vector3(1.0, 0.55, 0.55),
+			p + Vector3(0.0, 0.28 + (0.5 if i == 2 or i == 3 else 0.0), 0.0),
+			sack
+		)
+		blk.rotation.y = -a
+		blk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if i == 2 or i == 3:
+			# The centre is stacked two high — the spot they expected to be hit hardest.
+			var under: MeshInstance3D = _box(
+				holder, Vector3(1.0, 0.55, 0.55), p + Vector3(0.0, 0.28, 0.0), sack
+			)
+			under.rotation.y = -a
+	# Spent brass behind the line — the volume of fire, told in litter.
+	for i in range(12):
+		var ba: float = rng.randf_range(-PI, PI)
+		var br: float = rng.randf_range(0.4, 2.4)
+		var case_mi: MeshInstance3D = _cyl(
+			holder, 0.028, 0.09, Vector3(sin(ba) * br, 0.045, cos(ba) * br * 0.6 + 0.6), brass
+		)
+		case_mi.rotation = Vector3(PI * 0.5, ba, 0.0)
+	# The deployable that ran dry, tipped over on its side.
+	var pod: MeshInstance3D = _box(holder, Vector3(0.8, 0.9, 0.8), Vector3(1.6, 0.42, 1.3), steel)
+	pod.rotation = Vector3(0.0, rng.randf_range(-0.6, 0.6), 1.45)
+	var mast_stub: MeshInstance3D = _cyl(holder, 0.05, 1.1, Vector3(1.6, 0.9, 1.3), steel)
+	mast_stub.rotation.z = 1.45
+	# And the one that still got through, stopped just past the crates.
+	var wreck: MeshInstance3D = _box(
+		holder, Vector3(1.3, 0.95, 1.6), Vector3(rng.randf_range(-1.2, 1.2), 0.45, -5.6), steel
+	)
+	wreck.rotation = Vector3(rng.randf_range(0.3, 0.6), rng.randf_range(-0.8, 0.8), 0.25)
+	wreck.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	var arm: MeshInstance3D = _cyl(holder, 0.14, 1.2, Vector3(1.5, 0.12, -5.0), steel)
+	arm.rotation = Vector3(0.0, rng.randf_range(-1.0, 1.0), PI * 0.5)
+	_sparks(holder, Vector3(0.0, 0.7, -5.4))
+	_drop(loot_root, holder, Vector3(-0.6, 0.4, 1.9), LOOT_AMMO, 2)
+	if rng.randf() < 0.6:
+		_drop(loot_root, holder, Vector3(1.1, 0.4, 2.3), LOOT_SCRAP, 2)
+
+
+## DEAD REPEATER — a lattice mast guyed down in the dirt, a dish still aimed at a sky nobody
+## answered from, and a battery bank blinking on its last cell. Whoever raised this was
+## calling for a long time. The tallest silhouette in the set: visible well past 15 m.
+static func _build_mast(holder: Node3D, loot_root: Node, rng: RandomNumberGenerator) -> void:
+	var steel: StandardMaterial3D = _mat(Color(0.36, 0.35, 0.33), 0.7, 0.55)
+	var dark: StandardMaterial3D = _mat(Color(0.13, 0.14, 0.15), 0.8, 0.4)
+	var top: float = 5.2
+	var tilt: float = rng.randf_range(0.05, 0.12)
+	var lean := Vector3(sin(tilt) * top, cos(tilt) * top, 0.0)
+	# Three legs + rungs: a LATTICE, so the mast reads as structure and not as a pole.
+	var legs: Array[Vector3] = [
+		Vector3(0.30, 0.0, 0.0), Vector3(-0.15, 0.0, 0.26), Vector3(-0.15, 0.0, -0.26)
+	]
+	for l in legs:
+		_strut(holder, l, l + lean, 0.055, steel)
+	for i in range(6):
+		var t: float = 0.12 + float(i) * 0.16
+		for j in range(3):
+			_strut(holder, legs[j] + lean * t, legs[(j + 1) % 3] + lean * (t + 0.08), 0.028, steel)
+	# The dish, still pointed somewhere specific.
+	var dish: MeshInstance3D = _cyl(holder, 0.85, 0.1, lean + Vector3(0.0, -0.5, 0.0), steel)
+	dish.rotation = Vector3(1.25, rng.randf_range(-PI, PI), 0.0)
+	dish.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	# Guy-wires to three stakes — the thing that makes it read as RAISED, not dropped.
+	for i in range(3):
+		var ga: float = float(i) * TAU / 3.0 + 0.4
+		var anchor := Vector3(sin(ga) * 3.6, 0.0, cos(ga) * 3.6)
+		_strut(holder, lean * 0.82, anchor + Vector3(0.0, 0.15, 0.0), 0.022, dark)
+		_box(holder, Vector3(0.16, 0.34, 0.16), anchor + Vector3(0.0, 0.14, 0.0), dark)
+	# Battery bank at the foot, one cell still alive.
+	var bank: MeshInstance3D = _box(holder, Vector3(1.2, 0.55, 0.7), Vector3(1.5, 0.28, 1.0), dark)
+	bank.rotation.y = rng.randf_range(-0.5, 0.5)
+	_box(holder, Vector3(1.24, 0.1, 0.16), Vector3(1.5, 0.6, 1.0), steel)
+	var lamp := OmniLight3D.new()
+	lamp.light_color = Color(0.30, 1.0, 0.55)
+	lamp.light_energy = 1.4
+	lamp.omni_range = 5.5
+	holder.add_child(lamp)
+	lamp.position = Vector3(1.5, 0.72, 1.0)
+	_blink(lamp)
+	var spool: MeshInstance3D = _cyl(holder, 0.55, 0.22, Vector3(-1.7, 0.11, 1.4), dark)
+	spool.rotation = Vector3(rng.randf_range(-0.1, 0.1), 0.0, rng.randf_range(-0.1, 0.1))
+	_drop(loot_root, holder, Vector3(2.6, 0.4, 1.4), LOOT_CELL, 1)
+	_drop(loot_root, holder, Vector3(-2.4, 0.4, 2.0), LOOT_DATA_CHIP, 1)
+
+
+## SPENT DROP POD — a scorched capsule half-buried at the end of its own skid, hatch blown
+## clean off, chute crumpled downwind, debris thrown in a fan. Somebody ARRIVED here. The
+## pod is a one-way vehicle, so there is no story where they left the way they came.
+static func _build_pod(holder: Node3D, loot_root: Node, rng: RandomNumberGenerator) -> void:
+	_decal(holder, false, 9.0, Color(0.08, 0.07, 0.07), 0.6)
+	var burnt: StandardMaterial3D = _mat(Color(0.11, 0.11, 0.12), 0.8, 0.5)
+	var hot: StandardMaterial3D = _mat(Color(0.20, 0.21, 0.23), 0.55, 0.75)
+	var chute: StandardMaterial3D = _mat(Color(0.52, 0.51, 0.46), 0.98, 0.0)
+	var yaw: float = rng.randf_range(-0.5, 0.5)
+	# The capsule, nose down and buried to the shoulder at the end of its furrow.
+	var caps: MeshInstance3D = _cyl(holder, 1.0, 2.5, Vector3(0.0, 0.62, 0.0), burnt)
+	caps.rotation = Vector3(rng.randf_range(0.95, 1.25), yaw, 0.0)
+	caps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	# The nose cone sheared off on impact and came to rest on its side beside the hull.
+	var nose: MeshInstance3D = _taper(holder, 0.95, 0.22, 1.2, Vector3(1.9, 0.36, 1.5), burnt)
+	nose.rotation = Vector3(1.4, yaw, 0.22)
+	# The skid it dug coming in: ridges of thrown dirt trailing back along the entry line,
+	# drifting sideways with the hull's yaw so the whole scene points ONE way.
+	for i in range(5):
+		var t: float = float(i) * 0.9
+		var ridge: MeshInstance3D = _box(
+			holder,
+			Vector3(1.9 - float(i) * 0.2, 0.16, 0.5),
+			Vector3(sin(yaw) * t * 0.4, 0.07, -1.4 - t * 0.9),
+			burnt
+		)
+		ridge.rotation.y = yaw + rng.randf_range(-0.15, 0.15)
+	# Hatch blown off and lying face-up a few metres out — the "it OPENED" beat.
+	var hatch: MeshInstance3D = _cyl(holder, 0.95, 0.12, Vector3(3.0, 0.07, 1.1), hot)
+	hatch.rotation = Vector3(rng.randf_range(-0.25, 0.25), 0.0, rng.randf_range(-0.3, 0.3))
+	# Crumpled canopy downwind — pale cloth is the one bright shape in the scene.
+	for i in range(3):
+		var ca: float = rng.randf_range(-PI, PI)
+		var cloth: MeshInstance3D = _box(
+			holder,
+			Vector3(2.1 - float(i) * 0.3, 0.05, 1.6),
+			Vector3(-3.4 + float(i) * 0.5, 0.04 + float(i) * 0.05, 2.6 + float(i) * 0.4),
+			chute
+		)
+		cloth.rotation = Vector3(rng.randf_range(-0.12, 0.12), ca, rng.randf_range(-0.12, 0.12))
+	for i in range(7):
+		var da: float = rng.randf_range(-PI, PI)
+		var dr: float = rng.randf_range(2.0, 4.4)
+		var frag: MeshInstance3D = _box(
+			holder,
+			Vector3(rng.randf_range(0.15, 0.4), 0.1, rng.randf_range(0.15, 0.35)),
+			Vector3(sin(da) * dr, 0.05, cos(da) * dr),
+			hot
+		)
+		frag.rotation = Vector3(rng.randf_range(-0.3, 0.3), da, rng.randf_range(-0.3, 0.3))
+	_smoke(holder, Vector3(0.3, 0.9, 0.2), Color(0.26, 0.26, 0.28, 0.30), 10)
+	_drop(loot_root, holder, Vector3(2.2, 0.5, 2.3), LOOT_CELL, 1)
+	if rng.randf() < 0.55:
+		_drop(loot_root, holder, Vector3(-2.0, 0.5, 1.4), LOOT_MEDKIT, 1)
+
+
 # --------------------------------------------------------------- build helpers
 ## Render-only box. Shadows OFF by default (these are small props scattered map-wide);
 ## callers flip `cast_shadow` back on for the few silhouettes that need grounding.
@@ -402,3 +676,129 @@ static func _mat(col: Color, rough: float, metal: float, emit: float = 0.0) -> S
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mat_cache[key] = mat
 	return mat
+
+
+## Truncated cone (CylinderMesh with unequal radii) — the one shape `_cyl` can't make.
+static func _taper(
+	parent: Node3D, bottom: float, top: float, height: float, pos: Vector3, mat: Material
+) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = top
+	mesh.bottom_radius = bottom
+	mesh.height = height
+	mesh.radial_segments = 10
+	mesh.rings = 1
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	mi.position = pos
+	return mi
+
+
+## A cylinder spanning two holder-LOCAL points (mast legs, rungs, guy-wires). CylinderMesh is
+## Y-axis, so the basis is rebuilt with Y along the span — `position` survives the assignment
+## because basis and origin are independent halves of the transform.
+static func _strut(
+	parent: Node3D, from: Vector3, to: Vector3, radius: float, mat: Material
+) -> void:
+	var delta: Vector3 = to - from
+	var span: float = delta.length()
+	if span < 0.02:
+		return
+	var mi: MeshInstance3D = _cyl(parent, radius, span, (from + to) * 0.5, mat)
+	var up: Vector3 = delta / span
+	# Any reference axis that isn't parallel to the span works — pick the safer of two.
+	# (Explicitly typed: an inferred ternary parses as Variant under warnings-as-errors.)
+	var ref: Vector3 = Vector3.RIGHT if absf(up.dot(Vector3.RIGHT)) < 0.9 else Vector3.FORWARD
+	var xax: Vector3 = ref.cross(up).normalized()
+	mi.basis = Basis(xax, up, xax.cross(up))
+
+
+## Ground paint (`ring` = a painted landing circle, else a filled scorch). A `Decal` PROJECTS
+## straight down onto whatever is under it, so it survives the ±MAX_SLOPE_DROP the placer
+## tolerates — a flat disc mesh sat at the holder's single Y would clip into the rise on one
+## side and float on the other. SKIPPED on a dedicated headless server, and the texture is
+## resolved only AFTER that check so the server never runs the image bake at all (the same
+## discipline extraction_zone/ProceduralClimateZones use around _radial_texture).
+static func _decal(parent: Node3D, ring: bool, size: float, tint: Color, mix: float) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var tex: Texture2D = _ring_texture() if ring else ProceduralClimateZones._radial_texture()
+	if tex == null:
+		return
+	var dec := Decal.new()
+	dec.texture_albedo = tex
+	dec.size = Vector3(size, 2.6, size)
+	dec.modulate = tint
+	dec.albedo_mix = mix
+	dec.upper_fade = 0.4
+	dec.lower_fade = 0.4
+	parent.add_child(dec)
+	dec.position = Vector3(0.0, 1.0, 0.0)
+
+
+## Slow drifting smoke (a burning flare, a cooling hull). Deliberately thin and short-ranged:
+## this is a scene accent that finds the eye, not weather.
+static func _smoke(parent: Node3D, pos: Vector3, tint: Color, amount: int) -> void:
+	var p := GPUParticles3D.new()
+	p.amount = maxi(1, amount)
+	p.lifetime = 3.4
+	p.randomness = 0.6
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0.0, 1.0, 0.0)
+	pm.spread = 14.0
+	pm.initial_velocity_min = 0.5
+	pm.initial_velocity_max = 1.1
+	pm.gravity = Vector3(0.35, 0.25, 0.0)
+	pm.scale_min = 0.7
+	pm.scale_max = 1.9
+	pm.color = tint
+	p.process_material = pm
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.9, 0.9)
+	quad.material = _soft_mat(tint)
+	p.draw_pass_1 = quad
+	parent.add_child(p)
+	p.position = pos
+	p.emitting = true
+
+
+## Unshaded, alpha-blended, particle-billboarded material for smoke quads. Shares the
+## `_mat` cache under its own key prefix so the two never collide.
+static func _soft_mat(col: Color) -> StandardMaterial3D:
+	var key: String = "soft|%s" % col
+	var cached: StandardMaterial3D = _mat_cache.get(key, null)
+	if cached != null:
+		return cached
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = col
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_mat_cache[key] = mat
+	return mat
+
+
+## Cached RING texture for the evac landing circle (the radial one in ProceduralClimateZones
+## is a filled disc). Built once for the whole session — 96² is plenty at decal scale.
+static func _ring_texture() -> ImageTexture:
+	if _ring_tex != null:
+		return _ring_tex
+	var n: int = 96
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in range(n):
+		for x in range(n):
+			var dx: float = (float(x) / float(n - 1) - 0.5) * 2.0
+			var dy: float = (float(y) / float(n - 1) - 0.5) * 2.0
+			var d: float = sqrt(dx * dx + dy * dy)
+			# A painted band at 0.78 R, plus a faint wash inside it so the circle reads FILLED.
+			var band: float = clampf(1.0 - absf(d - 0.78) / 0.15, 0.0, 1.0)
+			var wash: float = clampf(1.0 - d / 0.64, 0.0, 1.0) * 0.20
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, clampf(band + wash, 0.0, 1.0)))
+	_ring_tex = ImageTexture.create_from_image(img)
+	return _ring_tex

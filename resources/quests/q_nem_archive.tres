@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqnemarchive01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_nem_archive"
+title = "The Thing That Taught Them"
+desc = "Every core you brought back was reading from the same lesson. It is written in the rain quarter, in the temple, and it is called the Oni Chief. Destroy it."
+daily = false
+obj_type = "kill"
+obj_target = "robot_oni_chief"
+obj_count = 1
+reward_currency = 3000
+reward_item_ids = PackedStringArray("loot_artifact", "armor_vest_t2")
+reward_item_counts = PackedInt32Array(3, 1)
+reward_blueprints = PackedStringArray("bp_drum_mag")
+unlock = PackedStringArray()
+prereq = PackedStringArray("q_nem_lineage")
+lore = "\"They are not each learning. They are all reading. Go east, into the rain, and tear up the thing they read from.\" — The Archivist"
+giver = "The Archivist"
+questline = "ql_nemesis"
+offer_weight = 0
+reward_xp = 1400
+reward_giver_rep = 6
+reward_skill_points = 2
+reward_cosmetics = PackedStringArray("head_oni", "arms_claw", "paint_void")
