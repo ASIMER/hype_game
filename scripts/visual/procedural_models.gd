@@ -233,6 +233,19 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 	return m
 
 
+## A ring lying in the XZ plane (axis +Y) — the one primitive that gives a body a real
+## HOLE. At 100 m a machine is 15-31 px: an outline plus a light blob is all that lands,
+## and a cluster of rings is the only shape a ground unit can never fake, which is why the
+## hover drones are built out of ducts rather than out of more boxes.
+static func _torus(inner: float, outer: float, rings := 14, seg := 6) -> TorusMesh:
+	var m := TorusMesh.new()
+	m.inner_radius = inner
+	m.outer_radius = outer
+	m.rings = rings
+	m.ring_segments = seg
+	return m
+
+
 # ----------------------------------------------------------------- material
 static func _mat(
 	color: Color, metallic := 0.0, roughness := 0.7, emission := Color.BLACK, emission_energy := 0.0
@@ -386,297 +399,342 @@ static func _strut(
 
 
 # ================================================================= ENEMIES
-## Tick — small, fast skittering hexapod. Domed carapace + glowing sensor eye +
-## six bent legs. Collision: capsule r0.3 h0.7 @ world y0.35; ModelRoot @ y0.35,
-## so local y0 = world 0.35, feet at local y≈-0.35.
+## Tick — the ground-hugging SKITTERER, and the family rule is that it must not read as a
+## robot at all: a flat two-lobe carapace pinned LOW over a splayed six-leg cluster whose
+## knees arc ABOVE the shell line. The abris is a dark smear with a spiky fringe — nothing
+## vertical, nothing humanoid, so it separates from every other machine by outline alone.
+## Collision: capsule r0.3 h0.7 @ world y0.35; ModelRoot @ y0.35, so local y0 = world 0.35,
+## feet at local y≈-0.35. The shell footprint is TIGHTER than the old one (x ±0.33, z ±0.42)
+## — the body must never grow past the capsule it is shot through.
 static func build_robot_tick() -> Node3D:
 	var root := Node3D.new()
-	# Material kit (v2): plated gun-metal carapace; identity orange as restrained
-	# accent paint; legs read as bare worn steel.
+	# Material kit: light plate over black frame; identity orange as restrained accent
+	# paint; legs read as bare worn steel.
 	var k := ProcEnemyKits.kit("robot_tick")
-	var shell: StandardMaterial3D = k["hull"]
+	var hull: StandardMaterial3D = k["hull"]
 	var dark: StandardMaterial3D = k["frame"]
-	var accent: StandardMaterial3D = k["accent"]
-	var eye_mat: StandardMaterial3D = k["glow"]
-	var leg_mat: StandardMaterial3D = k["steel"]
+	var acc: StandardMaterial3D = k["accent"]
+	var glow: StandardMaterial3D = k["glow"]
+	var steel: StandardMaterial3D = k["steel"]
 
-	# Flat, wide beetle carapace + a slightly smaller underbelly.
-	_part(
-		root,
-		_sphere(0.32, false, 9, 16),
-		shell,
-		Vector3(0, 0.06, 0.0),
-		Vector3.ZERO,
-		Vector3(1.25, 0.5, 1.4)
-	)
-	_part(root, _box(Vector3(0.42, 0.12, 0.5)), dark, Vector3(0, -0.05, 0))
-	# Orange accent rim along each flank + a brow over the eye.
-	_part(root, _box(Vector3(0.05, 0.05, 0.46)), accent, Vector3(0.2, 0.08, 0.02))
-	_part(root, _box(Vector3(0.05, 0.05, 0.46)), accent, Vector3(-0.2, 0.08, 0.02))
-	_part(root, _box(Vector3(0.3, 0.05, 0.08)), accent, Vector3(0, 0.12, -0.32), Vector3(20, 0, 0))
-	# Forward glowing sensor eye (faces -Z) + two mandible prongs.
-	var eye := _part(root, _sphere(0.1, false, 8, 12), eye_mat, Vector3(0, 0.04, -0.42))
+	# Dark underbelly + the two-lobe beetle body: thorax dome, then a longer tapered
+	# abdomen. Two lobes (not one dome) is what reads as chitin instead of a casing.
+	_part(root, _box(Vector3(0.38, 0.09, 0.46)), dark, Vector3(0, -0.19, 0.02))
+	var wide := Vector3(1.24, 0.46, 1.2)
+	_part(root, _sphere(0.26, false, 8, 14), hull, Vector3(0, -0.09, -0.08), Vector3.ZERO, wide)
+	var tail := Vector3(1.04, 0.44, 1.25)
+	_part(root, _sphere(0.22, false, 8, 12), hull, Vector3(0, -0.1, 0.16), Vector3.ZERO, tail)
+	# Segment ridges across the abdomen — pointwise density, the one busy zone.
+	for i in 3:
+		var rz := 0.06 + float(i) * 0.1
+		_part(root, _box(Vector3(0.28 - float(i) * 0.05, 0.03, 0.02)), dark, Vector3(0, -0.03, rz))
+	# Identity paint on the flanks only (the 10% channel).
+	_part(root, _box(Vector3(0.04, 0.035, 0.28)), acc, Vector3(0.23, -0.09, -0.04))
+	_part(root, _box(Vector3(0.04, 0.035, 0.28)), acc, Vector3(-0.23, -0.09, -0.04))
+	# Head wedge with a horizontal sensor SLIT (a bar, not a bulb — the ARC sensor
+	# language) + two mandible prongs.
+	_part(root, _box(Vector3(0.18, 0.1, 0.12)), dark, Vector3(0, -0.12, -0.36))
+	var eye := _part(root, _box(Vector3(0.14, 0.035, 0.02)), glow, Vector3(0, -0.11, -0.42))
 	eye.name = "Eye"
-	_part(root, _cone(0.04, 0.18), dark, Vector3(0.1, -0.04, -0.46), Vector3(-100, 0, 0))
-	_part(root, _cone(0.04, 0.18), dark, Vector3(-0.1, -0.04, -0.46), Vector3(-100, 0, 0))
+	_part(root, _cone(0.035, 0.16), dark, Vector3(0.1, -0.18, -0.43), Vector3(-105, 0, 12))
+	_part(root, _cone(0.035, 0.16), dark, Vector3(-0.1, -0.18, -0.43), Vector3(-105, 0, -12))
 
-	# Six wide-splayed bent legs (3 per side): knee up-and-out, foot planted on ground.
-	# Each leg lives under its own pivot Node3D at the body attach point so the enemy
-	# script can micro-sway the whole leg by rotating the pivot (named "Leg0".."Leg5").
-	var zs := [-0.22, 0.02, 0.26]
+	# Six legs under their own "Leg0".."Leg5" pivots (robot_enemy micro-sways the pivot):
+	# attach LOW on the flank, knee high and wide, foot planted on the ground. The arc of
+	# knees above the shell is the whole insect read, so the knees clear the carapace top.
+	var zs := [-0.2, 0.02, 0.24]
 	var li := 0
 	for side in [-1.0, 1.0]:
 		for z in zs:
+			var sf := float(side)
 			var zf := float(z)
-			var attach := Vector3(side * 0.2, 0.02, zf)
-			var knee := Vector3(side * 0.5, 0.16, zf + side * 0.03)
-			var foot := Vector3(side * 0.6, -0.35, zf + side * 0.02)
+			var attach := Vector3(sf * 0.16, -0.1, zf)
+			var knee := Vector3(sf * 0.34, 0.11, zf + sf * 0.04)
+			var foot := Vector3(sf * 0.47, -0.35, zf + sf * 0.06)
 			var pivot := Node3D.new()
 			pivot.name = "Leg%d" % li
 			pivot.position = attach
 			root.add_child(pivot)
 			# Build the leg in pivot-local space (subtract the attach point).
-			_strut(pivot, Vector3.ZERO, knee - attach, 0.05, leg_mat)
-			_strut(pivot, knee - attach, foot - attach, 0.038, leg_mat)
-			_part(pivot, _sphere(0.05, false, 6, 8), dark, foot - attach)
+			_strut(pivot, Vector3.ZERO, knee - attach, 0.045, steel)
+			_strut(pivot, knee - attach, foot - attach, 0.032, steel)
+			_part(pivot, _sphere(0.042, false, 6, 8), dark, foot - attach)
 			li += 1
 	return root
 
 
-## Wasp — flying drone. Glowing core + ringed body + 4 rotor arms + a stinger.
-## Collision sphere r0.4, ModelRoot @ y0 (hovers), so build symmetric about local y0.
+## Wasp — the HOVER DRONE family, and the family rule is NEGATIVE SPACE: four ducted fan
+## RINGS on short stalks around a small pod, so what the eye locks onto is the pattern of
+## holes between them — a shape no ground machine can fake, and the reason a drone stays
+## legible against bright sky at any range. Rear thrust nozzles are the kill window: from
+## behind they are two bright circles. Collision sphere r0.4, ModelRoot @ y0 (it hovers),
+## so build symmetric about local y0; ring tips reach 0.42, inside the old 0.5 rotor span.
 static func build_robot_wasp() -> Node3D:
 	var root := Node3D.new()
-	# Material kit (v2): mech-hull pod, rubber frame, bare-steel rotor blades.
 	var k := ProcEnemyKits.kit("robot_wasp")
-	var body: StandardMaterial3D = k["hull"]
+	var hull: StandardMaterial3D = k["hull"]
 	var dark: StandardMaterial3D = k["frame"]
-	var rotor: StandardMaterial3D = k["steel"]
-	var core_mat: StandardMaterial3D = k["glow"]
+	var steel: StandardMaterial3D = k["steel"]
+	var acc: StandardMaterial3D = k["accent"]
+	var glow: StandardMaterial3D = k["glow"]
 
-	# A body pivot wrapping the pod + core + stinger so the script can bob just the
-	# body (named "Body") without moving the rotors' spin hub.
+	# A body pivot wrapping the pod so the script can bob just the body (named "Body")
+	# without moving the rotors' spin hub.
 	var bodyp := Node3D.new()
 	bodyp.name = "Body"
 	root.add_child(bodyp)
-	# Central body pod (flattened) with a glowing sensor core at the front.
-	_part(
-		bodyp,
-		_sphere(0.24, false, 10, 14),
-		body,
-		Vector3(0, 0, 0),
-		Vector3.ZERO,
-		Vector3(1.0, 0.6, 1.1)
-	)
-	var core := _part(bodyp, _sphere(0.12, false, 10, 14), core_mat, Vector3(0, 0.0, -0.2))
+	# Small flattened pod — deliberately UNDER-sized against the ducts, so the rings own
+	# the outline and the body is only the bright blob at the centre of them.
+	var pod := Vector3(1.0, 0.78, 1.3)
+	_part(bodyp, _sphere(0.17, false, 9, 14), hull, Vector3.ZERO, Vector3.ZERO, pod)
+	_part(bodyp, _box(Vector3(0.1, 0.07, 0.44)), dark, Vector3(0, 0.02, 0.02))
+	# Forward sensor: one lens recessed in a dark cowl (the pulsed "Core").
+	_part(bodyp, _cyl(0.1, 0.05, 12), dark, Vector3(0, 0, -0.19), Vector3(90, 0, 0))
+	var core := _part(bodyp, _cyl(0.075, 0.03, 12), glow, Vector3(0, 0, -0.22), Vector3(90, 0, 0))
 	core.name = "Core"
-	# Top + bottom caps.
-	_part(
-		bodyp,
-		_sphere(0.16, true, 8, 14),
-		dark,
-		Vector3(0, 0.06, 0),
-		Vector3.ZERO,
-		Vector3(1.0, 0.7, 1.0)
-	)
-	# Downward stinger (faces -Z, angled down) — its ranged "gun".
-	_part(bodyp, _cone(0.06, 0.32), dark, Vector3(0, -0.08, -0.28), Vector3(-115, 0, 0))
+	# Rear thrust nozzles — the KILL WINDOW, shrouded so they only light up from behind.
+	for sx in [-0.085, 0.085]:
+		var nx := float(sx)
+		_part(bodyp, _cyl(0.062, 0.09, 10), dark, Vector3(nx, 0, 0.19), Vector3(90, 0, 0))
+		_part(bodyp, _cyl(0.045, 0.02, 10), glow, Vector3(nx, 0, 0.235), Vector3(90, 0, 0))
+	# Short chin gun (its ranged strike), angled down-forward.
+	_part(bodyp, _cone(0.045, 0.2), steel, Vector3(0, -0.075, -0.16), Vector3(-110, 0, 0))
 
-	# Four rotor arms out to the diagonals, each ending in a flat spinning rotor disc.
-	# Each disc sits under its OWN pivot Node3D centred on the disc (so a Y rotation
-	# spins the blade in place, not orbiting the body); all pivots are grouped under
-	# a "RotorHub" so the script can find + spin them in one cheap loop. Arms (struts)
-	# stay fixed on the root. The disc mesh is given a 2-bladed look via a thin crossbar
-	# so the spin actually reads.
+	# Four ducted fans on short stalks. The RING is the silhouette (a real hole through
+	# it) and the blades are two thin bars, so the duct stays see-through while it spins.
+	# Each fan sits under its OWN pivot centred on the duct (a Y rotation spins the blades
+	# in place, not around the body); the pivots are grouped under "RotorHub" so the flyer
+	# script finds and spins them in one cheap loop.
 	var hub := Node3D.new()
 	hub.name = "RotorHub"
 	root.add_child(hub)
 	var arms := [
-		Vector3(0.34, 0.12, 0.34),
-		Vector3(-0.34, 0.12, 0.34),
-		Vector3(0.34, 0.12, -0.34),
-		Vector3(-0.34, 0.12, -0.34)
+		Vector3(0.27, 0.05, -0.27),
+		Vector3(-0.27, 0.05, -0.27),
+		Vector3(0.27, 0.05, 0.27),
+		Vector3(-0.27, 0.05, 0.27)
 	]
 	var ri := 0
 	for tip in arms:
 		var tv: Vector3 = tip
-		_strut(root, Vector3(tv.x * 0.4, 0.04, tv.z * 0.4), tv, 0.03, dark)
+		_strut(root, Vector3(tv.x * 0.35, 0.02, tv.z * 0.35), tv, 0.028, dark)
+		_part(root, _torus(0.1, 0.15), hull, tv)
+		if tv.z < 0.0:  # identity paint on the forward pair only
+			_part(root, _box(Vector3(0.09, 0.025, 0.05)), acc, tv + Vector3(0, 0.03, -0.115))
 		var pivot := Node3D.new()
 		pivot.name = "Rotor%d" % ri
-		pivot.position = tv + Vector3(0, 0.02, 0)
+		pivot.position = tv
 		hub.add_child(pivot)
-		_part(pivot, _cyl(0.16, 0.025, 12), rotor)
-		# Two crossed blades so the spin is visible against the disc.
-		_part(pivot, _box(Vector3(0.32, 0.035, 0.04)), dark, Vector3(0, 0.02, 0))
-		_part(pivot, _box(Vector3(0.04, 0.035, 0.32)), dark, Vector3(0, 0.02, 0))
-		_part(root, _sphere(0.05, false, 6, 8), dark, tv)
+		_part(pivot, _cyl(0.032, 0.05, 8), steel)
+		_part(pivot, _box(Vector3(0.19, 0.012, 0.03)), steel)
+		_part(pivot, _box(Vector3(0.03, 0.012, 0.19)), steel)
 		ri += 1
 	return root
 
 
-## Bastion — heavy stationary turret with a glowing WEAK POINT on top. Collision box
-## 1.8×2.4 @ world y1.2; ModelRoot @ y1.3; WeakPoint hurtbox 1.0×0.7 @ world y2.6
-## → base at local y≈-1.3, weak-point dome at local y≈+1.3.
+## Bastion — the SIEGE WALKER family: mass parked high on four splayed JACK legs, so the
+## signature is the gap between the ground and its belly plus a narrow waist under a big
+## CALM turret. It was a box on a box (i.e. a bigger version of everything else); now the
+## outline is unmistakable at any range and from any angle, and the jacks say "deployed,
+## not walking". Collision box 1.8×2.4 @ world y1.2; ModelRoot @ y1.3; WeakPoint hurtbox
+## 1.0×0.7 @ world y2.6 → feet at local y≈-1.3, weak-point dome centred at local y≈+1.2.
 static func build_robot_bastion() -> Node3D:
 	var root := Node3D.new()
-	# Material kit (v2): plated oxide-red armour — the panel-seam bake does the heavy
-	# lifting on these big flat boxes. WeakDome keeps its AMBER signage glow (gameplay).
+	# Material kit: plated armour — the panel-seam bake does the heavy lifting on these
+	# big calm plates. WeakDome keeps its AMBER signage glow (gameplay contract).
 	var k := ProcEnemyKits.kit("robot_bastion")
-	var armor: StandardMaterial3D = k["hull"]
+	var hull: StandardMaterial3D = k["hull"]
 	var dark: StandardMaterial3D = k["frame"]
 	var steel: StandardMaterial3D = k["steel"]
-	var trim: StandardMaterial3D = k["accent"]
+	var acc: StandardMaterial3D = k["accent"]
 	var weak := ProcPlating.glow(Color(1.0, 0.55, 0.15), 3.5)
 
-	# Wide armored base — STATIC (does not track the player).
-	_part(root, _box(Vector3(1.7, 0.9, 1.7)), dark, Vector3(0, -0.85, 0))
-	_part(root, _box(Vector3(1.85, 0.2, 1.85)), armor, Vector3(0, -1.25, 0))
+	# Four jack legs down to planted footpads + a NARROW waist — STATIC (the base does
+	# not track). The open belly under the turret is the whole silhouette idea.
+	for i in 4:
+		var ang := TAU * float(i) / 4.0 + PI * 0.25
+		var dx := cos(ang)
+		var dz := sin(ang)
+		_strut(
+			root,
+			Vector3(dx * 0.24, -0.4, dz * 0.24),
+			Vector3(dx * 0.76, -1.08, dz * 0.76),
+			0.09,
+			steel
+		)
+		_part(root, _cyl(0.1, 0.36, 8), hull, Vector3(dx * 0.78, -1.06, dz * 0.78))
+		_part(root, _cyl(0.17, 0.1, 10), dark, Vector3(dx * 0.8, -1.25, dz * 0.8))
+	_part(root, _cyl(0.3, 0.66, 10), dark, Vector3(0, -0.62, 0))
+	_part(root, _cyl(0.46, 0.16, 12), hull, Vector3(0, -0.26, 0))
 
-	# The whole upper turret rotates on Y to face the player: body + barrels + weak
-	# point + shoulders all live under "TurretHead" (pivoted at the base top so it
-	# spins about the centre column). The script yaws this node toward the nearest player.
+	# The whole upper turret rotates on Y to face the player: hull + barrels + weak point
+	# + drums all live under "TurretHead" (pivoted on the waist column so it spins about
+	# the centre). The gunner script yaws this node toward the nearest player.
 	var head := Node3D.new()
 	head.name = "TurretHead"
 	root.add_child(head)
-	# Main turret body (mid).
-	_part(head, _box(Vector3(1.5, 1.0, 1.4)), armor, Vector3(0, 0.05, 0))
-	_part(head, _box(Vector3(1.55, 0.18, 1.45)), trim, Vector3(0, 0.5, 0))
+	# Big calm turret hull: one main mass, one stepped deck, one dark under-plate.
+	_part(head, _box(Vector3(1.35, 0.66, 1.15)), hull, Vector3(0, 0.12, 0))
+	_part(head, _box(Vector3(1.42, 0.16, 1.2)), dark, Vector3(0, -0.24, 0))
+	_part(head, _box(Vector3(1.02, 0.28, 0.92)), hull, Vector3(0, 0.54, 0))
+	_part(head, _box(Vector3(1.38, 0.06, 1.18)), acc, Vector3(0, 0.44, 0))
+	_part(head, _box(Vector3(0.68, 0.42, 0.28)), dark, Vector3(0, 0.06, -0.62))
 	# Twin forward cannon barrels (face -Z), named so the script can find the gun.
 	var bi := 0
-	for sx in [-0.35, 0.35]:
+	for sx in [-0.24, 0.24]:
+		var bx := float(sx)
 		var barrel := _part(
-			head, _cyl(0.13, 1.0, 12), steel, Vector3(float(sx), 0.1, -0.85), Vector3(90, 0, 0)
+			head, _cyl(0.11, 0.9, 12), steel, Vector3(bx, 0.06, -1.0), Vector3(90, 0, 0)
 		)
 		barrel.name = "Barrel%d" % bi
-		_part(head, _cyl(0.16, 0.2, 12), trim, Vector3(float(sx), 0.1, -0.5), Vector3(90, 0, 0))
+		_part(head, _cyl(0.14, 0.18, 12), acc, Vector3(bx, 0.06, -0.7), Vector3(90, 0, 0))
 		bi += 1
-	# Shoulder armor plates.
-	for sx2 in [-0.85, 0.85]:
-		_part(
-			head,
-			_box(Vector3(0.25, 0.7, 1.1)),
-			dark,
-			Vector3(float(sx2), 0.2, 0),
-			Vector3(0, 0, 12) * signf(float(sx2))
-		)
-	# Glowing weak point dome on top (over the WeakPoint hurtbox at world y2.6).
-	_part(head, _cyl(0.45, 0.25, 8), dark, Vector3(0, 0.95, 0))
+	# Side ammo drums — mass where the shoulders used to be, but read as hardware.
+	for sx2 in [-0.62, 0.62]:
+		_part(head, _cyl(0.22, 0.5, 10), dark, Vector3(float(sx2), 0.1, 0.16), Vector3(0, 0, 90))
+	# Glowing weak point dome on top — deliberately parked INSIDE the WeakPoint hurtbox
+	# (world y2.6 ±0.35 = local 0.95..1.65), so the bright thing IS the ×2.5 shot.
+	_part(head, _cyl(0.4, 0.24, 10), dark, Vector3(0, 0.86, 0))
+	var tall := Vector3(1.0, 1.2, 1.0)
 	var dome := _part(
-		head,
-		_sphere(0.4, true, 10, 16),
-		weak,
-		Vector3(0, 1.05, 0),
-		Vector3.ZERO,
-		Vector3(1.0, 1.1, 1.0)
+		head, _sphere(0.36, true, 10, 16), weak, Vector3(0, 1.0, 0), Vector3.ZERO, tall
 	)
 	dome.name = "WeakDome"
 	return root
 
 
-## Boss — large multi-part mech. Collision box 3.0×4.2 @ world y2.1; ModelRoot @ y2.2
-## → legs/feet base at local y≈-2.2, chest core near local y0, head on top.
+## Boss — the multi-leg TITAN family: a body-POD slung high between two enlarged
+## three-segment legs, so a player standing at its feet reads INSIDE the silhouette
+## (the arch under the belly is ~2 m of open air). It stops being "the big humanoid mech"
+## the moment the arms come off: the guns are hull-mounted side pods and the head is a
+## visor bar sunk into the pod, leaving big calm surfaces to carry the mass.
+## Collision box 3.0×4.2 @ world y2.1; ModelRoot @ y2.2 → feet at local y≈-2.2, pod
+## centred near local y0.6, dorsal top ≈+1.6 (boss_brain scales the model ×1.3 on top and
+## hangs its crown at ModelRoot-local 3.4, so the top must stay well under that).
 static func build_robot_boss() -> Node3D:
 	var root := Node3D.new()
-	# Material kit (v2): plated violet armour; cannons are bare steel; the eyes keep
-	# their bespoke pink (vs the identity-violet chest core) at restrained energy.
+	# Material kit: plated armour; cannons are bare steel; the eyes keep their bespoke
+	# pink (vs the identity chest core) at restrained energy.
 	var k := ProcEnemyKits.kit("robot_boss")
-	var armor: StandardMaterial3D = k["hull"]
+	var hull: StandardMaterial3D = k["hull"]
 	var dark: StandardMaterial3D = k["frame"]
 	var steel: StandardMaterial3D = k["steel"]
-	var trim: StandardMaterial3D = k["accent"]
+	var acc: StandardMaterial3D = k["accent"]
 	var core_mat: StandardMaterial3D = k["glow"]
 	var eye_mat := ProcPlating.glow(Color(1.0, 0.2, 0.4), 3.0)
 
-	# Two heavy legs from the ground (local y-2.2) up to the hips — STATIC base.
-	for sx in [-0.6, 0.6]:
+	# Two enlarged digitigrade legs — thigh kicks BACK to a high knee, shin drives FORWARD
+	# to a low ankle, foot plants wide. STATIC base (only the pod turns).
+	for sx in [-1.0, 1.0]:
 		var fx := float(sx)
-		_part(root, _box(Vector3(0.55, 0.3, 0.95)), dark, Vector3(fx, -2.05, 0.05))  # foot
-		_strut(root, Vector3(fx, -2.0, 0), Vector3(fx, -1.1, 0.15), 0.22, armor)  # shin
-		_strut(root, Vector3(fx, -1.1, 0.15), Vector3(fx * 0.7, -0.4, 0), 0.26, armor)  # thigh
-		_part(root, _sphere(0.28, false, 8, 10), dark, Vector3(fx, -1.1, 0.15))  # knee joint
-	# Hips — STATIC.
-	_part(root, _box(Vector3(1.5, 0.5, 0.9)), dark, Vector3(0, -0.45, 0))
+		var hip := Vector3(fx * 0.5, -0.62, 0)
+		var knee := Vector3(fx * 0.84, -1.14, 0.4)
+		var ankle := Vector3(fx * 1.0, -1.76, -0.16)
+		var foot := Vector3(fx * 1.02, -2.06, -0.04)
+		_strut(root, hip, knee, 0.3, hull)
+		_strut(root, knee, ankle, 0.23, hull)
+		_strut(root, ankle, foot, 0.16, steel)
+		_part(root, _sphere(0.3, false, 8, 10), dark, knee)
+		_part(root, _sphere(0.19, false, 8, 10), dark, ankle)
+		_part(root, _box(Vector3(0.6, 0.28, 0.98)), dark, foot)
+		_part(root, _box(Vector3(0.5, 0.12, 0.26)), steel, foot + Vector3(0, -0.06, -0.56))
+		_part(root, _box(Vector3(0.34, 0.4, 0.16)), acc, Vector3(fx * 0.96, -1.2, 0.28))
+	# Hip yoke slung between the legs — STATIC.
+	_part(root, _box(Vector3(1.44, 0.4, 0.86)), dark, Vector3(0, -0.62, 0))
+	_part(root, _box(Vector3(1.2, 0.26, 0.72)), hull, Vector3(0, -0.4, 0))
 
-	# Upper body (torso + chest core + arms + head) rotates on Y to face the player.
-	# Pivoted near the hips ("Torso") so the whole mech upper turns toward the target.
+	# The POD (body + core + guns + sensor) rotates on Y to face the player. Pivoted at
+	# the hips ("Torso") so the whole upper mass swings toward the target.
 	var torso := Node3D.new()
 	torso.name = "Torso"
 	torso.position = Vector3(0, -0.2, 0)
 	root.add_child(torso)
-	# Torso shell (built in torso-local space: subtract the pivot y-offset).
-	_part(torso, _box(Vector3(1.7, 1.5, 1.0)), armor, Vector3(0, 0.7, 0))
-	_part(torso, _box(Vector3(1.75, 0.25, 1.05)), trim, Vector3(0, 1.45, 0))
-	# Glowing chest core.
-	var core := _part(torso, _sphere(0.32, false, 12, 16), core_mat, Vector3(0, 0.65, -0.45))
+	# Pod shell (torso-local: subtract the pivot y-offset). Two big quiet plates.
+	_part(torso, _box(Vector3(1.86, 1.02, 1.32)), hull, Vector3(0, 0.85, 0))
+	_part(torso, _box(Vector3(1.46, 0.36, 1.04)), dark, Vector3(0, 0.28, 0.02))
+	_part(torso, _box(Vector3(0.98, 0.42, 0.78)), hull, Vector3(0, 1.55, 0.24))
+	for i in 3:
+		_part(torso, _box(Vector3(0.86, 0.14, 0.09)), dark, Vector3(0, 1.8, 0.06 + float(i) * 0.16))
+	_part(torso, _box(Vector3(0.5, 0.06, 0.03)), acc, Vector3(0, 0.36, -0.68))
+	# Glowing chest core in a dark iris — the kill window, dead centre of the pod face.
+	_part(torso, _cyl(0.46, 0.16, 10), dark, Vector3(0, 0.85, -0.62), Vector3(90, 0, 0))
+	var core := _part(torso, _sphere(0.34, false, 12, 16), core_mat, Vector3(0, 0.85, -0.6))
 	core.name = "ChestCore"
-	_part(torso, _cyl(0.4, 0.2, 8), dark, Vector3(0, 0.65, -0.42), Vector3(90, 0, 0))
-	# Shoulder pods + arm cannons.
+	# Hull-mounted gun pods (NOT arms) — the anti-humanoid move.
 	for sx3 in [-1.0, 1.0]:
 		var ax := float(sx3)
-		_part(torso, _box(Vector3(0.6, 0.7, 0.8)), dark, Vector3(ax, 1.2, 0))
-		_strut(torso, Vector3(ax, 1.0, 0), Vector3(ax * 1.05, -0.1, -0.2), 0.16, armor)  # upper arm
-		_part(torso, _cyl(0.18, 1.1, 12), steel, Vector3(ax * 1.1, -0.3, -0.5), Vector3(80, 0, 0))  # cannon
-		_part(torso, _cyl(0.22, 0.25, 12), trim, Vector3(ax * 1.12, -0.3, -0.95), Vector3(80, 0, 0))
-	# Head with twin glowing eyes.
-	var head := _part(torso, _box(Vector3(0.7, 0.55, 0.7)), dark, Vector3(0, 1.75, 0))
+		_part(torso, _box(Vector3(0.5, 0.6, 1.0)), hull, Vector3(ax * 1.0, 0.96, 0.06))
+		_part(torso, _box(Vector3(0.54, 0.14, 1.04)), dark, Vector3(ax * 1.0, 0.62, 0.06))
+		_part(torso, _cyl(0.17, 1.15, 12), steel, Vector3(ax * 1.0, 0.74, -0.72), Vector3(90, 0, 0))
+		_part(torso, _cyl(0.21, 0.22, 12), acc, Vector3(ax * 1.0, 0.74, -1.2), Vector3(90, 0, 0))
+	# Sensor visor sunk into the pod brow: a wide dark housing + one emissive bar.
+	var head := _part(torso, _box(Vector3(0.86, 0.3, 0.5)), dark, Vector3(0, 1.4, -0.44))
 	head.name = "Head"
-	var eyes := _part(torso, _box(Vector3(0.5, 0.12, 0.1)), eye_mat, Vector3(0, 1.8, -0.36))
+	var eyes := _part(torso, _box(Vector3(0.62, 0.09, 0.04)), eye_mat, Vector3(0, 1.4, -0.68))
 	eyes.name = "Eyes"
 	return root
 
 
-## Caller / "Snitch" — a fragile signal bot that keeps its distance and screams for
-## reinforcements. Reads as an antenna/siren, NOT a fighter: a small pod body on a spindly
-## tripod, a tall mast topped with a dish ring + a glowing alarm beacon, and whip antennae.
-## Collision capsule r0.4 h1.5 @ world y0.75; ModelRoot @ y0.75 → local y0 = world 0.75,
-## feet at local y≈-0.72. The script pulses nodes named "Core"/"Eye" and sways "Leg%d".
+## Caller / "Snitch" — the MAST family. Its job is to be shot FIRST, so the outline has to
+## announce the job: a tiny canister body on a spindly tripod carrying a wide RADAR DISH on
+## a thin neck. The width of the dish does the reading (a T/mushroom no fighter has), not
+## extra height — the mast mass stays INSIDE the capsule so the thing you aim at is the
+## thing that takes the bullet. Collision capsule r0.4 h1.5 @ world y0.75; ModelRoot @
+## y0.75 → local y0 = world 0.75, feet at local y≈-0.72, dish rim ≈+0.7. The script pulses
+## "Eye" (and the beacon keeps the "Core" name) and sways "Leg0".."Leg2".
 static func build_robot_caller() -> Node3D:
 	var root := Node3D.new()
-	# Material kit (v2): pale mech-hull pod; beacon + eye share the identity alarm glow
+	# Material kit: pale hull canister; beacon + eye share the identity alarm glow
 	# (one kit instance — within-model sharing is fine for the hit-flash).
 	var k := ProcEnemyKits.kit("robot_caller")
-	var shell: StandardMaterial3D = k["hull"]
+	var hull: StandardMaterial3D = k["hull"]
 	var dark: StandardMaterial3D = k["frame"]
-	var leg_mat: StandardMaterial3D = k["steel"]
-	var beacon_mat: StandardMaterial3D = k["glow"]
-	var eye_mat: StandardMaterial3D = k["glow"]
+	var steel: StandardMaterial3D = k["steel"]
+	var acc: StandardMaterial3D = k["accent"]
+	var glow: StandardMaterial3D = k["glow"]
 
-	# Compact egg-shaped pod body centred at y0, with a collar ring.
-	_part(
-		root,
-		_sphere(0.26, false, 10, 14),
-		shell,
-		Vector3(0, 0.0, 0),
-		Vector3.ZERO,
-		Vector3(1.0, 1.1, 1.0)
-	)
-	_part(root, _cyl(0.2, 0.08, 12), dark, Vector3(0, 0.18, 0))
-	# Forward glowing sensor eye.
-	var eye := _part(root, _sphere(0.07, false, 8, 10), eye_mat, Vector3(0, 0.02, -0.24))
+	# Small canister body low on the legs + a dark collar — deliberately UNDER-built so
+	# the dish above it owns the silhouette and the machine reads as fragile.
+	_part(root, _cyl(0.15, 0.28, 12), hull, Vector3(0, -0.06, 0))
+	_part(root, _cyl(0.17, 0.05, 12), dark, Vector3(0, 0.09, 0))
+	_part(root, _box(Vector3(0.06, 0.14, 0.02)), acc, Vector3(0, -0.1, -0.15))
+	# Forward sensor slit.
+	var eye := _part(root, _box(Vector3(0.11, 0.03, 0.02)), glow, Vector3(0, 0.0, -0.155))
 	eye.name = "Eye"
 
-	# Tall antenna mast up from the head → dish ring → glowing alarm beacon on top.
-	_part(root, _cyl(0.03, 0.42, 8), dark, Vector3(0, 0.42, 0))
-	_part(root, _cyl(0.16, 0.03, 14), dark, Vector3(0, 0.6, 0))  # dish ring
-	var beacon := _part(root, _sphere(0.09, false, 10, 12), beacon_mat, Vector3(0, 0.72, 0))
+	# Thin neck → wide tilted DISH (rim ring + shallow bowl) → the alarm beacon at its
+	# focus. The rim ring is what survives distance: a circle on a stick.
+	_part(root, _cyl(0.025, 0.34, 8), dark, Vector3(0, 0.28, 0))
+	var bowl := Vector3(1.0, 0.45, 1.0)
+	_part(root, _sphere(0.27, true, 6, 14), hull, Vector3(0, 0.42, 0.05), Vector3(110, 0, 0), bowl)
+	_part(root, _torus(0.25, 0.29), acc, Vector3(0, 0.42, 0.05), Vector3(110, 0, 0))
+	_part(root, _cyl(0.014, 0.18, 6), steel, Vector3(0, 0.47, -0.03), Vector3(110, 0, 0))
+	var beacon := _part(root, _sphere(0.055, false, 8, 10), glow, Vector3(0, 0.51, -0.11))
 	beacon.name = "Core"  # pulsed by the script
-	# Two side whip-antennae for the signal-bot read.
-	_part(root, _cyl(0.012, 0.3, 6), beacon_mat, Vector3(0.14, 0.34, 0.02), Vector3(0, 0, 28))
-	_part(root, _cyl(0.012, 0.3, 6), beacon_mat, Vector3(-0.14, 0.34, 0.02), Vector3(0, 0, -28))
+	# Whip antennae off the collar — steel with a lit bead, so the glow budget stays on
+	# the beacon (one signal, not a christmas tree).
+	for sx in [-1.0, 1.0]:
+		var wx := float(sx)
+		_part(
+			root, _cyl(0.01, 0.3, 6), steel, Vector3(wx * 0.13, 0.2, 0.06), Vector3(0, 0, wx * -30)
+		)
+		_part(root, _sphere(0.022, false, 6, 8), glow, Vector3(wx * 0.2, 0.33, 0.06))
 
 	# Spindly tripod legs (one front, two rear) — stands but looks fragile/low-HP.
-	var feet := [Vector3(0.0, 0.0, -0.28), Vector3(0.26, 0.0, 0.2), Vector3(-0.26, 0.0, 0.2)]
+	var feet := [Vector3(0.0, 0.0, -0.3), Vector3(0.28, 0.0, 0.22), Vector3(-0.28, 0.0, 0.22)]
 	var li := 0
 	for f in feet:
 		var fv: Vector3 = f
-		var attach := Vector3(fv.x * 0.4, -0.12, fv.z * 0.4)
+		var attach := Vector3(fv.x * 0.35, -0.16, fv.z * 0.35)
+		var knee := Vector3(fv.x * 0.85, -0.4, fv.z * 0.85)
 		var foot := Vector3(fv.x, -0.72, fv.z)
 		var pivot := Node3D.new()
 		pivot.name = "Leg%d" % li
 		pivot.position = attach
 		root.add_child(pivot)
-		_strut(pivot, Vector3.ZERO, foot - attach, 0.03, leg_mat)
-		_part(pivot, _sphere(0.04, false, 6, 8), dark, foot - attach)
+		_strut(pivot, Vector3.ZERO, knee - attach, 0.028, steel)
+		_strut(pivot, knee - attach, foot - attach, 0.022, steel)
+		_part(pivot, _sphere(0.035, false, 6, 8), dark, foot - attach)
 		li += 1
 	return root
 

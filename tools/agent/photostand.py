@@ -290,6 +290,13 @@ def hero(model_id: str, label: str) -> dict[str, Any]:
         out["skipped"] = "preview failed: %s" % rep.get("error", rep)
         return out
     out["src"] = png_path(rep)
+    # The render rig FRAMES each model to fill the canvas, so a hero shot says nothing about
+    # how big the thing actually is. The verb hands back the model's world AABB — keep it, or
+    # the silhouette board will show a 2.4 m siege walker and a 0.7 m crawler as the same
+    # size and quietly hide the one axis (mass) the tiers are supposed to differ on.
+    aabb = rep.get("aabb")
+    if isinstance(aabb, list) and len(aabb) == 3:
+        out["aabb"] = [round(float(v), 3) for v in aabb]
     return out
 
 
@@ -438,19 +445,34 @@ def silhouette_sheet(machines: list[dict[str, Any]], out_path: Path) -> str:
     sheet = Image.new("RGB", (cell * cols, (cell + 20) * rows), (255, 255, 255))
     draw = ImageDraw.Draw(sheet)
     font = _font(13)
+    # Put every machine on ONE world scale: the tallest gets the full cell, the rest shrink
+    # in proportion to their real height. Without this the board is actively misleading —
+    # each hero render is auto-framed, so a squat bunker and a lean scout look the same size
+    # and "tier reads as mass, not height" becomes impossible to judge.
+    heights = [float(m.get("aabb", [0, 0, 0])[1]) for m in shots]
+    tallest = max(heights) if max(heights) > 0.01 else 1.0
     for i, m in enumerate(shots):
         src = OUT_DIR / str(m["png"])
         if not src.exists():
             continue
-        img = Image.open(src).convert("RGBA").resize((cell, cell), Image.LANCZOS)
+        h_world = float(m.get("aabb", [0, 0, 0])[1])
+        rel = clamp01(h_world / tallest) if h_world > 0.01 else 1.0
+        side = max(24, int(round(cell * (0.34 + 0.66 * rel))))
+        img = Image.open(src).convert("RGBA").resize((side, side), Image.LANCZOS)
         alpha = np.asarray(img)[..., 3]
         mask = np.where(alpha > 128, 0, 255).astype(np.uint8)
         tile = Image.fromarray(np.dstack([mask] * 3))
         x, y = (i % cols) * cell, (i // cols) * (cell + 20)
-        sheet.paste(tile, (x, y))
-        draw.text((x + 5, y + cell + 3), str(m.get("id", "")), fill=(40, 40, 40), font=font)
+        # Bottom-aligned inside the cell so every machine stands on a common floor line.
+        sheet.paste(tile, (x + (cell - side) // 2, y + (cell - side)))
+        label = "%s  %.1fm" % (m.get("id", ""), h_world) if h_world > 0.01 else str(m.get("id", ""))
+        draw.text((x + 5, y + cell + 3), label, fill=(40, 40, 40), font=font)
     sheet.save(out_path, quality=92)
     return "pil"
+
+
+def clamp01(v: float) -> float:
+    return 0.0 if v < 0.0 else (1.0 if v > 1.0 else v)
 
 
 def contact_sheet(tiles: list[tuple[Path | None, str]], out_path: Path) -> str:

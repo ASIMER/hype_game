@@ -1,256 +1,503 @@
 class_name ProceduralModelsTroopers
 extends RefCounted
-## The three STARTER bots (grunt / heavy / elite) rebuilt as procedural mechs (v0.5-B4).
-## They were the LAST .glb enemies (the three.js RobotExpressive mascot) — the machine
-## reskin killed the cartoon face texture, leaving a dark toy blob with UNPAINTED EYES.
-## Rebuilt on the same kit-material pipeline every other machine uses (ProcEnemyKits:
-## plated hull / rubber frame / worn steel / restrained accent / EMISSIVE glow eyes).
+## The three STARTER bots (grunt / heavy / elite) as procedural DIGITIGRADE mechs.
 ##
-## One parametric TROOPER body (bipedal infantry frame — the family resemblance) with
-## per-id width/height factors, a face variant (mono VISOR / TWIN eyes / angled VEE)
-## and identity details (antenna / exhaust stacks / commander crest).
+## v0.5-B4 rebuilt them off the .glb mascot; THIS pass fixes what the owner actually
+## complained about — "the enemies barely differ, they are all humanoid and share one
+## signature". These three were the worst offenders: straight human legs, a neck, a boxy
+## head with a PAIR OF EYES. Per docs/research/model-overhaul-research.md §2-3 a machine
+## is 15-31 px at 100 m, so only the OUTLINE, one light mass and one emissive survive that
+## range — every fix here therefore lives in the silhouette:
+##   * DIGITIGRADE legs — femur down-FORWARD, tibia down-BACK (the hock reads as a knee
+##     bending the wrong way), a long metatarsus onto a toe pad. No boot, no heel.
+##   * NO NECK — the skull is wedged between two shoulder blocks on a dark collar.
+##   * ONE HORIZONTAL SENSOR SLIT under a brow hood. Never a pair of eyes.
+##   * Inverted-trapezoid torso (flared chest, cinched pelvis) and arms ending in WEAPON
+##     MOUNTS — barrel cluster right, breaching clamp left — instead of hands.
+##   * TIER = MASS and SHOULDER SPAN, not height: grunt lean, heavy a squat bunker of
+##     double pauldrons / hip skirts / exhaust stacks, elite the lean frame plus a swept
+##     commander crest, gorget wings and gold trims.
 ##
-## Shares ProceduralModels' part+mesh helpers (no copy-paste — the AUDIT F1 rule).
-## Feet sit at the NEGATIVE of each scene's ModelRoot Y offset (grunt/elite -0.8,
-## heavy -0.95) so the body lands on the ground without touching any .tscn.
+## Contracts this file MUST keep (found by audit — do not "clean them up"):
+##   * "Rig" + "GaitLeg0/1" — EnemyGait swings those pivots around X and bobs the
+##     assembly; leg parts are children of the pivot, authored MINUS the pivot position.
+##   * Feet sit at the NEGATIVE of each scene's ModelRoot Y (grunt/elite -0.8, heavy
+##     -0.95) so the machine stands on the ground without touching a .tscn.
+##   * Mass stays inside the scene capsule (grunt/elite r0.45 h1.6, heavy r0.65 h1.9) and
+##     the head inside the scene's WeakPoint sphere (y1.5 / y1.82 / y1.55) — art outside
+##     the capsule eats bullets, a head outside the sphere kills the headshot.
+##   * Materials come from ProcEnemyKits (light plate over black frame) and every part
+##     goes through ProceduralModels._part (the hit-flash material_override contract).
+## Deliberately NOT naming any part "Eye"/"Leg%d": those switch on robot_enemy's idle
+## animation, which drives the very node EnemyGait already bobs.
 
 const IDS := ["robot_grunt", "robot_heavy", "robot_elite"]
 
+## Per-id frame. wf = width factor; stance = leg-pivot X; span = OUTER pauldron edge
+## (capsule-limited: 0.45 grunt/elite, 0.65 heavy); hip/yoke/head = the three key heights
+## (hip pivot, shoulder yoke, skull centre); hw = skull width; bar = sensor-slit width;
+## foot_y = -(the scene's ModelRoot.y). Heavy's legs are the SHORTEST of the three — its
+## bulk is torso and shoulders, which is what makes it read as a bunker and not a giant.
+const _SPECS: Dictionary = {
+	"robot_grunt":
+	{
+		"wf": 1.0,
+		"stance": 0.16,
+		"span": 0.385,
+		"hip": 0.88,
+		"yoke": 1.36,
+		"head": 1.46,
+		"hw": 0.25,
+		"bar": 0.17,
+		"foot_y": -0.8
+	},
+	"robot_heavy":
+	{
+		"wf": 1.3,
+		"stance": 0.26,
+		"span": 0.6,
+		"hip": 0.86,
+		"yoke": 1.46,
+		"head": 1.72,
+		"hw": 0.3,
+		"bar": 0.15,
+		"foot_y": -0.95
+	},
+	"robot_elite":
+	{
+		"wf": 1.06,
+		"stance": 0.17,
+		"span": 0.39,
+		"hip": 0.9,
+		"yoke": 1.36,
+		"head": 1.5,
+		"hw": 0.25,
+		"bar": 0.19,
+		"foot_y": -0.8
+	}
+}
+
 
 static func build(id: String) -> Node3D:
-	match id:
-		"robot_grunt":
-			return _trooper(id, 1.0, 1.0, "visor", -0.8)
-		"robot_heavy":
-			return _trooper(id, 1.35, 1.14, "twin", -0.95)
-		"robot_elite":
-			return _trooper(id, 1.05, 1.04, "vee", -0.8)
-	return null
+	var spec: Dictionary = _SPECS.get(id, {})
+	if spec.is_empty():
+		return null
+	return _trooper(id, spec)
 
 
-## The shared infantry frame. `wf`/`hf` scale width/height off the grunt base (~1.6 m),
-## `face` picks the emissive eye layout, `foot_y` matches the scene's ModelRoot offset.
-static func _trooper(id: String, wf: float, hf: float, face: String, foot_y: float) -> Node3D:
+## Assemble one trooper: the ground-level rig pivot, then legs → torso → arms → head →
+## the per-id identity details, all on the shared kit materials.
+static func _trooper(id: String, spec: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	root.name = id + "_model"
 	var rig := Node3D.new()
 	rig.name = "Rig"
-	rig.position = Vector3(0, foot_y, 0)
+	rig.position = Vector3(0.0, float(spec["foot_y"]), 0.0)
 	root.add_child(rig)
-	var k := ProcEnemyKits.kit(id)
-	var hull: StandardMaterial3D = k["hull"]
-	var frame: StandardMaterial3D = k["frame"]
-	var steel: StandardMaterial3D = k["steel"]
-	var accent: StandardMaterial3D = k["accent"]
-	var glow: StandardMaterial3D = k["glow"]
-
-	# --- Legs (mirrored): steel foot, plated shin, rubber knee ball + thigh. ---
-	# Each leg hangs off a NAMED HIP PIVOT so it can be swung as one limb. Without this the
-	# parts were loose siblings of the torso and a machine could only ever slide along the
-	# ground with rigid legs; EnemyGait finds these pivots and drives a real stride from the
-	# body's own speed.
-	#
-	# Deliberately NOT called "Leg0/Leg1": robot_enemy caches nodes with THAT name for its
-	# idle sway (a spider-ish per-leg wiggle authored for the tick), and it would fight the
-	# stride. "GaitLeg*" is the walk-cycle contract; "Leg*" stays the idle-sway one.
-	for i in 2:
-		var sx: float = -1.0 if i == 0 else 1.0
-		var x: float = sx * 0.15 * wf
-		var hip_y: float = 0.80 * hf
-		var hip := Node3D.new()
-		hip.name = "GaitLeg%d" % i
-		hip.position = Vector3(x, hip_y, 0)
-		rig.add_child(hip)
-		ProceduralModels._part(
-			hip,
-			ProceduralModels._box(Vector3(0.22 * wf, 0.09, 0.34)),
-			steel,
-			Vector3(0, 0.05 - hip_y, -0.02)
-		)
-		ProceduralModels._part(
-			hip,
-			ProceduralModels._box(Vector3(0.13 * wf, 0.32, 0.15)),
-			hull,
-			Vector3(0, 0.28 * hf - hip_y, 0)
-		)
-		ProceduralModels._part(
-			hip, ProceduralModels._sphere(0.085 * wf), frame, Vector3(0, 0.47 * hf - hip_y, 0)
-		)
-		ProceduralModels._part(
-			hip,
-			ProceduralModels._box(Vector3(0.15 * wf, 0.30, 0.17)),
-			frame,
-			Vector3(0, 0.64 * hf - hip_y, 0)
-		)
-
-	# --- Pelvis + torso: plated chest over a rubber core, identity stripe + chest core. ---
-	ProceduralModels._part(
-		rig, ProceduralModels._box(Vector3(0.38 * wf, 0.15, 0.24)), frame, Vector3(0, 0.82 * hf, 0)
-	)
-	ProceduralModels._part(
-		rig, ProceduralModels._box(Vector3(0.46 * wf, 0.40, 0.28)), hull, Vector3(0, 1.10 * hf, 0)
-	)
-	ProceduralModels._part(
-		rig,
-		ProceduralModels._box(Vector3(0.40 * wf, 0.24, 0.06)),
-		hull,
-		Vector3(0, 1.14 * hf, -0.155)
-	)
-	ProceduralModels._part(
-		rig,
-		ProceduralModels._box(Vector3(0.26 * wf, 0.05, 0.02)),
-		accent,
-		Vector3(0, 0.98 * hf, -0.165)
-	)
-	ProceduralModels._part(
-		rig, ProceduralModels._box(Vector3(0.10, 0.06, 0.02)), glow, Vector3(0, 1.10 * hf, -0.185)
-	)
-	ProceduralModels._part(
-		rig,
-		ProceduralModels._box(Vector3(0.30 * wf, 0.28, 0.13)),
-		frame,
-		Vector3(0, 1.10 * hf, 0.185)
-	)
-
-	# --- Arms (mirrored): rubber shoulder ball, plated pauldron + upper arm, steel
-	# forearm; the RIGHT forearm carries the integrated gun barrel. ---
-	for sx in [-1.0, 1.0]:
-		var ax: float = sx * 0.31 * wf
-		ProceduralModels._part(
-			rig, ProceduralModels._sphere(0.10 * wf), frame, Vector3(sx * 0.30 * wf, 1.27 * hf, 0)
-		)
-		ProceduralModels._part(
-			rig,
-			ProceduralModels._box(Vector3(0.17 * wf, 0.09, 0.23)),
-			hull,
-			Vector3(sx * 0.32 * wf, 1.34 * hf, 0)
-		)
-		ProceduralModels._part(
-			rig, ProceduralModels._box(Vector3(0.11, 0.24, 0.12)), hull, Vector3(ax, 1.13 * hf, 0)
-		)
-		ProceduralModels._part(
-			rig, ProceduralModels._sphere(0.06), frame, Vector3(ax, 0.99 * hf, 0)
-		)
-		ProceduralModels._part(
-			rig, ProceduralModels._box(Vector3(0.10, 0.24, 0.11)), steel, Vector3(ax, 0.86 * hf, 0)
-		)
-		ProceduralModels._part(
-			rig, ProceduralModels._box(Vector3(0.09, 0.08, 0.10)), frame, Vector3(ax, 0.72 * hf, 0)
-		)
-	var gx: float = 0.31 * wf
-	ProceduralModels._part(
-		rig,
-		ProceduralModels._cyl(0.035, 0.24),
-		steel,
-		Vector3(gx, 0.80 * hf, -0.20),
-		Vector3(90, 0, 0)
-	)
-	ProceduralModels._part(
-		rig, ProceduralModels._sphere(0.018), glow, Vector3(gx, 0.80 * hf, -0.325)
-	)
-
-	# --- Head: plated helmet + brow, dark face plate, EMISSIVE eyes (the point). ---
-	ProceduralModels._part(rig, ProceduralModels._cyl(0.05, 0.08), frame, Vector3(0, 1.36 * hf, 0))
-	ProceduralModels._part(
-		rig, ProceduralModels._box(Vector3(0.24, 0.19, 0.24)), hull, Vector3(0, 1.47 * hf, 0)
-	)
-	ProceduralModels._part(
-		rig, ProceduralModels._box(Vector3(0.25, 0.045, 0.05)), hull, Vector3(0, 1.535 * hf, -0.10)
-	)
-	ProceduralModels._part(
-		rig, ProceduralModels._box(Vector3(0.19, 0.13, 0.03)), frame, Vector3(0, 1.46 * hf, -0.125)
-	)
-	match face:
-		"visor":
-			ProceduralModels._part(
-				rig,
-				ProceduralModels._box(Vector3(0.19, 0.05, 0.02)),
-				glow,
-				Vector3(0, 1.485 * hf, -0.148)
-			)
-		"twin":
-			for sx in [-1.0, 1.0]:
-				ProceduralModels._part(
-					rig,
-					ProceduralModels._sphere(0.032),
-					glow,
-					Vector3(sx * 0.055, 1.48 * hf, -0.14)
-				)
-		"vee":
-			for sx in [-1.0, 1.0]:
-				ProceduralModels._part(
-					rig,
-					ProceduralModels._box(Vector3(0.085, 0.032, 0.02)),
-					glow,
-					Vector3(sx * 0.048, 1.48 * hf, -0.145),
-					Vector3(0, 0, -sx * 18.0)
-				)
-
-	_details(rig, id, wf, hf, hull, steel, accent, glow)
+	var k: Dictionary = ProcEnemyKits.kit(id)
+	var d: Dictionary = _dims(spec)
+	_leg(rig, 0, d, k)
+	_leg(rig, 1, d, k)
+	_torso(rig, d, k)
+	_arms(rig, d, k)
+	_head(rig, d, k)
+	_details(rig, id, d, k)
 	return root
 
 
-## Per-id identity details on top of the shared frame.
-static func _details(
-	rig: Node3D,
-	id: String,
-	wf: float,
-	hf: float,
-	hull: StandardMaterial3D,
-	steel: StandardMaterial3D,
-	accent: StandardMaterial3D,
-	glow: StandardMaterial3D
-) -> void:
+## Derived body dimensions, computed ONCE and handed to every sub-builder so the plates,
+## the yoke and the identity details can never drift out of register with each other.
+## td = torso depth, bot/th/mid = the torso box (bottom, height, centre).
+static func _dims(spec: Dictionary) -> Dictionary:
+	var wf: float = spec["wf"]
+	var hip: float = spec["hip"]
+	var yoke: float = spec["yoke"]
+	var bot: float = hip + 0.14
+	var top: float = yoke - 0.055
+	return {
+		"wf": wf,
+		"hip": hip,
+		"yoke": yoke,
+		"span": float(spec["span"]),
+		"stance": float(spec["stance"]),
+		"head": float(spec["head"]),
+		"hw": float(spec["hw"]),
+		"bar": float(spec["bar"]),
+		"td": 0.26 * wf,
+		"bot": bot,
+		"th": top - bot,
+		"mid": (bot + top) * 0.5
+	}
+
+
+## One DIGITIGRADE leg under its named gait pivot. The chain is authored in the PIVOT's
+## own frame (hip at the origin) so EnemyGait's X swing carries the whole limb: femur down
+## and FORWARD to the knee, tibia down and BACK to the hock (the backwards joint that
+## kills the "person in armour" read), then a long metatarsus forward onto a toe pad.
+## Joints are near-black balls between light plates — the research's "density at the
+## joints, calm plates in between", and the thing that makes the zig-zag legible.
+static func _leg(rig: Node3D, i: int, d: Dictionary, k: Dictionary) -> void:
+	var wf: float = d["wf"]
+	var hip: float = d["hip"]
+	var sx: float = -1.0 if i == 0 else 1.0
+	var pivot := Node3D.new()
+	pivot.name = "GaitLeg%d" % i
+	pivot.position = Vector3(sx * float(d["stance"]), hip, 0.0)
+	rig.add_child(pivot)
+	var hull: StandardMaterial3D = k["hull"]
+	var frame: StandardMaterial3D = k["frame"]
+	var steel: StandardMaterial3D = k["steel"]
+	var knee := Vector3(0.0, hip * 0.62 - hip, -0.15 * wf)
+	var hock := Vector3(0.0, hip * 0.29 - hip, 0.16 * wf)
+	var toe := Vector3(0.0, 0.05 * wf - hip, -0.08 * wf)
+	ProceduralModels._part(pivot, ProceduralModels._sphere(0.115 * wf), frame)
+	_seg(pivot, hull, Vector3.ZERO, knee, 0.19 * wf, 0.21 * wf)
+	ProceduralModels._part(pivot, ProceduralModels._sphere(0.095 * wf), frame, knee)
+	_seg(pivot, hull, knee, hock, 0.165 * wf, 0.155 * wf)
+	ProceduralModels._part(pivot, ProceduralModels._sphere(0.085 * wf), frame, hock)
+	# Heel spur: a plate kicking BACK off the hock. Cheapest possible way to shout
+	# "this joint bends the other way" at silhouette range.
+	_plate(
+		pivot,
+		hull,
+		hock + Vector3(0.0, 0.035, 0.08 * wf),
+		Vector3(0.13 * wf, 0.17, 0.09),
+		Vector3(20, 0, 0)
+	)
+	_seg(pivot, frame, hock, toe, 0.12 * wf, 0.12 * wf)
+	# Toe pad. The Y term cancels the tilt's corner drop (which scales with the pad depth,
+	# i.e. with wf) so all three tiers plant their feet ON the floor, never sunk into it.
+	_plate(
+		pivot,
+		steel,
+		toe + Vector3(0.0, 0.011 * wf - 0.028, -0.035 * wf),
+		Vector3(0.17 * wf, 0.05, 0.24 * wf),
+		Vector3(-5, 0, 0)
+	)
+
+
+## Torso: an INVERTED TRAPEZOID. A cinched near-black pelvis, a dark inner frame, light
+## plates that flare outward as they rise, a wide shoulder yoke, and the two blocks the
+## skull sinks between — that notch between two humps is the family's read at 100 m.
+static func _torso(rig: Node3D, d: Dictionary, k: Dictionary) -> void:
+	var wf: float = d["wf"]
+	var hip: float = d["hip"]
+	var yoke: float = d["yoke"]
+	var td: float = d["td"]
+	var th: float = d["th"]
+	var mid: float = d["mid"]
+	var hull: StandardMaterial3D = k["hull"]
+	var frame: StandardMaterial3D = k["frame"]
+	_plate(rig, frame, Vector3(0, hip + 0.04, 0), Vector3(0.3 * wf, 0.22, td * 0.82))
+	_plate(rig, frame, Vector3(0, mid, 0), Vector3(0.32 * wf, th, td * 0.86))
+	_plate(
+		rig,
+		hull,
+		Vector3(0, mid + 0.015, -(td * 0.5 + 0.03)),
+		Vector3(0.36 * wf, th * 0.88, 0.08),
+		Vector3(-5, 0, 0)
+	)
+	for i in 2:
+		var sx: float = -1.0 if i == 0 else 1.0
+		_plate(
+			rig,
+			hull,
+			Vector3(sx * 0.2 * wf, mid, 0),
+			Vector3(0.13 * wf, th * 0.96, td * 0.9),
+			Vector3(0, 0, -16.0 * sx)
+		)
+	_plate(rig, hull, Vector3(0, mid + 0.05, td * 0.5 + 0.03), Vector3(0.3 * wf, th * 0.72, 0.11))
+	_plate(
+		rig, hull, Vector3(0, yoke, -0.02 * wf), Vector3(float(d["span"]) * 1.72, 0.12, td * 0.95)
+	)
+	# Shoulder blocks: they rise from the yoke to the skull, so there is no neck to see.
+	var t_bot: float = yoke + 0.05
+	var t_top: float = maxf(float(d["head"]) - 0.06, t_bot + 0.1)
+	for j in 2:
+		var sj: float = -1.0 if j == 0 else 1.0
+		_plate(
+			rig,
+			hull,
+			Vector3(sj * 0.19 * wf, (t_bot + t_top) * 0.5, 0.01),
+			Vector3(0.14 * wf, t_top - t_bot, 0.2 * wf),
+			Vector3(0, 0, -7.0 * sj)
+		)
+	# The 10% channel + the two SECONDARY emissives (slit stays the primary signal).
+	_plate(
+		rig,
+		k["accent"],
+		Vector3(0, mid - th * 0.3, -(td * 0.5 + 0.075)),
+		Vector3(0.16 * wf, 0.035, 0.02)
+	)
+	_plate(
+		rig, k["glow"], Vector3(0, mid + th * 0.32, -(td * 0.5 + 0.078)), Vector3(0.05, 0.035, 0.02)
+	)
+
+
+## Arms are MOUNTS, not limbs: a big plated pauldron over a dark stub arm ending in a
+## weapon block — barrel cluster on the right, breaching clamp on the left. The asymmetry
+## is deliberate: it tells you which side the gun is on from across the map, and no part
+## of it reads as a hand.
+static func _arms(rig: Node3D, d: Dictionary, k: Dictionary) -> void:
+	var wf: float = d["wf"]
+	var yoke: float = d["yoke"]
+	var span: float = d["span"]
+	var hull: StandardMaterial3D = k["hull"]
+	var frame: StandardMaterial3D = k["frame"]
+	var steel: StandardMaterial3D = k["steel"]
+	var ax: float = span - 0.115 * wf
+	for i in 2:
+		var sx: float = -1.0 if i == 0 else 1.0
+		_plate(
+			rig,
+			hull,
+			Vector3(sx * (span - 0.105 * wf), yoke + 0.005, -0.01),
+			Vector3(0.19 * wf, 0.15, 0.26 * wf),
+			Vector3(0, 0, -14.0 * sx)
+		)
+		ProceduralModels._part(
+			rig, ProceduralModels._sphere(0.1 * wf), frame, Vector3(sx * ax, yoke - 0.02, 0)
+		)
+		_plate(rig, frame, Vector3(sx * ax, yoke - 0.2, 0), Vector3(0.13 * wf, 0.26, 0.14 * wf))
+		_plate(
+			rig, hull, Vector3(sx * ax, yoke - 0.43, -0.015), Vector3(0.17 * wf, 0.26, 0.23 * wf)
+		)
+	# RIGHT: integrated barrel + the muzzle's tertiary emissive dot.
+	ProceduralModels._part(
+		rig,
+		ProceduralModels._cyl(0.038 * wf, 0.28),
+		steel,
+		Vector3(ax, yoke - 0.47, -0.22 * wf),
+		Vector3(90, 0, 0)
+	)
+	ProceduralModels._part(
+		rig, ProceduralModels._sphere(0.022), k["glow"], Vector3(ax, yoke - 0.47, -0.22 * wf - 0.16)
+	)
+	# LEFT: an open breaching clamp — two steel jaws, no fingers.
+	_plate(
+		rig,
+		steel,
+		Vector3(-ax, yoke - 0.56, -0.06 * wf),
+		Vector3(0.19 * wf, 0.09, 0.26 * wf),
+		Vector3(12, 0, 0)
+	)
+	_plate(
+		rig,
+		steel,
+		Vector3(-ax, yoke - 0.63, -0.06 * wf),
+		Vector3(0.19 * wf, 0.09, 0.26 * wf),
+		Vector3(-12, 0, 0)
+	)
+
+
+## Head: a low wide skull sunk on a dark collar between the shoulder blocks (no neck), a
+## brow hood throwing a shadow line, and ONE horizontal sensor slit — the primary
+## emissive of the whole machine. The slit width is the only per-tier face difference:
+## a pair of eyes is what made the heavy read as a face, and it is gone for good.
+static func _head(rig: Node3D, d: Dictionary, k: Dictionary) -> void:
+	var wf: float = d["wf"]
+	var head: float = d["head"]
+	var hw: float = d["hw"]
+	var hd: float = hw * 0.88
+	var hull: StandardMaterial3D = k["hull"]
+	var frame: StandardMaterial3D = k["frame"]
+	_plate(rig, frame, Vector3(0, head - 0.085, 0.005), Vector3(0.21 * wf, 0.14, 0.18 * wf))
+	_plate(rig, hull, Vector3(0, head, -0.01), Vector3(hw, 0.15, hd))
+	_plate(
+		rig,
+		hull,
+		Vector3(0, head + 0.075, -(hd * 0.5 - 0.005)),
+		Vector3(hw + 0.03, 0.05, 0.11),
+		Vector3(24, 0, 0)
+	)
+	_plate(rig, frame, Vector3(0, head, -(hd * 0.5 - 0.01)), Vector3(hw + 0.015, 0.095, 0.05))
+	_plate(
+		rig, k["glow"], Vector3(0, head, -(hd * 0.5 + 0.028)), Vector3(float(d["bar"]), 0.034, 0.02)
+	)
+	_plate(
+		rig,
+		hull,
+		Vector3(0, head - 0.088, -(hd * 0.5 - 0.02)),
+		Vector3(hw * 0.8, 0.06, 0.1),
+		Vector3(-16, 0, 0)
+	)
+
+
+## Per-id identity on top of the shared frame — the three must read as THREE MACHINES,
+## not one machine at three sizes, so each gets a different upper-body outline.
+static func _details(rig: Node3D, id: String, d: Dictionary, k: Dictionary) -> void:
 	match id:
 		"robot_grunt":
-			# Comms antenna with a lit tip — the rank-and-file radio soldier.
-			ProceduralModels._part(
-				rig, ProceduralModels._cyl(0.012, 0.16), steel, Vector3(0.09, 1.63 * hf, 0.05)
-			)
-			ProceduralModels._part(
-				rig, ProceduralModels._sphere(0.018), glow, Vector3(0.09, 1.72 * hf, 0.05)
-			)
+			_grunt_kit(rig, d, k)
 		"robot_heavy":
-			# Twin exhaust stacks + knee guards — the walking bunker.
-			for sx in [-1.0, 1.0]:
-				ProceduralModels._part(
-					rig,
-					ProceduralModels._cyl(0.045, 0.26),
-					steel,
-					Vector3(sx * 0.14 * wf, 1.34 * hf, 0.24),
-					Vector3(-12, 0, 0)
-				)
-				ProceduralModels._part(
-					rig,
-					ProceduralModels._box(Vector3(0.15 * wf, 0.09, 0.06)),
-					accent,
-					Vector3(sx * 0.15 * wf, 0.50 * hf, -0.09)
-				)
-			ProceduralModels._part(
-				rig,
-				ProceduralModels._box(Vector3(0.30 * wf, 0.05, 0.28)),
-				hull,
-				Vector3(0, 1.40 * hf, 0.02)
-			)
+			_heavy_kit(rig, d, k)
 		"robot_elite":
-			# Commander CREST fin + gold pauldron trims — the one you focus first.
-			ProceduralModels._part(
-				rig,
-				ProceduralModels._box(Vector3(0.035, 0.14, 0.26)),
-				accent,
-				Vector3(0, 1.63 * hf, 0.02),
-				Vector3(-12, 0, 0)
-			)
-			for sx in [-1.0, 1.0]:
-				ProceduralModels._part(
-					rig,
-					ProceduralModels._box(Vector3(0.18 * wf, 0.03, 0.24)),
-					accent,
-					Vector3(sx * 0.32 * wf, 1.395 * hf, 0)
-				)
-			ProceduralModels._part(
-				rig,
-				ProceduralModels._box(Vector3(0.05, 0.20, 0.02)),
-				glow,
-				Vector3(0, 1.12 * hf, 0.255)
-			)
+			_elite_kit(rig, d, k)
+
+
+## Grunt — the lean line trooper: a swept-back comms whip and one off-centre radio box on
+## the back, so its outline is asymmetric and uncluttered next to the other two.
+static func _grunt_kit(rig: Node3D, d: Dictionary, k: Dictionary) -> void:
+	var wf: float = d["wf"]
+	var yoke: float = d["yoke"]
+	var td: float = d["td"]
+	ProceduralModels._part(
+		rig,
+		ProceduralModels._cyl(0.011, 0.24),
+		k["steel"],
+		Vector3(0.1 * wf, yoke + 0.1, 0.1),
+		Vector3(38, 0, 0)
+	)
+	ProceduralModels._part(
+		rig, ProceduralModels._sphere(0.018), k["accent"], Vector3(0.1 * wf, yoke + 0.2, 0.175)
+	)
+	_plate(
+		rig,
+		k["frame"],
+		Vector3(-0.13 * wf, yoke - 0.12, td * 0.5 + 0.07),
+		Vector3(0.17 * wf, 0.15, 0.1)
+	)
+
+
+## Heavy — the walking bunker: a second pauldron deck stacked on the first, hip skirts
+## flanking the thighs, a chest ram plate and two exhaust stacks over the shoulders. All
+## of it widens or thickens the silhouette; NONE of it makes the machine taller.
+static func _heavy_kit(rig: Node3D, d: Dictionary, k: Dictionary) -> void:
+	var wf: float = d["wf"]
+	var hip: float = d["hip"]
+	var yoke: float = d["yoke"]
+	var td: float = d["td"]
+	var th: float = d["th"]
+	var mid: float = d["mid"]
+	var stance: float = d["stance"]
+	for i in 2:
+		var sx: float = -1.0 if i == 0 else 1.0
+		_plate(
+			rig,
+			k["hull"],
+			Vector3(sx * 0.38, yoke + 0.115, -0.01),
+			Vector3(0.24, 0.13, 0.3),
+			Vector3(0, 0, -16.0 * sx)
+		)
+		_plate(
+			rig,
+			k["hull"],
+			Vector3(sx * (stance + 0.1), hip - 0.02, 0),
+			Vector3(0.11 * wf, 0.3, 0.3 * wf),
+			Vector3(0, 0, -6.0 * sx)
+		)
+		ProceduralModels._part(
+			rig,
+			ProceduralModels._cyl(0.05 * wf, 0.26),
+			k["steel"],
+			Vector3(sx * 0.24 * wf, yoke + 0.09, 0.21 * wf),
+			Vector3(12, 0, 0)
+		)
+	_plate(
+		rig,
+		k["hull"],
+		Vector3(0, mid + th * 0.42, -(td * 0.5 + 0.075)),
+		Vector3(0.46 * wf, 0.16, 0.1),
+		Vector3(-10, 0, 0)
+	)
+	_plate(
+		rig,
+		k["accent"],
+		Vector3(0, mid + th * 0.42 - 0.11, -(td * 0.5 + 0.085)),
+		Vector3(0.3 * wf, 0.04, 0.02)
+	)
+
+
+## Elite — the commander. This kit exists to solve a MEASURED failure: after the silhouette
+## rework, elite and grunt still overlapped at 0.92 IoU — the same shape wearing different
+## paint, which is exactly the complaint the whole batch was meant to answer. Gold trims and
+## small fins cannot fix that, because they live INSIDE the outline.
+##
+## So everything here BREAKS the outline instead of decorating it, while staying inside the
+## shared r0.45 capsule (elite and grunt use the same one, so it cannot simply be bigger):
+##   * a tall swept CREST that clears the skull,
+##   * GORGET WINGS that flare up and outward to the capsule edge — the "winged shoulders"
+##     read you can pick out of a squad at range,
+##   * an ASYMMETRIC banner hanging off one shoulder down the back, which is the cheapest
+##     way to make a bipedal outline unmistakable from any angle.
+static func _elite_kit(rig: Node3D, d: Dictionary, k: Dictionary) -> void:
+	var wf: float = d["wf"]
+	var yoke: float = d["yoke"]
+	var span: float = d["span"]
+	var td: float = d["td"]
+	var accent: StandardMaterial3D = k["accent"]
+	# Crest: tall and swept back, well clear of the skull so it reads at silhouette range.
+	_plate(
+		rig,
+		accent,
+		Vector3(0, float(d["head"]) + 0.17, 0.02),
+		Vector3(0.05, 0.30, 0.20),
+		Vector3(24, 0, 0)
+	)
+	for i in 2:
+		var sx: float = -1.0 if i == 0 else 1.0
+		# Gorget wing — a big plate rising up and OUT behind the shoulder.
+		_plate(
+			rig,
+			accent,
+			Vector3(sx * (span - 0.02), yoke + 0.20, 0.06),
+			Vector3(0.05, 0.34, 0.22),
+			Vector3(12, 0, -34.0 * sx)
+		)
+		# Pauldron trim, kept from the previous pass — the gold that says "officer".
+		_plate(
+			rig,
+			accent,
+			Vector3(sx * (span - 0.105 * wf), yoke + 0.085, -0.01),
+			Vector3(0.2 * wf, 0.028, 0.26 * wf),
+			Vector3(0, 0, -14.0 * sx)
+		)
+	# Command banner: long, one-sided, hanging down the back to the waist.
+	_plate(
+		rig,
+		accent,
+		Vector3(-0.12 * wf, float(d["mid"]) - 0.06, -(td * 0.5 + 0.055)),
+		Vector3(0.17 * wf, 0.52, 0.03),
+		Vector3(-6, 0, 4)
+	)
+	_plate(
+		rig,
+		accent,
+		Vector3(0, float(d["bot"]) + 0.02, -(td * 0.5 + 0.03)),
+		Vector3(0.26 * wf, 0.06, 0.03)
+	)
+	# Sensor mast — a thin vertical the other two never have.
+	ProceduralModels._part(
+		rig,
+		ProceduralModels._cyl(0.014, 0.30),
+		k["steel"],
+		Vector3(-(span - 0.115 * wf), yoke + 0.17, 0.06)
+	)
+	ProceduralModels._part(
+		rig,
+		ProceduralModels._sphere(0.026),
+		k["glow"],
+		Vector3(-(span - 0.115 * wf), yoke + 0.33, 0.06)
+	)
+
+
+## A box part — every plate in this file goes through here (and therefore through
+## ProceduralModels._part, which owns the hit-flash material contract).
+static func _plate(
+	p: Node3D, m: StandardMaterial3D, at: Vector3, sz: Vector3, rot := Vector3.ZERO
+) -> void:
+	ProceduralModels._part(p, ProceduralModels._box(sz), m, at, rot)
+
+
+## A limb segment spanning a→b as a plated box of cross-section w×dep. Legs are planar in
+## YZ inside their pivot, so the span needs one X rotation — which is exactly what draws
+## the digitigrade zig-zag from three straight boxes.
+static func _seg(
+	p: Node3D, m: StandardMaterial3D, a: Vector3, b: Vector3, w: float, dep: float
+) -> void:
+	var v: Vector3 = b - a
+	var span: float = v.length()
+	if span < 0.001:
+		return
+	var ang: float = rad_to_deg(atan2(v.z, v.y))
+	_plate(p, m, (a + b) * 0.5, Vector3(w, span, dep), Vector3(ang, 0, 0))

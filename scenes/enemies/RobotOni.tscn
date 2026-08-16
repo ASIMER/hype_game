@@ -8,6 +8,10 @@
 radius = 0.6
 height = 2.2
 
+[sub_resource type="CapsuleShape3D" id="Capsule_hit"]
+radius = 0.95
+height = 2.2
+
 [sub_resource type="SphereShape3D" id="Sphere_weak"]
 radius = 0.3
 
@@ -56,7 +60,7 @@ health_path = NodePath("../Health")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-shape = SubResource("Capsule_body")
+shape = SubResource("Capsule_hit")
 
 [node name="WeakPoint" type="Area3D" parent="."]
 collision_layer = 64
