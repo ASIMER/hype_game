@@ -10,6 +10,11 @@ extends RefCounted
 ## Same discipline as the enemies in procedural_models.gd: StandardMaterial3D only
 ## (hit-flash compatible), authored facing -Z, named parts for the per-frame idle
 ## animation hooks in the enemy scripts (robot_worm / robot_kamikaze / robot_strafer).
+##
+## Every machine that WALKS also publishes named hip pivots "GaitLeg0".."GaitLeg3"
+## (see `_gait_hip` / `_quad_hips` below) — the contract EnemyGait swings from the body's
+## own measured speed. Adding those pivots is what opts a machine into the walk cycle;
+## the hover/burrow ones (sand-worm, dust-devil, dune warden, specter) publish none.
 
 
 static func build(id: String) -> Node3D:
@@ -41,6 +46,48 @@ static func build(id: String) -> Node3D:
 		"robot_specter":
 			return build_robot_specter()
 	return null
+
+
+# ----------------------------------------------------------------- gait pivots (D2.4)
+## One named HIP pivot at the point where a leg meets the body. Every part of that leg
+## becomes a CHILD with its offset re-expressed relative to `pos`, so the rest pose is
+## unchanged (pure re-parenting) while EnemyGait can swing the whole limb by rotating
+## just this node — the machines used to slide with rigid legs.
+##
+## Deliberately NOT named "Leg%d": robot_enemy / robot_pouncer / robot_kamikaze cache
+## nodes with THAT name for their own idle sway and would fight the stride. "GaitLeg*"
+## is the walk-cycle contract, "Leg*" stays the idle-sway one — and because the sway
+## pivot lives INSIDE the hip, the two compose (hip swings the limb, sway wiggles it).
+static func _gait_hip(root: Node3D, idx: int, pos: Vector3) -> Node3D:
+	var hip := Node3D.new()
+	hip.name = "GaitLeg%d" % idx
+	hip.position = pos
+	root.add_child(hip)
+	return hip
+
+
+## The four hip pivots of a quadruped, created in EnemyGait's PHASE order.
+##
+## EnemyGait collects pivots in TREE order and puts EVEN indices half a cycle out of phase
+## with ODD ones, so the hips must be added in a CIRCULAR walk (front-left → rear-left →
+## rear-right → front-right) for that split to land on the two DIAGONAL pairs: a TROT.
+## The builders' own left-side-then-right-side order would have paired the two front legs
+## against the two rear ones — a bound (a rabbit hop), which is not how these read.
+## It also matches robot_pouncer's own diagonal pairing (0,3)/(1,2), so the script sway and
+## the stride reinforce instead of cancelling.
+##
+## `attach` holds the hip points in the BUILDERS' leg order (0 front-left, 1 rear-left,
+## 2 front-right, 3 rear-right) and the returned pivots keep THAT order, so each builder's
+## leg geometry below is untouched.
+static func _quad_hips(root: Node3D, attach: Array[Vector3]) -> Array[Node3D]:
+	var order: Array[int] = [0, 1, 3, 2]
+	var hips: Array[Node3D] = []
+	hips.resize(4)
+	for gi in 4:
+		var li: int = order[gi]
+		var pos: Vector3 = attach[li]
+		hips[li] = _gait_hip(root, gi, pos)
+	return hips
 
 
 ## DESERT — Sand-worm: a segmented mechanical drill-worm. Horizontal body along Z with
@@ -109,8 +156,9 @@ static func build_robot_sandworm() -> Node3D:
 
 
 ## DESERT — Scarab: a squat kamikaze beetle. Domed rust-orange shell, 4 stub legs under
-## pivots "Leg0".."Leg3", front mandibles, and a rear glowing red "Core" that the script
-## blinks faster while ARMED. ModelRoot at y=0 — feet at ground.
+## hip pivots "GaitLeg0".."GaitLeg3" (stride) each holding a "Leg0".."Leg3" skitter pivot,
+## front mandibles, and a rear glowing red "Core" that the script blinks faster while
+## ARMED. ModelRoot at y=0 — feet at ground.
 static func build_robot_scarab() -> Node3D:
 	var root := Node3D.new()
 	# Material kit (v2): plated rust hull; the arming Core keeps its bespoke RED
@@ -157,26 +205,30 @@ static func build_robot_scarab() -> Node3D:
 		Vector3(-0.1, 0.1, -0.42),
 		Vector3(-100, 0, 0)
 	)
-	# 4 stub legs under pivots (2 per side) for the skitter sway.
-	var li := 0
-	for side in [-1.0, 1.0]:
-		for z in [-0.14, 0.18]:
-			var zf := float(z)
-			var attach := Vector3(side * 0.22, 0.12, zf)
-			var pivot := Node3D.new()
-			pivot.name = "Leg%d" % li
-			pivot.position = attach
-			root.add_child(pivot)
-			ProceduralModels._strut(
-				pivot, Vector3.ZERO, Vector3(side * 0.2, -0.12, 0.02), 0.04, leg_mat
-			)
-			ProceduralModels._part(
-				pivot,
-				ProceduralModels._sphere(0.045, false, 6, 8),
-				dark,
-				Vector3(side * 0.2, -0.12, 0.02)
-			)
-			li += 1
+	# 4 stub legs, each hung off a "GaitLeg" HIP pivot (the stride) that wraps the script's
+	# own "Leg%d" skitter pivot (the idle sway) — same rest pose, one extra hinge.
+	var attach: Array[Vector3] = [
+		Vector3(-0.22, 0.12, -0.14),
+		Vector3(-0.22, 0.12, 0.18),
+		Vector3(0.22, 0.12, -0.14),
+		Vector3(0.22, 0.12, 0.18)
+	]
+	var hips := _quad_hips(root, attach)
+	for li in 4:
+		var a: Vector3 = attach[li]
+		var side: float = signf(a.x)
+		var pivot := Node3D.new()
+		pivot.name = "Leg%d" % li
+		hips[li].add_child(pivot)
+		ProceduralModels._strut(
+			pivot, Vector3.ZERO, Vector3(side * 0.2, -0.12, 0.02), 0.04, leg_mat
+		)
+		ProceduralModels._part(
+			pivot,
+			ProceduralModels._sphere(0.045, false, 6, 8),
+			dark,
+			Vector3(side * 0.2, -0.12, 0.02)
+		)
 	return root
 
 
@@ -235,8 +287,9 @@ static func build_robot_dustdevil() -> Node3D:
 
 
 ## SNOW — Frost-hound: a wolf-like quadruped. Low box body, wedge head with an
-## ice-blue "Core" visor, 4 strut legs under pivots "Leg0".."Leg3" (trot gait),
-## dorsal icicle fins, stub tail. ModelRoot at y=0 — paws at ground.
+## ice-blue "Core" visor, 4 strut legs under hip pivots "GaitLeg0".."GaitLeg3" (the walk
+## cycle) each holding a "Leg0".."Leg3" sway pivot (trot gait), dorsal icicle fins, stub
+## tail. ModelRoot at y=0 — paws at ground.
 static func build_robot_frosthound() -> Node3D:
 	var root := Node3D.new()
 	# Material kit (v2): plated frost-grey hull; icicle fins keep their translucent-ice
@@ -292,33 +345,38 @@ static func build_robot_frosthound() -> Node3D:
 		Vector3(0, 0.74, 0.68),
 		Vector3(110, 0, 0)
 	)
-	# 4 legs under pivots at the body corners.
-	var li := 0
-	for side in [-1.0, 1.0]:
-		for z in [-0.38, 0.42]:
-			var zf := float(z)
-			var attach := Vector3(side * 0.24, 0.6, zf)
-			var pivot := Node3D.new()
-			pivot.name = "Leg%d" % li
-			pivot.position = attach
-			root.add_child(pivot)
-			ProceduralModels._strut(
-				pivot, Vector3.ZERO, Vector3(side * 0.06, -0.32, 0.06), 0.06, leg_mat
-			)
-			ProceduralModels._strut(
-				pivot,
-				Vector3(side * 0.06, -0.32, 0.06),
-				Vector3(side * 0.08, -0.6, -0.02),
-				0.05,
-				leg_mat
-			)
-			ProceduralModels._part(
-				pivot,
-				ProceduralModels._sphere(0.06, false, 6, 8),
-				dark,
-				Vector3(side * 0.08, -0.6, -0.02)
-			)
-			li += 1
+	# 4 legs at the body corners: a "GaitLeg" HIP pivot (the distance-driven stride) wrapping
+	# the pouncer script's "Leg%d" pivot (its own time-driven trot sway) — the hip carries
+	# the whole limb, so the hound walks instead of sliding on rigid struts.
+	var attach: Array[Vector3] = [
+		Vector3(-0.24, 0.6, -0.38),
+		Vector3(-0.24, 0.6, 0.42),
+		Vector3(0.24, 0.6, -0.38),
+		Vector3(0.24, 0.6, 0.42)
+	]
+	var hips := _quad_hips(root, attach)
+	for li in 4:
+		var a: Vector3 = attach[li]
+		var side: float = signf(a.x)
+		var pivot := Node3D.new()
+		pivot.name = "Leg%d" % li
+		hips[li].add_child(pivot)
+		ProceduralModels._strut(
+			pivot, Vector3.ZERO, Vector3(side * 0.06, -0.32, 0.06), 0.06, leg_mat
+		)
+		ProceduralModels._strut(
+			pivot,
+			Vector3(side * 0.06, -0.32, 0.06),
+			Vector3(side * 0.08, -0.6, -0.02),
+			0.05,
+			leg_mat
+		)
+		ProceduralModels._part(
+			pivot,
+			ProceduralModels._sphere(0.06, false, 6, 8),
+			dark,
+			Vector3(side * 0.08, -0.6, -0.02)
+		)
 	return root
 
 
@@ -335,12 +393,17 @@ static func build_robot_cryomortar() -> Node3D:
 	var frost: StandardMaterial3D = k["glow"]
 	var leg_mat: StandardMaterial3D = k["steel"]
 
-	# 3 splayed tripod legs + the base platform.
+	# 3 splayed tripod legs + the base platform. All three hinge at the SAME hub point —
+	# that IS the tripod joint — so each gets a hip pivot there and the emplacement shuffles
+	# its legs while it repositions (it is motionless most of the time, and EnemyGait relaxes
+	# the pose below walking speed, so a firing mortar still stands perfectly still).
+	var hub := Vector3(0, 0.5, 0)
 	for i in 3:
 		var ang := TAU * float(i) / 3.0 + 0.5
 		var foot := Vector3(cos(ang) * 0.62, 0.0, sin(ang) * 0.62)
-		ProceduralModels._strut(root, Vector3(0, 0.5, 0), foot, 0.07, leg_mat)
-		ProceduralModels._part(root, ProceduralModels._sphere(0.08, false, 6, 8), dark, foot)
+		var hip := _gait_hip(root, i, hub)
+		ProceduralModels._strut(hip, Vector3.ZERO, foot - hub, 0.07, leg_mat)
+		ProceduralModels._part(hip, ProceduralModels._sphere(0.08, false, 6, 8), dark, foot - hub)
 	ProceduralModels._part(root, ProceduralModels._cyl(0.42, 0.22, 12), shell, Vector3(0, 0.55, 0))
 	# The mortar tube under a yaw pivot, angled up 45° facing -Z.
 	var tube := Node3D.new()
@@ -381,13 +444,15 @@ static func build_robot_avalanche() -> Node3D:
 	var core_mat := ProcPlating.glow(Color(0.35, 0.7, 1.0), 3.5)
 	var ice := ProceduralModels._mat(Color(0.7, 0.88, 0.98), 0.1, 0.25)
 
-	# Thick legs + pelvis.
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.3, 0.7, 0.34)), dark, Vector3(0.26, 0.35, 0)
-	)
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.3, 0.7, 0.34)), dark, Vector3(-0.26, 0.35, 0)
-	)
+	# Thick legs, each under a named hip pivot at the TOP of the thigh (where it meets the
+	# pelvis) so the brute strides; the thigh box keeps its exact rest offset, re-based.
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var hip := _gait_hip(root, i, Vector3(side * 0.26, 0.7, 0))
+		ProceduralModels._part(
+			hip, ProceduralModels._box(Vector3(0.3, 0.7, 0.34)), dark, Vector3(0, -0.35, 0)
+		)
+	# Pelvis.
 	ProceduralModels._part(
 		root, ProceduralModels._box(Vector3(0.84, 0.3, 0.5)), plate, Vector3(0, 0.82, 0)
 	)
@@ -447,13 +512,14 @@ static func build_robot_oni() -> Node3D:
 	var steel: StandardMaterial3D = k["steel"]
 	var gold := ProceduralModels._mat(Color(0.85, 0.68, 0.25), 0.85, 0.25)
 
-	# Legs + skirt plates (kusazuri).
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.28, 0.66, 0.3)), dark, Vector3(0.22, 0.33, 0)
-	)
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.28, 0.66, 0.3)), dark, Vector3(-0.22, 0.33, 0)
-	)
+	# Legs under named hip pivots at the top of each thigh (the stride hinge); the skirt
+	# plates (kusazuri) stay on the body — armour hangs off the waist, not off the legs.
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var hip := _gait_hip(root, i, Vector3(side * 0.22, 0.66, 0))
+		ProceduralModels._part(
+			hip, ProceduralModels._box(Vector3(0.28, 0.66, 0.3)), dark, Vector3(0, -0.33, 0)
+		)
 	for i in 4:
 		var a := -0.45 + float(i) * 0.3
 		ProceduralModels._part(
@@ -535,8 +601,9 @@ static func build_robot_oni() -> Node3D:
 
 
 ## RAIN — Kappa: a hunched shell-backed pouncer. Forward-leaning body under a domed
-## shell, claw arms, glowing green eye "Core", legs under "Leg0".."Leg3" pivots
-## (shares the pouncer gait with the hound). ModelRoot at y=0.
+## shell, claw arms, glowing green eye "Core", legs under "GaitLeg0".."GaitLeg3" hip
+## pivots each holding a "Leg0".."Leg3" sway pivot (shares the pouncer gait with the
+## hound). ModelRoot at y=0.
 static func build_robot_kappa() -> Node3D:
 	var root := Node3D.new()
 	# Material kit (v2): plated swamp-green hull; claws are bare steel.
@@ -596,25 +663,28 @@ static func build_robot_kappa() -> Node3D:
 		Vector3(-0.45, 0.42, -0.52),
 		Vector3(-115, 0, 0)
 	)
-	# 4 squat legs under pouncer pivots.
-	var li := 0
-	for side in [-1.0, 1.0]:
-		for z in [-0.18, 0.26]:
-			var zf := float(z)
-			var pivot := Node3D.new()
-			pivot.name = "Leg%d" % li
-			pivot.position = Vector3(side * 0.28, 0.5, zf)
-			root.add_child(pivot)
-			ProceduralModels._strut(
-				pivot, Vector3.ZERO, Vector3(side * 0.1, -0.5, 0.04), 0.06, dark
-			)
-			ProceduralModels._part(
-				pivot,
-				ProceduralModels._sphere(0.07, false, 6, 8),
-				claw,
-				Vector3(side * 0.1, -0.5, 0.04)
-			)
-			li += 1
+	# 4 squat legs: a "GaitLeg" HIP pivot (the stride) wrapping each pouncer "Leg%d" pivot
+	# (its own trot sway) — hips ordered so the even/odd phase split reads as a diagonal trot.
+	var attach: Array[Vector3] = [
+		Vector3(-0.28, 0.5, -0.18),
+		Vector3(-0.28, 0.5, 0.26),
+		Vector3(0.28, 0.5, -0.18),
+		Vector3(0.28, 0.5, 0.26)
+	]
+	var hips := _quad_hips(root, attach)
+	for li in 4:
+		var a: Vector3 = attach[li]
+		var side: float = signf(a.x)
+		var pivot := Node3D.new()
+		pivot.name = "Leg%d" % li
+		hips[li].add_child(pivot)
+		ProceduralModels._strut(pivot, Vector3.ZERO, Vector3(side * 0.1, -0.5, 0.04), 0.06, dark)
+		ProceduralModels._part(
+			pivot,
+			ProceduralModels._sphere(0.07, false, 6, 8),
+			claw,
+			Vector3(side * 0.1, -0.5, 0.04)
+		)
 	return root
 
 
@@ -682,16 +752,19 @@ static func build_robot_raiju() -> Node3D:
 	ProceduralModels._part(
 		root, ProceduralModels._cone(0.1, 0.5, 6), body, Vector3(0, 0.74, 0.72), Vector3(115, 0, 0)
 	)
-	for side in [-1.0, 1.0]:
-		for z in [-0.3, 0.38]:
-			var zf := float(z)
-			ProceduralModels._strut(
-				root,
-				Vector3(side * 0.16, 0.55, zf),
-				Vector3(side * 0.2, 0.0, zf + 0.04),
-				0.045,
-				leg_mat
-			)
+	# 4 thin legs, each hung off a named hip pivot at the shoulder/haunch. The raiju has no
+	# "Leg%d" idle pivots — the hip IS its only leg hinge, so the stride is all it needs.
+	var attach: Array[Vector3] = [
+		Vector3(-0.16, 0.55, -0.3),
+		Vector3(-0.16, 0.55, 0.38),
+		Vector3(0.16, 0.55, -0.3),
+		Vector3(0.16, 0.55, 0.38)
+	]
+	var hips := _quad_hips(root, attach)
+	for li in 4:
+		var a: Vector3 = attach[li]
+		var foot := Vector3(signf(a.x) * 0.2, 0.0, a.z + 0.04)
+		ProceduralModels._strut(hips[li], Vector3.ZERO, foot - a, 0.045, leg_mat)
 	return root
 
 
@@ -716,13 +789,15 @@ static func build_robot_snow_golem() -> Node3D:
 	var core_mat := ProcPlating.glow(glow_col, 3.5)
 	var ice := ProceduralModels._mat(Color(0.72, 0.9, 1.0), 0.1, 0.22)
 
-	# Thick legs + wide pelvis block.
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.4, 0.95, 0.46)), dark, Vector3(0.36, 0.48, 0)
-	)
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.4, 0.95, 0.46)), dark, Vector3(-0.36, 0.48, 0)
-	)
+	# Thick legs under named hip pivots at the top of each thigh (the stride hinge) —
+	# a colossus that slid on locked legs read as a prop; now it walks its mass in.
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var hip := _gait_hip(root, i, Vector3(side * 0.36, 0.955, 0))
+		ProceduralModels._part(
+			hip, ProceduralModels._box(Vector3(0.4, 0.95, 0.46)), dark, Vector3(0, -0.475, 0)
+		)
+	# Wide pelvis block.
 	ProceduralModels._part(
 		root, ProceduralModels._box(Vector3(1.15, 0.4, 0.66)), plate, Vector3(0, 1.12, 0)
 	)
@@ -873,13 +948,14 @@ static func build_robot_oni_chief() -> Node3D:
 	var mask := ProcPlating.glow(glow_col, 3.5)
 	var gold := ProceduralModels._mat(Color(0.85, 0.68, 0.25), 0.85, 0.25)
 
-	# Legs + skirt plates (kusazuri).
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.34, 0.8, 0.36)), dark, Vector3(0.28, 0.4, 0)
-	)
-	ProceduralModels._part(
-		root, ProceduralModels._box(Vector3(0.34, 0.8, 0.36)), dark, Vector3(-0.28, 0.4, 0)
-	)
+	# Legs under named hip pivots at the top of each thigh (the stride hinge); the skirt
+	# plates (kusazuri) stay on the body, same as the base oni.
+	for i in 2:
+		var side := 1.0 if i == 0 else -1.0
+		var hip := _gait_hip(root, i, Vector3(side * 0.28, 0.8, 0))
+		ProceduralModels._part(
+			hip, ProceduralModels._box(Vector3(0.34, 0.8, 0.36)), dark, Vector3(0, -0.4, 0)
+		)
 	for i in 5:
 		var a := -0.6 + float(i) * 0.3
 		ProceduralModels._part(

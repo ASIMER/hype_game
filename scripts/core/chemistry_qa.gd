@@ -89,6 +89,36 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 			return {"ok": false, "error": "no director/enemy"}
 		dirf.call("_try_start", int(json.get("peer", 1)), tgt.get_path())
 		return {"ok": true, "pilots": (await run(tree, {"action": "hijack_state"})).get("pilots")}
+	if action == "shuttle_state":
+		# D6.1 QA: the evac dropship is render-only and short-lived, and extraction resolves
+		# in seconds — filming it reliably is hard, so ask the tree instead.
+		var ships: Array = []
+		for z in tree.get_nodes_in_group(Groups.EXTRACTION):
+			var s: Variant = z.get("_shuttle")
+			if s != null and is_instance_valid(s):
+				# The ROOT stays pinned to the zone; the flying hull is the inner "_ship"
+				# node, so report that — reading the root just says "the zone is where the
+				# zone is" and makes a working approach look frozen.
+				var hull: Variant = (s as Node).get("_ship")
+				var body: Node3D = (hull as Node3D) if hull is Node3D else (s as Node3D)
+				(
+					ships
+					. append(
+						{
+							"zone": str(z.name),
+							"phase": int(s.get("_phase")),
+							"pos":
+							[
+								snappedf(body.global_position.x, 0.1),
+								snappedf(body.global_position.y, 0.1),
+								snappedf(body.global_position.z, 0.1),
+							],
+						}
+					)
+				)
+		return {
+			"ok": true, "ships": ships, "zones": tree.get_nodes_in_group(Groups.EXTRACTION).size()
+		}
 	if action == "preview":
 		return await _preview(tree, json)
 	if action == "preview_clear":

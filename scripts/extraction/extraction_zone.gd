@@ -36,6 +36,20 @@ var _beacon_anim_on: bool = true
 const _OPEN_TINT := Color(0.25, 1.0, 0.6)  # green/teal
 const _CLOSED_TINT := Color(0.95, 0.6, 0.15)  # dim amber
 
+# --- Evac dropship (D6.1; render-only, per-peer, zero netcode) ---------------------
+# The staging for the extraction moment. State is derived LOCALLY (see the EVAC DROPSHIP
+# section at the bottom of this file) — nothing here is replicated or writes game state.
+var _shuttle: ExtractionShuttle = null
+var _shuttle_dwell: float = 0.0  # seconds a player has stood in this zone (local estimate)
+var _shuttle_win: bool = false  # latched by _complete: the ship's "boost away" cue
+var _shuttle_cool: float = 0.0  # seconds before another ship may be called
+var _shuttle_near: bool = false  # camera within range (re-checked at 2 Hz)
+var _shuttle_gate_accum: float = 1.0  # start past the threshold → first frame evaluates
+const _SHUTTLE_CALL_DELAY: float = 0.6  # dwell before calling it (filters walk-throughs)
+const _SHUTTLE_CALL_MAX_FILL: float = 0.72  # too late in the fill → don't bother flying in
+const _SHUTTLE_BUILD_DIST: float = 150.0  # m — build only this close to the camera
+const _SHUTTLE_KEEP_DIST: float = 230.0  # m — free an in-flight ship past this (hysteresis)
+
 # --- Timed open/close window (driven server-auth by ExtractionDirector) ---
 # Zones rotate between OPEN (extraction works) and CLOSED (fill is paused/ignored).
 # Defaults to OPEN so the zone is usable even before a director attaches and on
@@ -265,6 +279,9 @@ func _physics_process(delta: float) -> void:
 func _complete(body: Node) -> void:
 	_timers.erase(body)
 	_completed[body] = true
+	# D6.1 (render-only): latch the evac ship's SUCCESS cue — by the time the shuttle driver
+	# next polls, this player's fill timer is already gone. Consumed + cleared in _drive_shuttle.
+	_shuttle_win = true
 	# A DOWNED player can crawl into an OPEN evac and self-extract — clear their downed
 	# state first so the bleedout timer can't true-kill them as they extract.
 	if (
@@ -657,7 +674,7 @@ func _build_beacon() -> void:
 	pillar_mesh.height = 16.0
 	pillar_mesh.radial_segments = 16
 	_beacon_pillar.mesh = pillar_mesh
-	_beacon_pillar.material_override = _additive(tint, 1.6)
+	_beacon_pillar.material_override = _additive(tint, 1.6, 4.5)
 	_beacon_pillar.position = Vector3(0, 8.0, 0)
 	_beacon.add_child(_beacon_pillar)
 
@@ -693,7 +710,8 @@ func _build_beacon() -> void:
 	beam_mesh.height = 22.0
 	beam_mesh.radial_segments = 24
 	beam.mesh = beam_mesh
-	beam.material_override = _additive(tint, 0.6)  # softer than the central pillar
+	# Fades in past ~7 m so it never becomes a wall of light in the player's face.
+	beam.material_override = _additive(tint, 0.6, 7.0)
 	beam.position = Vector3(0, 11.0, 0)
 	_beacon.add_child(beam)
 
@@ -737,7 +755,7 @@ func _emis(tint: Color, energy: float) -> StandardMaterial3D:
 
 ## Additive, transparent, unshaded material for the pillar/rings (so they read as
 ## light, not solid geometry). Registered for recolour on state flip.
-func _additive(tint: Color, energy: float) -> StandardMaterial3D:
+func _additive(tint: Color, energy: float, fade_in_from: float = 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color(tint.r, tint.g, tint.b, 0.35)
 	m.emission_enabled = true
@@ -747,6 +765,15 @@ func _additive(tint: Color, energy: float) -> StandardMaterial3D:
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# `fade_in_from` > 0 makes this volume FADE IN WITH DISTANCE: invisible up close, full
+	# strength far away. The tall shaft is a see-it-across-the-map landmark, but it is also a
+	# 22 m cylinder with culling disabled, so standing inside it meant staring at an additive
+	# surface that filled the entire screen — the moment you actually extract, the frame
+	# whited out and both the world and anything happening in it disappeared.
+	if fade_in_from > 0.0:
+		m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+		m.distance_fade_min_distance = fade_in_from
+		m.distance_fade_max_distance = fade_in_from * 2.6
 	_beacon_mats.append(m)
 	return m
 
@@ -783,6 +810,9 @@ func _apply_beacon_tint() -> void:
 func _process(delta: float) -> void:
 	if _beacon == null:
 		return
+	# Evac dropship (D6.1). Deliberately ABOVE the beacon's 130 m shimmer gate: the ship owns a
+	# wider gate of its own and must keep flying while the cheap beacon animation is idle.
+	_update_shuttle(delta)
 	_beacon_gate_accum += delta
 	if _beacon_gate_accum >= 0.5:
 		_beacon_gate_accum = 0.0
@@ -826,3 +856,120 @@ func _process(delta: float) -> void:
 			var tint := _OPEN_TINT if _open else _closed_tint()
 			rm.albedo_color = Color(tint.r, tint.g, tint.b, fade * 0.5)
 			rm.emission_energy_multiplier = 2.0 * fade * _beacon_pulse_base
+
+
+# ============================================================ EVAC DROPSHIP (D6.1)
+# Staging for the raid's most important moment: a procedural dropship
+# (scripts/fx/extraction_shuttle.gd) banks in over the beacon, holds station with its ramp
+# light burning a dust ring into the ground, and boosts away the instant the fill completes.
+#
+# PURE RENDER, PER-PEER, ZERO NETCODE — every peer builds and animates its OWN ship out of
+# state it ALREADY has, and nothing below writes game state, blocks input or moves the camera:
+#   * "someone is extracting here" = a player body OVERLAPPING this Area3D. Area monitoring is
+#     live on every peer (only the SERVER's fill in _physics_process is gated), so a client
+#     sees a teammate step into the beam with no RPC at all.
+#   * "how far along" = the server's own _timers when we ARE the server, else a LOCAL dwell
+#     estimate (same overlap start, same Settings.EXTRACTION_TIME) — plenty for staging.
+#   * "it worked" = the _shuttle_win latch from _complete (server) or the dwell reaching 1.0.
+# ONE ship per zone, gated on camera distance, freed the moment it is out of range or done.
+# CLIENT NOTE: a pure client never receives set_window for a CLASSIC zone, so its `_open`
+# reads true — the visual therefore keys off occupancy there. Worst case a client sees a ship
+# for a teammate loitering in a closed beacon; it is cosmetic and costs nothing gameplay-side.
+
+
+## Per-frame driver, called from _process (never headless — _beacon is null there).
+func _update_shuttle(delta: float) -> void:
+	if _shuttle_cool > 0.0:
+		_shuttle_cool = maxf(0.0, _shuttle_cool - delta)
+	var occupied: bool = _shuttle_occupied()
+	if occupied:
+		_shuttle_dwell += delta
+	else:
+		_shuttle_dwell = 0.0
+		_shuttle_win = false
+	if _shuttle != null and not is_instance_valid(_shuttle):
+		_shuttle = null  # it flew off and freed itself
+	# Distance gate at 2 Hz (one length check per zone), with hysteresis so an in-flight ship
+	# isn't culled by the player taking a couple of steps back.
+	_shuttle_gate_accum += delta
+	if _shuttle_gate_accum >= 0.5:
+		_shuttle_gate_accum = 0.0
+		var gate: float = _SHUTTLE_KEEP_DIST if _shuttle != null else _SHUTTLE_BUILD_DIST
+		_shuttle_near = _camera_within(gate)
+	if _shuttle != null:
+		_drive_shuttle(occupied)
+		return
+	if not occupied or not _open or not _shuttle_near or _shuttle_cool > 0.0:
+		return
+	if _shuttle_dwell < _SHUTTLE_CALL_DELAY or _shuttle_fill() > _SHUTTLE_CALL_MAX_FILL:
+		return
+	_shuttle = ExtractionShuttle.make(_OPEN_TINT, _ground_local_y(), _approach_heading())
+	add_child(_shuttle)
+
+
+## Feed the flying ship the live fill and decide when it leaves (success vs cancel).
+func _drive_shuttle(occupied: bool) -> void:
+	if not _shuttle_near:
+		_shuttle.queue_free()
+		_shuttle = null
+		return
+	if _shuttle.is_leaving():
+		return
+	var fill: float = _shuttle_fill()
+	_shuttle.set_fill(fill)
+	# Lift a hair BEFORE the bar tops out: a solo extract cuts straight to the summary screen,
+	# so waiting for a literal 1.0 would hide the payoff behind the UI.
+	if _shuttle_win or fill >= 0.97:
+		_shuttle_win = false
+		_shuttle_cool = 5.0  # let the sky clear before another ship is called here
+		_shuttle.depart(true)
+	elif not occupied or not _open:
+		_shuttle_cool = 2.0
+		_shuttle.depart(false)
+
+
+## True while any player body overlaps this zone — the ONE cue that works identically on every
+## peer (positions are already replicated; the overlap is resolved by local physics).
+func _shuttle_occupied() -> bool:
+	for b in get_overlapping_bodies():
+		if _is_player(b):
+			return true
+	return false
+
+
+## Extraction fill 0..1 FOR THE VISUAL ONLY. The server reads its authoritative timers; any
+## other peer estimates from local dwell. Never fed back into gameplay.
+func _shuttle_fill() -> float:
+	var full: float = maxf(Settings.EXTRACTION_TIME, 0.001)
+	if _is_server:
+		var best: float = 0.0
+		for body in _timers.keys():
+			best = maxf(best, float(_timers[body]))
+		return clampf(best / full, 0.0, 1.0)
+	return clampf(_shuttle_dwell / full, 0.0, 1.0)
+
+
+## Zone-LOCAL y of the terrain under the beacon (the pads flatten it, so one sample is exact
+## enough). Zone origins sit ~2 m above their pad, hence the offset instead of a flat 0.
+func _ground_local_y() -> float:
+	var g: float = ProceduralTerrain.height_at(global_position.x, global_position.z)
+	return g - global_position.y
+
+
+## Deterministic per-zone approach bearing (ProcHash of the rounded world XZ) — every peer
+## flies the ship in from the same direction, and each zone gets its own.
+func _approach_heading() -> float:
+	var gx: int = int(roundf(global_position.x))
+	var gz: int = int(roundf(global_position.z))
+	return ProcHash.hf(gx * 73856093 + gz * 19349663) * TAU
+
+
+## Local camera-distance test (render gate only).
+func _camera_within(dist: float) -> bool:
+	var vp := get_viewport()
+	if vp == null:
+		return false
+	var cam := vp.get_camera_3d()
+	if cam == null:
+		return false
+	return cam.global_position.distance_squared_to(global_position) < dist * dist
