@@ -35,19 +35,22 @@ func _ready() -> void:
 	# Bright flat ambient so low-metallic parts read in full colour (a sky-based
 	# ambient needs a radiance bake that a single force_draw doesn't complete).
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.5, 0.54, 0.62)
-	env.ambient_light_energy = 0.55
+	env.ambient_light_color = Color(0.56, 0.60, 0.68)
+	# D2: this rig was lighting every inventory icon AND every QA hero render about a stop
+	# under the in-world sun, so dark-hulled items read as unrecognisable silhouettes in the
+	# UI and the acceptance renders under-reported how a machine actually looks in daylight.
+	env.ambient_light_energy = 0.85
 	var world := World3D.new()
 	world.environment = env
 	_vp.world_3d = world
 
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-48, -128, 0)
-	key.light_energy = 1.1
+	key.light_energy = 1.7
 	_vp.add_child(key)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-18, 60, 0)
-	fill.light_energy = 0.35
+	fill.light_energy = 0.55
 	_vp.add_child(fill)
 
 	_cam = Camera3D.new()
