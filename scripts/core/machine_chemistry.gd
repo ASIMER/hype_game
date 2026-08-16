@@ -14,6 +14,10 @@ const _COLORS := {
 	"burn": Color(1.0, 0.5, 0.12),
 	"slow": Color(0.6, 0.85, 1.0),
 	"brittle": Color(0.85, 0.92, 1.0),
+	# D2.5 damage states (EnemyStatus) reuse this emitter factory: a wounded chassis throws
+	# hot sparks, a critical one also trails smoke. Not statuses — same visual vocabulary.
+	"sparks": Color(1.0, 0.72, 0.28),
+	"smoke": Color(0.26, 0.26, 0.28),
 }
 
 ## Node-meta key for the per-enemy elemental-ammo shock ICD (the EnemyDance meta pattern).
@@ -137,10 +141,15 @@ static func is_wet(x: float, z: float) -> bool:
 ## robot_enemy.apply_chemistry_fx while the status is active. Render-only; never networked.
 static func make_fx(kind: String) -> Node3D:
 	var col: Color = _COLORS.get(kind, Color.WHITE)
-	var rising: bool = kind == "burn"
+	var rising: bool = kind == "burn" or kind == "smoke"
 	var p := GPUParticles3D.new()
 	p.amount = 18
 	p.lifetime = 0.7
+	if kind == "smoke":
+		# A plume, not a puff: slower, larger, longer-lived so it reads as a damaged machine
+		# trailing smoke rather than a status effect pulsing.
+		p.amount = 12
+		p.lifetime = 1.8
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.position = Vector3(0.0, 1.0, 0.0)
 	var pm := ParticleProcessMaterial.new()
@@ -154,6 +163,18 @@ static func make_fx(kind: String) -> Node3D:
 	pm.gravity = Vector3(0.0, grav_y, 0.0)
 	pm.scale_min = 0.15
 	pm.scale_max = 0.4
+	if kind == "smoke":
+		pm.scale_min = 0.5
+		pm.scale_max = 1.1
+		pm.initial_velocity_min = 0.2
+		pm.initial_velocity_max = 0.8
+		pm.spread = 18.0
+	elif kind == "sparks":
+		pm.scale_min = 0.05
+		pm.scale_max = 0.14
+		pm.initial_velocity_min = 1.5
+		pm.initial_velocity_max = 4.5
+		pm.gravity = Vector3(0.0, -6.0, 0.0)  # sparks ARC and fall; embers do not float
 	pm.color = col
 	p.process_material = pm
 	var mesh := BoxMesh.new()
@@ -161,7 +182,10 @@ static func make_fx(kind: String) -> Node3D:
 	var sm := StandardMaterial3D.new()
 	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	# Smoke must OCCLUDE, not glow: additive smoke over a bright sky reads as a white cloud.
+	sm.blend_mode = (
+		BaseMaterial3D.BLEND_MODE_MIX if kind == "smoke" else BaseMaterial3D.BLEND_MODE_ADD
+	)
 	sm.albedo_color = col
 	mesh.material = sm
 	p.draw_pass_1 = mesh

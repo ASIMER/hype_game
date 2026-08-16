@@ -321,21 +321,23 @@ func _setup_weakpoint_marker() -> void:
 	var shape := wp.get_node_or_null("CollisionShape3D")
 	var radius := 0.18
 	if shape is CollisionShape3D and (shape as CollisionShape3D).shape is SphereShape3D:
-		radius = ((shape as CollisionShape3D).shape as SphereShape3D).radius * 0.85
+		radius = ((shape as CollisionShape3D).shape as SphereShape3D).radius * 0.55
 	var mesh := SphereMesh.new()
 	mesh.radius = radius
 	mesh.height = radius * 2.0
 	mesh.radial_segments = 10
 	mesh.rings = 6
+	# D2: MATTE HAZARD PAINT, not a lamp. This used to be an unshaded emissive dome at 0.85
+	# radius — against the old charcoal hulls it read as a marker, but against the two-tone
+	# light plate it became a glowing orange balloon covering the machine's head and stealing
+	# the one emissive signal the design allows (the eye). A weak point is a PAINTED panel on
+	# real hardware, so it is a small matte gold patch now: it still says "shoot here" through
+	# hue and value contrast against the bone hull, without competing with the state glow.
 	var mat := StandardMaterial3D.new()
-	var accent := AssetRegistry.get_color(enemy_id).lerp(Color(1.0, 0.85, 0.2), 0.6)
+	var accent := AssetRegistry.get_color(enemy_id).lerp(Color(0.91, 0.77, 0.42), 0.85)
 	mat.albedo_color = accent
-	mat.emission_enabled = true
-	mat.emission = accent
-	mat.emission_energy_multiplier = 2.2
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color.a = 0.85
+	mat.roughness = 0.75
+	mat.metallic = 0.05
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat
@@ -1787,10 +1789,8 @@ func _boost_weakpoint_for_armored() -> void:
 		if not (c is MeshInstance3D):
 			continue
 		var mi := c as MeshInstance3D
-		mi.scale *= 1.3
-		var mat := mi.material_override
-		if mat is StandardMaterial3D:
-			(mat as StandardMaterial3D).emission_energy_multiplier *= 3.0
+		mi.scale *= 1.35  # the marker is matte paint now (see _setup_weakpoint_marker),
+		# so an armored elite advertises its one soft spot by PATCH SIZE, not by glowing.
 
 
 # --- Target helper (exposed for waves / debugging) --------------------------
