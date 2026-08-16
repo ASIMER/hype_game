@@ -27,6 +27,7 @@ class_name MicroVignettes
 enum Template { CONVOY, SHRINE, DRONE, TOTEM, STASH, EVAC, HARVEST, BARRICADE, MAST, POD }
 
 const ROOT_NAME: String = "MicroVignettes"
+const DEBUG_ROOT_NAME: String = "MicroVignettesDebug"  # QA-forced scenes (see spawn_debug)
 const COUNT_MIN: int = 4
 const COUNT_MAX: int = 7
 const TEMPLATE_COUNT: int = 10
@@ -81,13 +82,47 @@ static func spawn_all(arena: Node, loot_root: Node, rng_seed: int) -> int:
 	var root := Node3D.new()
 	root.name = ROOT_NAME
 	arena.add_child(root)
-	for p in points:
+	for i in points.size():
 		var holder := Node3D.new()
 		root.add_child(holder)
-		holder.global_position = p
+		holder.global_position = points[i]
 		holder.rotation.y = rng.randf_range(-PI, PI)
-		_build_one(holder, loot_root, rng)
+		# Named AFTER the build (the roll happens inside) so QA can find a specific scene in
+		# the tree — "Arena/MicroVignettes/Vignette_3_MAST" — instead of "@Node3D@412". The
+		# index leads so two rolls of the same template can't collide into a "@2" suffix.
+		holder.name = "Vignette_%d_%s" % [i, Template.keys()[_build_one(holder, loot_root, rng)]]
 	return points.size()
+
+
+## QA ONLY: force ONE named template onto a known point (no keep-outs, no rejection
+## sampling, no authority gate) and return its holder. Lives under a SEPARATE root so it
+## never trips spawn_all's idempotency guard, and so `restart` clears it with the arena.
+## `template` is a Template enum index; `pos.y` is ignored — the point is seated on the
+## terrain exactly like the real placer does it. Call it repeatedly, each call adds a holder.
+##
+## Resolves the arena + Net/Loot itself (Groups.ARENA, the NemesisDirector._loot_container
+## convention) so a debug verb is a two-liner. Returns null if there is no arena yet.
+static func spawn_debug(tree: SceneTree, template: int, pos: Vector3, rng_seed: int = 1) -> Node3D:
+	if tree == null:
+		return null
+	var arena: Node = tree.get_first_node_in_group(Groups.ARENA)
+	if arena == null or not is_instance_valid(arena):
+		return null
+	var loot_root: Node = arena.get_node_or_null("Net/Loot")
+	var root: Node3D = arena.get_node_or_null(NodePath(DEBUG_ROOT_NAME)) as Node3D
+	if root == null:
+		root = Node3D.new()
+		root.name = DEBUG_ROOT_NAME
+		arena.add_child(root)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = rng_seed
+	var holder := Node3D.new()
+	root.add_child(holder)
+	holder.global_position = Vector3(pos.x, ProceduralTerrain.height_at(pos.x, pos.z), pos.z)
+	var idx: int = clampi(template, 0, TEMPLATE_COUNT - 1)
+	_dispatch(holder, loot_root, rng, idx)
+	holder.name = "Dbg_%d_%s" % [root.get_child_count() - 1, Template.keys()[idx]]
+	return holder
 
 
 # ------------------------------------------------------------------- placement
@@ -167,8 +202,19 @@ static func _keepouts(arena: Node) -> Array[Vector4]:
 
 
 # ------------------------------------------------------------------- templates
-static func _build_one(holder: Node3D, loot_root: Node, rng: RandomNumberGenerator) -> void:
-	match rng.randi_range(0, TEMPLATE_COUNT - 1):
+## Rolls a template and builds it. Returns the chosen Template index so the caller can name
+## the holder after it (the roll must stay the caller's ONLY rng draw here — de-inlining it
+## would shift every downstream random value for a given seed).
+static func _build_one(holder: Node3D, loot_root: Node, rng: RandomNumberGenerator) -> int:
+	var idx: int = rng.randi_range(0, TEMPLATE_COUNT - 1)
+	_dispatch(holder, loot_root, rng, idx)
+	return idx
+
+
+static func _dispatch(
+	holder: Node3D, loot_root: Node, rng: RandomNumberGenerator, idx: int
+) -> void:
+	match idx:
 		Template.CONVOY:
 			_build_convoy(holder, loot_root, rng)
 		Template.SHRINE:
@@ -341,6 +387,9 @@ static func _build_evac(holder: Node3D, loot_root: Node, rng: RandomNumberGenera
 			holder, Vector3(0.80, 0.07, 0.12), Vector3(bx, 0.30, bz), strap
 		)
 		band.rotation.y = bag.rotation.y
+		# The queue runs ~3.3 m out — past the flatness probe, so re-seat each bag.
+		_settle(bag, holder)
+		_settle(band, holder)
 	# Two crowd barriers knocked flat in the rush for the ramp.
 	var rail: StandardMaterial3D = _mat(Color(0.55, 0.42, 0.12), 0.7, 0.4)
 	for i in range(2):
@@ -438,12 +487,17 @@ static func _build_barricade(holder: Node3D, loot_root: Node, rng: RandomNumberG
 		)
 		blk.rotation.y = -a
 		blk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		# The arc sits 3.4 m out; settle each block on its own ground so the wall follows
+		# the slope instead of half-burying one end.
+		_settle(blk, holder)
 		if i == 2 or i == 3:
 			# The centre is stacked two high — the spot they expected to be hit hardest.
+			# Same xz as `blk`, so the same correction keeps the stack glued together.
 			var under: MeshInstance3D = _box(
 				holder, Vector3(1.0, 0.55, 0.55), p + Vector3(0.0, 0.28, 0.0), sack
 			)
 			under.rotation.y = -a
+			_settle(under, holder)
 	# Spent brass behind the line — the volume of fire, told in litter.
 	for i in range(12):
 		var ba: float = rng.randf_range(-PI, PI)
@@ -465,6 +519,11 @@ static func _build_barricade(holder: Node3D, loot_root: Node, rng: RandomNumberG
 	wreck.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	var arm: MeshInstance3D = _cyl(holder, 0.14, 1.2, Vector3(1.5, 0.12, -5.0), steel)
 	arm.rotation = Vector3(0.0, rng.randf_range(-1.0, 1.0), PI * 0.5)
+	# 5-6 m out — the furthest ground contact in the whole set, so it gets its own seat.
+	_settle(wreck, holder)
+	_settle(arm, holder)
+	_settle(pod, holder)
+	_settle(mast_stub, holder)
 	_sparks(holder, Vector3(0.0, 0.7, -5.4))
 	_drop(loot_root, holder, Vector3(-0.6, 0.4, 1.9), LOOT_AMMO, 2)
 	if rng.randf() < 0.6:
@@ -497,7 +556,11 @@ static func _build_mast(holder: Node3D, loot_root: Node, rng: RandomNumberGenera
 	# Guy-wires to three stakes — the thing that makes it read as RAISED, not dropped.
 	for i in range(3):
 		var ga: float = float(i) * TAU / 3.0 + 0.4
-		var anchor := Vector3(sin(ga) * 3.6, 0.0, cos(ga) * 3.6)
+		var ax: float = sin(ga) * 3.6
+		var az: float = cos(ga) * 3.6
+		# The stake's ground is resolved FIRST (not settled afterwards) so the wire ENDS on
+		# it — a settled stake under an un-settled wire is exactly the "floating rope" bug.
+		var anchor := Vector3(ax, _ground_delta(holder, ax, az), az)
 		_strut(holder, lean * 0.82, anchor + Vector3(0.0, 0.15, 0.0), 0.022, dark)
 		_box(holder, Vector3(0.16, 0.34, 0.16), anchor + Vector3(0.0, 0.14, 0.0), dark)
 	# Battery bank at the foot, one cell still alive.
@@ -544,9 +607,11 @@ static func _build_pod(holder: Node3D, loot_root: Node, rng: RandomNumberGenerat
 			burnt
 		)
 		ridge.rotation.y = yaw + rng.randf_range(-0.15, 0.15)
+		_settle(ridge, holder)  # the furrow runs 5 m back, past the flatness probe
 	# Hatch blown off and lying face-up a few metres out — the "it OPENED" beat.
 	var hatch: MeshInstance3D = _cyl(holder, 0.95, 0.12, Vector3(3.0, 0.07, 1.1), hot)
 	hatch.rotation = Vector3(rng.randf_range(-0.25, 0.25), 0.0, rng.randf_range(-0.3, 0.3))
+	_settle(hatch, holder)
 	# Crumpled canopy downwind — pale cloth is the one bright shape in the scene.
 	for i in range(3):
 		var ca: float = rng.randf_range(-PI, PI)
@@ -557,6 +622,7 @@ static func _build_pod(holder: Node3D, loot_root: Node, rng: RandomNumberGenerat
 			chute
 		)
 		cloth.rotation = Vector3(rng.randf_range(-0.12, 0.12), ca, rng.randf_range(-0.12, 0.12))
+		_settle(cloth, holder)
 	for i in range(7):
 		var da: float = rng.randf_range(-PI, PI)
 		var dr: float = rng.randf_range(2.0, 4.4)
@@ -567,6 +633,7 @@ static func _build_pod(holder: Node3D, loot_root: Node, rng: RandomNumberGenerat
 			hot
 		)
 		frag.rotation = Vector3(rng.randf_range(-0.3, 0.3), da, rng.randf_range(-0.3, 0.3))
+		_settle(frag, holder)  # the fan throws out to 4.4 m
 	_smoke(holder, Vector3(0.3, 0.9, 0.2), Color(0.26, 0.26, 0.28, 0.30), 10)
 	_drop(loot_root, holder, Vector3(2.2, 0.5, 2.3), LOOT_CELL, 1)
 	if rng.randf() < 0.55:
@@ -676,6 +743,33 @@ static func _mat(col: Color, rough: float, metal: float, emit: float = 0.0) -> S
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mat_cache[key] = mat
 	return mat
+
+
+## Re-seat ONE already-positioned prop on the terrain under its OWN xz.
+##
+## WHY: the holder is placed at a SINGLE `ProceduralTerrain.height_at`, and every prop hangs
+## off that one Y. `_is_flat` only probes ±2.5 m and tolerates MAX_SLOPE_DROP (1.6 m), so a
+## piece sitting 4-6 m out — the barricade's stopped wreck, the pod's debris fan, the mast's
+## guy stakes — can legally end up ~1 m above or below the actual ground. Anything that must
+## TOUCH the ground at range gets this; centre pieces and anything structurally tied to
+## another prop (gantry beam, stacked crates at the same xz) deliberately do NOT.
+##
+## Uses height_at, NOT a raycast: it must agree with the placer, and it has to work at
+## match-start before the props/physics around it are settled.
+static func _settle(prop: Node3D, holder: Node3D) -> void:
+	if prop == null or holder == null or not holder.is_inside_tree():
+		return
+	var g: Vector3 = holder.to_global(Vector3(prop.position.x, 0.0, prop.position.z))
+	prop.position.y += ProceduralTerrain.height_at(g.x, g.z) - holder.global_position.y
+
+
+## Local-space Y correction for a holder-local xz — the value `_settle` applies, for callers
+## that need it BEFORE building (a guy-wire has to end exactly on its settled stake).
+static func _ground_delta(holder: Node3D, local_x: float, local_z: float) -> float:
+	if not holder.is_inside_tree():
+		return 0.0
+	var g: Vector3 = holder.to_global(Vector3(local_x, 0.0, local_z))
+	return ProceduralTerrain.height_at(g.x, g.z) - holder.global_position.y
 
 
 ## Truncated cone (CylinderMesh with unequal radii) — the one shape `_cyl` can't make.

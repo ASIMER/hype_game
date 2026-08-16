@@ -124,6 +124,30 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 		return {
 			"ok": true, "ships": ships, "zones": tree.get_nodes_in_group(Groups.EXTRACTION).size()
 		}
+	if action == "vignette":
+		# Micro-vignettes are placed by rejection sampling on a per-raid seed, so hunting a
+		# specific one by teleporting is a lottery — which is exactly how a template that
+		# builds wrong, or not at all, stays invisible to QA. Force one onto a known point
+		# instead: {action:"vignette", template:6, x:.., z:..}. `templates` comes back so the
+		# caller never has to hardcode the enum order.
+		var pl_pos := Vector3.ZERO
+		for pl in tree.get_nodes_in_group(Groups.PLAYERS):
+			if pl.is_multiplayer_authority() and pl is Node3D:
+				pl_pos = (pl as Node3D).global_position
+		var at := Vector3(float(json.get("x", pl_pos.x + 9.0)), 0.0, float(json.get("z", pl_pos.z)))
+		var holder: Node3D = MicroVignettes.spawn_debug(
+			tree, int(json.get("template", 0)), at, int(json.get("seed", 1))
+		)
+		if holder == null:
+			return {"ok": false, "error": "spawn_debug returned null"}
+		var hp: Vector3 = holder.global_position
+		return {
+			"ok": true,
+			"name": str(holder.name),
+			"pos": [hp.x, hp.y, hp.z],
+			"parts": holder.get_child_count(),
+			"templates": MicroVignettes.Template.keys(),
+		}
 	if action == "preview":
 		return await _preview(tree, json)
 	if action == "preview_clear":
