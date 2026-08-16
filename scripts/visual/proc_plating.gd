@@ -39,18 +39,21 @@ static func plated(
 	base: Color,
 	arch: int,
 	sid: int,
-	metallic: float = 0.45,
-	roughness: float = 0.55,
+	metallic: float = -1.0,
+	roughness: float = -1.0,
 	scale: Vector3 = Vector3(0.55, 0.55, 0.55),
 	world: bool = false,
 	normal_scale: float = 1.0
 ) -> StandardMaterial3D:
 	var pair: Array = _bake_cached(arch, absi(sid) % 3)
 	var m := StandardMaterial3D.new()
-	var comp: float = 1.0 / _MID
+	# pair[2] is the finished mask's measured MEAN (see _bake) — compensating by it is what
+	# makes `base` the plate's true average albedo instead of an over-optimistic target.
+	var comp: float = 1.0 / float(pair[2])
+	var finish: Vector2 = arch_finish(arch)
 	m.albedo_color = Color(base.r * comp, base.g * comp, base.b * comp, 1.0)
-	m.metallic = metallic
-	m.roughness = roughness
+	m.metallic = finish.x if metallic < 0.0 else metallic
+	m.roughness = finish.y if roughness < 0.0 else roughness
 	m.albedo_texture = pair[0]
 	m.uv1_triplanar = true
 	m.uv1_world_triplanar = world
@@ -68,28 +71,62 @@ static func plated(
 	return m
 
 
+## (metallic, roughness) that an ARCHETYPE implies — the single source for plate finish.
+##
+## D2 — METALLIC IS A BINARY, AND THIS IS WHY MACHINES READ DARK.
+## These plates are PAINTED, and paint is a dielectric: metallic belongs at ~0, with 1.0
+## reserved for bare metal (see `steel`). At the old 0.45/0.6 the shader threw away most of
+## the diffuse response and asked the environment for a reflection instead — so the hull
+## colour barely mattered, and in any view without a bright surround (the isolated hero
+## render, a shaded side, an overcast biome) the plate collapsed to dark grey.
+##
+## The reason this lived in the WRAPPERS before and did nothing: `ProcEnemyKits.kit()` calls
+## `plated(base, arch, sid)` directly, so every enemy silently took the function's DEFAULT
+## 0.45 metallic and the archetype only ever selected which texture got baked. Finish now
+## comes from the archetype itself, so "ARMOR_PLATE" means a look and not just a noise seed.
+static func arch_finish(arch: int) -> Vector2:
+	match arch:
+		Arch.MECH_HULL:
+			return Vector2(0.12, 0.46)  # painted industrial hull, slightly glossier
+		Arch.RUBBER:
+			return Vector2(0.03, 0.9)  # cable/joint boot: matte, no metal at all
+		Arch.LACQUER:
+			return Vector2(0.04, 0.35)  # coated dielectric — gloss is the clearcoat
+		_:
+			return Vector2(0.08, 0.52)  # ARMOR_PLATE: painted armour
+
+
 ## Painted armour plates (panel seams + rivets + worn edges).
+## These plates are PAINTED, and paint is a dielectric: metallic belongs at ~0, with 1.0
+## reserved for bare metal (see `steel`). At the old 0.45/0.6 the shader threw away most of
+## the diffuse response and asked the environment for a reflection instead — so the hull
+## colour barely mattered, and in any view without a bright surround (the isolated hero
+## render, a shaded side, an overcast biome) the plate collapsed to dark grey. Dropping to a
+## paint-like metallic is what actually lets an albedo change be visible at all; the plate
+## keeps its sheen through roughness and the baked normal, not through fake metalness.
 static func armor_plate(
 	base: Color, sid: int, scale: Vector3 = Vector3(0.55, 0.55, 0.55)
 ) -> StandardMaterial3D:
-	return plated(base, Arch.ARMOR_PLATE, sid, 0.45, 0.55, scale)
+	return plated(base, Arch.ARMOR_PLATE, sid, -1.0, -1.0, scale)
 
 
-## Industrial mech hull (panels + vents + oil streaks, more metallic).
+## Industrial mech hull (panels + vents + oil streaks, slightly glossier paint than armour).
 static func mech_hull(
 	base: Color, sid: int, scale: Vector3 = Vector3(0.55, 0.55, 0.55)
 ) -> StandardMaterial3D:
-	return plated(base, Arch.MECH_HULL, sid, 0.6, 0.45, scale)
+	return plated(base, Arch.MECH_HULL, sid, -1.0, -1.0, scale)
 
 
 ## Rubber/cable joints and under-suits (woven micro-normal, near-zero metallic).
 static func rubber(base: Color, sid: int) -> StandardMaterial3D:
-	return plated(base, Arch.RUBBER, sid, 0.05, 0.9, Vector3(0.8, 0.8, 0.8))
+	return plated(base, Arch.RUBBER, sid, -1.0, -1.0, Vector3(0.8, 0.8, 0.8))
 
 
 ## Lacquered panels (oni/urushi look): wide soft panels + clearcoat.
 static func lacquer(base: Color, sid: int) -> StandardMaterial3D:
-	return plated(base, Arch.LACQUER, sid, 0.25, 0.35)
+	# Lacquer is a coated dielectric — the gloss is the CLEARCOAT, not metalness (see the
+	# note on armor_plate); 0.25 was just dimming the colour it exists to show off.
+	return plated(base, Arch.LACQUER, sid)
 
 
 ## Bare worn steel (no plate bake — fine noise relief only): barrels, claws, blades.
@@ -163,19 +200,27 @@ static func _bake(arch: int, sid: int) -> Array:
 			_bake_stains(val, size, hs + 53)
 			_bake_vents(val, ny, size, hs + 91)
 
-	# Encode.
+	# Encode. The MEAN of the finished mask is measured here and returned as the third
+	# element: every pass above only ever MULTIPLIES the _MID starting value DOWN (seams,
+	# stains, vents, per-panel variation), so the finished plate averages well below _MID.
+	# Compensating by 1/_MID — the value the bake STARTED at — therefore under-shot, and a
+	# hull painted at 0.76 landed on screen around 0.5. Compensating by 1/mean instead makes
+	# `base` mean exactly what it says: the plate's average albedo IS the colour in the kit.
 	var alb := Image.create(size, size, false, Image.FORMAT_RGB8)
 	var nrm := Image.create(size, size, false, Image.FORMAT_RGB8)
+	var acc: float = 0.0
 	for y in range(size):
 		for x in range(size):
 			var i: int = y * size + x
 			var g: float = clampf(val[i], 0.0, 1.0)
+			acc += g
 			alb.set_pixel(x, y, Color(g, g, g).srgb_to_linear())
 			var nv := Vector3(clampf(nx[i], -1.0, 1.0), clampf(ny[i], -1.0, 1.0), 1.0).normalized()
 			nrm.set_pixel(x, y, Color(nv.x * 0.5 + 0.5, nv.y * 0.5 + 0.5, nv.z * 0.5 + 0.5))
 	alb.generate_mipmaps()
 	nrm.generate_mipmaps()
-	return [ImageTexture.create_from_image(alb), ImageTexture.create_from_image(nrm)]
+	var mean_val: float = maxf(acc / float(size * size), 0.05)
+	return [ImageTexture.create_from_image(alb), ImageTexture.create_from_image(nrm), mean_val]
 
 
 ## Panel grid: 3-5 jittered seams per axis. Seam = 2 px darken + a 4 px (8 px lacquer)

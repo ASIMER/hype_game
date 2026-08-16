@@ -17,57 +17,70 @@ extends RefCounted
 # id: [hull Color, secondary Color, Arch, sid, glow_energy]
 # glow_energy 3.5 = gameplay signage (kill windows / weak domes / arming blinks);
 # 2.5-3.0 = ambient identity glow.
+#
+# D2 PALETTE — TWO-TONE, and this is the whole point of the table.
+# The photostand measured every machine at 0.12-0.24 mean luma in a NEUTRALLY LIT isolated
+# render (mean target: 0.45). They were not dark because of the grade or the weather — the
+# hulls were simply painted mid-charcoal, so a machine could only ever read as a silhouette.
+# Every hull here now sits in the LIGHT band (luma ~0.68-0.80, i.e. above the grade's warm
+# threshold so it keeps its own hue) and every secondary sits near-black (~0.12-0.17). That
+# pairing — light plate over black frame — is the readable-machine formula, and it needs no
+# builder changes at all: `hull` already covers the big plates and `secondary` the joints,
+# cabling and underbelly, so the two roles were already the 60/30 of a 60/30/10 split.
+# IDENTITY still lives where it belongs: the accent (AssetRegistry colour, the 10%) and the
+# emissive eye. Hulls vary by BIOME instead of by unit — bone-warm urban, sand desert,
+# cold-white snow, damp-warm rain — so a quadrant reads as a place, not a colour swatch.
 const _SPECS: Dictionary = {
 	# v0.5-B4: the starter troopers (rebuilt procedural — were the last .glb enemies).
 	"robot_grunt":
-	[Color(0.46, 0.49, 0.47), Color(0.19, 0.20, 0.22), ProcPlating.Arch.MECH_HULL, 137, 3.5],
+	[Color(0.76, 0.74, 0.69), Color(0.13, 0.135, 0.15), ProcPlating.Arch.MECH_HULL, 137, 3.5],
 	"robot_heavy":
-	[Color(0.42, 0.35, 0.33), Color(0.18, 0.17, 0.17), ProcPlating.Arch.ARMOR_PLATE, 139, 3.5],
+	[Color(0.74, 0.7, 0.645), Color(0.125, 0.12, 0.12), ProcPlating.Arch.ARMOR_PLATE, 139, 3.5],
 	"robot_elite":
-	[Color(0.40, 0.38, 0.43), Color(0.17, 0.17, 0.19), ProcPlating.Arch.ARMOR_PLATE, 149, 3.5],
+	[Color(0.79, 0.78, 0.755), Color(0.13, 0.13, 0.145), ProcPlating.Arch.ARMOR_PLATE, 149, 3.5],
 	"robot_tick":
-	[Color(0.30, 0.34, 0.36), Color(0.16, 0.18, 0.20), ProcPlating.Arch.MECH_HULL, 11, 2.5],
+	[Color(0.71, 0.735, 0.74), Color(0.115, 0.125, 0.135), ProcPlating.Arch.MECH_HULL, 11, 2.5],
 	"robot_wasp":
-	[Color(0.22, 0.24, 0.28), Color(0.10, 0.11, 0.13), ProcPlating.Arch.MECH_HULL, 23, 3.0],
+	[Color(0.7, 0.715, 0.745), Color(0.1, 0.105, 0.12), ProcPlating.Arch.MECH_HULL, 23, 3.0],
 	"robot_bastion":
-	[Color(0.38, 0.20, 0.18), Color(0.18, 0.19, 0.22), ProcPlating.Arch.ARMOR_PLATE, 31, 3.5],
+	[Color(0.78, 0.7, 0.645), Color(0.135, 0.13, 0.14), ProcPlating.Arch.ARMOR_PLATE, 31, 3.5],
 	"robot_boss":
-	[Color(0.30, 0.28, 0.33), Color(0.15, 0.14, 0.17), ProcPlating.Arch.ARMOR_PLATE, 47, 3.5],
+	[Color(0.72, 0.715, 0.735), Color(0.115, 0.11, 0.13), ProcPlating.Arch.ARMOR_PLATE, 47, 3.5],
 	"robot_caller":
-	[Color(0.40, 0.38, 0.32), Color(0.20, 0.19, 0.16), ProcPlating.Arch.MECH_HULL, 53, 3.0],
+	[Color(0.79, 0.76, 0.665), Color(0.14, 0.135, 0.12), ProcPlating.Arch.MECH_HULL, 53, 3.0],
 	"robot_sandworm":
-	[Color(0.45, 0.38, 0.28), Color(0.16, 0.14, 0.12), ProcPlating.Arch.MECH_HULL, 41, 3.5],
+	[Color(0.8, 0.735, 0.615), Color(0.135, 0.12, 0.105), ProcPlating.Arch.MECH_HULL, 41, 3.5],
 	"robot_scarab":
-	[Color(0.48, 0.30, 0.16), Color(0.20, 0.15, 0.10), ProcPlating.Arch.MECH_HULL, 59, 3.5],
+	[Color(0.81, 0.7, 0.55), Color(0.14, 0.115, 0.09), ProcPlating.Arch.MECH_HULL, 59, 3.5],
 	"robot_dustdevil":
-	[Color(0.46, 0.40, 0.30), Color(0.22, 0.19, 0.14), ProcPlating.Arch.ARMOR_PLATE, 61, 2.5],
+	[Color(0.79, 0.745, 0.655), Color(0.15, 0.135, 0.11), ProcPlating.Arch.ARMOR_PLATE, 61, 2.5],
 	"robot_frosthound":
-	[Color(0.55, 0.60, 0.65), Color(0.22, 0.25, 0.28), ProcPlating.Arch.ARMOR_PLATE, 67, 2.5],
+	[Color(0.8, 0.825, 0.845), Color(0.145, 0.155, 0.17), ProcPlating.Arch.ARMOR_PLATE, 67, 2.5],
 	"robot_cryomortar":
-	[Color(0.42, 0.48, 0.54), Color(0.18, 0.21, 0.24), ProcPlating.Arch.MECH_HULL, 71, 3.0],
+	[Color(0.755, 0.79, 0.82), Color(0.13, 0.14, 0.155), ProcPlating.Arch.MECH_HULL, 71, 3.0],
 	"robot_avalanche":
-	[Color(0.70, 0.72, 0.76), Color(0.26, 0.27, 0.30), ProcPlating.Arch.ARMOR_PLATE, 73, 3.0],
+	[Color(0.83, 0.845, 0.865), Color(0.155, 0.16, 0.175), ProcPlating.Arch.ARMOR_PLATE, 73, 3.0],
 	"robot_oni":
-	[Color(0.42, 0.12, 0.11), Color(0.20, 0.18, 0.20), ProcPlating.Arch.LACQUER, 79, 3.0],
+	[Color(0.755, 0.665, 0.635), Color(0.135, 0.12, 0.125), ProcPlating.Arch.LACQUER, 79, 3.0],
 	"robot_kappa":
-	[Color(0.30, 0.42, 0.34), Color(0.14, 0.18, 0.15), ProcPlating.Arch.MECH_HULL, 83, 2.5],
+	[Color(0.71, 0.755, 0.715), Color(0.115, 0.13, 0.12), ProcPlating.Arch.MECH_HULL, 83, 2.5],
 	"robot_raiju":
-	[Color(0.30, 0.34, 0.45), Color(0.13, 0.14, 0.19), ProcPlating.Arch.MECH_HULL, 89, 3.0],
+	[Color(0.715, 0.735, 0.79), Color(0.115, 0.12, 0.14), ProcPlating.Arch.MECH_HULL, 89, 3.0],
 	"robot_snow_golem":
-	[Color(0.62, 0.66, 0.72), Color(0.24, 0.26, 0.29), ProcPlating.Arch.ARMOR_PLATE, 97, 3.5],
+	[Color(0.81, 0.83, 0.86), Color(0.15, 0.155, 0.17), ProcPlating.Arch.ARMOR_PLATE, 97, 3.5],
 	"robot_dune_warden":
-	[Color(0.50, 0.40, 0.26), Color(0.21, 0.17, 0.12), ProcPlating.Arch.ARMOR_PLATE, 101, 3.5],
+	[Color(0.82, 0.73, 0.585), Color(0.145, 0.125, 0.1), ProcPlating.Arch.ARMOR_PLATE, 101, 3.5],
 	"robot_oni_chief":
-	[Color(0.45, 0.10, 0.10), Color(0.21, 0.18, 0.20), ProcPlating.Arch.LACQUER, 103, 3.5],
+	[Color(0.775, 0.675, 0.645), Color(0.14, 0.12, 0.125), ProcPlating.Arch.LACQUER, 103, 3.5],
 	"robot_specter":
-	[Color(0.30, 0.28, 0.36), Color(0.14, 0.13, 0.17), ProcPlating.Arch.MECH_HULL, 107, 3.0],
+	[Color(0.71, 0.7, 0.755), Color(0.115, 0.11, 0.135), ProcPlating.Arch.MECH_HULL, 107, 3.0],
 	# Gadgets share the kit pipeline (deployables are friendly "enemy-grade" hardware).
 	"gadget_turret":
-	[Color(0.32, 0.36, 0.34), Color(0.15, 0.17, 0.16), ProcPlating.Arch.ARMOR_PLATE, 113, 3.0],
+	[Color(0.72, 0.755, 0.735), Color(0.12, 0.13, 0.125), ProcPlating.Arch.ARMOR_PLATE, 113, 3.0],
 	"gadget_dome":
-	[Color(0.30, 0.34, 0.40), Color(0.14, 0.16, 0.19), ProcPlating.Arch.MECH_HULL, 127, 3.0],
+	[Color(0.71, 0.745, 0.78), Color(0.115, 0.125, 0.14), ProcPlating.Arch.MECH_HULL, 127, 3.0],
 	"gadget_sensor":
-	[Color(0.36, 0.34, 0.30), Color(0.17, 0.16, 0.14), ProcPlating.Arch.MECH_HULL, 131, 3.0],
+	[Color(0.765, 0.75, 0.715), Color(0.13, 0.13, 0.12), ProcPlating.Arch.MECH_HULL, 131, 3.0],
 }
 
 
