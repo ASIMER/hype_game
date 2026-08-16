@@ -105,6 +105,11 @@ const QUESTS: PackedStringArray = [
 	"res://resources/quests/q_elite_hunt.tres",
 	"res://resources/quests/q_first_haul.tres",
 	"res://resources/quests/q_hold_the_line.tres",
+	"res://resources/quests/q_nem_archive.tres",
+	"res://resources/quests/q_nem_field_notes.tres",
+	"res://resources/quests/q_nem_lineage.tres",
+	"res://resources/quests/q_nem_serial.tres",
+	"res://resources/quests/q_nem_witness.tres",
 	"res://resources/quests/q_rare_pull.tres",
 	"res://resources/quests/q_silent_cull.tres",
 	"res://resources/quests/q_storm_rider.tres",
@@ -124,6 +129,7 @@ const QUESTS: PackedStringArray = [
 const QUESTLINES: PackedStringArray = [
 	"res://resources/questlines/ql_foreman.tres",
 	"res://resources/questlines/ql_ghost.tres",
+	"res://resources/questlines/ql_nemesis.tres",
 	"res://resources/questlines/ql_salvage.tres",
 ]
 
