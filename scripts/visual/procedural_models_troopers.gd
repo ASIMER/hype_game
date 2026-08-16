@@ -45,28 +45,42 @@ static func _trooper(id: String, wf: float, hf: float, face: String, foot_y: flo
 	var glow: StandardMaterial3D = k["glow"]
 
 	# --- Legs (mirrored): steel foot, plated shin, rubber knee ball + thigh. ---
-	for sx in [-1.0, 1.0]:
+	# Each leg hangs off a NAMED HIP PIVOT so it can be swung as one limb. Without this the
+	# parts were loose siblings of the torso and a machine could only ever slide along the
+	# ground with rigid legs; EnemyGait finds these pivots and drives a real stride from the
+	# body's own speed.
+	#
+	# Deliberately NOT called "Leg0/Leg1": robot_enemy caches nodes with THAT name for its
+	# idle sway (a spider-ish per-leg wiggle authored for the tick), and it would fight the
+	# stride. "GaitLeg*" is the walk-cycle contract; "Leg*" stays the idle-sway one.
+	for i in 2:
+		var sx: float = -1.0 if i == 0 else 1.0
 		var x: float = sx * 0.15 * wf
+		var hip_y: float = 0.80 * hf
+		var hip := Node3D.new()
+		hip.name = "GaitLeg%d" % i
+		hip.position = Vector3(x, hip_y, 0)
+		rig.add_child(hip)
 		ProceduralModels._part(
-			rig,
+			hip,
 			ProceduralModels._box(Vector3(0.22 * wf, 0.09, 0.34)),
 			steel,
-			Vector3(x, 0.05, -0.02)
+			Vector3(0, 0.05 - hip_y, -0.02)
 		)
 		ProceduralModels._part(
-			rig,
+			hip,
 			ProceduralModels._box(Vector3(0.13 * wf, 0.32, 0.15)),
 			hull,
-			Vector3(x, 0.28 * hf, 0)
+			Vector3(0, 0.28 * hf - hip_y, 0)
 		)
 		ProceduralModels._part(
-			rig, ProceduralModels._sphere(0.085 * wf), frame, Vector3(x, 0.47 * hf, 0)
+			hip, ProceduralModels._sphere(0.085 * wf), frame, Vector3(0, 0.47 * hf - hip_y, 0)
 		)
 		ProceduralModels._part(
-			rig,
+			hip,
 			ProceduralModels._box(Vector3(0.15 * wf, 0.30, 0.17)),
 			frame,
-			Vector3(x, 0.64 * hf, 0)
+			Vector3(0, 0.64 * hf - hip_y, 0)
 		)
 
 	# --- Pelvis + torso: plated chest over a rubber core, identity stripe + chest core. ---

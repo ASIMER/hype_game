@@ -57,6 +57,15 @@ var _spark_accum: float = 0.0
 func setup(enemy: Node3D) -> void:
 	_e = enemy
 	_health = enemy.get_node_or_null(Groups.NODE_HEALTH)
+	# Walk cycle (D2.4). Instantiated from here for the same reason the damage states live
+	# here: robot_enemy.gd is at the line ceiling and cannot host another child. Builders that
+	# publish no "GaitLeg*" pivots get nothing, so this is free for them.
+	if DisplayServer.get_name() != "headless":
+		var gait := EnemyGait.new()
+		gait.name = "Gait"
+		enemy.add_child(gait)
+		if not gait.setup(enemy):
+			gait.queue_free()
 
 
 ## Per-frame status ticking (authority-local). Burn deals its DoT on an interval; slow /
