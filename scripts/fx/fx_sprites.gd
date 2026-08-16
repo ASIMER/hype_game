@@ -24,6 +24,14 @@ const SPRITE_GRIT := 0  # angular crumb — concrete / stone / dirt
 const SPRITE_STREAK := 1  # hot tapered streak — metal sparks, wood splinters
 const SPRITE_GLINT := 2  # 4-point star — glass crumbs
 
+## D4.5 WEAK-POINT CRIT — its own recipe kind, keyed OUTSIDE the FXPool.MAT_* range (0..6)
+## so it can never collide with a surface material: a crit is dressed by WHERE it landed on
+## the machine, never by what the wall behind it is made of.
+const KIND_WEAK := -1
+const RING_TIME := 0.20  # the crit ring is a POP, not an effect you watch
+const RING_R0 := 0.10
+const RING_R1 := 0.60
+
 const LIFETIME := 0.85  # outlives the longest pass (dust 0.7 + spawn spread)
 const DECAL_LIFETIME := 3.0  # the surface mark lingers; the node stays busy until it fades
 const FLASH_TIME := 0.07  # the metal/glass pop is a BLINK, not a light
@@ -47,6 +55,7 @@ static var _tex_streak: ImageTexture = null
 static var _tex_grit: ImageTexture = null
 static var _tex_glint: ImageTexture = null
 static var _tex_scorch: ImageTexture = null
+static var _tex_ring: ImageTexture = null
 static var _recipes: Dictionary = {}
 
 var pooled := false  # set by FXPool; end-of-life releases instead of freeing
@@ -54,6 +63,8 @@ var _t := 0.0
 var _decal_t := 0.0
 var _decal_alpha := 0.0
 var _mat_kind := 0  # FXPool.MAT_* — what was hit
+var _weak := false  # weak-point hit → the gold crit recipe replaces the material one
+var _ring_scale := 0.0
 var _normal: Vector3 = Vector3.ZERO  # world-space surface normal (ZERO = unknown -> up)
 var _incoming: Vector3 = Vector3.ZERO  # world-space shot direction (ZERO = unknown)
 var _dust: GPUParticles3D
@@ -63,6 +74,8 @@ var _grit_pm: ParticleProcessMaterial
 var _grit_mat: StandardMaterial3D
 var _flash: MeshInstance3D
 var _flash_mat: StandardMaterial3D
+var _ring: MeshInstance3D
+var _ring_mat: StandardMaterial3D
 var _decal: Decal
 
 
@@ -70,6 +83,7 @@ func _ready() -> void:
 	_build_dust()
 	_build_grit()
 	_build_flash()
+	_build_ring()
 	# The surface mark is a PERMANENT child toggled per use — the create/free-per-hit
 	# pattern fights the pool (Impact learned this the hard way).
 	_decal = Decal.new()
@@ -157,6 +171,29 @@ func _build_flash() -> void:
 	add_child(_flash)
 
 
+## The crit RING (D4.5): a thin additive annulus that snaps outward on the surface plane.
+## Deliberately a ring and not a disc — an additive disc this size whites the frame out at
+## point-blank range, which is the exact failure the extraction beacon's god-ray taught us.
+## Built (hidden) for every pooled node so a crit never allocates mid-firefight; a normal
+## surface impact just leaves it invisible and pays nothing but one parked MeshInstance3D.
+func _build_ring() -> void:
+	var rq := QuadMesh.new()
+	rq.size = Vector2(RING_R0, RING_R0)
+	_ring = MeshInstance3D.new()
+	_ring.name = "CritRing"
+	_ring.mesh = rq
+	_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_ring_mat = StandardMaterial3D.new()
+	_ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_ring_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_ring_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_ring_mat.cull_mode = BaseMaterial3D.CULL_DISABLED  # the ring is a flat sheet, seen from both sides
+	_ring_mat.albedo_texture = _ring_texture()
+	_ring.material_override = _ring_mat
+	_ring.visible = false
+	add_child(_ring)
+
+
 ## One camera-facing sprite quad (mesh + its material). `vertex_color_use_as_albedo` lets
 ## the ParticleProcessMaterial's colour tint the shared texture, so one baked sprite serves
 ## every material without a per-hit material allocation. Blending starts at MIX; the grit
@@ -177,15 +214,30 @@ static func _sprite_quad(size: float, tex: Texture2D) -> QuadMesh:
 
 
 ## Configure the burst BEFORE fire(): `normal` is the world-space surface normal (the cone
-## axis), `material` an FXPool.MAT_* (use FXPool.material_of(hit_node)) and `incoming` the
-## shot direction, which reflects the spark cone off the surface when the caller knows it.
-## Every argument but the normal has a default — an old-style call still gets a sane burst.
+## axis), `material` an FXPool.MAT_* (use FXPool.material_of(hit_node)), `incoming` the
+## shot direction, which reflects the spark cone off the surface when the caller knows it,
+## and `weak` marks a WEAK-POINT hit — that swaps the ENTIRE material recipe for the gold
+## crit burst (D4.5), so the call site only has to pass the flag it already knows.
+## Every argument but the normal has a default — an old-style call still gets a sane burst,
+## and omitting `weak` CLEARS a previous use's crit flag, which is what stops a pooled node
+## from carrying gold sparks into the next wall it dresses.
 func setup(
-	normal: Vector3, material: int = FXPool.MAT_DEFAULT, incoming: Vector3 = Vector3.ZERO
+	normal: Vector3,
+	material: int = FXPool.MAT_DEFAULT,
+	incoming: Vector3 = Vector3.ZERO,
+	weak: bool = false
 ) -> void:
 	_normal = normal
 	_mat_kind = material
 	_incoming = incoming
+	_weak = weak
+
+
+## The crit flag on its own, for a call site that already configured the burst — the
+## duck-typed `has_method("set_weakpoint")` shape FXPool already uses for `set_enemy_hit`.
+## Call it AFTER setup(), which resets the flag.
+func set_weakpoint(on: bool) -> void:
+	_weak = on
 
 
 ## (Re)start at the current transform/config — the pool calls this on every reuse. The node
@@ -204,11 +256,14 @@ func fire() -> void:
 
 ## Write the material recipe into the (already built) emitters. Property writes only.
 func _apply() -> void:
-	var r := _recipe(_mat_kind)
+	# A crit OVERRIDES the surface material outright (KIND_WEAK is outside the MAT_* range,
+	# so the biome-tint branch below is skipped for free — gold sparks, never sand).
+	var kind: int = KIND_WEAK if _weak else _mat_kind
+	var r := _recipe(kind)
 	var n := _surface_normal()
 	var dust_col: Color = r["dust_col"]
 	var grit_col: Color = r["grit_col"]
-	if _mat_kind == FXPool.MAT_DIRT:
+	if kind == FXPool.MAT_DIRT:
 		var biome := WorldBounds.biome_at(global_position.x, global_position.z)
 		var tint: Color = _GROUND_TINT.get(biome, Color(0.44, 0.40, 0.34))
 		dust_col = Color(tint.r, tint.g, tint.b, dust_col.a)
@@ -216,6 +271,7 @@ func _apply() -> void:
 	_apply_dust(r, n, dust_col)
 	_apply_grit(r, n, grit_col)
 	_apply_marks(r, n, grit_col)
+	_apply_ring(r, n, grit_col)
 
 
 func _apply_dust(r: Dictionary, n: Vector3, col: Color) -> void:
@@ -276,6 +332,21 @@ func _apply_marks(r: Dictionary, n: Vector3, col: Color) -> void:
 		_decal.basis = _surface_basis(n)
 
 
+## The crit ring is OPT-IN per recipe (the "ring" scale key, absent from every material
+## recipe), so a normal surface impact costs exactly what it did before D4.5.
+func _apply_ring(r: Dictionary, n: Vector3, col: Color) -> void:
+	var ring: float = float(r.get("ring", 0.0))
+	_ring_scale = ring
+	_ring.visible = ring > 0.0
+	if not _ring.visible:
+		return
+	# Sits proud of the flash quad so the two additive sheets never z-fight at the hit point.
+	_ring.position = n * (SURFACE_OFFSET + 0.03)
+	_ring.basis = _facing_basis(n)
+	_ring_mat.albedo_color = Color(col.r, col.g, col.b, 1.0)
+	(_ring.mesh as QuadMesh).size = Vector2.ONE * RING_R0 * ring
+
+
 func _process(delta: float) -> void:
 	_t += delta
 	if _flash.visible:
@@ -283,6 +354,15 @@ func _process(delta: float) -> void:
 		_flash_mat.albedo_color.a = pop
 		if pop <= 0.0:
 			_flash.visible = false  # a spent additive quad is still a transparent draw
+	if _ring.visible:
+		# Ease-OUT: the ring leaves fast and settles, the way a shock front does. A linear
+		# expand reads as an inflating balloon and loses the "snap" the crit is there to sell.
+		var rk: float = clampf(_t / RING_TIME, 0.0, 1.0)
+		var span: float = lerpf(RING_R0, RING_R1, rk * (2.0 - rk)) * _ring_scale
+		(_ring.mesh as QuadMesh).size = Vector2.ONE * span
+		_ring_mat.albedo_color.a = (1.0 - rk) * (1.0 - rk)
+		if rk >= 1.0:
+			_ring.visible = false
 	var decal_live := _decal != null and _decal.visible
 	if decal_live:
 		_decal_t += delta
@@ -297,6 +377,9 @@ func _process(delta: float) -> void:
 
 
 func _finish() -> void:
+	# Belt-and-braces: the pool can also STEAL a busy node (park, no _finish), but every
+	# FXSprites call site goes through setup(), which resets the flag on its own.
+	_weak = false
 	if pooled and FXPool.active != null:
 		FXPool.active.release(self)
 	else:
@@ -330,6 +413,17 @@ static func _surface_basis(n: Vector3) -> Basis:
 	var seed_axis := Vector3.RIGHT if absf(up.y) > 0.9 else Vector3.UP
 	var x_axis := seed_axis.cross(up).normalized()
 	return Basis(x_axis, up, x_axis.cross(up))
+
+
+## Basis whose +Z is the surface normal — a QuadMesh faces its local +Z, so this STANDS the
+## crit ring up on the surface instead of billboarding it. On a weak point the normal already
+## points back down the shot, so it reads as a flat pop that still has real depth when the
+## player strafes; a billboard would slide against the body it is supposed to be stuck to.
+static func _facing_basis(n: Vector3) -> Basis:
+	var fwd := n.normalized()
+	var seed_axis := Vector3.RIGHT if absf(fwd.y) > 0.9 else Vector3.UP
+	var x_axis := seed_axis.cross(fwd).normalized()
+	return Basis(x_axis, fwd.cross(x_axis), fwd)
 
 
 ## Per-material count as an amount_ratio (never `amount` — that reallocates the buffer),
@@ -423,6 +517,7 @@ static func _build_recipes() -> void:
 	}
 	_build_recipes_earth()
 	_build_recipes_brittle()
+	_build_recipe_weak()
 
 
 ## Stone / dirt — the "dark dust" family (rock shards vs a soft biome-tinted ground splash).
@@ -500,6 +595,34 @@ static func _build_recipes_brittle() -> void:
 		"flash": 0.0,
 		"decal_col": Color(0.08, 0.06, 0.04, 0.50),
 		"decal": 0.40,
+	}
+
+
+## WEAK POINT (D4.5) — the crit read. GOLD, hotter/faster/wider than any surface burst, plus
+## the snap ring, so a player knows they found the soft spot from peripheral vision alone
+## without reading a damage number. The three deliberate departures from a material recipe:
+## `add` sparks at nearly double the metal recipe's velocity (a crit should out-run its own
+## impact), NO decal (this lands on a machine that is about to move or die — a scorch would
+## hang in the air where the body used to be), and the "ring" key, which is what turns the
+## generic burst into a crit and is absent from every other recipe.
+static func _build_recipe_weak() -> void:
+	_recipes[KIND_WEAK] = {
+		"dust": 5,
+		"dust_col": Color(1.0, 0.86, 0.55, 0.42),
+		"dust_v": 2.6,
+		"dust_scale": 0.85,
+		"grit": 14,
+		"grit_col": Color(1.0, 0.82, 0.34, 1.0),
+		"grit_v": 10.5,
+		"grit_scale": 1.15,
+		"grit_g": -7.0,
+		"sprite": SPRITE_STREAK,
+		"add": true,
+		"spread": 48.0,
+		"flash": 0.55,
+		"decal_col": Color(0.0, 0.0, 0.0, 0.0),
+		"decal": 0.0,
+		"ring": 1.0,
 	}
 
 
@@ -597,6 +720,25 @@ static func _scorch_texture() -> ImageTexture:
 			img.set_pixel(x, y, Color(1, 1, 1, clampf(a, 0.0, 1.0)))
 	_tex_scorch = ImageTexture.create_from_image(img)
 	return _tex_scorch
+
+
+## Thin annulus (48²) for the crit ring — a soft two-sided falloff around r=0.70 plus a very
+## faint core, so the sprite still has a centre at spawn size and never reads as a hole.
+static func _ring_texture() -> ImageTexture:
+	if _tex_ring != null:
+		return _tex_ring
+	var size := 48
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	for y in size:
+		for x in size:
+			var d := _radius(x, y, size)
+			var band := 1.0 - smoothstep(0.0, 0.30, absf(d - 0.70))
+			var a := band * band
+			a *= 0.72 + 0.28 * _grain(x, y, 3, 907)
+			a += maxf(0.0, 1.0 - d * 1.7) * 0.10
+			img.set_pixel(x, y, Color(1, 1, 1, clampf(a, 0.0, 1.0)))
+	_tex_ring = ImageTexture.create_from_image(img)
+	return _tex_ring
 
 
 ## Normalized distance from the texture centre (1.0 at the edge midpoints).

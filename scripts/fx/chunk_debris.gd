@@ -24,6 +24,7 @@ var _mats: Array[StandardMaterial3D] = []
 # Crush bookkeeping: each enemy takes damage from THIS burst at most once (shards
 # bounce and re-contact; one collapse should hurt once, not machine-gun).
 var _crushed: Dictionary = {}
+var _life_scale: float = 0.0  # 0 = not sampled yet (see _life_mult)
 
 
 ## Spawn a falling-debris burst at `world_pos` under `host`. `color` tints the shards, `cell` is the
@@ -55,6 +56,50 @@ static func burst(
 	host.add_child(node)
 	node.global_position = world_pos
 	node._build(n, color, cell, hit_normal, sid, kd)
+	# A COLLAPSE deserves a dust column. One cell breaking is a puff and the shards say it;
+	# a burst big enough to be a demolition (the cap-limited count is the honest measure of
+	# "how much came down") also lifts a slow plume, which is what sells the weight.
+	if n >= Settings.CHUNK_DEBRIS_PER_CELL:
+		node._add_dust(color, span_of(cell))
+
+
+## Longest edge of a cell — the burst's rough "size" for scaling the dust column.
+static func span_of(cell: Vector3) -> float:
+	return clampf(maxf(maxf(cell.x, cell.y), cell.z), 0.4, 3.0)
+
+
+## A slow, wide, MIX-blended plume that outlives the shards. Not additive: dust lit from
+## behind by a bright sky must OCCLUDE, or a collapse reads as a white flash.
+func _add_dust(color: Color, span: float) -> void:
+	var p := GPUParticles3D.new()
+	p.amount = 16
+	p.lifetime = 2.6
+	p.one_shot = true
+	p.explosiveness = 0.75
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = span * 0.6
+	pm.direction = Vector3.UP
+	pm.spread = 32.0
+	pm.initial_velocity_min = 0.4
+	pm.initial_velocity_max = 1.6
+	pm.gravity = Vector3(0.0, 0.5, 0.0)
+	pm.scale_min = span * 0.8
+	pm.scale_max = span * 2.1
+	pm.color = color.lightened(0.35)
+	p.process_material = pm
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(0.6, 0.6)
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	sm.albedo_color = Color(color.lightened(0.35), 0.5)
+	mesh.material = sm
+	p.draw_pass_1 = mesh
+	add_child(p)
+	p.emitting = true
 
 
 func _build(
@@ -62,7 +107,7 @@ func _build(
 ) -> void:
 	var flat: float = float(kd.get("shard_flat", 0.72))
 	var szmul: float = float(kd.get("shard_size", 1.0))
-	var span: float = clampf(maxf(maxf(cell.x, cell.y), cell.z), 0.4, 3.0)
+	var span: float = span_of(cell)
 	# Burst axis: away from the surface (toward the shooter) + a strong upward bias so shards arc up
 	# then fall. A zero normal (grenade) just bursts straight up and scatters radially.
 	var up := Vector3.UP
@@ -147,10 +192,31 @@ func _on_shard_contact(other: Node, body: RigidBody3D) -> void:
 		hb.apply_hit(dmg, body)
 
 
+## D4.6: debris LIVES LONGER UP CLOSE. One global lifetime has to be short enough for the
+## worst case (a whole facade coming down across the map), which means the rubble at your
+## feet — the only rubble you actually look at — evaporates while you are still standing in
+## it. Distance decides instead: near bursts get the full dwell, far ones clear fast. The
+## multiplier is sampled ONCE, so a burst never changes its mind halfway through fading.
+const _NEAR_LIFE_DIST := 22.0
+const _NEAR_LIFE_MULT := 2.4
+
+
+func _life_mult() -> float:
+	if _life_scale > 0.0:
+		return _life_scale
+	_life_scale = 1.0
+	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
+	if cam != null:
+		var d: float = cam.global_position.distance_to(global_position)
+		_life_scale = lerpf(_NEAR_LIFE_MULT, 1.0, clampf(d / _NEAR_LIFE_DIST, 0.0, 1.0))
+	return _life_scale
+
+
 func _process(delta: float) -> void:
 	_t += delta
-	var fade: float = Settings.CHUNK_DEBRIS_FADE
-	var life: float = Settings.CHUNK_DEBRIS_LIFETIME
+	var k: float = _life_mult()
+	var fade: float = Settings.CHUNK_DEBRIS_FADE * k
+	var life: float = Settings.CHUNK_DEBRIS_LIFETIME * k
 	if _t >= fade:
 		var a: float = 1.0 - clampf((_t - fade) / maxf(0.1, life - fade), 0.0, 1.0)
 		for mat in _mats:

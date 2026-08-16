@@ -55,19 +55,18 @@ const CATALOG := {
 		"size": Vector3(1.4, 1.8, 1.4),
 		"color": Color(0.6, 0.15, 0.15)
 	},
-	# Kenney Starter-Kit-FPS blaster.glb (CC0). ~1.6m long down +Z; shrink to a held weapon.
-	# Weapons: Kenney Blaster Kit (CC0) glTF view-models. Barrel faces +Z so held guns
+	# D4.1: the five guns are PROCEDURAL again (`ProceduralWeapons`), so their `model` is
+	# blank — a .glb WINS over a builder, and the Kenney blasters are toy-shaped next to the
+	# rebuilt receivers/sights/stocks. The scale/rot/offset keys are gone with them: builder
+	# output is authored at final size and orientation. The .glb files stay on disk, unused
+	# (same disposition as the grunt/heavy/elite bodies retired in v0.5-B4).
 	"rifle":
 	{
-		# rotate 180° to point -Z; share Textures/colormap.png. See docs/ASSETS.md.
-		"model": "res://assets/models/weapons/rifle.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/rifle.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.12, 0.18, 0.8),
-		"color": Color(0.2, 0.2, 0.22),
-		"model_scale": 0.34,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.2, 0.2, 0.22)
 	},
 	# Khronos glTF-Sample-Assets Box.glb (CC0). Unit cube centred at origin; shrink to
 	"crate":
@@ -99,48 +98,35 @@ const CATALOG := {
 	},
 	"smg":
 	{
-		# --- Weapons: Kenney Blaster Kit (CC0) glTF view-models (was procedural). ---
-		"model": "res://assets/models/weapons/smg.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/smg.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.1, 0.16, 0.55),
-		"color": Color(0.18, 0.18, 0.2),
-		"model_scale": 0.58,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.18, 0.18, 0.2)
 	},
 	"shotgun":
 	{
-		"model": "res://assets/models/weapons/shotgun.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/shotgun.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.12, 0.16, 0.9),
-		"color": Color(0.25, 0.16, 0.1),
-		"model_scale": 0.6,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.25, 0.16, 0.1)
 	},
 	"pistol":
 	{
-		"model": "res://assets/models/weapons/pistol.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/pistol.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.08, 0.18, 0.35),
-		"color": Color(0.2, 0.2, 0.22),
-		"model_scale": 0.48,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.2, 0.2, 0.22)
 	},
 	"dmr":
 	{
-		"model": "res://assets/models/weapons/dmr.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/dmr.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.1, 0.16, 1.1),
-		"color": Color(0.15, 0.17, 0.2),
-		"model_scale": 0.34,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, -0.06)
+		"color": Color(0.15, 0.17, 0.2)
 	},
 	"robot_tick":
 	{

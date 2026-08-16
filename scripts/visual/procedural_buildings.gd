@@ -101,23 +101,31 @@ static func _grime_ramp() -> ImageTexture:
 ## Fine normal map + boosted relief (last arg) for crisp, detailed up-close concrete.
 static func mat_concrete(sid: int = 0) -> StandardMaterial3D:
 	return _ground_grime(
-		ProcMaterials.streaked(Color(0.489, 0.489, 0.508), 0.0, 0.92, 0.5, sid * 7 + 3, 0.7, true)
+		ProcMaterials.apply_pbr(
+			ProcMaterials.streaked(
+				Color(0.489, 0.489, 0.508), 0.0, 0.92, 0.5, sid * 7 + 3, 0.7, true
+			),
+			"concrete"
+		)
 	)
 
 
 ## Darker concrete for slabs/floors/roofs — horizontal grime (not streaked) + relief.
 static func mat_concrete_dark(sid: int = 0) -> StandardMaterial3D:
 	return _ground_grime(
-		ProcMaterials.weathered(
-			Color(0.360, 0.370, 0.391),
-			0.0,
-			0.94,
-			0.45,
-			sid * 13 + 5,
-			Vector3(0.13, 0.13, 0.13),
-			true,
-			0.7,
-			true
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.360, 0.370, 0.391),
+				0.0,
+				0.94,
+				0.45,
+				sid * 13 + 5,
+				Vector3(0.13, 0.13, 0.13),
+				true,
+				0.7,
+				true
+			),
+			"concrete"
 		)
 	)
 
@@ -125,7 +133,12 @@ static func mat_concrete_dark(sid: int = 0) -> StandardMaterial3D:
 ## Stained warehouse concrete — heavier dirt streaks + relief.
 static func mat_concrete_stained(sid: int = 0) -> StandardMaterial3D:
 	return _ground_grime(
-		ProcMaterials.streaked(Color(0.421, 0.411, 0.391), 0.05, 0.9, 0.38, sid * 17 + 9, 0.7, true)
+		ProcMaterials.apply_pbr(
+			ProcMaterials.streaked(
+				Color(0.421, 0.411, 0.391), 0.05, 0.9, 0.38, sid * 17 + 9, 0.7, true
+			),
+			"concrete"
+		)
 	)
 
 
@@ -133,31 +146,52 @@ static func mat_concrete_stained(sid: int = 0) -> StandardMaterial3D:
 ## Moderate metallic + mid roughness so SDFGI reflections still catch. Strong normal
 ## relief for pitted, corroded depth (heightmap POM is unavailable on triplanar).
 static func mat_rust(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.546, 0.350, 0.239),
-		0.3,
-		0.6,
-		0.4,
-		sid * 23 + 1,
-		Vector3(0.12, 0.12, 0.12),
-		true,
-		0.8,
-		true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.546, 0.350, 0.239),
+			0.3,
+			0.6,
+			0.4,
+			sid * 23 + 1,
+			Vector3(0.12, 0.12, 0.12),
+			true,
+			0.8,
+			true
+		),
+		"rust"
 	)
 
 
 ## Dirtier structural metal — kept semi-reflective (metallic ~0.45, roughness ~0.55)
 ## so it reads as worn steel and SDFGI bounces off it.
 static func mat_metal(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.431, 0.460, 0.499), 0.16, 0.55, 0.5, sid * 29 + 4, Vector3(0.12, 0.12, 0.12), true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.431, 0.460, 0.499),
+			0.16,
+			0.55,
+			0.5,
+			sid * 29 + 4,
+			Vector3(0.12, 0.12, 0.12),
+			true
+		),
+		"metal"
 	)
 
 
 ## Dark grimy metal for ribs/door-ends/trim.
 static func mat_metal_dark(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.262, 0.274, 0.296), 0.12, 0.55, 0.5, sid * 31 + 2, Vector3(0.10, 0.10, 0.10), true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.262, 0.274, 0.296),
+			0.12,
+			0.55,
+			0.5,
+			sid * 31 + 2,
+			Vector3(0.10, 0.10, 0.10),
+			true
+		),
+		"metal"
 	)
 
 
@@ -235,32 +269,38 @@ static func mat_lacquer(sid: int = 0) -> StandardMaterial3D:
 
 ## Dark temple/lodge roof timber — broad grime, matte.
 static func mat_roofwood(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.228, 0.179, 0.153),
-		0.0,
-		0.82,
-		0.45,
-		sid * 31 + 2,
-		Vector3(0.10, 0.10, 0.10),
-		true,
-		0.7,
-		true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.228, 0.179, 0.153),
+			0.0,
+			0.82,
+			0.45,
+			sid * 31 + 2,
+			Vector3(0.10, 0.10, 0.10),
+			true,
+			0.7,
+			true
+		),
+		"timber"
 	)
 
 
 ## Off-white temple/lodge plaster wall — light grime.
 static func mat_plaster(sid: int = 0) -> StandardMaterial3D:
 	return _ground_grime(
-		ProcMaterials.weathered(
-			Color(0.873, 0.848, 0.791),
-			0.0,
-			0.9,
-			0.38,
-			sid * 41 + 9,
-			Vector3(0.07, 0.07, 0.07),
-			true,
-			0.6,
-			true
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.873, 0.848, 0.791),
+				0.0,
+				0.9,
+				0.38,
+				sid * 41 + 9,
+				Vector3(0.07, 0.07, 0.07),
+				true,
+				0.6,
+				true
+			),
+			"plaster"
 		)
 	)
 
@@ -268,7 +308,12 @@ static func mat_plaster(sid: int = 0) -> StandardMaterial3D:
 ## Warm timber logs — alpine lodge walls. Vertical streaks read as plank/log grain.
 static func mat_timber(sid: int = 0) -> StandardMaterial3D:
 	return _ground_grime(
-		ProcMaterials.streaked(Color(0.431, 0.307, 0.204), 0.0, 0.85, 0.5, sid * 29 + 5, 0.7, true)
+		ProcMaterials.apply_pbr(
+			ProcMaterials.streaked(
+				Color(0.431, 0.307, 0.204), 0.0, 0.85, 0.5, sid * 29 + 5, 0.7, true
+			),
+			"timber"
+		)
 	)
 
 
@@ -293,16 +338,19 @@ static func mat_snow(sid: int = 0) -> StandardMaterial3D:
 ## it reads sandy (not blown-out white) under the strong sun.
 static func mat_sandstone(sid: int = 0) -> StandardMaterial3D:
 	return _ground_grime(
-		ProcMaterials.weathered(
-			Color(0.791, 0.627, 0.401),
-			0.0,
-			0.9,
-			0.4,
-			sid * 19 + 7,
-			Vector3(0.11, 0.11, 0.11),
-			true,
-			0.75,
-			true
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.791, 0.627, 0.401),
+				0.0,
+				0.9,
+				0.4,
+				sid * 19 + 7,
+				Vector3(0.11, 0.11, 0.11),
+				true,
+				0.75,
+				true
+			),
+			"stone"
 		)
 	)
 
@@ -310,16 +358,19 @@ static func mat_sandstone(sid: int = 0) -> StandardMaterial3D:
 ## Darker weathered sandstone for caps / shadowed blocks.
 static func mat_sandstone_dark(sid: int = 0) -> StandardMaterial3D:
 	return _ground_grime(
-		ProcMaterials.weathered(
-			Color(0.636, 0.499, 0.318),
-			0.0,
-			0.92,
-			0.42,
-			sid * 17 + 4,
-			Vector3(0.12, 0.12, 0.12),
-			true,
-			0.75,
-			true
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.636, 0.499, 0.318),
+				0.0,
+				0.92,
+				0.42,
+				sid * 17 + 4,
+				Vector3(0.12, 0.12, 0.12),
+				true,
+				0.75,
+				true
+			),
+			"stone"
 		)
 	)
 
@@ -1053,8 +1104,9 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 	var w: float = footprint.x
 	var d: float = footprint.y
 	# Weathered brick — vertical streaks (rain stains down the brickwork).
-	var brick := ProcMaterials.streaked(
-		Color(0.489, 0.391, 0.350), 0.0, 0.85, 0.45, int(w * 19.0 + d)
+	var brick := ProcMaterials.apply_pbr(
+		ProcMaterials.streaked(Color(0.489, 0.391, 0.350), 0.0, 0.85, 0.45, int(w * 19.0 + d)),
+		"brick"
 	)
 	var conc_d := mat_concrete_dark(int(w + d * 2.0))
 	var th: float = 0.3

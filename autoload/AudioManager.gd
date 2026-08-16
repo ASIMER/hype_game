@@ -260,6 +260,104 @@ func _tick_reverb_zone(delta: float) -> void:
 	_reverb.room_size = lerpf(0.3, 0.72, _indoor_mix)
 
 
+## 0..1 "how enclosed is the listener" — the smoothed ceiling probe the reverb zone already
+## pays for. FootstepSurfaces reads it so a floor it could not raycast still reads as built.
+func indoor_ratio() -> float:
+	return _indoor_mix
+
+
+## D5.4 ambience v2 — a TIME-OF-DAY layer and an INDOOR room tone OVER the biome bed.
+## Day/night comes from DayNight.sun_ratio, a pure function of the SYNCED match clock, so
+## every peer (and the headless server, which builds none of this) agrees for free; indoors
+## is the reverb probe's ceiling test. Inside, the outdoor layer is ducked away and a low
+## hum comes up, so a doorway becomes an audible threshold. Evaluated on AMBIENCE_POLL —
+## the per-frame cost is one Vector3 lerp — and a missing layer is synthesized ONE per
+## frame so the first nightfall never builds three beds in one tick.
+func _tick_ambience(delta: float) -> void:
+	if _foley == null:
+		return
+	_amb2_poll -= delta
+	if _amb2_poll <= 0.0:
+		_amb2_poll = Settings.AMBIENCE_POLL
+		_eval_ambience()
+	_amb2_w = _amb2_w.lerp(_amb2_target, clampf(0.8 * delta, 0.0, 1.0))
+	var built := false
+	if _amb_night == null and _amb2_w.y > 0.05:
+		_amb_night = _make_layer_player("amb_night_wind")
+		built = true
+	if not built and _amb_day == null and _amb2_w.x > 0.05:
+		_amb_day = _make_layer_player("amb_day_air")
+		built = true
+	if not built and _amb_indoor == null and _amb2_w.z > 0.05:
+		_amb_indoor = _make_layer_player("amb_indoor_hum")
+	_drive_ambient_layer(_amb_night, _amb2_w.y, Settings.AMBIENCE_NIGHT_DB)
+	_drive_ambient_layer(_amb_day, _amb2_w.x, Settings.AMBIENCE_DAY_DB)
+	_drive_ambient_layer(_amb_indoor, _amb2_w.z, Settings.AMBIENCE_INDOOR_DB)
+
+
+## Re-target the three ambience weights (day, night, indoor). Outside a live raid they all
+## go to zero, so the lobby/menu keeps exactly the bed it had before this pass.
+func _eval_ambience() -> void:
+	var live: bool = (
+		GameState.phase == GameState.Phase.IN_MATCH
+		and _local_player != null
+		and is_instance_valid(_local_player)
+	)
+	if not live:
+		_amb2_target = Vector3.ZERO
+		return
+	var sun: float = DayNight.sun_ratio(DayNight.current_hour())
+	var indoor: float = clampf(_indoor_mix, 0.0, 1.0)
+	var outdoor: float = 1.0 - indoor * Settings.AMBIENCE_INDOOR_DUCK
+	_amb2_target = Vector3(sun * outdoor, (1.0 - sun) * outdoor, indoor)
+	_tick_creaks()
+
+
+## Sporadic metal groans after dark — cooling ruins. Interval AND pitch are hashed off a
+## sequence counter (never randf), non-positional and deliberately faint; the first tick
+## only arms the timer so nightfall does not creak the instant the sun ratio crosses.
+func _tick_creaks() -> void:
+	if _amb2_target.y < 0.45:
+		return
+	_creak_timer -= Settings.AMBIENCE_POLL
+	if _creak_timer > 0.0:
+		return
+	_creak_seq += 1
+	_creak_timer = ProcHash.hrange(
+		_creak_seq * 53 + 9, Settings.AMBIENCE_CREAK_MIN, Settings.AMBIENCE_CREAK_MAX
+	)
+	if _creak_seq <= 1:
+		return
+	_foley.play_clip("metal_creak", ProcHash.hrange(_creak_seq * 71 + 5, 0.78, 1.24), 0.0)
+
+
+## Fade one ambience layer to its weight; stopped outright below audibility so an idle
+## layer costs no mixer voice.
+func _drive_ambient_layer(p: AudioStreamPlayer, w: float, base_db: float) -> void:
+	if p == null:
+		return
+	if w <= 0.02:
+		if p.playing:
+			p.stop()
+		return
+	if not p.playing:
+		p.play()
+	p.volume_db = lerpf(-42.0, base_db + master_db, clampf(w, 0.0, 1.0))
+
+
+## A looping ambience layer on the "Bed" bus, fed by the runtime-synthesized clip bank.
+func _make_layer_player(id: String) -> AudioStreamPlayer:
+	var p := AudioStreamPlayer.new()
+	p.bus = "Bed"
+	p.volume_db = -60.0
+	add_child(p)
+	var stream: AudioStream = FootstepSurfaces.stream_for(id)
+	if stream != null:
+		_set_stream_loop(stream)
+		p.stream = stream
+	return p
+
+
 # ---------------------------------------------------------------------------
 # Shot throttle (weapon_fired fires ~8/s in full auto)
 # ---------------------------------------------------------------------------
@@ -315,6 +413,25 @@ const UNDERWATER_BASE_DB := -12.0
 const AMBIENT_BASE_DB := -19.0  # real wind-loop bed — quiet, atmospheric
 const MUSIC_BASE_DB := -23.0  # tense dark-ambient music — deliberately quiet
 const MUSIC_WAVE_DB := -18.0  # slight raise during active waves
+
+# D5.3 footsteps/foley: surface classification, jump-land-mantle and the weight-scaled gear
+# rattle live in the component (scripts/core/footstep_surfaces.gd) — this file only routes
+# playback and hands it the ONE positional-emitter path so occlusion still applies. Null
+# when headless / FOLEY_ENABLED is off, and every call site guards on that.
+var _foley: FootstepSurfaces = null
+
+# D5.4 ambience v2: three layers ON TOP of the biome bed — daytime air, night wind and an
+# indoor room tone — mixed by the day-night clock and the reverb probe's ceiling test.
+# _amb2_w/_amb2_target pack the weights as (day, night, indoor) so the per-frame smoothing
+# is one value-type lerp instead of three floats.
+var _amb_day: AudioStreamPlayer = null
+var _amb_night: AudioStreamPlayer = null
+var _amb_indoor: AudioStreamPlayer = null
+var _amb2_poll: float = 0.0
+var _amb2_w: Vector3 = Vector3.ZERO
+var _amb2_target: Vector3 = Vector3.ZERO
+var _creak_timer: float = 0.0
+var _creak_seq: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +523,13 @@ func _ready() -> void:
 			_occlusion.name = "AudioOcclusion"
 			add_child(_occlusion)
 
+		# Footstep/foley component (D5.3) — same reasoning as the occlusion child: it owns
+		# its own tick + Events wiring, this file stays a router.
+		if Settings.FOLEY_ENABLED:
+			_foley = FootstepSurfaces.new()
+			_foley.name = "FootstepSurfaces"
+			add_child(_foley)
+
 	# Events bus connections.
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.damage_dealt.connect(_on_damage_dealt)
@@ -426,6 +550,10 @@ func _ready() -> void:
 	Events.chunk_broken.connect(_on_chunk_broken)
 	Events.enemy_chase_started.connect(_on_enemy_chase_started)
 	Events.final_wave_started.connect(_on_final_wave)
+	# D5.5 world one-shots that had no voice at all until now.
+	Events.door_opened.connect(_on_door_opened)
+	Events.power_reveal_started.connect(_on_power_reveal_started)
+	Events.blueprint_learned.connect(_on_blueprint_learned)
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
@@ -440,6 +568,7 @@ func _process(delta: float) -> void:
 		AudioServer.set_bus_volume_db(_bed_bus_idx, _duck_db)
 	_tick_music_layers(delta)
 	_tick_reverb_zone(delta)
+	_tick_ambience(delta)
 	if not enabled or _local_player == null:
 		return
 	if not is_instance_valid(_local_player):
@@ -452,28 +581,23 @@ func _process(delta: float) -> void:
 		_amb_poll = 2.0
 		_update_biome_bed()
 
-	# Footstep logic: player must be on the floor and moving.
-	if not _local_player.has_method("is_on_floor"):
+	# Footsteps moved to the FootstepSurfaces component (D5.3): the step you hear now
+	# depends on the surface under the boot, not on a 3-sample round-robin. The LEGACY
+	# ticker below stays as the fallback for when the component is off/absent.
+	if _foley != null:
 		return
-	if not _local_player.is_on_floor():
+	if not _local_player.has_method("is_on_floor") or not _local_player.is_on_floor():
 		return
-
 	var vel: Vector3 = _local_player.velocity if "velocity" in _local_player else Vector3.ZERO
 	var horiz_speed := Vector2(vel.x, vel.z).length()
 	if horiz_speed < FOOTSTEP_SPEED_THRESHOLD:
 		return
-
 	_footstep_timer -= delta
 	if _footstep_timer > 0.0:
 		return
-
-	# Pick interval based on speed.
 	var is_sprinting := horiz_speed > (Settings.PLAYER_SPRINT_SPEED * 0.6)
 	_footstep_timer = FOOTSTEP_SPRINT_INTERVAL if is_sprinting else FOOTSTEP_WALK_INTERVAL
-
-	# Play random variant positionally.
-	var variant := "footstep%d" % (randi() % 3 + 1)
-	_play_at(variant, _local_player)
+	_play_at("footstep%d" % (randi() % 3 + 1), _local_player)
 
 
 # ---------------------------------------------------------------------------
@@ -607,16 +731,70 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 		_play_at("player_death", entity)
 	else:
 		_play_at("explosion", entity)
-		# Machine power-down chirp layered under the boom (pitch-jittered per kill).
-		_play_at_pitched("robot_death", entity, randf_range(0.88, 1.12))
+		# Machine power-down layered under the boom (one of three voices, see D5.5).
+		_play_machine_voice(entity as Node3D, "robot_death")
 
 
 ## A machine locked on (calm→CHASE, throttled at the enemy) — positional alert chirp.
 func _on_enemy_chase_started(enemy: Node) -> void:
 	if GameState.phase != GameState.Phase.IN_MATCH:
 		return
-	if enemy is Node3D:
-		_play_at_pitched("robot_alert", enemy, randf_range(0.9, 1.15))
+	_play_machine_voice(enemy as Node3D, "robot_alert")
+
+
+## D5.5 machine vocalizations v2. A wave of eight machines must not chirp with ONE voice
+## eight times, so both the VARIANT (0 = the authored clip, 1..2 = synthesized siblings)
+## and the pitch are hashed off the node NAME — which is already identical on every peer
+## (it carries the elite/nemesis tokens), so two players hear the same machine the same way
+## with zero new state and zero RPC. The pitch then leans with the CHASSIS: a boss growls,
+## a drone chirps.
+func _play_machine_voice(who: Node3D, base_id: String) -> void:
+	if who == null or not who.is_inside_tree():
+		return
+	var nm: String = who.name
+	var pitch: float = FootstepSurfaces.pitch_for_name(nm, 0.86, 1.18) * _voice_scale(who)
+	var variant: int = FootstepSurfaces.variant_for_name(nm, 3)
+	var stream: AudioStream = null
+	var db: float = 0.0
+	if variant == 0 or _foley == null:
+		stream = _streams.get(base_id, null)
+		db = SOUND_DB.get(base_id, 0.0)
+	else:
+		var sid: String = "%s%d" % [base_id, variant + 1]
+		stream = FootstepSurfaces.stream_for(sid)
+		db = FootstepSurfaces.db_for(sid)
+	play_world(stream, who.global_position, pitch, db, 60.0)
+
+
+## Bigger chassis = deeper voice. Max health is the one bulk proxy EVERY archetype carries
+## (there is no size field), and it is read off the node so elite/nemesis tiers deepen too.
+func _voice_scale(who: Node) -> float:
+	var h := who.get_node_or_null(Groups.NODE_HEALTH)
+	if h == null or not ("max_health" in h):
+		return 1.0
+	return clampf(1.12 - float(h.max_health) / 1400.0, 0.78, 1.12)
+
+
+## An annex door ground open (fires on every peer) — motor + latch AT the door.
+func _on_door_opened(door: Node) -> void:
+	if _foley == null or not (door is Node3D):
+		return
+	_foley.play_clip_at("door_open", (door as Node3D).global_position, 1.0, 0.0)
+
+
+## A power cache cracked open. Hooked to the OWNER-side reveal (not the server-side
+## power_cache_opened) so a co-op client hears its own cache — non-positional, it is yours.
+func _on_power_reveal_started(_power_id: String) -> void:
+	if _foley == null:
+		return
+	_foley.play_clip("cache_open", 1.0, 0.0)
+
+
+## Workshop chime — a blueprint entered the book (learned, bought or extracted).
+func _on_blueprint_learned(_blueprint: String) -> void:
+	if _foley == null:
+		return
+	_foley.play_clip("craft_done", 1.0, 0.0)
 
 
 func _on_extraction_started(_player: Node, _zone: Node) -> void:
@@ -916,6 +1094,44 @@ func _play_at_pitched(id: String, where: Node, pitch: float) -> void:
 func _track_3d(p: AudioStreamPlayer3D) -> void:
 	if _occlusion != null:
 		_occlusion.track(p)
+
+
+## Non-positional one-shot of an ALREADY-BUILT stream (the runtime clip bank has no entry
+## in SOUNDS, so the component hands the stream over instead of an id).
+func play_stream(stream: AudioStream, pitch: float, db: float) -> void:
+	if not enabled or stream == null:
+		return
+	var p := _pool[_pool_next]
+	_pool_next = (_pool_next + 1) % POOL_SIZE
+	p.stream = stream
+	p.pitch_scale = clampf(pitch, 0.2, 3.0)
+	p.volume_db = master_db + db
+	p.play()
+
+
+## POSITIONAL one-shot of a built stream at a world POINT. Mirrors play_remote_shot (self-
+## freeing player under the current scene, SFX bus, occlusion-tracked). Parenting to the
+## world rather than to the emitter is deliberate: a machine's power-down must not be cut
+## off the instant the machine frees itself.
+func play_world(
+	stream: AudioStream, world_pos: Vector3, pitch: float, db: float, max_dist: float
+) -> void:
+	if not enabled or stream == null or DisplayServer.get_name() == "headless":
+		return
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
+	p.pitch_scale = clampf(pitch, 0.2, 3.0)
+	p.volume_db = master_db + db
+	p.max_distance = max_dist
+	p.finished.connect(p.queue_free)
+	scene.add_child(p)
+	p.global_position = world_pos
+	_track_3d(p)
+	p.play()
 
 
 ## Creates a dedicated child AudioStreamPlayer with loop mode set.

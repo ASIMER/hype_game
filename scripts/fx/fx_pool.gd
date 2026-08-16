@@ -158,12 +158,16 @@ static func spawn_impact(
 	normal: Vector3 = Vector3.ZERO,
 	is_enemy: bool = false,
 	material: int = MAT_DEFAULT,
-	incoming: Vector3 = Vector3.ZERO
+	incoming: Vector3 = Vector3.ZERO,
+	weak: bool = false
 ) -> Node:
 	if _is_headless() or not _within_fx_range(pos, host):
 		return null
 	var fx: Node = null
-	if is_enemy:
+	# D4.5: a WEAK-POINT hit leaves the machine burst and takes the FXSprites path, because
+	# that is where the gold ring lives. The robo-burst has no ring and cannot grow one
+	# without giving every ordinary chassis hit the same cost.
+	if is_enemy and not weak:
 		fx = acquire_or_new("impact", _fallback_for("impact"), host)
 		if fx == null:
 			return null
@@ -178,7 +182,7 @@ static func spawn_impact(
 		if fx == null:
 			return null
 		if fx.has_method("setup"):
-			fx.call("setup", normal, material, incoming)
+			fx.call("setup", normal, material, incoming, weak)
 	if fx is Node3D:
 		# Identity basis on purpose: the emitters' cone direction is a WORLD vector, so any
 		# rotation inherited from a previous use would tilt the spray.

@@ -1528,6 +1528,31 @@ const AUDIO_OCCLUSION_FILTER_OPEN_DB: float = -24.0  # = the engine default shel
 const AUDIO_OCCLUSION_FILTER_BLOCKED_DB: float = -60.0
 const AUDIO_OCCLUSION_VOLUME_DB: float = -5.5  # extra loudness drop at full occlusion
 
+# --- Footsteps, foley & ambience v2 (D5.3 / D5.4 / D5.5) ------------------------------
+# The surface under the boot (biome / water / chunk material / indoors), the jump-land-
+# mantle foley and the sprint gear rattle whose level rides the HAUL WEIGHT the HEAT meter
+# already reads. All of it is peer-LOCAL render-only audio: no netcode, no gameplay read,
+# never built headless. Implementation + the clip synthesis: scripts/core/footstep_surfaces.gd.
+const FOLEY_ENABLED: bool = true  # master toggle (false = the old 3-sample footstep loop only)
+const FOLEY_WALK_INTERVAL: float = 0.50  # s between steps at walk pace
+const FOLEY_SPRINT_INTERVAL: float = 0.32  # ... and at a sprint
+const FOLEY_STEP_MIN_SPEED: float = 1.0  # horizontal m/s below which nobody is stepping
+const FOLEY_STEP_DIST: float = 34.0  # m — a teammate's steps beyond this are skipped
+const FOLEY_STEP_MIN_INTERVAL: float = 0.16  # per-player anti-spam floor on remote steps
+const FOLEY_SURFACE_TTL: float = 0.25  # s a surface verdict is reused (≈4 rays/s sprinting)
+const FOLEY_JUMP_MIN_VY: float = 2.0  # m/s upward before a leave-ground counts as a JUMP
+const FOLEY_LAND_MIN_SPEED: float = 5.0  # m/s of fall before the landing thud plays
+const FOLEY_JINGLE_INTERVAL: float = 0.62  # s between sprint gear rattles (± a hashed jitter)
+const FOLEY_JINGLE_DB_EMPTY: float = -30.0  # rattle level with an empty pack
+const FOLEY_JINGLE_DB_FULL: float = -13.0  # ... and at the weight cap (loud = you are a target)
+const AMBIENCE_POLL: float = 0.5  # s between day-night / indoor ambience re-evaluations
+const AMBIENCE_NIGHT_DB: float = -20.0  # night wind layer over the biome bed
+const AMBIENCE_DAY_DB: float = -26.0  # daytime air layer (deliberately fainter than night)
+const AMBIENCE_INDOOR_DB: float = -23.0  # room-tone hum that replaces the wind indoors
+const AMBIENCE_INDOOR_DUCK: float = 0.75  # how much of the outdoor layer a full indoor kills
+const AMBIENCE_CREAK_MIN: float = 12.0  # s between night metal creaks (min / max)
+const AMBIENCE_CREAK_MAX: float = 27.0
+
 # Runtime-mutable settings (driven by SettingsManager / the settings menu).
 var mouse_sensitivity: float = MOUSE_SENSITIVITY
 var fov: float = DEFAULT_FOV  # camera FOV (player.gd reads this)

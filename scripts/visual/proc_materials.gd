@@ -24,7 +24,38 @@ class_name ProcMaterials
 ## effective 1.0, which erased every building's albedo.
 const FINE_DETAIL_ALPHA := 0.26
 
+## D3.1 REAL FACADE PBR. `assets/textures/facade/<family>_albedo.jpg` is NOT a colour map:
+## it is a bounded modulation map with a mean of 1.0, baked by
+## `tools/art/fetch_facade_textures.py` from a CC0 ambientCG scan and encoded at half scale
+## so a value can exceed 1.0 (mortar joints, bare metal) inside an 8-bit file. Multiplying it
+## by `tint * ALBEDO_SCALE` therefore leaves the AVERAGE surface colour exactly as authored —
+## every `mat_*` tint stays balanced against the cold grade and the D1 relight — while the
+## texture contributes what noise never could: brick courses, plank seams, concrete pours.
+## The normal map is the other half, and the bigger half: real grazing-angle relief.
+##
+## Missing files are NOT an error. `apply_pbr` returns the material untouched, which keeps the
+## project's "runs with zero art assets" rule (AssetRegistry's fallback chain) intact.
+const FACADE_DIR := "res://assets/textures/facade/"
+const ALBEDO_SCALE := 2.0
+
+## Isotropic world-triplanar scale per family, in tiles per metre — chosen so the features
+## land at real-world size (brick courses ~18 cm, planks ~28 cm, steel panels ~1 m). This
+## OVERRIDES the caller's `uv1_scale`, including the anisotropic squash that `streaked()`
+## uses: a rain-streak stretch applied to a real brick scan smears the courses into ribbons,
+## and real masonry structure is worth more than noise streaks (the vertical read survives
+## through the ground-grime skirt and the scans' own grain).
+const FACADE_TILE := {
+	"concrete": 0.22,
+	"plaster": 0.22,
+	"metal": 0.50,
+	"rust": 0.35,
+	"stone": 0.25,
+	"brick": 0.62,
+	"timber": 0.45,
+}
+
 static var _tex_cache: Dictionary = {}
+static var _pbr_cache: Dictionary = {}
 
 
 # ---------------------------------------------------------------- noise masks
@@ -117,6 +148,77 @@ static func noise_normal_texture(sid: int, strength: float, freq: float) -> Nois
 	return nt
 
 
+## BROAD grime carrying an ALPHA ramp, for the detail slot. `weathered` puts the broad mask on
+## `albedo_texture`; once a real scan takes that slot the weathering has to move to the detail
+## layer, which blends by ALPHA (the trap documented on `grime_fine_texture`) — so the same
+## noise is re-ramped: opaque grime colour in the lows, fully transparent where it is clean.
+static func grime_detail_texture(sid: int, grime: float) -> NoiseTexture2D:
+	var key := "grimedet_%d_%.2f" % [sid, grime]
+	if _tex_cache.has(key):
+		return _tex_cache[key]
+	var n := FastNoiseLite.new()
+	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	n.seed = sid
+	n.frequency = 0.012 + float(absi(sid) % 5) * 0.004
+	n.fractal_octaves = 5
+	n.fractal_gain = 0.5
+	var nt := NoiseTexture2D.new()
+	nt.width = 512
+	nt.height = 512
+	nt.seamless = true
+	nt.noise = n
+	var g := Gradient.new()
+	g.set_color(0, Color(grime, grime * 0.96, grime * 0.9, 0.85))
+	g.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	nt.color_ramp = g
+	_tex_cache[key] = nt
+	return nt
+
+
+## The [albedo, normal] pair for a facade family, or an empty array when the files are absent.
+## Cached per family — seven families are shared by every building on the map.
+static func pbr_surface(family: String) -> Array:
+	if _pbr_cache.has(family):
+		return _pbr_cache[family]
+	var out: Array = []
+	var albedo_path: String = FACADE_DIR + family + "_albedo.jpg"
+	var normal_path: String = FACADE_DIR + family + "_normal.jpg"
+	if ResourceLoader.exists(albedo_path) and ResourceLoader.exists(normal_path):
+		var albedo: Texture2D = load(albedo_path)
+		var normal: Texture2D = load(normal_path)
+		if albedo != null and normal != null:
+			out = [albedo, normal]
+	_pbr_cache[family] = out
+	return out
+
+
+## Re-surface a `weathered`/`streaked` material with a real scanned facade family. Mutates and
+## returns the SAME material (callers wrap their ProcMaterials result), so the material COUNT
+## per building — and therefore the ChunkMeshMerger grouping and its ChunkMesh_N node names —
+## is unchanged. World-triplanar throughout, which is what makes it safe on merged chunks.
+static func apply_pbr(m: StandardMaterial3D, family: String) -> StandardMaterial3D:
+	var pair: Array = pbr_surface(family)
+	if pair.is_empty():
+		return m
+	var sid: int = int(m.get_meta("proc_sid", 0))
+	var grime: float = float(m.get_meta("proc_grime", 0.5))
+	var c: Color = m.albedo_color
+	m.albedo_color = Color(c.r * ALBEDO_SCALE, c.g * ALBEDO_SCALE, c.b * ALBEDO_SCALE, c.a)
+	m.albedo_texture = pair[0]
+	m.normal_enabled = true
+	m.normal_texture = pair[1]
+	var tile: float = float(FACADE_TILE.get(family, 0.25))
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = true
+	m.uv1_scale = Vector3(tile, tile, tile)
+	# Weathering moves off the albedo slot onto the alpha-blended detail layer.
+	m.detail_enabled = true
+	m.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.detail_albedo = grime_detail_texture(sid, grime)
+	m.detail_uv_layer = BaseMaterial3D.DETAIL_UV_1
+	return m
+
+
 # ---------------------------------------------------------------- materials
 ## Weathered surface: base albedo modulated by a triplanar grime mask, with optional
 ## metallic/roughness. `world` triplanar keeps detail consistent across adjacent
@@ -162,6 +264,21 @@ static func weathered(
 	m.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MIX
 	m.detail_albedo = grime_fine_texture(sid, clampf(grime + 0.25, 0.0, 1.0))
 	m.detail_uv_layer = BaseMaterial3D.DETAIL_UV_1
+	# D1.3: ROUGHNESS VARIATION. A single roughness value over a whole facade is the reason
+	# large surfaces read as plastic no matter how good the albedo is — real materials are
+	# polished where they are touched and rained on, matte where the grime sits. The same
+	# grime mask drives it, so gloss lands exactly where the surface LOOKS clean, and it is
+	# sampled through the very same triplanar UV, which keeps it safe for merged chunk
+	# rendering (no size-dependent tiling).
+	m.roughness_texture = grime_texture(sid, grime)
+	m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GRAYSCALE
+	# The texture MULTIPLIES the scalar, so the scalar becomes the ROUGH end of the range and
+	# clean areas glide toward gloss. Lift it a little so the average stays where it was.
+	m.roughness = clampf(roughness * 1.18, 0.0, 1.0)
+	# Carried so `apply_pbr` can rebuild the weathering on the detail layer without every
+	# caller having to repeat the two numbers it already passed here.
+	m.set_meta("proc_sid", sid)
+	m.set_meta("proc_grime", grime)
 	return m
 
 
@@ -283,3 +400,5 @@ static func emissive(color: Color, energy := 3.0, albedo := Color.BLACK) -> Stan
 
 static func clear_cache() -> void:
 	_tex_cache.clear()
+	# NOT _pbr_cache: those are loaded resources shared by every building on the map, and
+	# dropping them on an arena rebuild would re-decode 14 JPEGs for no benefit.

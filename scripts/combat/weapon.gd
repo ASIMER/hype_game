@@ -34,6 +34,7 @@ var _cooldown: float = 0.0
 # _shoot right before `fired` is emitted; read synchronously in _on_fired to
 # orient the impact burst to the surface. Per-pellet, single-threaded — safe.
 var _last_hit_normal: Vector3 = Vector3.ZERO
+var _last_hit_weak: bool = false
 # Shape index of the final hit within its body (destructible trees: WHICH trunk).
 var _last_hit_shape: int = -1
 
@@ -195,6 +196,7 @@ func _shoot(
 	var resolved := false
 	var travelled := 0.0
 	_last_hit_normal = Vector3.ZERO
+	_last_hit_weak = false
 	# Bullet penetration through METAL chunks (containers = soft cover, not solid like walls): a metal
 	# cell is recorded + excluded and the ray keeps marching with damage falloff, up to a cap. The
 	# pierced cells still take (scaled) damage so the container breaks. Concrete/stone STOP the ray.
@@ -269,6 +271,11 @@ func _shoot(
 			# A weak-point hurtbox carries damage_multiplier > 1 (e.g. headshot). Penetration
 			# falloff (dmg_scale) cuts the damage of a shot that came through containers.
 			var is_crit := hb.damage_multiplier > 1.0 and crit_mult > 1.0
+			# D4.5: stashed for the impact burst, which is spawned from `_on_fired` a signal
+			# later — the same reason `_last_hit_normal` is stashed here rather than passed.
+			# The multiplier alone is the test: `is_crit` also demands the weapon HAS a crit
+			# multiplier, and a weak point stays a weak point either way.
+			_last_hit_weak = hb.damage_multiplier > 1.0
 			var dealt := dmg * dmg_scale
 			if is_crit:
 				dealt *= crit_mult
@@ -416,7 +423,8 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 		_last_hit_normal,
 		_is_enemy(hit_node),
 		FXPool.material_of(hit_node),
-		(hit_point - muzzle).normalized()
+		(hit_point - muzzle).normalized(),
+		_last_hit_weak
 	)
 
 
