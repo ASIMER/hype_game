@@ -131,10 +131,22 @@ FRAMES: tuple[Frame, ...] = (
 
 # Isolated hero renders (chemistry/preview bypasses the 256px icon pre-warm cache).
 MACHINES: tuple[str, ...] = (
+    # One per silhouette FAMILY plus the tier siblings, because the roster is judged on
+    # whether these read as different SHAPES (see silhouette_sheet) and not just on luma.
     "robot_grunt",
     "robot_heavy",
     "robot_elite",
+    "robot_tick",
+    "robot_wasp",
+    "robot_specter",
+    "robot_caller",
+    "robot_bastion",
     "robot_frosthound",
+    "robot_kappa",
+    "robot_scarab",
+    "robot_cryomortar",
+    "robot_avalanche",
+    "robot_sandworm",
     "robot_oni",
     "robot_boss",
     "player",
@@ -407,6 +419,40 @@ def _tile(src: Path | None, caption: str) -> Image.Image:
     return tile
 
 
+def silhouette_sheet(machines: list[dict[str, Any]], out_path: Path) -> str:
+    """Black-on-white outline board — the honest test of "do these read as DIFFERENT machines".
+
+    The owner's complaint that started this work was that every enemy looked humanoid and
+    shared one signature. Colour, paint and glow all hide that: a roster can be beautifully
+    varied in material and still be one shape in seven costumes. Stripping every render to
+    its alpha mask removes everything except the outline, which is also all a player gets at
+    100 m (a machine is 15-31 px tall there). If two families are hard to tell apart on this
+    board, they are indistinguishable in play.
+    """
+    shots = [m for m in machines if m.get("png")]
+    if not shots:
+        return "no machines"
+    cell = 190
+    cols = min(6, len(shots))
+    rows = -(-len(shots) // cols)
+    sheet = Image.new("RGB", (cell * cols, (cell + 20) * rows), (255, 255, 255))
+    draw = ImageDraw.Draw(sheet)
+    font = _font(13)
+    for i, m in enumerate(shots):
+        src = OUT_DIR / str(m["png"])
+        if not src.exists():
+            continue
+        img = Image.open(src).convert("RGBA").resize((cell, cell), Image.LANCZOS)
+        alpha = np.asarray(img)[..., 3]
+        mask = np.where(alpha > 128, 0, 255).astype(np.uint8)
+        tile = Image.fromarray(np.dstack([mask] * 3))
+        x, y = (i % cols) * cell, (i // cols) * (cell + 20)
+        sheet.paste(tile, (x, y))
+        draw.text((x + 5, y + cell + 3), str(m.get("id", "")), fill=(40, 40, 40), font=font)
+    sheet.save(out_path, quality=92)
+    return "pil"
+
+
 def contact_sheet(tiles: list[tuple[Path | None, str]], out_path: Path) -> str:
     """Labeled grid of every capture. ffmpeg does the montage; PIL is the no-ffmpeg fallback."""
     if not tiles:
@@ -665,6 +711,7 @@ def main() -> int:
         print("  %-18s %s" % (model_id, entry.get("skipped", "ok")))
 
     how = contact_sheet(tiles, OUT_DIR / "contact.jpg")
+    silhouette_sheet(machines, OUT_DIR / "silhouettes.jpg")
     meta = {
         "label": LABEL,
         "port": PORT,
