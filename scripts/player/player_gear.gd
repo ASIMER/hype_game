@@ -7,11 +7,18 @@ extends Node
 ## and `_grenade_sel`); this node only implements the verbs the input layer calls.
 ## Authority-only by construction: player._unhandled_input is authority-gated.
 
+## Node path of the player's WeaponController (it lives under the Camera3D; its
+## ModelHolder is reparented to WeaponMount by player._ready — see the FP-arms block).
+const WEAPON_CONTROLLER_PATH := "CameraPivot/SpringArm3D/Camera3D/WeaponController"
+
 var _p: Node3D  # the owning player (duck-typed: counts/sel/stance/camera live there)
 
 
 func _ready() -> void:
 	_p = get_parent() as Node3D
+	# First-person arms are a LOCAL view-model — only the owning peer polls for them,
+	# so a remote avatar's copy of this component never even processes (see _process).
+	set_process(_p != null and _p.is_multiplayer_authority())
 
 
 ## Inventory-Use dispatch (moved from player.gd verbatim — the god file hit the
@@ -51,7 +58,7 @@ func on_item_use(item_id: String) -> void:
 func grant_ammo(frac: float) -> void:
 	if _p == null or not _p.is_multiplayer_authority():
 		return
-	var wc := _p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D/WeaponController")
+	var wc := _p.get_node_or_null(WEAPON_CONTROLLER_PATH)
 	if wc != null and wc.has_method("add_reserve_frac"):
 		wc.add_reserve_frac(frac)
 	Events.notify.emit(tr("+ AMMO"), 0)
@@ -303,3 +310,93 @@ func physics_tick() -> void:
 	_p._gadget_counts[t] = cnt - 1
 	NetworkManager.request_place_gadget(t, ground, _p.rotation.y)
 	Events.gadget_placed.emit(_p, t, ground)
+
+
+# ── First-person arms (D4.2) ─────────────────────────────────────────────────────
+# The first-person zoom step used to show a floating gun and nothing else — no body,
+# no hands — so it read as a camera with a rifle taped to it. ProceduralArms builds a
+# pair of forearms from the player's OWN cosmetics; this block owns their lifecycle.
+#
+# They are parented under the weapon's ModelHolder (which player._ready reparents to
+# WeaponMount), NOT under the player: that way the weapon-controller's recoil kick and
+# the FP/TP mount pose carry them for free and the fists never drift off the gun.
+# Render-only + authority-local: nothing to replicate, nothing for a remote peer to run.
+#
+# The state is POLLED because there is no signal to hook — V just calls the player's
+# _apply_view_visibility, and the ModelHolder silently frees ALL its children on every
+# weapon switch (weapon_controller._refresh_model), which includes our arms. The poll is
+# three cheap checks and everything past the first is skipped outside first person.
+const ARMS_HOLDER_PATH := "WeaponMount/ModelHolder"
+
+var _arms: Node3D = null
+var _arms_weapon: String = ""  # weapon id the live arms were posed for
+var _arms_cos: String = ""  # cosmetics signature the live arms were painted from
+
+
+func _process(_delta: float) -> void:
+	if _p == null or not is_instance_valid(_p):
+		return
+	if not _arms_wanted():
+		if _arms != null and is_instance_valid(_arms) and _arms.visible:
+			_arms.visible = false
+		return
+	var holder := _p.get_node_or_null(ARMS_HOLDER_PATH) as Node3D
+	if holder == null:
+		return  # reparented mid-_ready / no weapon controller — retry next frame
+	var wid := _weapon_id()
+	var cos_sig := str(_cosmetics())
+	var stale := (
+		_arms == null
+		or not is_instance_valid(_arms)
+		or _arms.is_queued_for_deletion()
+		or _arms.get_parent() != holder
+		or wid != _arms_weapon
+		or cos_sig != _arms_cos
+	)
+	if stale:
+		_rebuild_arms(holder, wid, cos_sig)
+	if _arms != null and is_instance_valid(_arms) and not _arms.visible:
+		_arms.visible = true
+
+
+## Arms are drawn only in the first-person zoom step, and never while piloting a
+## hijacked machine — the HijackDirector hides the pilot's body there, so a pair of
+## arms floating over the hull would be the one thing left visible of him.
+func _arms_wanted() -> bool:
+	if not _p.has_method("_is_first_person") or not bool(_p.call("_is_first_person")):
+		return false
+	var hj: Node = _p.get_node_or_null(Groups.NODE_HIJACK)
+	if hj != null and bool(hj.call("is_piloting")):
+		return false
+	return true
+
+
+## Logical id of the equipped weapon — the arms are posed per weapon class.
+func _weapon_id() -> String:
+	var wc := _p.get_node_or_null(WEAPON_CONTROLLER_PATH)
+	if wc != null and wc.has_method("current_weapon_id"):
+		var id := String(wc.call("current_weapon_id"))
+		if id != "":
+			return id
+	return ProceduralArms.DEFAULT_WEAPON
+
+
+## The player's REPLICATED cosmetics dict (the same value the body is built from, so the
+## arms repaint themselves the moment a customization change lands).
+func _cosmetics() -> Dictionary:
+	var out: Dictionary = {}
+	var v: Variant = _p.get("cosmetics")
+	if v is Dictionary:
+		out = v
+	return out
+
+
+func _rebuild_arms(holder: Node3D, weapon_id: String, cos_sig: String) -> void:
+	if _arms != null and is_instance_valid(_arms):
+		_arms.queue_free()
+	_arms = ProceduralArms.build(_cosmetics(), weapon_id)
+	if _arms == null:
+		return
+	holder.add_child(_arms)
+	_arms_weapon = weapon_id
+	_arms_cos = cos_sig

@@ -153,6 +153,12 @@ var _boss_player: AudioStreamPlayer = null
 var _boss_mix: float = 0.0
 var _boss_hot: bool = false
 
+# D5.2 audio occlusion: every positional one-shot we spawn is registered with this
+# component, which raycasts emitter→listener and muffles what is behind a wall. All of
+# the logic (rays, budgets, smoothing) lives in scripts/core/audio_occlusion.gd — this
+# file only hands it the players it creates. Null when headless / toggled off.
+var _occlusion: AudioOcclusion = null
+
 # M1 reverb zones: one-shots live on an "SFX" bus whose reverb wet/room blends
 # between OUTDOOR (airy, low) and INDOOR (roomy) from a ceiling raycast.
 var _sfx_bus_idx: int = -1
@@ -393,6 +399,13 @@ func _ready() -> void:
 		for p in _pool:
 			p.bus = "SFX"
 
+		# Occlusion component (D5.2). A child node so it owns its own _process tick and
+		# this file stays a thin router (docs/AUDIT.md — AudioManager is not to grow).
+		if Settings.AUDIO_OCCLUSION_ENABLED:
+			_occlusion = AudioOcclusion.new()
+			_occlusion.name = "AudioOcclusion"
+			add_child(_occlusion)
+
 	# Events bus connections.
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.damage_dealt.connect(_on_damage_dealt)
@@ -560,6 +573,7 @@ func play_remote_shot(world_pos: Vector3, weapon_id: String) -> void:
 	scene.add_child(p)
 	p.global_position = world_pos
 	p.finished.connect(p.queue_free)
+	_track_3d(p)
 	p.play()
 
 
@@ -867,45 +881,41 @@ func _play(id: String) -> void:
 ## Positional one-shot at a Node3D; falls back to the pool for non-3D nodes.
 ## The AudioStreamPlayer3D is self-freeing so the pool is never starved.
 func _play_at(id: String, where: Node) -> void:
-	if not enabled:
-		return
-	var stream: AudioStream = _streams.get(id, null)
-	if stream == null:
-		return
-	if where is Node3D and (where as Node3D).is_inside_tree():
-		var p := AudioStreamPlayer3D.new()
-		p.stream = stream
-		p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
-		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
-		p.max_distance = 60.0
-		p.finished.connect(p.queue_free)
-		(where as Node3D).add_child(p)
-		p.global_position = (where as Node3D).global_position
-		p.play()
-	else:
-		_play(id)
+	_play_at_pitched(id, where, 1.0)
 
 
-## Positional one-shot with a pitch tweak (variety on repeated crumbles). Mirrors _play_at.
+## Positional one-shot with a pitch tweak (variety on repeated crumbles). THE one place a
+## 3D one-shot is born (plain _play_at routes here at pitch 1.0) — so occlusion has exactly
+## one hook instead of two copies drifting apart.
 func _play_at_pitched(id: String, where: Node, pitch: float) -> void:
 	if not enabled:
 		return
 	var stream: AudioStream = _streams.get(id, null)
 	if stream == null:
 		return
-	if where is Node3D and (where as Node3D).is_inside_tree():
-		var p := AudioStreamPlayer3D.new()
-		p.stream = stream
-		p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
-		p.pitch_scale = clampf(pitch, 0.5, 2.0)
-		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
-		p.max_distance = 60.0
-		p.finished.connect(p.queue_free)
-		(where as Node3D).add_child(p)
-		p.global_position = (where as Node3D).global_position
-		p.play()
-	else:
+	if not (where is Node3D) or not (where as Node3D).is_inside_tree():
 		_play(id)
+		return
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
+	p.pitch_scale = clampf(pitch, 0.5, 2.0)
+	p.volume_db = master_db + SOUND_DB.get(id, 0.0)
+	p.max_distance = 60.0
+	p.finished.connect(p.queue_free)
+	(where as Node3D).add_child(p)
+	p.global_position = (where as Node3D).global_position
+	_track_3d(p)
+	p.play()
+
+
+## Hand a just-spawned positional player to the occlusion component (no-op when headless /
+## disabled). Called AFTER volume_db + global_position are final: the component captures the
+## base volume and seeds the emitter with an immediate ray, so a 0.3 s gunshot is already
+## muffled on its first sample.
+func _track_3d(p: AudioStreamPlayer3D) -> void:
+	if _occlusion != null:
+		_occlusion.track(p)
 
 
 ## Creates a dedicated child AudioStreamPlayer with loop mode set.

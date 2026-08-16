@@ -1506,6 +1506,28 @@ const STAMINA_REGEN: float = 22.0  # per second while not sprinting
 const STAMINA_SPRINT_MIN: float = 10.0  # need at least this to start sprinting
 const INTERACT_RANGE: float = 3.5  # metres for the "[E]" prompt
 
+# --- Audio occlusion (D5.2) — a fight behind a wall must SOUND muffled -----------------
+# Every positional one-shot AudioManager spawns (teammate gunfire, explosions, machine
+# chirps, crumbles) periodically raycasts emitter→listener through the WORLD layer only;
+# a blocked ray drives a smoothed 0..1 factor into the emitter's built-in high-shelf filter
+# plus a small volume trim. Render/audio-only + peer-LOCAL (no netcode, no gameplay read).
+# Implementation + the "why both ends of the shelf" note: scripts/core/audio_occlusion.gd.
+const AUDIO_OCCLUSION_ENABLED: bool = true  # master toggle (false = engine-default SFX)
+const AUDIO_OCCLUSION_TICK: float = 0.13  # s between refresh batches (~7.7 Hz, never per-frame)
+const AUDIO_OCCLUSION_RAYS_PER_TICK: int = 8  # round-robin re-tests per batch
+const AUDIO_OCCLUSION_SEED_RAYS_PER_TICK: int = 4  # extra rays for BRAND-NEW emitters per batch
+const AUDIO_OCCLUSION_MAX_TRACKED: int = 48  # live emitters we bother tracking at once
+const AUDIO_OCCLUSION_MIN_DIST: float = 2.5  # m — closer than this nothing can be in between
+const AUDIO_OCCLUSION_MAX_DIST: float = 90.0  # m — beyond this it is rolled off to nothing anyway
+const AUDIO_OCCLUSION_SMOOTH: float = 0.20  # s time-constant — no clicking when running past cover
+const AUDIO_OCCLUSION_CUTOFF_OPEN_HZ: float = 5000.0  # = the AudioStreamPlayer3D default (untouched)
+const AUDIO_OCCLUSION_CUTOFF_BLOCKED_HZ: float = 750.0  # fully blocked → a dull thud through concrete
+const AUDIO_OCCLUSION_FILTER_OPEN_DB: float = -24.0  # = the engine default shelf depth
+# The engine scales the shelf's gain by distance attenuation, so the depth must be pushed
+# well past the default for the muffle to READ at mid range (the cutoff alone would not).
+const AUDIO_OCCLUSION_FILTER_BLOCKED_DB: float = -60.0
+const AUDIO_OCCLUSION_VOLUME_DB: float = -5.5  # extra loudness drop at full occlusion
+
 # Runtime-mutable settings (driven by SettingsManager / the settings menu).
 var mouse_sensitivity: float = MOUSE_SENSITIVITY
 var fov: float = DEFAULT_FOV  # camera FOV (player.gd reads this)

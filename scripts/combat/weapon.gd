@@ -405,16 +405,19 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 	# Tracer is drawn by _on_fired_arc (which follows the ballistic curve). We only
 	# spawn the impact burst here. (fired_arc always fires alongside fired.)
 
-	var im := FXPool.acquire_or_new("impact", _impact_ps, host)
-	if im != null:
-		if im is Impact:
-			(im as Impact).set_enemy_hit(_is_enemy(hit_node))
-			# Orient the burst to the surface normal if we can resolve one.
-			(im as Impact).set_surface_normal(_last_hit_normal)
-		if im is Node3D:
-			(im as Node3D).global_position = hit_point
-		if im.has_method("fire"):
-			im.call("fire")
+	# D4.4: a hit now knows WHAT it hit. World surfaces resolve their material (concrete /
+	# metal / stone / dirt / glass / wood) and throw debris in a CONE off the surface normal,
+	# with the scorch projected ALONG that normal instead of straight down (it used to smear
+	# on the floor under a wall). Machines keep their own tuned robo-burst — a bullet into a
+	# chassis is not a bullet into a wall — and spawn_impact routes that case itself.
+	FXPool.spawn_impact(
+		host,
+		hit_point,
+		_last_hit_normal,
+		_is_enemy(hit_node),
+		FXPool.material_of(hit_node),
+		(hit_point - muzzle).normalized()
+	)
 
 
 ## Draws the tracer as a chain of short straight Tracer segments through the arc

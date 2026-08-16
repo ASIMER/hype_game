@@ -85,15 +85,13 @@ func _on_remote_shot(
 				(tr as Tracer).setup(a, b)
 			host.add_child(tr)
 	# Impact burst at the hit point (sparks for enemies, dust for the world).
-	var im := FXPool.acquire_or_new("impact", _impact_ps, host)
-	if im != null:
-		if im is Impact:
-			(im as Impact).set_enemy_hit(enemy_hit)
-			(im as Impact).set_surface_normal(normal)
-		if im is Node3D:
-			(im as Node3D).global_position = hit_point
-		if im.has_method("fire"):
-			im.call("fire")
+	# The shot broadcast carries no surface material — only the hit point, normal and the
+	# enemy flag — so a teammate's world hits get the neutral directional dust rather than a
+	# guess. Adding one int to broadcast_shot would give full parity; it is not worth a
+	# net-format change for a debris colour.
+	FXPool.spawn_impact(
+		host, hit_point, normal, enemy_hit, FXPool.MAT_DEFAULT, (hit_point - muzzle).normalized()
+	)
 
 
 func _fx_host() -> Node:
