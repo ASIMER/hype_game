@@ -124,6 +124,27 @@ static func run(tree: SceneTree, json: Dictionary) -> Dictionary:
 		return {
 			"ok": true, "ships": ships, "zones": tree.get_nodes_in_group(Groups.EXTRACTION).size()
 		}
+	if action == "perf":
+		# Read-only engine counters. `state.fps` alone cannot say WHY a frame is slow — a
+		# draw-call wall and a script-time wall look identical from outside. Splitting
+		# process / physics / draw calls is what turns "просадка" into a diagnosis.
+		var enemies: Array = tree.get_nodes_in_group(Groups.ENEMIES)
+		var meshes: int = 0
+		for e in enemies:
+			meshes += _count_meshes(e)
+		return {
+			"ok": true,
+			"fps": Engine.get_frames_per_second(),
+			"process_ms": Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+			"physics_ms": Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+			"draw_calls":
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+			"primitives":
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
+			"nodes": int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
+			"enemies": enemies.size(),
+			"enemy_meshes": meshes,
+		}
 	if action == "vignette":
 		# Micro-vignettes are placed by rejection sampling on a per-raid seed, so hunting a
 		# specific one by teleporting is a lottery — which is exactly how a template that
@@ -310,3 +331,14 @@ static func _clear_preview() -> void:
 	if _preview_root != null and is_instance_valid(_preview_root):
 		_preview_root.queue_free()
 	_preview_root = null
+
+
+## MeshInstance3D count under a node — the per-machine draw-call footprint. Enemies are the
+## one system deliberately never merged (hit flash, LimbBurst, scars, gait and damage states
+## all need addressable parts), so this is the number that decides whether a crowd is a
+## draw-call wall or a script-time wall.
+static func _count_meshes(n: Node) -> int:
+	var c: int = 1 if n is MeshInstance3D else 0
+	for ch in n.get_children():
+		c += _count_meshes(ch)
+	return c
