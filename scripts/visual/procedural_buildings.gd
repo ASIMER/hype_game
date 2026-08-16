@@ -913,6 +913,21 @@ static func build_tower(footprint: Vector2) -> Node3D:
 		_place_wall(root, d, sh, th, conc, Vector3(w * 0.5 - th * 0.5, y, 0), 90.0, win, false)
 		# Warm ceiling lamp per storey, centered just under this storey's ceiling slab.
 		_light_fixture(root, Vector3(0.0, y + sh - 0.35, 0.0), 100 + s)
+		# D3: furnish the storey. Render-only by default — the navmesh bakes from COLLIDERS,
+		# so furniture physically cannot break enemy pathing — and the keep-out list carries
+		# the door and the stairwell so nothing is placed where the player or a machine walks.
+		_place(
+			root,
+			ProceduralInteriors.furnish(
+				"tower",
+				w,
+				d,
+				sh,
+				800 + s * 37,
+				[Vector2(0.0, -d * 0.5), Vector2(stair_x, stair_z + stair_run * 0.5)]
+			),
+			Vector3(0, y, 0)
+		)
 		# Stair flight up from this storey (the top one exits onto the roof).
 		ProceduralStairs.flight(
 			root, Vector3(stair_x, y, stair_z), stair_run, sh, 2.0, 0.0, stair_mat, tread_mat
@@ -1018,6 +1033,15 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 		_place(root, container(3.0, 2.6, 6.0, mat_container(7)), Vector3(-w * 0.5 + 2.5, 0, 0))
 		# Mantle step-crates onto the lone cover container (its interior +X face).
 		ProceduralStairs.crate_steps(root, Vector3(-w * 0.5 + 4.55, 0.0, 0.0), 90.0, 33)
+		# D3: warehouse fit-out — racking, pallets, crates, a workbench. Keep-outs are the
+		# roller door (+Z wall) and the cover container that already stands inside.
+		_place(
+			root,
+			ProceduralInteriors.furnish(
+				"warehouse", w, d, h, 900, [Vector2(0.0, d * 0.5), Vector2(-w * 0.5 + 2.5, 0.0)]
+			),
+			Vector3.ZERO
+		)
 	return root
 
 
@@ -1119,6 +1143,14 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 		# One warm lamp per floor (ground + upper).
 		_light_fixture(root, Vector3(0.0, sh - 0.35, 0.0), 222)
 		_light_fixture(root, Vector3(0.0, sh * 2.0 - 0.35, 0.0), 223)
+		# D3: dwelling fit-out on both floors. Keep-outs: the +Z door and the stair base.
+		var hdoors: Array[Vector2] = [
+			Vector2(0.0, d * 0.5), Vector2(-w * 0.5 + 1.0, -d * 0.5 + th + 1.05)
+		]
+		_place(root, ProceduralInteriors.furnish("house", w, d, sh, 940, hdoors), Vector3.ZERO)
+		_place(
+			root, ProceduralInteriors.furnish("house", w, d, sh, 941, hdoors), Vector3(0.0, sh, 0.0)
+		)
 	return root
 
 

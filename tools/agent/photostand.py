@@ -72,6 +72,9 @@ DARK_T = 0.588
 FRAME_FAIL_DARK = 0.50
 HERO_FAIL_MEAN = 0.45
 
+# GameState.Phase.IN_MATCH — anything else means a menu, the hub, or a post-raid summary.
+PHASE_IN_MATCH = 3
+
 # Pacing (seconds) — kept as short as the engine tolerates.
 SETTLE_POLL = 0.12
 SETTLE_MAX = 2.5
@@ -164,10 +167,18 @@ def send(obj: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
 
 
 def wait_drivable(timeout: float = 90.0) -> bool:
-    """`drivable` is a TOP-LEVEL state key; refs are briefly null right after a deploy."""
+    """`drivable` is a TOP-LEVEL state key; refs are briefly null right after a deploy.
+
+    IN_MATCH is checked too, and that check is load-bearing: a finished raid parks the
+    instance on the EXTRACTED / KIA summary with the world dimmed BEHIND a modal, and
+    `drivable` can still read true there. A whole shoot was once captured through that modal
+    and scored every frame at p50 0.08 — a result that looks like a catastrophic rendering
+    regression and is really just the wrong screen.
+    """
     t0 = time.time()
     while time.time() - t0 < timeout:
-        if send({"cmd": "state"}).get("drivable"):
+        st = send({"cmd": "state"})
+        if st.get("drivable") and int(st.get("phase") or 0) == PHASE_IN_MATCH:
             return True
         time.sleep(2.0)
     return False
@@ -600,8 +611,10 @@ def _wait_contract_clear(timeout: float = 22.0) -> None:
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    if not send({"cmd": "state"}).get("drivable"):
-        # A KIA/idle player parks the instance in RESULTS — one restart, then wait it out.
+    st0 = send({"cmd": "state"})
+    if not st0.get("drivable") or int(st0.get("phase") or 0) != PHASE_IN_MATCH:
+        # A KIA, an idle bleed-out or an accidental extraction parks the instance on the
+        # post-raid summary — one restart, then wait it out.
         send({"cmd": "restart"})
         time.sleep(6.0)
     if not wait_drivable(90.0):
