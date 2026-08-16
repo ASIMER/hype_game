@@ -294,6 +294,10 @@ signal raid_loot_granted(payload: Array, bonus: int)
 # --- Crafting / quests ---
 ## A crafting blueprint was learned (extract / buy / quest). Craft + shop UIs refresh.
 signal blueprint_learned(blueprint: String)
+## A recipe was actually CRAFTED. Distinct from `blueprint_learned`, which fires once when
+## the recipe becomes available — this fires on every successful craft, which is what audio
+## and quest feedback need to hear.
+signal crafted(recipe_id: String, output_id: String)
 ## A quest objective advanced / completed (Quests autoload). The Quests tab reads these.
 signal quest_progress(quest_id: String, current: int, target: int)
 signal quest_completed(quest_id: String)
