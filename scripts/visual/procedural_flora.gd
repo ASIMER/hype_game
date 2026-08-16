@@ -433,6 +433,9 @@ static func _build_bushes(root: Node3D, seed: int) -> int:
 ## silently lossy in Godot 4.6 here). Density uses a clumped jittered grid; keep-out / river
 ## instances aren't emitted. Fully deterministic (_h/_hf).
 const GRASS_TILE_M: float = 16.0  # spatial-tile edge (m) for the MultiMesh-LOD cull fix
+## Per-biome grass density multiplier (see _grass_transforms). Snow keeps a token amount so
+## the odd blade pokes through a drift; desert keeps a thin dry scatter.
+const _GRASS_BIOME_MUL := {"urban": 1.0, "rain": 1.15, "desert": 0.14, "snow": 0.07}
 # DENSITY model (4× map): grass is PER-CELL-PROBABILITY-driven, not a global instance cap.
 # Vegetation-overhaul v2: mean ≈386 tufts per 16 m tile (the FAIRNESS/perf invariant —
 # identical on every preset; per-frame cost is bounded by the visible tile bubble, not the
@@ -637,6 +640,12 @@ static func _grass_transforms(
 				(1.0 + GRASS_MEADOW_BOOST * meadow)
 				* (1.0 - GRASS_CANOPY_THIN * smoothstep(0.6, 1.0, fv.y))
 			)
+		# D3: grass is BIOME-AWARE. It used to scatter at one density across the whole
+		# rectangle, so the snow quadrant grew lush meadow tufts that the bright snow bounce
+		# washed to pale slabs (they read as ice planks, not grass) and the desert grew a
+		# lawn. Density now follows the ground: lush in the rain quadrant, normal in urban,
+		# a thin dry scatter in the desert, and almost nothing under snow.
+		dens_mul *= _GRASS_BIOME_MUL.get(WorldBounds.biome_at(bx, bz), 1.0)
 		# Probabilistically skip cells per the (clumped) density (deterministic per-cell hash).
 		if ProcHash.hf(hcell + 9) > dens_mul:
 			continue
