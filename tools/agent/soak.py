@@ -12,7 +12,13 @@ What it asserts, and why each one is a real failure mode this project has hit be
     the game has already fallen off the cap. It answers "did it get worse", not "how much
     headroom is left" — the photostand's per-frame FPS is the instrument for the latter.
   * Enemy count must not run away  — a director that ignores its cap, or corpses that
-    never free, both show here first.
+    never free, both show here first. Note the debug `spawn` verb this driver uses
+    BYPASSES the wave caps on purpose, so the count climbs far past anything the game
+    produces on its own (`Settings.WAVE_MAX_CONCURRENT` is 6, `FINAL_WAVE_CONCURRENT` 18).
+    That is a feature: it walks the frame cost up an axis normal play never reaches, and
+    the useful number is the KNEE reported below — where FPS leaves the cap — measured
+    against those two limits. A knee comfortably above 18 means the shipping game has
+    headroom; a knee below it is a real problem.
   * Restart must return to a clean slate — the arena-reload parity bug class.
   * The instance must stay answerable — a hang reads as a timed-out poll, not a crash.
 
@@ -84,6 +90,32 @@ def stir(port: int, tick: int) -> None:
         pass
 
 
+def _report_knee(samples: list[dict]) -> None:
+    """Print median FPS bucketed by enemy count — the shape a single median throws away.
+
+    A 30-minute median can read a clean 60 while half the samples sit at 26, because the
+    load is not constant: it climbs with the enemy count and resets on every restart. The
+    bucket table shows WHERE the frame budget runs out, which is the only form of this
+    measurement anyone can act on.
+    """
+    buckets: dict[int, list[float]] = {}
+    for s in samples:
+        if s["fps"] <= 0:
+            continue
+        buckets.setdefault(s["enemies"] // 10 * 10, []).append(s["fps"])
+    print("fps by enemy count (debug spawns bypass the wave caps: normal 6, storm 18):")
+    knee: int | None = None
+    for lo in sorted(buckets):
+        med = statistics.median(buckets[lo])
+        print(f"  {lo:3d}-{lo + 9:<3d} enemies   fps {med:5.1f}   ({len(buckets[lo])} samples)")
+        if knee is None and med < 55.0:
+            knee = lo
+    if knee is None:
+        print("  knee: none — the cap held across every bucket sampled")
+    else:
+        print(f"  knee: {knee}+ enemies. Compare against the storm cap of 18.")
+
+
 def main() -> int:
     minutes = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0
     port = int(sys.argv[2]) if len(sys.argv) > 2 else PORT
@@ -134,6 +166,7 @@ def main() -> int:
     print(f"samples {len(samples)}  restarts {restarts}  unanswered polls {misses}")
     print(f"fps  first quarter {fps_head:.1f}  ->  last quarter {fps_tail:.1f}")
     print(f"peak enemies {peak_enemies}   peak loot {peak_loot}   drivable {drivable_frac:.0%}")
+    _report_knee(samples)
 
     fails: list[str] = []
     # 20% is the band that separates "the machine got busy" from "something accumulates".

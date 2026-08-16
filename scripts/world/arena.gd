@@ -71,12 +71,19 @@ func _ready() -> void:
 	Events.arena_build_progress.emit(0.88, "Climate")
 	await get_tree().process_frame
 	_build_climate_zones()
-	# Building-detail kits (rooftop/street MultiMeshes + night lamps) and grime decals
-	# (scorch/leak-streak/rain-puddle). Render-only, per-peer cosmetic, headless-skipped
-	# inside; both live under the Arena ROOT (never NavigationRegion3D), so the golden
-	# determinism snapshot is untouched.
+	# Building-detail kits (rooftop/street MultiMeshes + night lamps), grime decals
+	# (scorch/leak-streak/rain-puddle) and ground wear (slope gullies, street ruts, ford
+	# stones). Mostly render-only, per-peer cosmetic and headless-skipped inside.
+	#
+	# TWO of these DO reach NavigationRegion3D and therefore the golden snapshot, and both
+	# have to: the runtime bake parses collision ONLY under that subtree, so a prop the
+	# player must walk around — or a stepping stone the player must walk ON — is invisible
+	# to the navmesh anywhere else. `StreetProps` (D3.4) and `FordStones` (D3.5) are the
+	# containers; each is a NEW top-level key, so a golden diff shows one added entry with
+	# every existing checksum unchanged. Re-capture is INTENDED after either changes.
 	ProceduralBuildingDetail.build(self, _POI_DEFS, _extraction_zone_points())
 	ProceduralGrimeDecals.build(self, _POI_DEFS, _scatter_spots)
+	ProceduralTerrainPolish.build(self, _POI_DEFS)
 	Events.arena_build_progress.emit(0.90, "Navmesh")
 	await get_tree().process_frame
 	# Bake navmesh from the static geometry so enemy NavigationAgents have a path.
