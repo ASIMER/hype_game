@@ -205,8 +205,15 @@ func _loadout_paths() -> Array:
 ## authority player only. When disabled the controller never switches/reloads
 ## from input; the player can still call try_fire() explicitly.
 func set_enabled(b: bool) -> void:
+	var was: bool = _enabled
 	_enabled = b
 	set_process_unhandled_input(b)
+	# The view-model detail level follows ownership (see `_refresh_model`), and this is the
+	# first moment ownership is known: a child's `_ready` runs BEFORE its parent's, so the
+	# build in `_ready` happened while `_enabled` was still false for everyone, local player
+	# included. Rebuild once the answer arrives.
+	if was != b:
+		_refresh_model()
 
 
 ## Fires the current weapon if it has ammo and is not reloading/switching.
@@ -458,7 +465,17 @@ func _refresh_model() -> void:
 	if d == null:
 		return
 	if AssetRegistry.has_id(d.id):
-		var model := AssetRegistry.get_model(d.id)
+		# D4.1 perf: the rebuilt procedural guns are 44-65 MeshInstance3D each, and EVERY
+		# peer's controller builds one — an 8-player squad would carry ~500 extra draws for
+		# seven guns nobody is looking closely at. A REMOTE player's view-model is purely
+		# decorative: its shot FX are positioned from the broadcast muzzle Vector3
+		# (`remote_shot_fx`), never from this subtree's markers, and its reload choreography
+		# is local to its owner. So remotes get the one-MeshInstance merge (the loot-pickup
+		# path) and only the local player keeps the full articulated tree.
+		var mine: bool = _enabled or _owner_body() == null
+		var model: Node3D = (
+			AssetRegistry.get_model(d.id) if mine else AssetRegistry.get_model_merged(d.id)
+		)
 		if model:
 			_model_holder.add_child(model)
 	# Guarantee a Muzzle/Eject anchor on the held model so combat FX leave the gun barrel even

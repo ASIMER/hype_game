@@ -101,6 +101,10 @@ func _build_persistent_overlays() -> void:
 	if ResourceLoader.exists(LOADING_SCREEN):
 		_loading = (load(LOADING_SCREEN) as PackedScene).instantiate()
 		add_child(_loading)
+	# Controller UI navigation: focuses the top-most interactive Control the first time a pad
+	# input arrives with nothing focused, so every screen — including ones added later — is
+	# reachable without a per-screen grab_focus(). Inert for mouse/keyboard.
+	add_child((load("res://scripts/ui/ui_focus_pad.gd") as GDScript).new())
 	# "Military glass" FX veil (scanline/grain/vignette over the shell UI). Script-only
 	# CanvasLayer; self-gates on Settings.ui_fx_enabled + shell-vs-raid state.
 	add_child((load("res://scripts/ui/fx_overlay.gd") as GDScript).new())

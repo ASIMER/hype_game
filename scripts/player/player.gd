@@ -170,6 +170,7 @@ func _ready() -> void:
 	_gear.name = "Gear"
 	add_child(_gear)
 	PlayerHijack.attach(self)  # Hijack & Pilot (v0.5-B2) — same component discipline
+	PlayerPadLook.attach(self)  # right-stick look, external (this file is at the ceiling)
 	# M1 body feel (landing squash / lean / dust) — owner-local render component.
 	var body_feel := PlayerBodyFeel.new()
 	body_feel.name = "BodyFeel"

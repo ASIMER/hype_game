@@ -69,18 +69,27 @@ func _draw() -> void:
 	var accent: Color = REVIVE_COL if _revive_frac >= 0.0 else KEY_COL
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PANEL_W, PANEL_H)), PANEL_BG, true)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PANEL_W, PANEL_H)), Color(accent, 0.5), false, 1.0)
-	# Key-cap ("E") — filled brighter while the key is held for a revive.
+	# Key-cap — filled brighter while the key is held for a revive. The label comes from the
+	# InputMap for the CURRENT device, so it follows a Controls-tab remap and turns into the
+	# pad's face button when the player is on a controller (it used to be a hard-coded "E",
+	# which told a pad user to press a key they do not have).
 	var cap_pos := Vector2(8.0, (PANEL_H - CAP) * 0.5)
 	var cap_rect := Rect2(cap_pos, Vector2(CAP, CAP))
 	draw_rect(cap_rect, Color(accent, 0.30 if _revive_frac >= 0.0 else 0.16), true)
 	draw_rect(cap_rect, accent, false, 1.5)
+	# Sampled at draw time, and this Control only redraws when the prompt changes — so
+	# swapping mouse for pad WHILE a prompt is up leaves the old glyph until the next one.
+	# A prompt lives a second or two, so the alternative (polling the device every frame on
+	# a HUD element) costs more than the staleness does.
+	var cap_label: String = UIGlyphs.label_for("interact")
+	var cap_size: int = 16 if cap_label.length() <= 1 else 11
 	draw_string(
 		font,
-		cap_pos + Vector2(CAP * 0.5 - 5.0, CAP * 0.5 + 6.0),
-		"E",
+		cap_pos + Vector2(CAP * 0.5 - 2.8 * cap_label.length(), CAP * 0.5 + 6.0),
+		cap_label,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
-		16,
+		cap_size,
 		accent
 	)
 
