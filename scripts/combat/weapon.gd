@@ -435,10 +435,12 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 func _on_fired_arc(arc_points: PackedVector3Array, _hit_node: Node) -> void:
 	if arc_points.size() < 2:
 		return
-	# PERF: the pooled MultiMesh draws the whole arc with ONE material and zero node
-	# churn (the old path made ~32 nodes + 32 unique materials per shot).
-	if TracerPool.active != null:
-		TracerPool.active.spawn_arc(arc_points, _muzzle_position())
+	# D4.4: the pooled streak draws the whole arc with a bright head segment and a fading
+	# tail. It replaces TracerPool, which is not merely older but WRONG: its
+	# `Basis(...).scaled(Vector3(1, dist, 1))` scales in the PARENT frame, so a horizontal
+	# shot never stretched its segments along the shot axis at all — the arc came out as a
+	# dotted line of metre-long cylinders with gaps between them.
+	if FXPool.spawn_tracer(_fx_host(), arc_points, _muzzle_position()) != null:
 		return
 	if _tracer_ps == null:
 		return

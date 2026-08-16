@@ -28,6 +28,17 @@ METRICS (all on sRGB screen bytes, i.e. what the player actually sees — NOT li
                     grade turns surfaces into unreadable blue-black
   saturation      = mean HSV S over "world" (chroma left after the cold grade)
   machines        = same luma stats over the alpha>0.5 mask of the isolated 640px hero render
+
+WHAT THE NUMBERS CANNOT SEPARATE (learned the hard way, twice):
+  * SKY STATE. Sky3D's cumulus keeps evolving, so a frame that is mostly sky — rain_day worst
+    of all — can move its median by ~0.04 between two runs of IDENTICAL code, purely on cloud
+    cover. Trust a light change only when several biomes move TOGETHER; a lone sky-heavy frame
+    disagreeing with the others is usually the weather, and the side-by-side images will show it.
+  * FRAME CONTENT. combat_day spawns live machines and the count varies; the street props added
+    in D3.4 put dark, saturated objects into every outdoor frame. Both shift the histogram
+    without a single light changing. "The world got richer" and "the lighting got worse" look
+    the same here — which is why every regression in this file is confirmed on a matched CROP
+    or on the paired images before it is believed.
 THRESHOLDS (flagged as FAIL in report.md, they are review triggers, not hard build gates):
   DAY frame   FAIL when dark_frac > 0.50 (world sits under the grade's cold floor)
               or p95-p05 < 0.34 (no tonal range left — the frame is haze, not depth)

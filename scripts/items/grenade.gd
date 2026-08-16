@@ -93,15 +93,11 @@ func _explode() -> void:
 ## Frag default: local explosion FX + a broadcast event + server-only radial
 ## damage and an AI-audible noise report.
 func _detonate_effect(pos: Vector3) -> void:
-	var host := _fx_host()
-
-	# Visual explosion (local on every peer).
-	if host and ResourceLoader.exists(_EXPLOSION_SCENE):
-		var fx = load(_EXPLOSION_SCENE).instantiate()
-		if fx:
-			host.add_child(fx)
-			if fx is Node3D:
-				(fx as Node3D).global_position = pos
+	# Visual explosion (local on every peer). D4.4: the pooled composite — fireball, smoke
+	# column and spark cone — keyed by grenade type, so a frag and a cryo no longer detonate
+	# in the same orange puff. `grenade_type` is what tells them apart, and the radius sizes
+	# the blast to what the damage actually reaches.
+	FXPool.spawn_explosion(_fx_host(), pos, grenade_type, Settings.GRENADE_RADIUS)
 
 	# Broadcast for audio / screenshake / other listeners.
 	Events.grenade_exploded.emit(pos, Settings.GRENADE_DAMAGE, Settings.GRENADE_RADIUS)

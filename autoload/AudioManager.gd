@@ -75,6 +75,13 @@ const SOUNDS := {
 	"skill_slam": "res://assets/audio/skill_slam.wav",
 	"skill_breach": "res://assets/audio/skill_breach.wav",
 	"skill_zap": "res://assets/audio/skill_zap.wav",
+	# D5.1 gunfire body: the delayed distant boom, its indoor slap-back twin, and the
+	# near-miss zip (two variants). Layers OVER the recorded per-class cracks above —
+	# the recordings are the muzzle, these are the world answering it.
+	"shot_tail_far": "res://assets/audio/shot_tail_far.wav",
+	"shot_tail_slap": "res://assets/audio/shot_tail_slap.wav",
+	"bullet_whizz": "res://assets/audio/bullet_whizz.wav",
+	"bullet_whizz2": "res://assets/audio/bullet_whizz2.wav",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -116,6 +123,12 @@ const SOUND_DB := {
 	"skill_slam": -4.0,
 	"skill_breach": -6.0,
 	"skill_zap": -7.0,
+	# The far tail sits UNDER the crack by design: it is felt more than heard, and its 3D
+	# emitter carries much further than the crack's (TAIL_UNIT_SIZE), so it needs the room.
+	"shot_tail_far": -6.0,
+	"shot_tail_slap": -11.0,
+	"bullet_whizz": -6.0,
+	"bullet_whizz2": -6.0,
 }
 
 # In-raid ambient bed per biome (the base "ambient" wind is the fallback + menu bed).
@@ -440,13 +453,7 @@ var _creak_seq: int = 0
 func _ready() -> void:
 	# Cache streams; absent files resolve to null.
 	for id in SOUNDS:
-		var path: String = SOUNDS[id]
-		if ResourceLoader.exists(path):
-			var res := load(path)
-			if res is AudioStream:
-				_streams[id] = res
-				continue
-		_streams[id] = null
+		_streams[id] = _resolve_stream(String(SOUNDS[id]))
 
 	# Round-robin pool for non-positional one-shots.
 	for i in POOL_SIZE:
@@ -550,6 +557,10 @@ func _ready() -> void:
 	Events.chunk_broken.connect(_on_chunk_broken)
 	Events.enemy_chase_started.connect(_on_enemy_chase_started)
 	Events.final_wave_started.connect(_on_final_wave)
+	# D5.1: the shot layers a teammate's crack cannot carry — the delayed far boom and the
+	# whizz of a round that passed US. Needs the trajectory, so it hangs off remote_shot
+	# itself rather than off play_remote_shot (which only ever gets the muzzle).
+	Events.remote_shot.connect(_on_remote_shot)
 	# D5.5 world one-shots that had no voice at all until now.
 	Events.door_opened.connect(_on_door_opened)
 	Events.power_reveal_started.connect(_on_power_reveal_started)
@@ -569,6 +580,7 @@ func _process(delta: float) -> void:
 	_tick_music_layers(delta)
 	_tick_reverb_zone(delta)
 	_tick_ambience(delta)
+	_tick_shot_layers(delta)
 	if not enabled or _local_player == null:
 		return
 	if not is_instance_valid(_local_player):
@@ -639,16 +651,19 @@ func _on_chunk_broken(chunk: Node) -> void:
 ## (shot_<class>), so this is just a light pitch nudge (SMG reuses the pistol crack,
 ## pitched up to read snappier) + a small volume trim on top of SOUND_DB. A tiny
 ## random pitch jitter is applied per shot so repeated fire never sounds identical.
+## D5.1 adds `tail_*` to the same table: ONE far-boom clip is shared by every class and
+## leaned per chassis — a pistol's report rolls thin and short, a DMR's is the one you hear
+## a valley away. (Pitching a heavily-lowpassed boom is exactly how a bigger charge reads.)
 const SHOT_CLASS := {
-	"pistol": {"pitch": 1.0, "vol": 0.0},
-	"rifle": {"pitch": 1.0, "vol": 0.0},
-	"smg": {"pitch": 1.12, "vol": -1.0},
-	"shotgun": {"pitch": 0.97, "vol": 0.0},
-	"dmr": {"pitch": 0.98, "vol": 0.0},
+	"pistol": {"pitch": 1.0, "vol": 0.0, "tail_pitch": 1.18, "tail_vol": -5.0},
+	"rifle": {"pitch": 1.0, "vol": 0.0, "tail_pitch": 1.0, "tail_vol": 0.0},
+	"smg": {"pitch": 1.12, "vol": -1.0, "tail_pitch": 1.14, "tail_vol": -4.0},
+	"shotgun": {"pitch": 0.97, "vol": 0.0, "tail_pitch": 0.86, "tail_vol": 1.0},
+	"dmr": {"pitch": 0.98, "vol": 0.0, "tail_pitch": 0.80, "tail_vol": 2.0},
 }
 
 
-func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
+func _on_weapon_fired(shooter: Node, weapon_id: String) -> void:
 	# Entity SFX only while a match runs — a lingering/tearing-down world must never
 	# keep shooting sounds into the lobby (UI/extract/win-lose SFX stay ungated).
 	if GameState.phase != GameState.Phase.IN_MATCH:
@@ -665,6 +680,10 @@ func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
 	if _streams.get(shot_id, null) == null:
 		shot_id = "shot"
 	_play_pitched(shot_id, float(cfg["pitch"]) * randf_range(0.96, 1.04), float(cfg["vol"]))
+	# D5.1: your OWN report rolling back off the ruins a fifth of a second later. Only the
+	# local body's gun — a turret (or any other weapon.gd owner) is not you.
+	if shooter != null and shooter == _local_player:
+		_queue_own_tail(cfg)
 
 
 ## Teammate gunfire (v0.5-B3): a POSITIONAL shot crack at a remote muzzle. The co-op FX
@@ -714,6 +733,285 @@ func _play_pitched(id: String, pitch: float, vol_extra: float) -> void:
 	p.pitch_scale = clampf(pitch, 0.2, 3.0)
 	p.volume_db = master_db + SOUND_DB.get(id, 0.0) + vol_extra
 	p.play()
+
+
+# ---------------------------------------------------------------------------
+# D5.1 — gunfire body: the far tail + the bullet whizz-by
+# ---------------------------------------------------------------------------
+## A gun is a CRACK (the real per-class recordings above) plus two things no muzzle sample
+## can carry: the low BOOM that rolls back out of the world a moment later, and — for a
+## round that passes you — the zip of the air it dragged with it. Both are DELAYED, so both
+## go through one small pending queue: the tail by honest physics (dist / 340 m/s), the
+## whizz by the bullet's own flight time to the point where it went past the listener.
+##
+## Everything here is client-local: it reads the ALREADY-replicated remote_shot broadcast,
+## spawns render-only emitters and networks nothing. Two peers hearing one shot differently
+## is BY DESIGN — they are standing in different places. Headless never queues anything.
+const SPEED_OF_SOUND := 340.0  # m/s
+const TAIL_MAX_PENDING := 12  # queue cap — a burst DROPS layers rather than flooding voices
+const TAIL_OWN_INTERVAL := 0.22  # s between your own tails (full auto rolls, never mud)
+const TAIL_REMOTE_INTERVAL := 0.10  # s between teammates' tails
+const TAIL_MIN_DIST := 8.0  # m — nearer than this the crack IS the whole sound
+const TAIL_MAX_DIST := 220.0  # m — past this a shot is not worth a boom
+const TAIL_OWN_DELAY := 0.20  # s — your own report coming back off the ruins
+const TAIL_SLAP_DELAY := 0.055  # s — an indoor first reflection is nearly instant
+const TAIL_INDOOR_MIX := 0.55  # indoor_ratio() above which a shot slaps instead of rolling
+const TAIL_SLAP_MAX_DIST := 40.0  # m — a FAR shot still rolls in, even to an indoor listener
+const TAIL_OWN_DB := -7.0  # your own roll comes back off FAR surfaces — always under the crack
+const TAIL_SLAP_DB := -6.0
+const TAIL_REMOTE_DB := 0.0
+# Emitter ceiling. Inverse-distance would hand a 15 m boom +12 dB and drown the crack that
+# made it; capped, the tail reads FLAT out to ~105 m and only then rolls off — which is
+# exactly how a real report behaves, and it leaves the near field to the recorded crack.
+const TAIL_MAX_DB := -14.0
+const TAIL_UNIT_SIZE := 60.0  # the boom carries FAR further than the crack (which is 14)
+const TAIL_AUDIBLE_DIST := 300.0
+const TAIL_CUTOFF_NEAR_HZ := 3200.0
+const TAIL_CUTOFF_FAR_HZ := 420.0
+const TAIL_SHELF_NEAR_DB := -18.0
+const TAIL_SHELF_FAR_DB := -52.0
+const WHIZZ_RADIUS := 2.5  # m from the chest for a round to count as a near miss
+const WHIZZ_MIN_FROM_MUZZLE := 6.0  # m — closer than this it is a squadmate's barrel, not a miss
+const WHIZZ_COOLDOWN := 0.12  # s — a burst gives a couple of zips, not eight
+const WHIZZ_MAX_DELAY := 0.14  # s — the tracer is drawn instantly; never drift off it
+const WHIZZ_EAR_UP := 1.2  # m — chest height on the BODY (not the third-person camera)
+# The near/far contrast of a zip CANNOT come from 3D attenuation: the engine measures the
+# emitter against the CAMERA, which in third person sits metres behind the body that was
+# nearly hit — so the miss distance is folded in here instead, and the cap only guards the
+# first-person case where camera and body coincide.
+const WHIZZ_NEAR_DB := -4.0
+const WHIZZ_FAR_DB := -13.0
+const WHIZZ_MAX_DB := -10.0
+const WHIZZ_UNIT_SIZE := 4.0
+const WHIZZ_AUDIBLE_DIST := 25.0
+const WHIZZ_MAX_SEGS := 24  # arc nodes worth testing — an arc cannot cost a frame
+const WHIZZ_IDS := ["bullet_whizz", "bullet_whizz2"]
+const _LAYER_TAIL := 0  # positional boom (distance-shelved)
+const _LAYER_WHIZZ := 1  # positional zip (tight, unshelved)
+const _LAYER_POOL := 2  # non-positional (your own report — it comes from everywhere)
+
+var _pending_shots: Array[Dictionary] = []
+var _last_own_tail := -1.0
+var _last_remote_tail := -1.0
+var _last_whizz := -1.0
+var _whizz_seq := 0
+
+
+## Advance the delayed layers. Early-out on an empty queue; one float per entry otherwise.
+## The queue is DROPPED outside a live match, so a tail can never roll into the summary
+## screen and a paused solo raid cannot bank booms while _process is frozen.
+func _tick_shot_layers(delta: float) -> void:
+	if _pending_shots.is_empty():
+		return
+	if not enabled or GameState.phase != GameState.Phase.IN_MATCH:
+		_pending_shots.clear()
+		return
+	for i in range(_pending_shots.size() - 1, -1, -1):
+		var e: Dictionary = _pending_shots[i]
+		var left: float = float(e["t"]) - delta
+		e["t"] = left
+		if left > 0.0:
+			continue
+		_pending_shots.remove_at(i)
+		_fire_shot_layer(e)
+
+
+## Schedule one delayed layer. Over the cap it is a hard DROP, not a resize: twelve pending
+## booms is already more than a mix can hold, and dropping is silent while flooding is not.
+func _queue_shot_layer(
+	kind: int, id: String, delay: float, pos: Vector3, pitch: float, db: float, dist: float
+) -> void:
+	if _streams.get(id, null) == null or _pending_shots.size() >= TAIL_MAX_PENDING:
+		return
+	var entry: Dictionary = {
+		"kind": kind,
+		"id": id,
+		"t": maxf(delay, 0.0),
+		"pos": pos,
+		"pitch": pitch,
+		"db": db,
+		"dist": dist,
+	}
+	_pending_shots.append(entry)
+
+
+## Play one due layer. The zip and the boom are both positional but want opposite emitter
+## shapes (a 2 m pass by your ear vs something that must still read at 200 m), so each gets
+## its own; a pool entry (your own report) is non-positional by design.
+func _fire_shot_layer(e: Dictionary) -> void:
+	var id: String = String(e["id"])
+	var stream: AudioStream = _streams.get(id, null)
+	if stream == null:
+		return
+	var kind: int = int(e["kind"])
+	var db: float = float(e["db"]) + float(SOUND_DB.get(id, 0.0))
+	var pitch: float = float(e["pitch"])
+	if kind == _LAYER_POOL:
+		play_stream(stream, pitch, db)
+		return
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	var p := _make_shot_player(stream, pitch, db)
+	if p == null:
+		return
+	if kind == _LAYER_WHIZZ:
+		p.max_db = WHIZZ_MAX_DB
+		p.unit_size = WHIZZ_UNIT_SIZE
+		p.max_distance = WHIZZ_AUDIBLE_DIST
+	else:
+		var t: float = clampf(float(e["dist"]) / TAIL_MAX_DIST, 0.0, 1.0)
+		p.max_db = TAIL_MAX_DB
+		p.unit_size = TAIL_UNIT_SIZE
+		p.max_distance = TAIL_AUDIBLE_DIST
+		# BOTH ends of the built-in shelf move with distance: the engine already scales the
+		# shelf's GAIN by attenuation, so dropping the cutoff alone is nearly inaudible
+		# (the lesson AudioOcclusion documents). Together they read as "far away", not "quiet".
+		p.attenuation_filter_cutoff_hz = lerpf(TAIL_CUTOFF_NEAR_HZ, TAIL_CUTOFF_FAR_HZ, t)
+		p.attenuation_filter_db = lerpf(TAIL_SHELF_NEAR_DB, TAIL_SHELF_FAR_DB, t)
+	scene.add_child(p)
+	var pos: Vector3 = e["pos"]
+	p.global_position = pos
+	p.play()
+
+
+## The shared body of a D5.1 positional one-shot: self-freeing, on the reverb-carrying SFX
+## bus, parented to the WORLD (never to a shooter — a tail must outlive the muzzle that made
+## it). Deliberately NOT occlusion-tracked: AudioOcclusion drives the very same attenuation
+## shelf this layer uses to encode DISTANCE, and the two would overwrite each other.
+func _make_shot_player(stream: AudioStream, pitch: float, db: float) -> AudioStreamPlayer3D:
+	if DisplayServer.get_name() == "headless":
+		return null
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
+	p.pitch_scale = clampf(pitch, 0.2, 3.0)
+	p.volume_db = master_db + db
+	p.max_db = 0.0
+	p.finished.connect(p.queue_free)
+	return p
+
+
+## Your OWN shot's answer from the world. Distance is zero, so there is nothing to delay by
+## travel time — what returns is the report itself: an open-field roll after ~0.2 s, or, with
+## a ceiling overhead, the room's slap ~0.05 s later. Throttled well below the fire rate: in
+## full auto the roll must be a rhythm under the cracks, not one boom per bullet.
+func _queue_own_tail(cfg: Dictionary) -> void:
+	if _local_player == null or not is_instance_valid(_local_player):
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _last_own_tail >= 0.0 and now - _last_own_tail < TAIL_OWN_INTERVAL:
+		return
+	_last_own_tail = now
+	var pitch: float = float(cfg.get("tail_pitch", 1.0)) * randf_range(0.97, 1.03)
+	var vol: float = float(cfg.get("tail_vol", 0.0))
+	var indoors: bool = _indoor_mix >= TAIL_INDOOR_MIX
+	var id: String = "shot_tail_slap" if indoors else "shot_tail_far"
+	var delay: float = TAIL_SLAP_DELAY if indoors else TAIL_OWN_DELAY
+	var db: float = (TAIL_SLAP_DB if indoors else TAIL_OWN_DB) + vol
+	_queue_shot_layer(_LAYER_POOL, id, delay, Vector3.ZERO, pitch, db, 0.0)
+
+
+## A teammate's shot, straight off the co-op broadcast (never our own — _shot_rpc is
+## call_remote). Two layers ride it: the delayed boom from the muzzle, and, if the round
+## actually passed within arm's reach, the whizz at the point where it went by.
+func _on_remote_shot(
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	_enemy_hit: bool,
+	_normal: Vector3,
+	wid: String = ""
+) -> void:
+	if not enabled or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	if _local_player == null or not is_instance_valid(_local_player):
+		return
+	var body := _local_player as Node3D
+	if body == null or not body.is_inside_tree():
+		return
+	var ear: Vector3 = body.global_position + Vector3.UP * WHIZZ_EAR_UP
+	_queue_remote_tail(muzzle, ear.distance_to(muzzle), wid)
+	_queue_whizz(muzzle, hit_point, arc, ear)
+
+
+## The teammate's boom: delayed by real travel time and left to the emitter's rolloff + shelf
+## for how loud and how dull it lands. The CRACK itself is deliberately NOT delayed
+## (play_remote_shot fires it at once) — the tracer is drawn in a single frame and a late
+## crack would visibly lag it; the boom is the layer that is allowed to carry the range.
+func _queue_remote_tail(muzzle: Vector3, dist: float, wid: String) -> void:
+	if dist < TAIL_MIN_DIST or dist > TAIL_MAX_DIST:
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _last_remote_tail >= 0.0 and now - _last_remote_tail < TAIL_REMOTE_INTERVAL:
+		return
+	_last_remote_tail = now
+	var cfg: Dictionary = SHOT_CLASS.get(wid, SHOT_CLASS["rifle"])
+	var pitch: float = float(cfg.get("tail_pitch", 1.0)) * randf_range(0.97, 1.03)
+	var vol: float = float(cfg.get("tail_vol", 0.0))
+	# Indoors a NEARBY shot slaps off the walls instead of rolling; a far one still rolls in
+	# from outside, just shelved down by the emitter.
+	if _indoor_mix >= TAIL_INDOOR_MIX and dist <= TAIL_SLAP_MAX_DIST:
+		var slap_db: float = TAIL_SLAP_DB + vol
+		_queue_shot_layer(
+			_LAYER_TAIL, "shot_tail_slap", TAIL_SLAP_DELAY, muzzle, pitch, slap_db, dist
+		)
+		return
+	var delay: float = dist / SPEED_OF_SOUND
+	_queue_shot_layer(
+		_LAYER_TAIL, "shot_tail_far", delay, muzzle, pitch, TAIL_REMOTE_DB + vol, dist
+	)
+
+
+## A round that passed CLOSE. The zip is placed where it actually went by — in third person
+## that is usually in front of the camera rather than at the body — and delayed by the
+## bullet's own flight time to that point, so a distant shooter's zip reaches you BEFORE its
+## report: the crack-then-thump ordering a real near miss has. Clamped so it can never drift
+## off the tracer, which is drawn instantly.
+func _queue_whizz(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, ear: Vector3
+) -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _last_whizz >= 0.0 and now - _last_whizz < WHIZZ_COOLDOWN:
+		return
+	var closest: Vector3 = _closest_on_path(muzzle, hit_point, arc, ear)
+	var miss: float = ear.distance_to(closest)
+	if miss > WHIZZ_RADIUS or closest.distance_to(muzzle) < WHIZZ_MIN_FROM_MUZZLE:
+		return  # too wide to hear, or the "miss" is a squadmate's barrel beside your head
+	_last_whizz = now
+	_whizz_seq += 1
+	var id: String = String(WHIZZ_IDS[_whizz_seq % WHIZZ_IDS.size()])
+	var travel: float = muzzle.distance_to(closest) / maxf(Settings.BULLET_MUZZLE_VELOCITY, 1.0)
+	var t: float = clampf(miss / WHIZZ_RADIUS, 0.0, 1.0)
+	# A hair's-breadth pass reads brighter and louder than one a couple of metres out.
+	var pitch: float = lerpf(1.1, 0.9, t) * randf_range(0.94, 1.06)
+	var db: float = lerpf(WHIZZ_NEAR_DB, WHIZZ_FAR_DB, t)
+	_queue_shot_layer(_LAYER_WHIZZ, id, minf(travel, WHIZZ_MAX_DELAY), closest, pitch, db, miss)
+
+
+## Closest point on the shot's flight path to `ear`. Uses the REAL ballistic arc the
+## broadcast carries whenever it has one — bullets drop here, so a straight muzzle→hit
+## segment would misjudge a long shot by metres — and falls back to that segment otherwise.
+func _closest_on_path(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, ear: Vector3
+) -> Vector3:
+	if arc.size() < 2:
+		return Geometry3D.get_closest_point_to_segment(ear, muzzle, hit_point)
+	var best: Vector3 = muzzle
+	var best_d: float = INF
+	var prev: Vector3 = muzzle
+	var count: int = mini(arc.size(), WHIZZ_MAX_SEGS)
+	for i in count:
+		var cur: Vector3 = arc[i]
+		var c: Vector3 = Geometry3D.get_closest_point_to_segment(ear, prev, cur)
+		var d: float = ear.distance_squared_to(c)
+		if d < best_d:
+			best_d = d
+			best = c
+		prev = cur
+	return best
 
 
 func _on_damage_dealt(target: Node, _amount: float, _source: Node) -> void:
@@ -1134,6 +1432,27 @@ func play_world(
 	p.play()
 
 
+## Load one entry of SOUNDS, tolerating the WAV↔OGG swap the audio pipeline performs: the
+## generator (tools/audio/gen_audio.py) always writes .wav and the long clips are then
+## converted to .ogg and the .wav deleted. The listed path always WINS — the twin is only
+## consulted when it is missing — so an .ogg conversion (or a stray generated .wav dupe of
+## an .ogg id) never silently changes which file an existing id plays. null = absent, which
+## every call site already treats as "skip this sound".
+func _resolve_stream(path: String) -> AudioStream:
+	var twin: String = ""
+	if path.ends_with(".wav"):
+		twin = path.get_basename() + ".ogg"
+	elif path.ends_with(".ogg"):
+		twin = path.get_basename() + ".wav"
+	for candidate: String in [path, twin]:
+		if candidate == "" or not ResourceLoader.exists(candidate):
+			continue
+		var res := load(candidate)
+		if res is AudioStream:
+			return res as AudioStream
+	return null
+
+
 ## Creates a dedicated child AudioStreamPlayer with loop mode set.
 func _make_looping_player(id: String, vol_db: float) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
@@ -1172,6 +1491,9 @@ func _tween_volume(player: AudioStreamPlayer, target_db: float, duration_s: floa
 
 ## Fade both ambient and music beds out on match end.
 func _fade_beds_out() -> void:
+	# D5.1: drop any boom still travelling — the match is over, nothing may roll into the
+	# summary screen (the tick's phase guard would catch it a frame later; this is instant).
+	_pending_shots.clear()
 	if _ambient_player != null:
 		_tween_volume(_ambient_player, -80.0, 3.0)
 	if _music_player != null:

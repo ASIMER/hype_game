@@ -986,6 +986,99 @@ def gen_music_boss() -> list[float]:
     return _fade([math.tanh(s * 0.85) for s in out], 0.01, 0.01)
 
 
+def gen_shot_tail_far() -> list[float]:
+    """D5.1 far tail — the low BOOM that rolls back in after a shot fired across the field.
+    Deliberately ATTACK-LESS (the crack is a separate, already-recorded layer; a distant
+    report has no click) and built as a canyon roll: the body plus four progressively
+    duller, quieter reflections. Carries a deliberate 200-900 Hz grit band so the
+    per-emitter distance filter has something to chew on — otherwise a 200 m boom would
+    only be QUIETER than a 40 m one, never duller. ~1.15 s."""
+    total = 1.15
+    n = int(SAMPLE_RATE * total)
+    # Body: double-lowpassed noise, slow attack, long exponential decay.
+    body = _lowpass(_lowpass(_noise(total, 1.0, seed=6100), 260), 260)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        body[i] *= min(1.0, t / 0.03) * math.exp(-t * 3.4)
+    # Mid grit — the band the distance filter works on.
+    grit = _lowpass(_highpass(_noise(total, 0.5, seed=6101), 200), 900)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        grit[i] *= min(1.0, t / 0.02) * math.exp(-t * 6.0)
+    # Sub: 62 -> 34 Hz drop, the weight you feel rather than hear.
+    sub = []
+    ph = 0.0
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        f = 34.0 + 28.0 * math.exp(-t * 4.0)
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        sub.append(0.8 * math.sin(ph) * math.exp(-t * 2.6))
+    out = [body[i] * 0.9 + grit[i] * 0.35 + sub[i] for i in range(n)]
+    for delay_s, gain, lp in (
+        (0.085, 0.55, 200.0),
+        (0.185, 0.38, 160.0),
+        (0.330, 0.24, 130.0),
+        (0.550, 0.14, 110.0),
+    ):
+        echo = _lowpass(body, lp)
+        start = int(delay_s * SAMPLE_RATE)
+        for i in range(n - start):
+            out[start + i] += echo[i] * gain
+    return _fade([math.tanh(s * 0.9) for s in out], 0.004, 0.12)
+
+
+def gen_shot_tail_slap() -> list[float]:
+    """D5.1 INDOOR tail — a room slap-back instead of the open-field roll: four tight,
+    bright reflections (the walls are metres away, not hundreds) over a small low thump.
+    Dry on purpose; the SFX bus reverb adds the room on top. ~0.34 s."""
+    total = 0.34
+    n = int(SAMPLE_RATE * total)
+    out = [0.0] * n
+    tap = _lowpass(_highpass(_noise(0.05, 1.0, seed=6200), 500), 3200)
+    tap = _adsr(tap, 0.001, 0.02, 0.15, 0.028)
+    for delay_s, gain, lp in (
+        (0.000, 0.90, 3200.0),
+        (0.042, 0.60, 2400.0),
+        (0.095, 0.40, 1600.0),
+        (0.165, 0.22, 1100.0),
+    ):
+        echo = _lowpass(tap, lp)
+        start = int(delay_s * SAMPLE_RATE)
+        for i in range(len(echo)):
+            if start + i < n:
+                out[start + i] += echo[i] * gain
+    thump = _adsr(_sine(96.0, 0.12, amp=0.5), 0.002, 0.04, 0.0, 0.07)
+    for i in range(min(len(thump), n)):
+        out[i] += thump[i]
+    return _fade([math.tanh(s) for s in out], 0.002, 0.05)
+
+
+def gen_bullet_whizz(
+    seed: int = 6300, f0: float = 2600.0, f1: float = 700.0, dur: float = 0.15
+) -> list[float]:
+    """D5.1 near miss — the ZIP of a round passing within a couple of metres: a dry crack
+    at the head, a band of air that darkens as it goes by, and a descending tone (the
+    Doppler of the pass). Short and dry; the room is the SFX bus's job."""
+    n = int(SAMPLE_RATE * dur)
+    bright = _highpass(_noise(dur, 1.0, seed=seed), 1800)
+    dark = _lowpass(_highpass(_noise(dur, 1.0, seed=seed + 1), 400), 1200)
+    air = []
+    for i in range(n):
+        t = i / n
+        env = math.exp(-((t - 0.25) ** 2) / 0.05)  # approach -> pass -> gone
+        air.append((bright[i] * (1.0 - t) + dark[i] * t) * env * 0.8)
+    tone = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = f0 + (f1 - f0) * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        tone.append(0.35 * math.sin(ph) * math.exp(-t * 5.0))
+    crack = _adsr(_highpass(_noise(0.012, 0.9, seed=seed + 2), 2500), 0.0005, 0.006, 0.0, 0.005)
+    crack = crack + [0.0] * (n - len(crack))
+    return _fade(_mix(air, tone, crack), 0.001, 0.02)
+
+
 def gen_skill_cast() -> list[float]:
     """Generic ability cast: a bright two-tone energy chirp (dash/blink/shield…)."""
 
@@ -1165,6 +1258,12 @@ def main() -> None:
         # v0.5-B3 music layers: tension + boss stems (converted to .ogg, WAVs deleted).
         ("music_tension.wav",  gen_music_tension),
         ("music_boss.wav",     gen_music_boss),
+        # D5.1 gunfire body: the distant boom that rolls back in, the indoor slap-back
+        # and the bullet whizz-by (two variants so a burst of near misses is not one clip).
+        ("shot_tail_far.wav",  gen_shot_tail_far),
+        ("shot_tail_slap.wav", gen_shot_tail_slap),
+        ("bullet_whizz.wav",   lambda: gen_bullet_whizz(6300, 2600.0, 700.0, 0.15)),
+        ("bullet_whizz2.wav",  lambda: gen_bullet_whizz(6320, 3300.0, 980.0, 0.12)),
         # MOBA skill rework (v0.4.5): per-ability cast/impact sounds.
         ("skill_cast.wav",     gen_skill_cast),
         ("skill_meteor.wav",   gen_skill_meteor),

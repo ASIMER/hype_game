@@ -88,6 +88,15 @@ const DAY_CUMULUS_THICKNESS := 0.04
 const DAY_CUMULUS_INTENSITY := 0.42
 const DAY_ATM_DARKNESS := 0.72
 const DAY_SKYDOME_EXPOSURE := 0.8
+# D1.5 «Объёмка и воздух» — the AIR half of the day look. These three Environment fields are
+# driven PER BIOME from the `_apply_biome_look` tick (see `_apply_biome_air`), which means they
+# fall under the SAME trap the storm ramps live under: `_restore_day()` owns the Environment, so
+# anything the tick writes must be reset here too or a restart silently keeps the previous
+# raid's biome air. The values below ARE the neutral/urban entry of `_BIOME_LOOK`, so the day
+# reset and the urban tick agree to the digit (no visible settle on a fresh urban raid).
+const DAY_FOG_HEIGHT := 3.0
+const DAY_FOG_HEIGHT_DENSITY := 0.012
+const DAY_FOG_AERIAL := 0.50
 
 # Day-night drive (per-frame, from DayNight.sun_ratio). The sun energy + ambient + sun pitch
 # lerp between a NIGHT floor (sun_ratio 0) and the bright-DAY top (sun_ratio 1) — DAY_SUN_ENERGY
@@ -271,39 +280,144 @@ var _last_sun_ratio: float = -1.0
 var _climate_gate_accum: float = 1.0
 var _climate_root: Node3D = null
 
+# ---------------------------------------------------------------------------
+# D1.5 — GOD RAYS, calibrated by TIME OF DAY (and scaled per biome below).
+#
+# `light_volumetric_fog_energy` is a VOLUMETRIC-fog property: it scales how much this light
+# contributes to the froxel fog. Two consequences drive the whole design:
+#  * with the volumetric carrier OFF it is dead weight, so it is pinned to 0 there (the brief's
+#    "не включается там, где объёмка выключена настройками") — the old code wrote a flat 1.0
+#    regardless, which was a silent no-op on those configs and a fixed look on the others;
+#  * normal play keeps the GLOBAL density at 0, so shafts only ever appear where fog actually
+#    lives — inside the landmark FogZones / climate zones / the storm wall. That is exactly
+#    where god rays belong, and it is why this can be generous without hazing the map.
+#
+# The curve peaks at GOLDEN (the dawn/dusk ramp, where a raking sun cuts long shafts through a
+# smoke bank) and falls off toward noon (an overhead sun makes shafts short and near-invisible)
+# and toward night. Read the products, not the multipliers — the sun's own energy is already
+# swinging 0.26 → 2.8 across the same ramp, so the visible shaft strength is energy × this:
+#   night  0.26 × 0.55 = 0.14   golden  1.40 × 1.55 = 2.17   noon  2.80 × 0.45 = 1.26
+const GOD_RAY_PEAK := 0.42  # sun_ratio at which shafts are strongest (the golden-hour ramp)
+const GOD_RAY_GOLDEN := 1.55
+const GOD_RAY_NOON := 0.45
+const GOD_RAY_NIGHT := 0.55
+# Inside the storm the sun is behind a full cloud deck AND the whole map is fogged — leaving the
+# shafts at their clear-sky strength turns the storm front into a glare sheet. Damped, never 0
+# (a break in the deck is part of the drama).
+const GOD_RAY_STORM_MULT := 0.5
+
+# ---------------------------------------------------------------------------
+# D1.5 — AERIAL PERSPECTIVE re-tune (0.34 → 0.50, per-biome band 0.42-0.56 below).
+#
+# WHY THIS CANNOT MILK THE FRAME, by construction. Godot's fog blend fraction at a pixel is
+#     f = max(1 - exp(-dist · fog_density),  1 - exp((y - fog_height) · fog_height_density))
+# and `fog_aerial_perspective` does NOT enter that equation at all — it only decides how much
+# of the ALREADY-COMPUTED f takes the sky-cubemap colour instead of `fog_light_color`. So it
+# can re-tint haze, never add it. With DAY_FOG_DENSITY 0.001 the distance term is 3.9% at 40 m
+# and 5.8% at 60 m, and the strongest biome height term below peaks at ~8.9% (rain, at ground
+# level). In the 40-60 m band ≤9% of a machine's pixels are fog at all, so its silhouette and
+# its cast shadow keep ≥91% of their contrast no matter what this value says — the D1.5
+# acceptance criterion is met by the numbers, not by taste. Meanwhile at 200-320 m the distance
+# term is 18-27%, and that IS where 0.50 pays: far ridges and rooflines take half their haze
+# from the sky, which is what actually reads as air. The two levers that COULD milk the
+# mid-range (fog_density, fog_height_density) stay pinned; this one is free depth.
+#
+# The one exception is the "fog" raid mutator, which multiplies the distance density ×12 — at
+# 0.012 the 60 m blend jumps to ~51%, and re-tinting half of THAT toward a bright sky is the
+# milk failure. So aerial is damped while that mutator runs.
+const AERIAL_FOG_MUTATOR_MULT := 0.55
+
 # D1 RELIGHT — per-biome light TEMPERATURE (see _apply_biome_look). Colour only: energy,
-# rotation, fog and sky density all belong to _restore_day / the storm tween, and anything
+# rotation and sky density all belong to _restore_day / the storm tween, and anything
 # written here that they also write would be reverted on the next match start.
 # Urban stays the neutral cold-steel reference the identity was tuned on; snow goes bluer
 # and brighter in ambient (snow bounces), desert warms hard (sand bounces warm), rain goes
 # cold and dim (overcast). The fill is the counter-sun, so it leans OPPOSITE the key.
+#
+# D1.5 extends each entry with the biome's AIR (see `_apply_biome_air`). These four keys DO
+# write Environment fog fields, so every one of them is paired with an explicit reset in
+# `_restore_day()` (DAY_FOG_HEIGHT / DAY_FOG_HEIGHT_DENSITY / DAY_FOG_AERIAL / DAY_FOG_COLOR).
+#  * `fog_h` / `fog_hd` — the HEIGHT fog, i.e. the low-lying air. Note it is distance-INdependent
+#    (see the equation above): everything below `fog_h` is washed by the same fraction whether
+#    it is 5 m or 50 m away, which is precisely the "туман фальшиво подсвечивал интерьеры"
+#    failure D1 fixed by dropping 0.04 → 0.012. The fix is to keep the LAYER LOW rather than the
+#    density at zero: with `fog_h` at head height the mist pools in dips and hollows (a machine
+#    wades through it, its head clear) and a room floor two metres up is untouched.
+#    Ground sits at roughly y ∈ [-3.5, +3.5] (TERRAIN_HILL_AMP), so worst-case washes are
+#    urban 3.5%, snow 0.5%, desert 9.2%, rain 8.9% at y = 0.
+#  * `aerial` — a narrow band around DAY_FOG_AERIAL: dust scatters most (desert), clean cold air
+#    least (snow).
+#
+# MEASURED RETUNE (photostand d_tail): the first pass of this table DARKENED every biome it
+# touched — rain lost 0.08 median luma on a matched crop, desert 0.10 — for one reason that is
+# easy to miss. Haze is scattered SKYLIGHT: it is brighter than what it covers, and washing a
+# surface toward it must LIFT that surface. Three of these entries did the opposite. Rain's tint
+# was darker than the day reference outright; desert hung a waist-high layer in a colour darker
+# than the sand it lay on; snow cut `aerial` below the default, so distant geometry kept its own
+# dark value instead of blending toward a bright sky. Densities are now roughly half, the tints
+# sit at or above the surface they wash, and snow's sky-blend is back at the default. Keep that
+# rule when retuning: a fog colour DARKER than the ground it covers is a light subtractor.
+#  * `fog_col` — the distance/height fog tint. Written ONLY while not stormed: `_apply_storm_mix`
+#    owns `fog_light_color` during the storm, and `_storm_begin` captures the LIVE (already
+#    biome-tinted) colour as its ramp origin, so the two never fight and the storm still rolls
+#    in out of the local air.
+#  * `rays` — the biome multiplier on the god-ray curve above.
 const _BIOME_LOOK := {
 	"urban":
 	{
 		"sun": Color(1.0, 0.965, 0.905),
 		"fill": Color(0.58, 0.66, 0.80),
 		"ambient": Color(0.50, 0.56, 0.66),
+		"fog_col": DAY_FOG_COLOR,
+		"fog_h": DAY_FOG_HEIGHT,
+		"fog_hd": DAY_FOG_HEIGHT_DENSITY,
+		"aerial": DAY_FOG_AERIAL,
+		"rays": 1.0,
 	},
 	"snow":
 	{
 		"sun": Color(0.955, 0.975, 1.0),
 		"fill": Color(0.62, 0.72, 0.88),
 		"ambient": Color(0.58, 0.65, 0.78),
+		# Clean cold air: almost no ground layer, the least sky-blend of the four — the snow
+		# quadrant should be the one place where a machine at 120 m is still a hard silhouette.
+		"fog_col": Color(0.72, 0.77, 0.85),
+		"fog_h": 1.0,
+		"fog_hd": 0.004,
+		"aerial": 0.50,
+		"rays": 0.8,
 	},
 	"desert":
 	{
 		"sun": Color(1.0, 0.925, 0.795),
 		"fill": Color(0.66, 0.66, 0.72),
 		"ambient": Color(0.64, 0.60, 0.53),
+		# Warm dust hanging waist-to-head high, and the strongest sky-blend at distance —
+		# suspended sand is the one air that genuinely scatters.
+		"fog_col": Color(0.82, 0.74, 0.62),
+		"fog_h": 3.4,
+		"fog_hd": 0.009,
+		"aerial": 0.53,
+		"rays": 1.3,
 	},
 	"rain":
 	{
 		"sun": Color(0.90, 0.945, 1.0),
 		"fill": Color(0.54, 0.64, 0.78),
 		"ambient": Color(0.48, 0.545, 0.63),
+		# Low morning haze: the densest layer of the four but capped just above head height, so
+		# it reads as mist lying in the ground and clears by the time you are on a roof.
+		"fog_col": Color(0.62, 0.67, 0.74),
+		"fog_h": 3.0,
+		"fog_hd": 0.013,
+		"aerial": 0.48,
+		"rays": 1.15,
 	},
 }
 var _biome_look_accum: float = 0.0
+# Last biome's god-ray multiplier, cached so `_apply_graphics_quality` (which fires off the
+# settings menu, not off the biome tick) can recompute the shafts without re-resolving a biome.
+var _ray_biome_mult: float = 1.0
 
 
 func _ready() -> void:
@@ -411,12 +525,13 @@ func _apply_graphics_quality(level: int) -> void:
 	var sq: RenderingServer.ShadowQuality = soft_q[clampi(level, 0, 4)]
 	RenderingServer.directional_soft_shadow_filter_set_quality(sq)
 	RenderingServer.positional_soft_shadow_filter_set_quality(sq)
-	# God rays: let the sun cast volumetric shafts THROUGH the global fog (no-op when
-	# volumetric fog is off). Shadow distance also lives on the sun. Guard non-null.
+	# God rays: let the sun cast volumetric shafts through the fog. D1.5 — the strength is no
+	# longer a flat 1.0: it is calibrated by time of day and biome on the `_apply_biome_look`
+	# tick (see `_apply_god_rays`), and pinned to 0 whenever the volumetric CARRIER is off,
+	# which the old write did not check. Called here too so the settings toggle is immediate.
+	_apply_god_rays()
+	# Shadow distance also lives on the sun. Guard non-null.
 	if _sun != null:
-		_sun.light_volumetric_fog_energy = (
-			1.0 if bool(SettingsManager.get_value("god_rays")) else 0.0
-		)
 		_sun.directional_shadow_max_distance = clampf(
 			float(SettingsManager.get_value("shadow_distance")), 60.0, 250.0
 		)
@@ -757,6 +872,14 @@ func _restore_day() -> void:
 		_env.fog_density = DAY_FOG_DENSITY
 		_env.fog_light_color = DAY_FOG_COLOR
 		_env.glow_intensity = DAY_GLOW
+		# D1.5 — the AIR fields the per-biome tick drives (`_apply_biome_air`). PAIRED HERE ON
+		# PURPOSE: this function owns the Environment, so a field written only by the tick would
+		# be reset to whatever the .tres last held (or, worse, kept from the previous raid's
+		# biome) the moment a match restarts. Neutral/urban values — the tick eases to the
+		# camera's actual biome within ~1.5 s.
+		_env.fog_height = DAY_FOG_HEIGHT
+		_env.fog_height_density = DAY_FOG_HEIGHT_DENSITY
+		_env.fog_aerial_perspective = DAY_FOG_AERIAL
 		# Reset volumetric fog to its base density (0, or the fog-mutator murk), undoing the
 		# storm thicken.
 		if _env.volumetric_fog_enabled:
@@ -765,6 +888,11 @@ func _restore_day() -> void:
 		_sun.light_energy = DAY_SUN_ENERGY
 		if _base_sun_rot != Vector3.ZERO:
 			_sun.rotation = _base_sun_rot
+	# Same pairing for the god rays: drop the cached biome multiplier so a raid that ended in a
+	# stormed desert does not open in an urban dawn still wearing dust shafts. The recompute
+	# itself waits until AFTER _apply_daynight below — that is what refreshes `_last_sun_ratio`,
+	# and calling it here would calibrate the shafts off the PREVIOUS raid's hour.
+	_ray_biome_mult = 1.0
 	if _dust_mat != null:
 		_dust_mat.color = DUST_DAY_COLOR
 	# D6.4: everything the storm front owns OUTSIDE the properties reset above (grass wind
@@ -778,6 +906,8 @@ func _restore_day() -> void:
 	# branches inside _apply_daynight are null-safe, and _base_sun_rot.y/.z = 0 is the harmless
 	# default pre-capture (the authored yaw is applied from the very first _process frame).
 	_apply_daynight(Settings.DAY_NIGHT_START_HOUR)
+	# D1.5 — recalibrate the shafts for the hour just written (see `_ray_biome_mult` above).
+	_apply_god_rays()
 
 
 func _on_final_wave() -> void:
@@ -984,14 +1114,18 @@ func _apply_daynight(hour: float) -> void:
 ##
 ## THREE CONSTRAINTS THIS FUNCTION IS BUILT AROUND:
 ##  1. `_restore_day()` and the storm tween own `light_energy`, `rotation`, `ambient_energy`,
-##     `fog_*`, `glow_intensity` and the SkyDome cumulus/darkness/exposure — writing any of
-##     those here would be silently reverted on every match start. So this touches ONLY
-##     colour: sun colour, fill colour, ambient colour.
+##     `fog_density`, `fog_light_color`, `glow_intensity` and the SkyDome cumulus/darkness/
+##     exposure — writing any of those here would be silently reverted on every match start.
+##     D1 therefore touched ONLY colour; D1.5 adds the AIR (height fog, aerial perspective,
+##     god rays) and pays the price the trap demands: every field it writes has an explicit
+##     paired reset in `_restore_day()`, and `fog_light_color` — which the STORM also owns —
+##     is written only while `not _stormed`.
 ##  2. `WorldBounds.biome_at` is a hard split at the map centre with no seam, so blending by
 ##     POSITION would pop. We blend in TIME instead (exponential approach), which reads as
 ##     the light changing as you walk into a region.
 ##  3. `_apply_sun_ambient` only runs when `sun_ratio` CHANGES, and that ratio plateaus for
 ##     most of the match — anything put in there would freeze mid-day. Hence the own tick.
+##     D1.5 rides THIS tick for the same reason and adds no second poller.
 func _apply_biome_look(delta: float) -> void:
 	if _sun == null:
 		return
@@ -1010,6 +1144,64 @@ func _apply_biome_look(delta: float) -> void:
 		_fill.light_color = _fill.light_color.lerp(fill_c, k)
 	if _env != null:
 		_env.ambient_light_color = _env.ambient_light_color.lerp(amb_c, k)
+	_apply_biome_air(look, k)
+	# God rays ride the same tick (sun_ratio × biome × storm) — see _apply_god_rays.
+	_ray_biome_mult = float(look["rays"])
+	_apply_god_rays()
+
+
+## D1.5 — the biome's AIR: the low-lying height-fog layer, the aerial-perspective strength and
+## the fog tint, blended with the SAME time-based `k` as the light colours so walking from the
+## desert into the rain quadrant reads as the air changing rather than a hard cut at x = 80.
+##
+## Read/modify/write off the live Environment on purpose: it means the storm, the fog mutator
+## and `_restore_day()` can all move these underneath us and the next tick simply eases from
+## wherever they left them instead of snapping.
+func _apply_biome_air(look: Dictionary, k: float) -> void:
+	if _env == null:
+		return
+	var fog_h: float = look["fog_h"]
+	var fog_hd: float = look["fog_hd"]
+	var aerial: float = look["aerial"]
+	# The "fog" mutator multiplies the DISTANCE density ×12; at that density a strong sky-blend
+	# is exactly the milk failure this batch exists to avoid (see AERIAL_FOG_MUTATOR_MULT).
+	if _fog_mutator_active:
+		aerial *= AERIAL_FOG_MUTATOR_MULT
+	_env.fog_height = lerpf(_env.fog_height, fog_h, k)
+	_env.fog_height_density = lerpf(_env.fog_height_density, fog_hd, k)
+	_env.fog_aerial_perspective = lerpf(_env.fog_aerial_perspective, aerial, k)
+	# `_apply_storm_mix` owns the fog tint once the front is armed — hands off until it clears.
+	if not _stormed:
+		var fog_c: Color = look["fog_col"]
+		_env.fog_light_color = _env.fog_light_color.lerp(fog_c, k)
+
+
+## D1.5 — write the one god-ray float on the sun. Called from the biome tick (time of day ×
+## biome × storm) and from `_apply_graphics_quality` (so toggling God Rays in the settings menu
+## is immediate, and so a config with the volumetric carrier off is pinned to 0 right away).
+##
+## Deliberately NOT paired into `_restore_day()` as a hardcoded value: it is a pure function of
+## state that already survives a restart (`_last_sun_ratio`, `_ray_biome_mult`, `_stormed`), and
+## `_restore_day()` calls it at the end so a fresh raid is recomputed rather than frozen.
+func _apply_god_rays() -> void:
+	if _sun == null:
+		return
+	var carrier: bool = _env != null and _env.volumetric_fog_enabled
+	if not carrier or not bool(SettingsManager.get_value("god_rays")):
+		_sun.light_volumetric_fog_energy = 0.0
+		return
+	# `_last_sun_ratio` carries a -1.0 sentinel between resets — clamp before it reaches the
+	# curve or the first tick after a restart would read as "darker than midnight".
+	var s: float = clampf(_last_sun_ratio, 0.0, 1.0)
+	var e: float = 0.0
+	if s <= GOD_RAY_PEAK:
+		e = lerpf(GOD_RAY_NIGHT, GOD_RAY_GOLDEN, smoothstep(0.0, GOD_RAY_PEAK, s))
+	else:
+		e = lerpf(GOD_RAY_GOLDEN, GOD_RAY_NOON, smoothstep(GOD_RAY_PEAK, 1.0, s))
+	e *= _ray_biome_mult
+	if _stormed:
+		e *= lerpf(1.0, GOD_RAY_STORM_MULT, clampf(_last_storm_k, 0.0, 1.0))
+	_sun.light_volumetric_fog_energy = clampf(e, 0.0, 4.0)
 
 
 ## PERF: pause the landmark climate systems (precip particles / fog volume / ground

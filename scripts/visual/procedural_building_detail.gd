@@ -64,9 +64,26 @@ const _CEIL_DROP := 0.45  # lamp hangs this far below the ceiling PLANE (slab is
 ## lamps land in opposite corners (deterministic start index per building).
 const _QUAD: Array[Vector2] = [Vector2(1, -1), Vector2(-1, -1), Vector2(-1, 1), Vector2(1, 1)]
 const _CYL_KITS: Array[String] = [
-	"ac_fan", "antenna", "water_tank", "drainpipe", "lamp_pole", "ceiling_lamp", "ceiling_bulb"
+	"ac_fan",
+	"antenna",
+	"water_tank",
+	"drainpipe",
+	"lamp_pole",
+	"ceiling_lamp",
+	"ceiling_bulb",
+	# --- D3.4 street props ---
+	"barrel",
+	"barrel_band",
+	"sign_post",
+	"bin",
+	"pipe",
+	"spool_flange",
+	"spool_hub",
+	"wreck_wheel",
 ]
-const _NO_SHADOW_KITS: Array[String] = ["antenna", "ceiling_lamp", "ceiling_bulb"]
+## Tapered kits (traffic cones) — a CylinderMesh with a near-zero top radius.
+const _CONE_KITS: Array[String] = ["cone"]
+const _NO_SHADOW_KITS: Array[String] = ["antenna", "ceiling_lamp", "ceiling_bulb", "barrel_band"]
 
 
 ## BATCHED RUBBLE for arena._rebuild_scatter: the SAME per-pile ProcHash chunk math as
@@ -141,10 +158,19 @@ static func rubble_field(scatter: Node3D, positions: Array[Vector3]) -> void:
 
 ## Adds a "BuildingDetail" Node3D under `arena_root` with every detail kit batched into
 ## one MultiMeshInstance3D per kit type. `evac_points` = the arena's extraction-zone XZ
-## list (street pieces keep clear of them). No-op on headless.
+## list (street pieces keep clear of them).
+##
+## HEADLESS SPLIT (D3.4): the MultiMeshes / lamps are render-only and skipped on a
+## dedicated server, but the STREET-PROP COLLIDERS are gameplay (they are navmesh input —
+## cover the AI has to path around), so `_street_layer` runs BEFORE that early-out and
+## builds the same bodies on every peer. Its visual half still lands in `kits`, which the
+## headless return then simply drops on the floor — ONE code path, so a server and a
+## client can never disagree about where the cover stands.
 static func build(arena_root: Node3D, poi_defs: Dictionary, evac_points: Array[Vector2]) -> void:
 	if arena_root == null:
 		return
+	var kits: Dictionary = {}  # kit name -> Array of Transform3D (one MultiMesh each)
+	_street_layer(arena_root, kits, poi_defs, evac_points)
 	if DisplayServer.get_name() == "headless":
 		return
 	var root := Node3D.new()
@@ -157,7 +183,6 @@ static func build(arena_root: Node3D, poi_defs: Dictionary, evac_points: Array[V
 	# ONE shared emissive head material for every lamp (energy 0 by day; the night drive
 	# animates it through each light's "night_glow_mat" meta).
 	var head_mat: StandardMaterial3D = ProcMaterials.emissive(_WARM, 0.0)
-	var kits: Dictionary = {}  # kit name -> Array of Transform3D (one MultiMesh each)
 	var keys: Array = poi_defs.keys()
 	var lamps: int = 0
 	for i in range(keys.size()):
@@ -390,6 +415,649 @@ static func _lamps(
 		root.add_child(light)
 		placed += 1
 	return placed
+
+
+# ===================================================================== D3.4 STREET PROPS
+## "Улицы живые" — a deterministic CITY PROP layer over the open ground that used to be
+## bare terrain between the POIs: barricade checkpoints, burnt-out husks, barrel dumps,
+## pallet/pipe depots, cable spools, dumpsters, road signs and cones, so a street reads as
+## a PLACE instead of the floor between two landmarks.
+##
+## WHERE — two placement families, both ProcHash-deterministic (no randf/Time):
+##   STREETS — the POI graph (every POI wired to its two nearest neighbours) plus spokes
+##     from the map crossroads to the nearest landmark of each outer biome. Props stand on
+##     the SHOULDER (_PROP_LATERAL_MIN..MAX off the centre line), never on it: the lane is
+##     the combat/pathing corridor and stays open by construction.
+##   APRONS — a ring band just outside each POI footprint, where scavenged material would
+##     actually pile up. Starts past the existing `_street_ring` band so the two never
+##     interleave.
+## Density is biome-scaled (_PROP_BIOME_DENSITY: dense city, near-empty desert) and grove
+## cores are skipped (FloraField.forest_w) so a dumpster never lands inside a tree.
+##
+## COLLISION — the one gameplay-visible half, and the reason D3.4 breaks the golden
+## snapshot. Only the BIG props (road blocks, wrecks, cable spools, pipe stacks,
+## dumpsters) carry a StaticBody3D; anything you could step over stays render-only,
+## because the navmesh carve is shape + agent_radius 0.6 and a SOLID traffic cone would
+## pinch a lane shut. Those bodies live under NavigationRegion3D/Geometry/StreetProps —
+## the only subtree the runtime bake parses (Arena.tscn's NavigationMesh leaves
+## geometry_source_geometry_mode at ROOT_NODE_CHILDREN and parses STATIC COLLIDERS on
+## layer 1) — and are therefore built on HEADLESS too. Solid props keep _PROP_CLEAR_BIG
+## clear of every building FOOTPRINT RECT, which is what guarantees no collider can stand
+## in a doorway without this file having to know where each theme puts its door.
+##
+## Tunables are LOCAL consts (this lane owns no shared file); the lead may lift them into
+## Settings verbatim.
+const STREET_PROPS_ENABLED := true
+const _PROP_STATION_STEP := 11.0  # metres between prop stations along a street
+const _PROP_STREET_END := 12.0  # street props stop this far from a link end (aprons own it)
+## Min distance between two accepted CLUSTER centres. Aprons are placed first, so where a
+## street runs into the band around its own POI the street station is the one that yields —
+## which is the right priority and the only reason the two families can share that ground.
+const _PROP_CLUSTER_SPACING := 7.5
+const _PROP_LATERAL_MIN := 3.7  # shoulder offset: the lane centre stays walkable
+const _PROP_LATERAL_MAX := 7.6
+const _PROP_LINK_MIN := 28.0  # shorter POI pairs are one place, not a street
+const _PROP_LINK_MAX := 132.0  # longer ones are wilderness, not a street
+const _PROP_APRON_IN := 6.0  # apron band, measured OUT from the footprint radius
+const _PROP_APRON_OUT := 18.0
+const _PROP_CLEAR_SMALL := 3.0  # render-only clutter: footprint-rect expansion
+const _PROP_CLEAR_BIG := 6.0  # COLLIDING props: never nearer a building than this
+const _PROP_SPAWN_CLEAR := 15.0  # deploy cluster stays clean
+const _PROP_ENEMY_SPAWN_CLEAR := 5.5  # no machine wakes up inside a wreck
+const _PROP_RUBBLE_CLEAR := 3.8  # arena rubble piles already own their ground
+const _PROP_ANNEX_CLEAR := 6.5  # the key-locked annex keeps its approach
+const _PROP_RIVER_CLEAR := 9.5  # nothing floating in / on the waterline
+const _PROP_MAX_RISE := 1.15  # max height delta over a 2.6 m span (~24°) — off the berm
+const _PROP_FOREST_MAX := 0.55  # grove cores belong to the trees
+const _PROP_EDGE_INSET := 10.0  # stay off the perimeter berm / walls
+const _PROP_COLLIDER_CAP := 150  # map-wide budget of navmesh-carving bodies
+const _PLAZA_FOOTPRINT := 22.0  # the plaza POI has w=d=0; treat it as this square
+const _PROP_BIOME_DENSITY := {"urban": 1.0, "rain": 0.72, "snow": 0.58, "desert": 0.34}
+## Cluster archetypes per biome — the "story" a pile of junk tells. Desert keeps only the
+## sun-bleached ones (no wet-city bins), snow the logistics ones.
+const _CLUSTER_POOL := {
+	"urban": ["checkpoint", "dump", "depot", "wreck", "works", "bins"],
+	"rain": ["dump", "bins", "depot", "wreck", "works"],
+	"snow": ["depot", "works", "wreck", "dump"],
+	"desert": ["wreck", "works", "dump"],
+}
+## The props that carry a collider. Everything else is render-only clutter.
+const _PROP_SOLID: Array[String] = ["road_block", "wreck", "spool", "pipe_stack", "dumpster"]
+## kit -> [material family, sid] (+ paint tint for the "paint" family). ONE material per
+## kit == one MultiMesh batch == one draw call, matching the rooftop/facade kit discipline.
+##
+## The sid is deliberately shared PER FAMILY, not per kit: ProcMaterials caches its noise
+## by (sid, grime), so 16 distinct sids would bake 48 extra 512² textures during the arena
+## build — the one phase that must not grow (a long main-thread stall there is what silently
+## drops a co-op client on load). Sharing costs nothing visually, because the weathering is
+## WORLD-triplanar: two drums metres apart already sample different grime.
+const _PROP_MATS := {
+	"road_block": ["concrete", 141],
+	"barrel": ["paint", 143, Color(0.55, 0.40, 0.24)],
+	"barrel_band": ["metal_dark", 145],
+	"pallet": ["timber", 147],
+	"wreck_body": ["rust", 149],
+	"wreck_cabin": ["metal_dark", 145],
+	"wreck_wheel": ["rubber", 153],
+	"spool_flange": ["timber", 147],
+	"spool_hub": ["metal_dark", 145],
+	"pipe": ["metal", 159],
+	"dumpster": ["paint", 143, Color(0.30, 0.42, 0.32)],
+	"dumpster_lid": ["metal_dark", 145],
+	"sign_post": ["metal_dark", 145],
+	"sign_plate": ["paint", 143, Color(0.72, 0.62, 0.30)],
+	"bin": ["paint", 143, Color(0.40, 0.42, 0.46)],
+	"cone": ["paint", 143, Color(0.72, 0.34, 0.16)],
+}
+
+
+## Build the whole street layer. Visuals go into `kits` (batched by the caller); colliders
+## go straight under the nav region. See the section header for the co-op/golden contract.
+static func _street_layer(
+	arena_root: Node3D, kits: Dictionary, poi_defs: Dictionary, evac_points: Array[Vector2]
+) -> void:
+	if not STREET_PROPS_ENABLED:
+		return
+	var ctx: Dictionary = _street_ctx(arena_root, poi_defs, evac_points)
+	var keys: Array = poi_defs.keys()
+	for i in range(keys.size()):
+		_apron(kits, ctx, i, poi_defs[keys[i]])
+	var links: Array[Vector4] = _street_links(poi_defs, ctx)
+	for li in range(links.size()):
+		_street(kits, ctx, links[li], li)
+
+
+## The immutable placement context + the two mutable counters (collider budget / body
+## sequence). Keep-outs are derived from LIVE SCENE DATA — the POI defs the buildings were
+## built from, the arena's own ExtractionZone/PlayerSpawn/EnemySpawn markers and the rubble
+## piles that already exist — so nothing here can drift out of sync with a hand-copied list.
+static func _street_ctx(
+	arena_root: Node3D, poi_defs: Dictionary, evac_points: Array[Vector2]
+) -> Dictionary:
+	var rects: Array[Vector4] = []
+	var circles: Array[Vector3] = []  # (x, z, radius)
+	var keys: Array = poi_defs.keys()
+	for i in range(keys.size()):
+		var poi_name: String = str(keys[i])
+		var def: Dictionary = poi_defs[poi_name]
+		var plaza: float = _PLAZA_FOOTPRINT if str(def["theme"]) == "plaza" else 0.0
+		var w: float = maxf(float(def["w"]), plaza)
+		var d: float = maxf(float(def["d"]), plaza)
+		rects.append(Vector4(float(def["x"]), float(def["z"]), w * 0.5, d * 0.5))
+		var a: Vector2 = _annex_point(poi_name, i, def)
+		if a.is_finite():
+			circles.append(Vector3(a.x, a.y, _PROP_ANNEX_CLEAR))
+	for e in evac_points:
+		circles.append(Vector3(e.x, e.y, _EVAC_CLEARANCE))
+	_collect_marker_circles(arena_root, "PlayerSpawnMarkers", _PROP_SPAWN_CLEAR, circles)
+	_collect_marker_circles(arena_root, "EnemySpawnMarkers", _PROP_ENEMY_SPAWN_CLEAR, circles)
+	_collect_marker_circles(
+		arena_root, "NavigationRegion3D/Geometry/Scatter", _PROP_RUBBLE_CLEAR, circles
+	)
+	var used: Array[Vector2] = []
+	return {
+		"rects": rects,
+		"circles": circles,
+		"used": used,  # accepted cluster centres (min-spacing, filled as we go)
+		"spawn": _marker_centroid(arena_root, "PlayerSpawnMarkers"),
+		"props": _collider_root(arena_root),
+		"budget": _PROP_COLLIDER_CAP,
+		"seq": 0,
+	}
+
+
+## Append (x, z, radius) keep-out circles for every Node3D child of `path`.
+##
+## HEADLESS-PARITY TRAP (caught in review): the rubble Scatter node holds the per-pile
+## StaticBody3Ds AND — in a WINDOWED build only — three map-wide MultiMeshInstance3Ds
+## parked at the ORIGIN (`rubble_field` returns before creating them on headless). Folding
+## those in would have given a client a phantom keep-out at (0,0) that a dedicated server
+## never saw, i.e. a different street layout per peer. Skip them by class.
+static func _collect_marker_circles(
+	arena_root: Node3D, path: String, radius: float, out: Array[Vector3]
+) -> void:
+	var holder := arena_root.get_node_or_null(path)
+	if holder == null:
+		return
+	for c in holder.get_children():
+		var n3 := c as Node3D
+		if n3 != null and not (n3 is MultiMeshInstance3D):
+			out.append(Vector3(n3.position.x, n3.position.z, radius))
+
+
+## XZ centroid of `path`'s Node3D children, or Vector2.INF when it has none. Same
+## MultiMesh exclusion as above (identical on a server and a client).
+static func _marker_centroid(arena_root: Node3D, path: String) -> Vector2:
+	var pts: Array[Vector3] = []
+	_collect_marker_circles(arena_root, path, 0.0, pts)
+	if pts.is_empty():
+		return Vector2.INF
+	var acc := Vector2.ZERO
+	for p in pts:
+		acc += Vector2(p.x, p.y)
+	return acc / float(pts.size())
+
+
+## The collider parent under the nav region. NavigationRegion3D children are the ONLY
+## subtree `bake_navigation_mesh()` parses, which is both why the bodies must live here
+## and why D3.4 changes the golden container checksum. Null when there is no nav region
+## (then the layer is render-only — a preview/tool scene, never a real arena).
+static func _collider_root(arena_root: Node3D) -> Node3D:
+	var geo := arena_root.get_node_or_null("NavigationRegion3D/Geometry") as Node3D
+	if geo == null:
+		geo = arena_root.get_node_or_null("NavigationRegion3D") as Node3D
+	if geo == null:
+		return null
+	var stale := geo.get_node_or_null("StreetProps")
+	if stale != null:
+		stale.free()
+	var props := Node3D.new()
+	props.name = "StreetProps"
+	geo.add_child(props)
+	return props
+
+
+## The street NETWORK: every POI (plus the map crossroads and the deploy cluster) wired to
+## its two nearest neighbours, deduped by index pair, with links outside
+## _PROP_LINK_MIN.._PROP_LINK_MAX dropped — a 200 m gap between two biomes is wilderness,
+## not a street. Then explicit spokes from the crossroads to the nearest landmark of each
+## OUTER biome, which is what turns the three far quadrants into places you walk TO.
+static func _street_links(poi_defs: Dictionary, ctx: Dictionary) -> Array[Vector4]:
+	var nodes: Array[Vector2] = []
+	var keys: Array = poi_defs.keys()
+	for i in range(keys.size()):
+		var def: Dictionary = poi_defs[keys[i]]
+		nodes.append(Vector2(float(def["x"]), float(def["z"])))
+	var hub_i: int = nodes.size()
+	nodes.append(Vector2(WorldBounds.CX, WorldBounds.CZ))
+	# The deploy cluster is a street node too — the walk out of spawn is the first street
+	# the player ever sees, so it must not be the one stretch of bare ground.
+	var spawn: Vector2 = ctx["spawn"]
+	if spawn.is_finite():
+		nodes.append(spawn)
+	var links: Array[Vector4] = []
+	for i in range(nodes.size()):
+		var first: int = -1
+		var second: int = -1
+		var d1: float = INF
+		var d2: float = INF
+		for j in range(nodes.size()):
+			if j == i:
+				continue
+			var dist: float = nodes[i].distance_to(nodes[j])
+			if dist < d1:
+				d2 = d1
+				second = first
+				d1 = dist
+				first = j
+			elif dist < d2:
+				d2 = dist
+				second = j
+		_link_add(links, nodes, i, first)
+		_link_add(links, nodes, i, second)
+	var biomes: Array[String] = ["snow", "desert", "rain"]
+	for b in biomes:
+		var pick: int = -1
+		var best: float = INF
+		for i in range(keys.size()):
+			if WorldBounds.biome_at(nodes[i].x, nodes[i].y) != b:
+				continue
+			var dist: float = nodes[hub_i].distance_to(nodes[i])
+			if dist < best:
+				best = dist
+				pick = i
+		_link_add(links, nodes, hub_i, pick)
+	return links
+
+
+## Add the i<->j link once (ordered by index so the pair dedupes) if it is street-length.
+static func _link_add(links: Array[Vector4], nodes: Array[Vector2], i: int, j: int) -> void:
+	if j < 0 or i == j:
+		return
+	var a: Vector2 = nodes[mini(i, j)]
+	var b: Vector2 = nodes[maxi(i, j)]
+	var dist: float = a.distance_to(b)
+	if dist < _PROP_LINK_MIN or dist > _PROP_LINK_MAX:
+		return
+	var v := Vector4(a.x, a.y, b.x, b.y)
+	if not links.has(v):
+		links.append(v)
+
+
+## Prop STATIONS every ~_PROP_STATION_STEP along one street, alternating shoulders. The
+## first/last _PROP_STREET_END metres are skipped — that ground belongs to the POI aprons,
+## and doubling up there is what would read as a junkyard rather than a street.
+static func _street(kits: Dictionary, ctx: Dictionary, link: Vector4, li: int) -> void:
+	var a := Vector2(link.x, link.y)
+	var b := Vector2(link.z, link.w)
+	var span: Vector2 = b - a
+	var len_m: float = span.length()
+	if len_m < _PROP_LINK_MIN:
+		return
+	var dir: Vector2 = span / len_m
+	var nrm := Vector2(-dir.y, dir.x)
+	var steps: int = int(len_m / _PROP_STATION_STEP)
+	for k in range(1, steps + 1):
+		var s: int = ProcHash.h(90001 + li * 977 + k * 37)
+		var t: float = (float(k) + ProcHash.hrange(s, -0.28, 0.28)) * _PROP_STATION_STEP
+		if t < _PROP_STREET_END or t > len_m - _PROP_STREET_END:
+			continue
+		var side: float = 1.0 if ProcHash.h(s + 1) % 2 == 0 else -1.0
+		var off: float = ProcHash.hrange(s + 2, _PROP_LATERAL_MIN, _PROP_LATERAL_MAX)
+		var p: Vector2 = a + dir * t + nrm * (off * side)
+		if not _cluster_spot_ok(ctx, p.x, p.y, s + 3):
+			continue
+		var yaw: float = atan2(dir.x, dir.y) + ProcHash.hrange(s + 4, -0.45, 0.45)
+		_cluster(kits, ctx, _pick_cluster(p.x, p.y, s + 5), p, yaw, s + 7)
+
+
+## 2-4 clusters ringing one POI in the _PROP_APRON_IN.._PROP_APRON_OUT band outside its
+## footprint radius, spread over the full circle (one sector per cluster) so the props
+## never pile on a single facade. Rejections retry in deterministic order.
+static func _apron(kits: Dictionary, ctx: Dictionary, idx: int, def: Dictionary) -> void:
+	var plaza: float = _PLAZA_FOOTPRINT if str(def["theme"]) == "plaza" else 0.0
+	var cx: float = float(def["x"])
+	var cz: float = float(def["z"])
+	var base_r: float = maxf(maxf(float(def["w"]), plaza), maxf(float(def["d"]), plaza)) * 0.5
+	var s0: int = ProcHash.h(60013 + idx * 613)
+	var want: int = 2 + ProcHash.h(s0) % 3
+	var placed: int = 0
+	for k in range(want * 4):
+		if placed >= want:
+			break
+		var s: int = ProcHash.h(s0 + 17 + k * 29)
+		var sector: float = float(k % want)
+		var ang: float = TAU * (sector + ProcHash.hrange(s, 0.12, 0.88)) / float(want)
+		var rr: float = base_r + ProcHash.hrange(s + 1, _PROP_APRON_IN, _PROP_APRON_OUT)
+		var p := Vector2(cx + cos(ang) * rr, cz + sin(ang) * rr)
+		if not _cluster_spot_ok(ctx, p.x, p.y, s + 2):
+			continue
+		# Face the cluster along the wall it leans against (tangent to the apron ring).
+		var yaw: float = ang + PI * 0.5 + ProcHash.hrange(s + 3, -0.35, 0.35)
+		_cluster(kits, ctx, _pick_cluster(p.x, p.y, s + 4), p, yaw, s + 6)
+		placed += 1
+
+
+## Cluster-centre validation: the cheap keep-outs, the min-spacing against already-accepted
+## clusters, the biome density roll, then the expensive world probes (river / grove /
+## slope), cheapest test first. Individual pieces only re-run the cheap keep-outs
+## (`_prop_spot_ok`) — they sit within ~3 m of a centre that already passed all of this.
+## ACCEPTS by recording the centre, so it must be called exactly once per cluster.
+static func _cluster_spot_ok(ctx: Dictionary, x: float, z: float, s: int) -> bool:
+	if not _prop_spot_ok(ctx, x, z, true):
+		return false
+	var used: Array[Vector2] = ctx["used"]
+	for u in used:
+		if Vector2(x - u.x, z - u.y).length_squared() < _PROP_CLUSTER_SPACING ** 2:
+			return false
+	if ProcHash.hf(s) > float(_PROP_BIOME_DENSITY.get(WorldBounds.biome_at(x, z), 0.6)):
+		return false
+	if ProceduralTerrain.river_distance(x, z) < _PROP_RIVER_CLEAR:
+		return false
+	if FloraField.forest_w(x, z) > _PROP_FOREST_MAX:
+		return false
+	if not _ground_flat(x, z):
+		return false
+	used.append(Vector2(x, z))
+	return true
+
+
+## True when a prop of this class may stand at (x,z). `solid` = it will carry a collider,
+## so it keeps the WIDE berth from every building footprint — that single rule is what
+## keeps colliders out of doorways, loading bays and courtyard mouths without this file
+## having to model where each theme puts its openings.
+static func _prop_spot_ok(ctx: Dictionary, x: float, z: float, solid: bool) -> bool:
+	if (
+		x < WorldBounds.X_MIN + _PROP_EDGE_INSET
+		or x > WorldBounds.X_MAX - _PROP_EDGE_INSET
+		or z < WorldBounds.Z_MIN + _PROP_EDGE_INSET
+		or z > WorldBounds.Z_MAX - _PROP_EDGE_INSET
+	):
+		return false
+	var pad: float = _PROP_CLEAR_BIG if solid else _PROP_CLEAR_SMALL
+	var rects: Array[Vector4] = ctx["rects"]
+	for r in rects:
+		if absf(x - r.x) < r.z + pad and absf(z - r.y) < r.w + pad:
+			return false
+	var circles: Array[Vector3] = ctx["circles"]
+	for c in circles:
+		var dx: float = x - c.x
+		var dz: float = z - c.y
+		if dx * dx + dz * dz < c.z * c.z:
+			return false
+	return true
+
+
+## Ground flat enough to seat a prop: props are placed on a single height sample, so a
+## steep spot buries one corner and floats the opposite one. Also the cheapest way to keep
+## everything off the perimeter berm and the river banks.
+static func _ground_flat(x: float, z: float) -> bool:
+	const P := 1.3
+	var dx: float = absf(
+		ProceduralTerrain.height_at(x + P, z) - ProceduralTerrain.height_at(x - P, z)
+	)
+	var dz: float = absf(
+		ProceduralTerrain.height_at(x, z + P) - ProceduralTerrain.height_at(x, z - P)
+	)
+	return maxf(dx, dz) <= _PROP_MAX_RISE
+
+
+## Biome-appropriate cluster archetype.
+static func _pick_cluster(x: float, z: float, s: int) -> String:
+	var pool: Array = _CLUSTER_POOL.get(WorldBounds.biome_at(x, z), [])
+	if pool.is_empty():
+		return "dump"
+	return str(pool[ProcHash.h(s) % pool.size()])
+
+
+## One cluster = a small story told with 3-6 props around `p`, `yaw` facing along the
+## street (local +Z = down the lane, local +X = away from it). Every piece re-validates
+## its own spot, so a cluster straddling a keep-out THINS OUT instead of vanishing.
+static func _cluster(
+	kits: Dictionary, ctx: Dictionary, kind: String, p: Vector2, yaw: float, s: int
+) -> void:
+	match kind:
+		"checkpoint":
+			# Jersey blocks laid ALONG the lane (a line across it would be a wall the
+			# navmesh carve turns into a dead end), plus cones and a sign.
+			var nb: int = 3 + ProcHash.h(s + 11) % 2
+			for i in range(nb):
+				var t: float = (float(i) - float(nb - 1) * 0.5) * 1.72
+				var jy: float = ProcHash.hrange(s + 13 + i * 5, -0.2, 0.2)
+				_place_prop(
+					kits, ctx, "road_block", p + _rot(Vector2(0.0, t), yaw), yaw + jy, s + i
+				)
+			_place_prop(kits, ctx, "cone", p + _rot(Vector2(-1.5, 2.6), yaw), yaw, s + 41)
+			_place_prop(kits, ctx, "cone", p + _rot(Vector2(-1.7, -2.4), yaw), yaw, s + 43)
+			if ProcHash.h(s + 45) % 2 == 0:
+				_place_prop(kits, ctx, "sign", p + _rot(Vector2(1.7, 3.4), yaw), yaw + PI, s + 47)
+		"dump":
+			var nd: int = 3 + ProcHash.h(s + 11) % 3
+			for i in range(nd):
+				var ang: float = TAU * (float(i) + ProcHash.hrange(s + i * 3, 0.1, 0.9)) / float(nd)
+				var rr: float = ProcHash.hrange(s + i * 3 + 1, 0.55, 1.5)
+				var bp: Vector2 = p + Vector2(cos(ang) * rr, sin(ang) * rr)
+				_place_prop(kits, ctx, "barrel", bp, ProcHash.hf(s + i * 3 + 2) * TAU, s + i * 9)
+			_place_prop(kits, ctx, "pallet", p + _rot(Vector2(2.1, -0.9), yaw), yaw, s + 51)
+			if ProcHash.h(s + 53) % 3 != 0:
+				_place_prop(kits, ctx, "bin", p + _rot(Vector2(-2.0, 1.1), yaw), yaw, s + 55)
+		"depot":
+			var ns: int = 2 + ProcHash.h(s + 11) % 2
+			for i in range(ns):
+				var sx: float = (float(i) - float(ns - 1) * 0.5) * 1.55
+				_place_prop(
+					kits, ctx, "pallet", p + _rot(Vector2(sx, -0.6), yaw), yaw, s + 60 + i * 4
+				)
+			_place_prop(kits, ctx, "crate", p + _rot(Vector2(-0.9, 1.3), yaw), yaw + 0.3, s + 71)
+			if ProcHash.h(s + 73) % 2 == 0:
+				_place_prop(
+					kits, ctx, "crate", p + _rot(Vector2(0.2, 1.7), yaw), yaw - 0.25, s + 75
+				)
+			_place_prop(kits, ctx, "spool", p + _rot(Vector2(2.7, 0.9), yaw), yaw + 1.1, s + 77)
+		"wreck":
+			var wy: float = yaw + ProcHash.hrange(s + 11, -0.35, 0.35)
+			_place_prop(kits, ctx, "wreck", p, wy, s + 13)
+			_place_prop(kits, ctx, "barrel", p + _rot(Vector2(2.5, 1.2), yaw), yaw, s + 81)
+			if ProcHash.h(s + 83) % 2 == 0:
+				_place_prop(kits, ctx, "barrel", p + _rot(Vector2(3.0, 0.3), yaw), yaw, s + 85)
+			_place_prop(kits, ctx, "cone", p + _rot(Vector2(-2.3, 2.4), yaw), yaw, s + 87)
+		"works":
+			_place_prop(kits, ctx, "pipe_stack", p, yaw, s + 91)
+			_place_prop(kits, ctx, "cone", p + _rot(Vector2(1.7, 2.2), yaw), yaw, s + 93)
+			_place_prop(kits, ctx, "cone", p + _rot(Vector2(-1.8, -2.2), yaw), yaw, s + 95)
+			_place_prop(
+				kits, ctx, "sign", p + _rot(Vector2(2.7, -1.5), yaw), yaw + PI * 0.5, s + 97
+			)
+			if ProcHash.h(s + 99) % 3 == 0:
+				_place_prop(kits, ctx, "spool", p + _rot(Vector2(-3.1, 1.0), yaw), yaw, s + 101)
+		"bins":
+			_place_prop(kits, ctx, "dumpster", p, yaw, s + 103)
+			_place_prop(kits, ctx, "bin", p + _rot(Vector2(2.0, 1.0), yaw), yaw, s + 105)
+			if ProcHash.h(s + 107) % 2 == 0:
+				_place_prop(kits, ctx, "bin", p + _rot(Vector2(2.6, 0.1), yaw), yaw, s + 109)
+			_place_prop(kits, ctx, "pallet", p + _rot(Vector2(-1.9, -0.9), yaw), yaw + 0.5, s + 111)
+
+
+## Rotate a cluster-local offset (x = across the lane, y = along it) into world XZ.
+static func _rot(v: Vector2, yaw: float) -> Vector2:
+	var c: float = cos(yaw)
+	var s: float = sin(yaw)
+	return Vector2(c * v.x + s * v.y, -s * v.x + c * v.y)
+
+
+## Seat one prop: validate, sample the ground, emit its instances, and give it a collider
+## when it is one of the solid few (budget-capped — over budget the prop is SKIPPED, not
+## silently ghosted, so what you see is always what you bump into).
+static func _place_prop(
+	kits: Dictionary, ctx: Dictionary, kind: String, p: Vector2, yaw: float, s: int
+) -> void:
+	var solid: bool = kind in _PROP_SOLID
+	if solid and int(ctx["budget"]) <= 0:
+		return
+	if not _prop_spot_ok(ctx, p.x, p.y, solid):
+		return
+	var pos := Vector3(p.x, ProceduralTerrain.height_at(p.x, p.y), p.y)
+	var box: Vector3 = _prop_build(kits, kind, pos, yaw, s)
+	if box == Vector3.ZERO:
+		return
+	_prop_body(ctx, box, pos, yaw)
+
+
+## Emit ONE prop's instances into the kit batches at `pos` (its BASE — the ground). Returns
+## the collider box size for a solid prop, Vector3.ZERO for render-only clutter. Sizes are
+## hash-jittered so a barricade never reads as a copy-paste row.
+static func _prop_build(
+	kits: Dictionary, kind: String, pos: Vector3, yaw: float, s: int
+) -> Vector3:
+	var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0))
+	var fwd: Vector3 = basis * Vector3(0.0, 0.0, 1.0)
+	var rgt: Vector3 = basis * Vector3(1.0, 0.0, 0.0)
+	match kind:
+		"road_block":
+			var bh: float = ProcHash.hrange(s + 1, 0.9, 1.06)
+			var sz := Vector3(0.78, bh, 1.6)
+			_add(kits, "road_block", _xf(sz, pos + Vector3(0.0, bh * 0.5, 0.0), yaw))
+			return sz
+		"wreck":
+			var wl: float = ProcHash.hrange(s + 2, 3.4, 4.3)
+			_add(kits, "wreck_body", _xf(Vector3(1.7, 0.8, wl), pos + Vector3(0.0, 0.72, 0.0), yaw))
+			var cab: Vector3 = pos - fwd * (wl * 0.07) + Vector3(0.0, 1.44, 0.0)
+			_add(kits, "wreck_cabin", _xf(Vector3(1.5, 0.74, wl * 0.42), cab, yaw))
+			for i in range(4):
+				var sf: float = 1.0 if i < 2 else -1.0
+				var sr: float = 1.0 if i % 2 == 0 else -1.0
+				var wp: Vector3 = pos + fwd * (wl * 0.31 * sf) + rgt * (0.88 * sr)
+				var we := Vector3(0.0, yaw, PI * 0.5)
+				var wu := Vector3(0.0, 0.36, 0.0)
+				_add(kits, "wreck_wheel", _xf_rot(Vector3(0.72, 0.26, 0.72), wp + wu, we))
+			return Vector3(1.9, 1.8, wl)
+		"spool":
+			var sr2: float = ProcHash.hrange(s + 3, 0.72, 0.92)
+			var half: float = ProcHash.hrange(s + 4, 0.42, 0.55)
+			var ctr: Vector3 = pos + Vector3(0.0, sr2, 0.0)
+			var se := Vector3(0.0, yaw, PI * 0.5)
+			var flange := Vector3(sr2 * 2.0, 0.13, sr2 * 2.0)
+			_add(kits, "spool_flange", _xf_rot(flange, ctr + rgt * half, se))
+			_add(kits, "spool_flange", _xf_rot(flange, ctr - rgt * half, se))
+			_add(kits, "spool_hub", _xf_rot(Vector3(sr2 * 0.9, half * 1.7, sr2 * 0.9), ctr, se))
+			return Vector3(half * 2.3, sr2 * 2.0, sr2 * 2.0)
+		"pipe_stack":
+			var pl: float = ProcHash.hrange(s + 5, 2.6, 3.4)
+			const PR := 0.27
+			var pe := Vector3(PI * 0.5, yaw, 0.0)
+			var pipe := Vector3(PR * 2.0, pl, PR * 2.0)
+			for i in range(3):
+				var ox: float = (float(i) - 1.0) * (PR * 2.05)
+				_add(kits, "pipe", _xf_rot(pipe, pos + rgt * ox + Vector3(0.0, PR, 0.0), pe))
+			for i in range(2):
+				var ox2: float = (float(i) - 0.5) * (PR * 2.05)
+				_add(
+					kits, "pipe", _xf_rot(pipe, pos + rgt * ox2 + Vector3(0.0, PR * 2.76, 0.0), pe)
+				)
+			return Vector3(PR * 6.4, PR * 3.9, pl)
+		"dumpster":
+			var dl: float = ProcHash.hrange(s + 6, 1.9, 2.2)
+			_add(kits, "dumpster", _xf(Vector3(dl, 1.16, 1.12), pos + Vector3(0, 0.58, 0), yaw))
+			var lid := Vector3(dl * 1.03, 0.11, 1.2)
+			_add(kits, "dumpster_lid", _xf(lid, pos + Vector3(0.0, 1.2, 0.0), yaw))
+			return Vector3(dl, 1.3, 1.15)
+		"barrel":
+			var bt: float = ProcHash.hrange(s + 7, 0.84, 0.98)
+			_add(kits, "barrel", _xf(Vector3(0.58, bt, 0.58), pos + Vector3(0, bt * 0.5, 0), yaw))
+			var band := Vector3(0.62, 0.07, 0.62)
+			_add(kits, "barrel_band", _xf(band, pos + Vector3(0.0, bt * 0.3, 0.0), yaw))
+			_add(kits, "barrel_band", _xf(band, pos + Vector3(0.0, bt * 0.7, 0.0), yaw))
+			return Vector3.ZERO
+		"pallet":
+			var lv: int = 1 + ProcHash.h(s + 8) % 3
+			for i in range(lv):
+				var jy: float = ProcHash.hrange(s + 8 + i * 3, -0.16, 0.16)
+				var py: float = 0.07 + float(i) * 0.155
+				_add(
+					kits, "pallet", _xf(Vector3(1.22, 0.14, 1.0), pos + Vector3(0, py, 0), yaw + jy)
+				)
+			return Vector3.ZERO
+		"sign":
+			var sh: float = ProcHash.hrange(s + 9, 2.2, 2.7)
+			_add(
+				kits, "sign_post", _xf(Vector3(0.11, sh, 0.11), pos + Vector3(0, sh * 0.5, 0), yaw)
+			)
+			var plate: Vector3 = pos + fwd * 0.06 + Vector3(0.0, sh - 0.44, 0.0)
+			_add(kits, "sign_plate", _xf(Vector3(0.92, 0.68, 0.06), plate, yaw))
+			return Vector3.ZERO
+		"bin":
+			var bh2: float = ProcHash.hrange(s + 10, 0.88, 1.04)
+			_add(kits, "bin", _xf(Vector3(0.62, bh2, 0.62), pos + Vector3(0, bh2 * 0.5, 0), yaw))
+			return Vector3.ZERO
+		"cone":
+			var ch: float = ProcHash.hrange(s + 11, 0.56, 0.68)
+			_add(kits, "cone", _xf(Vector3(0.44, ch, 0.44), pos + Vector3(0, ch * 0.5, 0), yaw))
+			return Vector3.ZERO
+		"crate":
+			_piece(kits, "crate", pos, yaw, s + 12)
+			return Vector3.ZERO
+	return Vector3.ZERO
+
+
+## One prop collider: a single BoxShape3D seated on the ground (bottom face at pos.y),
+## layer 1 / mask 0 exactly like the rubble piles, so the navmesh bake parses it and
+## nothing else pays for it.
+static func _prop_body(ctx: Dictionary, size: Vector3, pos: Vector3, yaw: float) -> void:
+	var parent := ctx["props"] as Node3D
+	if parent == null or not is_instance_valid(parent):
+		return
+	var seq: int = int(ctx["seq"])
+	ctx["seq"] = seq + 1
+	ctx["budget"] = int(ctx["budget"]) - 1
+	var body := StaticBody3D.new()
+	body.name = "Prop%d" % seq
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.position = pos + Vector3(0.0, size.y * 0.5, 0.0)
+	body.rotation.y = yaw
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	col.shape = shape
+	body.add_child(col)
+	parent.add_child(body)
+
+
+## FADED PAINTED STEEL for the street props (drums / dumpsters / bins / signs / cones):
+## the same ProcMaterials.weathered stack the buildings use, but with PAINT's PBR —
+## metallic 0.0, because metallic is effectively BINARY (D2) and a dielectric coat is what
+## lets the tint survive at all; at 0.4 every one of these would read as the same grey tin.
+## World triplanar at a coarse scale means each prop samples the grime mask at ITS OWN
+## world position, so a row of identical drums weathers differently for free.
+static func _mat_painted(base: Color, sid: int, rough: float = 0.62) -> StandardMaterial3D:
+	return ProcMaterials.weathered(
+		base, 0.0, rough, 0.42, sid, Vector3(0.25, 0.25, 0.25), true, 0.55, false
+	)
+
+
+## Street-prop material, or null when `kit` is not one (the rooftop/facade kits fall
+## through to _kit_material's own table).
+static func _prop_material(kit: String) -> StandardMaterial3D:
+	var spec: Array = _PROP_MATS.get(kit, [])
+	if spec.is_empty():
+		return null
+	var family: String = str(spec[0])
+	var sid: int = int(spec[1])
+	match family:
+		"concrete":
+			return ProceduralBuildings.mat_concrete(sid)
+		"metal":
+			return ProceduralBuildings.mat_metal(sid)
+		"metal_dark":
+			return ProceduralBuildings.mat_metal_dark(sid)
+		"rust":
+			return ProceduralBuildings.mat_rust(sid)
+		"timber":
+			return ProceduralBuildings.mat_timber(sid)
+		"rubber":
+			return _mat_painted(Color(0.15, 0.15, 0.16), sid, 0.95)
+	var tint: Color = spec[2]
+	return _mat_painted(tint, sid)
 
 
 # =============================================================== INTERIOR CEILING LAMPS
@@ -645,6 +1313,15 @@ static func _xf(scale: Vector3, pos: Vector3, yaw: float = 0.0) -> Transform3D:
 	return Transform3D(Basis.from_euler(Vector3(0, yaw, 0)) * Basis.from_scale(scale), pos)
 
 
+## Same, for kits that must be TIPPED OVER (wheels, cable-spool flanges, laid pipes): the
+## unit cylinder's axis is +Y, so the euler carries the tip and `scale` stays in the MESH's
+## own frame (x/z = diameter, y = length along the axis). Default euler order is YXZ, so
+## (PI/2, yaw, 0) lays the axis along the yaw-forward direction and (0, yaw, PI/2) lays it
+## across it — the axle of a wheel.
+static func _xf_rot(scale: Vector3, pos: Vector3, euler: Vector3) -> Transform3D:
+	return Transform3D(Basis.from_euler(euler) * Basis.from_scale(scale), pos)
+
+
 static func _add(kits: Dictionary, kit: String, t: Transform3D) -> void:
 	if not kits.has(kit):
 		kits[kit] = []
@@ -674,12 +1351,13 @@ static func _emit(root: Node3D, kits: Dictionary, head_mat: StandardMaterial3D) 
 		root.add_child(mmi)
 
 
-## Unit primitive per kit: cylinder kits get r=0.5 h=1.0, box kits a 1 m cube — the
-## per-instance basis scale turns these into the real sizes.
+## Unit primitive per kit: cylinder kits get r=0.5 h=1.0, cone kits the same with a
+## near-zero top radius, box kits a 1 m cube — the per-instance basis scale turns these
+## into the real sizes.
 static func _kit_mesh(kit: String) -> Mesh:
-	if kit in _CYL_KITS:
+	if kit in _CYL_KITS or kit in _CONE_KITS:
 		var c := CylinderMesh.new()
-		c.top_radius = 0.5
+		c.top_radius = 0.06 if kit in _CONE_KITS else 0.5
 		c.bottom_radius = 0.5
 		c.height = 1.0
 		c.radial_segments = 10
@@ -690,8 +1368,12 @@ static func _kit_mesh(kit: String) -> Mesh:
 
 
 ## Kit materials reuse the shared weathered building palette (ONE instance per kit —
-## the whole MultiMesh batch shares it).
+## the whole MultiMesh batch shares it). Street-prop kits resolve through their own table
+## first (_PROP_MATS) so this match stays inside the gdlint max-returns budget.
 static func _kit_material(kit: String) -> StandardMaterial3D:
+	var prop: StandardMaterial3D = _prop_material(kit)
+	if prop != null:
+		return prop
 	match kit:
 		"ac_unit":
 			return ProceduralBuildings.mat_metal(101)

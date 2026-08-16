@@ -22,6 +22,10 @@ extends Node
 const CFG_SECTION := "active"
 const _INJECT_RETRY := 3.0  # s between injection retries when the alive-cap is full
 const _MAX_INJECT_ATTEMPTS := 10
+## D6.5 entrance staging: how often EVERY peer (incl. co-op clients, which never see
+## Events.nemesis_returned — it is emitted server-side) re-scans Groups.NEMESIS for a rival
+## body that has appeared locally. The group holds 0 or 1 node, so the scan is free.
+const _ENTRANCE_POLL := 0.2
 
 ## WaveManager reference (set by WaveManager._ready / cleared on _exit_tree).
 var _wave_mgr = null
@@ -52,10 +56,14 @@ var _last_err: String = ""  # QA: why the last injection produced no node
 # rival's profile at birth/level → dropped on its defeat. _history = retired rivals for codex.
 var _lost_this_raid: Array[String] = []
 var _history: Array = []  # Array of NemesisProfile.to_dict(), newest first (cap NEMESIS_HISTORY_CAP)
+# D6.5 entrance staging (render-only, LOCAL on every peer — never gated on authority).
+var _entrance_seen: int = 0  # instance id of the rival we already staged an entrance for
+var _entrance_poll: float = 0.0
 
 
 func _ready() -> void:
 	Events.match_started.connect(_on_match_started)
+	Events.nemesis_returned.connect(_on_nemesis_returned)  # host fast path (exact frame)
 	Events.damage_dealt.connect(_on_damage_dealt)
 	Events.enemy_stunned.connect(_on_enemy_stunned)
 	Events.enemy_chemistry_applied.connect(_on_enemy_chemistry_applied)
@@ -70,6 +78,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# Render-only, BEFORE the authority gate: a co-op client runs this director too, and the
+	# entrance must play on its screen as well (its rival body arrives via the spawner).
+	_tick_entrance(delta)
 	if not GameState.is_local_authority_server():
 		return
 	# "keen" telemetry: accumulate time the candidate stays UN-chased (the squad sneaks past).
@@ -101,6 +112,8 @@ func _on_match_started() -> void:
 	_birth_done = false
 	_inject_timer = -1.0
 	_profile = null
+	_entrance_seen = 0  # local staging state — reset on EVERY peer, before the authority gate
+	_entrance_poll = 0.0
 	if not GameState.is_local_authority_server():
 		return
 	_profile = _load()
@@ -133,6 +146,45 @@ func _try_inject() -> void:
 	_reset_telemetry()
 	Events.nemesis_returned.emit(_profile.serial, _profile.title, node)
 	Events.notify.emit(tr("%s has found you.") % _nemesis_name(_profile), 2)
+
+
+# ------------------------------------------------------------- D6.5 entrance staging (local)
+## The rival's ARRIVAL is a staged event, not another spawn: red signature flash + expanding
+## rings at the exit point, a heartbeat pulse on its chassis glow + a screen vignette, a
+## silhouette read-through for those seconds, and dust/sparks at its feet.
+##
+## Everything is render-only and built LOCALLY by NemesisEntrance on the peer that runs this
+## (no new RPC, no new signal): the HOST enters through Events.nemesis_returned on the exact
+## injection frame, every peer (host included, deduped) through the Groups.NEMESIS watch tick
+## below — which is the ONLY path a co-op client has, since nemesis_returned is server-side.
+func _on_nemesis_returned(_serial: String, _title: String, node: Node) -> void:
+	_stage_entrance(node)
+
+
+## Watch tick: notice a rival body that has appeared in Groups.NEMESIS on THIS peer and stage
+## its entrance once. Throttled; the group holds 0 or 1 node for the whole raid.
+func _tick_entrance(delta: float) -> void:
+	_entrance_poll -= delta
+	if _entrance_poll > 0.0:
+		return
+	_entrance_poll = _ENTRANCE_POLL
+	for n in get_tree().get_nodes_in_group(Groups.NEMESIS):
+		if n.get_instance_id() != _entrance_seen:
+			_stage_entrance(n)
+			return
+
+
+## Stage once per rival body. On a CLIENT the spawner hands us the node a frame or two before
+## its first position sync, so an un-synced body (still at the scene origin) is skipped and
+## re-tried on the next tick — otherwise the whole burst would fire at world (0,0,0).
+func _stage_entrance(node: Node) -> void:
+	if not (node is Node3D) or not is_instance_valid(node):
+		return
+	var body := node as Node3D
+	if not body.is_inside_tree() or body.global_position.is_zero_approx():
+		return
+	_entrance_seen = body.get_instance_id()
+	NemesisEntrance.stage(body)
 
 
 ## Raid ended (extraction / loss / win). If the tracked rival survived, it births or levels.

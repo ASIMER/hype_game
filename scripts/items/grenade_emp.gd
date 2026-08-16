@@ -30,7 +30,11 @@ func _detonate_effect(pos: Vector3) -> void:
 
 	# Local FX on EVERY peer: a sky-blue shock-ring + a spark burst on each robot
 	# caught in the pulse.
-	_spawn_ring(pos)
+	# D4.4: the pooled composite blast, keyed by grenade_type so this reads as its own
+	# element rather than the generic orange puff. It carries its own expanding ring, so
+	# the hand-rolled disc this replaced is gone.
+	FXPool.spawn_explosion(_fx_host(), pos, grenade_type, Settings.EMP_RADIUS)
+
 	for e in _enemies_in_radius(pos):
 		_attach_sparks(e as Node3D)
 
@@ -86,31 +90,3 @@ func _attach_sparks(enemy: Node3D) -> void:
 	var tw := p.create_tween()
 	tw.tween_interval(_SPARK_TIME)
 	tw.tween_callback(p.queue_free)
-
-
-# A brief expanding additive ring at the blast centre, parented to the world so
-# it survives this grenade freeing. Scale + fade driven by a Tween.
-func _spawn_ring(pos: Vector3) -> void:
-	var host := _fx_host()
-	if host == null:
-		return
-	# PlaneMesh lies flat on the XZ plane by default, so the ring hugs the ground.
-	var disc := PlaneMesh.new()
-	disc.size = Vector2(1.0, 1.0)
-	var ring := MeshInstance3D.new()
-	ring.mesh = disc
-	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	mat.albedo_color = Color(0.45, 0.85, 1.0, 0.9)
-	ring.material_override = mat
-	host.add_child(ring)
-	ring.global_position = pos + Vector3(0, 0.15, 0)
-	ring.scale = Vector3.ONE
-	var tw := ring.create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(ring, "scale", Vector3.ONE * _RING_MAX_SCALE, _RING_TIME)
-	tw.tween_property(mat, "albedo_color:a", 0.0, _RING_TIME)
-	tw.chain().tween_callback(ring.queue_free)

@@ -72,11 +72,9 @@ func _on_remote_shot(
 			(sc as Node3D).global_position = muzzle
 		if sc.has_method("fire"):
 			sc.call("fire")
-	# Tracer chain following the ballistic arc (anchored at the real muzzle) — the
-	# pooled MultiMesh path costs zero nodes; legacy per-segment nodes as fallback.
-	if TracerPool.active != null:
-		TracerPool.active.spawn_arc(arc, muzzle)
-	elif _tracer_ps and arc.size() >= 2:
+	# Tracer following the ballistic arc, anchored at the real muzzle (see weapon.gd for why
+	# this is the pooled streak and not TracerPool); legacy per-segment nodes as fallback.
+	if FXPool.spawn_tracer(host, arc, muzzle) == null and _tracer_ps and arc.size() >= 2:
 		for i in range(arc.size() - 1):
 			var a: Vector3 = muzzle if i == 0 else arc[i]
 			var b: Vector3 = arc[i + 1]
