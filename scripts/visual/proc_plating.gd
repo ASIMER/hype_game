@@ -27,6 +27,10 @@ enum Arch { ARMOR_PLATE, MECH_HULL, RUBBER, LACQUER }
 # Neutral mid-gray the bake centres on; albedo_color is compensated by 1/_MID so the
 # midtone renders exactly the requested base colour (wear reads brighter, seams darker).
 const _MID: float = 0.72
+## How hard the mask's own gradient pushes the normal (see _sobel_into_normal). Kept modest:
+## the Sobel of a 256² mask is a STEEP operator, and at higher values every stain edge turns
+## into a hard ridge instead of a shallow dent.
+const _RELIEF_STRENGTH: float = 0.55
 
 static var _tex_cache: Dictionary = {}
 
@@ -200,6 +204,16 @@ static func _bake(arch: int, sid: int) -> Array:
 			_bake_stains(val, size, hs + 53)
 			_bake_vents(val, ny, size, hs + 91)
 
+	# D2.2: derive a COHERENT relief from the finished mask before encoding. Until now the
+	# normal carried only the slopes each pass wrote by hand (a seam bevel here, a rivet dome
+	# there), so features that darken the plate — stains, vents, panel seams, worn edges —
+	# had no depth at all, and the ones that did were not consistent with each other. In this
+	# bake the value mask IS a depth proxy: every pass that recesses a feature multiplies the
+	# value DOWN and every pass that raises one multiplies it UP. Taking its gradient gives a
+	# relief that agrees with what the eye already reads in the albedo, and it is ADDED to the
+	# authored slopes rather than replacing them, so the deliberate bevels survive.
+	_sobel_into_normal(val, nx, ny, size, _RELIEF_STRENGTH)
+
 	# Encode. The MEAN of the finished mask is measured here and returned as the third
 	# element: every pass above only ever MULTIPLIES the _MID starting value DOWN (seams,
 	# stains, vents, per-panel variation), so the finished plate averages well below _MID.
@@ -221,6 +235,33 @@ static func _bake(arch: int, sid: int) -> Array:
 	nrm.generate_mipmaps()
 	var mean_val: float = maxf(acc / float(size * size), 0.05)
 	return [ImageTexture.create_from_image(alb), ImageTexture.create_from_image(nrm), mean_val]
+
+
+## Sobel the value mask into the tangent-space normal accumulators (see the call site).
+## Wrapping indices keeps the plate tileable — the bake is sampled triplanar and a clamped
+## edge would show as a seam line on every surface it lands on.
+static func _sobel_into_normal(
+	val: PackedFloat32Array, nx: PackedFloat32Array, ny: PackedFloat32Array, size: int, k: float
+) -> void:
+	for y in range(size):
+		var ym: int = (y - 1 + size) % size
+		var yp: int = (y + 1) % size
+		for x in range(size):
+			var xm: int = (x - 1 + size) % size
+			var xp: int = (x + 1) % size
+			var tl: float = val[ym * size + xm]
+			var tc: float = val[ym * size + x]
+			var tr: float = val[ym * size + xp]
+			var ml: float = val[y * size + xm]
+			var mr: float = val[y * size + xp]
+			var bl: float = val[yp * size + xm]
+			var bc: float = val[yp * size + x]
+			var br: float = val[yp * size + xp]
+			var gx: float = (tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl)
+			var gy: float = (bl + 2.0 * bc + br) - (tl + 2.0 * tc + tr)
+			var i: int = y * size + x
+			nx[i] += gx * k
+			ny[i] += gy * k
 
 
 ## Panel grid: 3-5 jittered seams per axis. Seam = 2 px darken + a 4 px (8 px lacquer)
