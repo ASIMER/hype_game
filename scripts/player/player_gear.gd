@@ -7,11 +7,61 @@ extends Node
 ## and `_grenade_sel`); this node only implements the verbs the input layer calls.
 ## Authority-only by construction: player._unhandled_input is authority-gated.
 
+## Node path of the player's WeaponController (it lives under the Camera3D; its
+## ModelHolder is reparented to WeaponMount by player._ready — see the FP-arms block).
+const WEAPON_CONTROLLER_PATH := "CameraPivot/SpringArm3D/Camera3D/WeaponController"
+
 var _p: Node3D  # the owning player (duck-typed: counts/sel/stance/camera live there)
 
 
 func _ready() -> void:
 	_p = get_parent() as Node3D
+	# First-person arms are a LOCAL view-model — only the owning peer polls for them,
+	# so a remote avatar's copy of this component never even processes (see _process).
+	set_process(_p != null and _p.is_multiplayer_authority())
+
+
+## Inventory-Use dispatch (moved from player.gd verbatim — the god file hit the
+## 1800-line ceiling). Authority-gated like the original; state stays ON the player.
+func on_item_use(item_id: String) -> void:
+	if _p == null or not _p.is_multiplayer_authority():
+		return
+	match item_id:
+		"loot_medkit", "medkit":
+			_p._try_heal()
+		"loot_ammo":
+			# The Ammo Box existed but its Use was silently a no-op (item wasted).
+			grant_ammo(1.0)
+		"loot_grenade", "grenade":
+			# Inventory-Use throws a FRAG specifically (the G key throws the selection).
+			_p._grenade_sel = "frag"
+			if int(_p._grenade_counts.get("frag", 0)) <= 0:
+				_p._grenade_counts["frag"] = 1
+			throw_selected()
+		Settings.SELF_REVIVE_ITEM, "self_revive":
+			if _p.downed:
+				_p._self_revive()
+		_:
+			# Any utility grenade id (smoke/emp/decoy/incendiary/cryo) selects + throws its type.
+			if item_id.begins_with("loot_grenade_"):
+				_p._grenade_sel = item_id.trim_prefix("loot_grenade_")
+				if int(_p._grenade_counts.get(_p._grenade_sel, 0)) <= 0:
+					_p._grenade_counts[_p._grenade_sel] = 1
+				throw_selected()
+
+
+## Server → owner: resupply reserve ammo (`frac` of every weapon's reserve_max).
+## Fired by an ammo-shard pickup (0.35) or an Ammo Box inventory use (1.0). RPC so
+## the server-side pickup handler can grant it to a co-op CLIENT's own machine
+## (ammo lives in the owner's WeaponController, like keys/flares).
+@rpc("any_peer", "call_local", "reliable")
+func grant_ammo(frac: float) -> void:
+	if _p == null or not _p.is_multiplayer_authority():
+		return
+	var wc := _p.get_node_or_null(WEAPON_CONTROLLER_PATH)
+	if wc != null and wc.has_method("add_reserve_frac"):
+		wc.add_reserve_frac(frac)
+	Events.notify.emit(tr("+ AMMO"), 0)
 
 
 ## Fill the player's consumable counts from the committed bring-list (moved here from
@@ -54,6 +104,10 @@ func apply_loadout() -> void:
 	# validates pickups against carry capacity + remotes see the speed effect).
 	_p.carry_bonus = MetaProgression.gear_carry_bonus()
 	_p.gear_speed_mult = MetaProgression.gear_speed_mult()
+	# Mutant Harvest: fresh skill set + visible limbs each raid.
+	var sk := _p.get_node_or_null("Skills")
+	if sk != null and sk.has_method("reset"):
+		sk.reset()
 
 
 ## Surviving brought consumables as stash stacks — added to the extraction deposit so
@@ -93,6 +147,12 @@ func extracted_consumables() -> Array:
 ## (batch B) → status-effect rolls. Runs authority-local (the Hurtbox forwards
 ## hits to the owner).
 func filter_incoming_damage(amount: float, source: Node) -> float:
+	# Hijack & Pilot: while piloting, the HULL is the armor — the hit is routed into the
+	# machine's Health (server-side via HijackDirector) and the pilot takes nothing.
+	var hj: Node = _p.get_node_or_null(Groups.NODE_HIJACK)
+	if hj != null and bool(hj.call("is_piloting")):
+		HijackDirector.redirect_damage(amount)
+		return 0.0
 	# Dodge-roll i-frames: brief immunity vs ENEMY damage only. Self-damage and the
 	# harness `hurt` QA path carry a non-enemy source, so they still land.
 	var from_enemy := (
@@ -110,11 +170,18 @@ func filter_incoming_damage(amount: float, source: Node) -> float:
 			break
 	var armor: float = clampf(float(_p.call("_buff_sum", "armor")), 0.0, 0.9)
 	amount *= (1.0 - armor)
+	# Mutant-Harvest limb TOUGHNESS passive (shield/mobility limbs + defense set bonus).
+	var sk: Node = _p.get_node_or_null("Skills")
+	if sk != null and sk.has_method("passive_toughness"):
+		amount *= 1.0 - float(sk.passive_toughness())
 	var shield: float = float(_p._overshield)
 	if shield > 0.0:
 		var absorbed: float = minf(shield, amount)
 		_p._overshield = shield - absorbed
 		amount -= absorbed
+		# Frozen-bullet FX + absorbed counter on the energy dome (owner-local).
+		if absorbed > 0.0:
+			Events.shield_absorbed.emit(absorbed)
 	# Status DoT ticks (bleed) bypass worn armor and never re-roll effects.
 	var st: Node = _p.get_node_or_null("Status")
 	if st != null and bool(st.call("is_dot_tick")):
@@ -198,9 +265,25 @@ func cycle() -> void:
 	Events.grenade_selection_changed.emit(now_sel, int(_p._grenade_counts.get(now_sel, 0)))
 
 
-## Place the deployable gadget in quick-slot `idx` (keys 6/7/8 → GADGET_TYPES order)
-## at the player's feet-forward point snapped to the ground. Server-spawned.
+# Deferred gadget placement: the keypress (an INPUT-context event) only queues the
+# request; the ground-snap raycast runs in the next physics tick — space-state
+# queries are only thread-safe inside the physics step (run_on_separate_thread).
+var _pending_place: int = -1
+
+
+## Queue placing the deployable gadget in quick-slot `idx` (keys 6/7/8 → GADGET_TYPES
+## order). Executed by physics_tick() on the next physics frame.
 func place(idx: int) -> void:
+	_pending_place = idx
+
+
+## Called once per frame from player._physics_process: executes a queued placement
+## at the player's feet-forward point snapped to the ground. Server-spawned.
+func physics_tick() -> void:
+	if _pending_place < 0:
+		return
+	var idx := _pending_place
+	_pending_place = -1
 	if _p.is_downed() or int(_p.stance) == 3 or _p._zipline != null:
 		return
 	var types: Array = Settings.GADGET_TYPES
@@ -227,3 +310,93 @@ func place(idx: int) -> void:
 	_p._gadget_counts[t] = cnt - 1
 	NetworkManager.request_place_gadget(t, ground, _p.rotation.y)
 	Events.gadget_placed.emit(_p, t, ground)
+
+
+# ── First-person arms (D4.2) ─────────────────────────────────────────────────────
+# The first-person zoom step used to show a floating gun and nothing else — no body,
+# no hands — so it read as a camera with a rifle taped to it. ProceduralArms builds a
+# pair of forearms from the player's OWN cosmetics; this block owns their lifecycle.
+#
+# They are parented under the weapon's ModelHolder (which player._ready reparents to
+# WeaponMount), NOT under the player: that way the weapon-controller's recoil kick and
+# the FP/TP mount pose carry them for free and the fists never drift off the gun.
+# Render-only + authority-local: nothing to replicate, nothing for a remote peer to run.
+#
+# The state is POLLED because there is no signal to hook — V just calls the player's
+# _apply_view_visibility, and the ModelHolder silently frees ALL its children on every
+# weapon switch (weapon_controller._refresh_model), which includes our arms. The poll is
+# three cheap checks and everything past the first is skipped outside first person.
+const ARMS_HOLDER_PATH := "WeaponMount/ModelHolder"
+
+var _arms: Node3D = null
+var _arms_weapon: String = ""  # weapon id the live arms were posed for
+var _arms_cos: String = ""  # cosmetics signature the live arms were painted from
+
+
+func _process(_delta: float) -> void:
+	if _p == null or not is_instance_valid(_p):
+		return
+	if not _arms_wanted():
+		if _arms != null and is_instance_valid(_arms) and _arms.visible:
+			_arms.visible = false
+		return
+	var holder := _p.get_node_or_null(ARMS_HOLDER_PATH) as Node3D
+	if holder == null:
+		return  # reparented mid-_ready / no weapon controller — retry next frame
+	var wid := _weapon_id()
+	var cos_sig := str(_cosmetics())
+	var stale := (
+		_arms == null
+		or not is_instance_valid(_arms)
+		or _arms.is_queued_for_deletion()
+		or _arms.get_parent() != holder
+		or wid != _arms_weapon
+		or cos_sig != _arms_cos
+	)
+	if stale:
+		_rebuild_arms(holder, wid, cos_sig)
+	if _arms != null and is_instance_valid(_arms) and not _arms.visible:
+		_arms.visible = true
+
+
+## Arms are drawn only in the first-person zoom step, and never while piloting a
+## hijacked machine — the HijackDirector hides the pilot's body there, so a pair of
+## arms floating over the hull would be the one thing left visible of him.
+func _arms_wanted() -> bool:
+	if not _p.has_method("_is_first_person") or not bool(_p.call("_is_first_person")):
+		return false
+	var hj: Node = _p.get_node_or_null(Groups.NODE_HIJACK)
+	if hj != null and bool(hj.call("is_piloting")):
+		return false
+	return true
+
+
+## Logical id of the equipped weapon — the arms are posed per weapon class.
+func _weapon_id() -> String:
+	var wc := _p.get_node_or_null(WEAPON_CONTROLLER_PATH)
+	if wc != null and wc.has_method("current_weapon_id"):
+		var id := String(wc.call("current_weapon_id"))
+		if id != "":
+			return id
+	return ProceduralArms.DEFAULT_WEAPON
+
+
+## The player's REPLICATED cosmetics dict (the same value the body is built from, so the
+## arms repaint themselves the moment a customization change lands).
+func _cosmetics() -> Dictionary:
+	var out: Dictionary = {}
+	var v: Variant = _p.get("cosmetics")
+	if v is Dictionary:
+		out = v
+	return out
+
+
+func _rebuild_arms(holder: Node3D, weapon_id: String, cos_sig: String) -> void:
+	if _arms != null and is_instance_valid(_arms):
+		_arms.queue_free()
+	_arms = ProceduralArms.build(_cosmetics(), weapon_id)
+	if _arms == null:
+		return
+	holder.add_child(_arms)
+	_arms_weapon = weapon_id
+	_arms_cos = cos_sig

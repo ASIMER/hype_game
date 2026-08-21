@@ -73,7 +73,15 @@ func request_reinforcements(count: int, world_pos: Vector3) -> void:
 	if not is_instance_valid(_wave_mgr):
 		return
 	_wave_mgr.spawn_reinforcements(maxi(1, count), world_pos, true)
-	Events.notify.emit(tr("Reinforcements inbound!"), 2)
+	Events.notify.emit(tr("⚠ REINFORCEMENTS INBOUND — SECTOR %s") % _sector_of(world_pos), 2)
+
+
+## M3 «director voice»: name the map sector (A1..D4 over the 320 m rect) so a
+## reinforcement call reads as intel, not noise.
+func _sector_of(p: Vector3) -> String:
+	var gx: int = clampi(int((p.x - WorldBounds.X_MIN) / (WorldBounds.SPAN / 4.0)), 0, 3)
+	var gz: int = clampi(int((p.z - WorldBounds.Z_MIN) / (WorldBounds.SPAN / 4.0)), 0, 3)
+	return "%s%d" % [char(65 + gx), gz + 1]
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +106,7 @@ func _on_enemy_alerted(world_pos: Vector3, level: float) -> void:
 	# Fire reinforcements toward the alert position.
 	var count: int = maxi(1, int(round(float(Settings.ALARM_REINFORCE_COUNT) * level)))
 	_wave_mgr.spawn_reinforcements(count, world_pos, true)
-	Events.notify.emit(tr("Reinforcements inbound!"), 2)
+	Events.notify.emit(tr("⚠ REINFORCEMENTS INBOUND — SECTOR %s") % _sector_of(world_pos), 2)
 	_alarm_cooldown = Settings.ALARM_COOLDOWN
 
 

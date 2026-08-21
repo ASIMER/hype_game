@@ -12,7 +12,9 @@ const PANEL_BG := Color(0.03, 0.05, 0.07, 0.78)
 const REVIVE_COL := Color(0.30, 0.85, 0.62, 1.0)  # teal-green revive accent
 const PANEL_W := 320.0
 const PANEL_H := 38.0
-const BOTTOM_GAP := 120.0
+# Phase 2 (ARC pattern): the prompt sits just BELOW the crosshair, not 300 px away at
+# the screen bottom — the player's eye never leaves the aim point.
+const CROSSHAIR_GAP := 46.0
 const CAP := 26.0  # key-cap size
 
 var _prompt: String = ""
@@ -22,15 +24,15 @@ var _revive_frac: float = -1.0  # >= 0 while channeling a teammate revive; -1 = 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Bottom-centre, fixed box, grow from centre so it stays put at any resolution.
+	# Crosshair-adjacent fixed box (screen centre + a small gap), any resolution.
 	anchor_left = 0.5
 	anchor_right = 0.5
-	anchor_top = 1.0
-	anchor_bottom = 1.0
+	anchor_top = 0.5
+	anchor_bottom = 0.5
 	offset_left = -PANEL_W * 0.5
 	offset_right = PANEL_W * 0.5
-	offset_top = -BOTTOM_GAP - PANEL_H
-	offset_bottom = -BOTTOM_GAP
+	offset_top = CROSSHAIR_GAP
+	offset_bottom = CROSSHAIR_GAP + PANEL_H
 	visible = false
 	Events.interaction_available.connect(_on_available)
 	Events.interaction_cleared.connect(_on_cleared)
@@ -67,18 +69,27 @@ func _draw() -> void:
 	var accent: Color = REVIVE_COL if _revive_frac >= 0.0 else KEY_COL
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PANEL_W, PANEL_H)), PANEL_BG, true)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PANEL_W, PANEL_H)), Color(accent, 0.5), false, 1.0)
-	# Key-cap ("E") — filled brighter while the key is held for a revive.
+	# Key-cap — filled brighter while the key is held for a revive. The label comes from the
+	# InputMap for the CURRENT device, so it follows a Controls-tab remap and turns into the
+	# pad's face button when the player is on a controller (it used to be a hard-coded "E",
+	# which told a pad user to press a key they do not have).
 	var cap_pos := Vector2(8.0, (PANEL_H - CAP) * 0.5)
 	var cap_rect := Rect2(cap_pos, Vector2(CAP, CAP))
 	draw_rect(cap_rect, Color(accent, 0.30 if _revive_frac >= 0.0 else 0.16), true)
 	draw_rect(cap_rect, accent, false, 1.5)
+	# Sampled at draw time, and this Control only redraws when the prompt changes — so
+	# swapping mouse for pad WHILE a prompt is up leaves the old glyph until the next one.
+	# A prompt lives a second or two, so the alternative (polling the device every frame on
+	# a HUD element) costs more than the staleness does.
+	var cap_label: String = UIGlyphs.label_for("interact")
+	var cap_size: int = 16 if cap_label.length() <= 1 else 11
 	draw_string(
 		font,
-		cap_pos + Vector2(CAP * 0.5 - 5.0, CAP * 0.5 + 6.0),
-		"E",
+		cap_pos + Vector2(CAP * 0.5 - 2.8 * cap_label.length(), CAP * 0.5 + 6.0),
+		cap_label,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
-		16,
+		cap_size,
 		accent
 	)
 

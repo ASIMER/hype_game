@@ -135,7 +135,7 @@ func _rebuild() -> void:
 				% [int(gp.get("tier", 0)), int(gp.get("into", 0)), gneed]
 			)
 		standing.add_theme_color_override("font_color", COL_DIM)
-		standing.add_theme_font_size_override("font_size", 12)
+		standing.add_theme_font_size_override("font_size", 13)
 		col.add_child(standing)
 
 	# ── Lore (quest lore, else the questline intro) ──────────────────────────

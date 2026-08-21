@@ -11,7 +11,7 @@ const DEFAULT_IP: String = "127.0.0.1"
 const DISCOVERY_PORT: int = 24566
 ## Game build version (canonical = the VERSION file at the repo root). Stamped into
 ## save files so loads survive game updates (see MetaProgression/Stash version checks).
-const GAME_VERSION: String = "0.4.0"
+const GAME_VERSION: String = "0.4.1"
 ## Max number of non-daily contracts the player can have ACTIVE (accepted) at once.
 ## Manual-accept enforces it; dailies are exempt.
 const ACTIVE_QUEST_CAP: int = 6
@@ -49,16 +49,24 @@ const TERRAIN_RIM_HEIGHT: float = 7.0  # rocky berm height near the perimeter wa
 const RIVER_WIDTH: float = 5.0  # river channel width (m)
 const RIVER_DEPTH: float = 0.45  # ≤ navmesh agent_max_climb 0.5 → walkable ford everywhere
 # Flora budgets (MultiMesh where possible; trees/boulders are individual nodes).
-# 4× MAP: counts scaled ~2.5× for the 320×320 world (the scatter spreads EVENLY across the
-# whole rectangle via per-cell acceptance, so these are expected totals, not corner caps).
-# GRASS is density-driven (per-cell probability + spatial tiling) so its budgets are unused
-# for placement now — only the visibility ranges below matter.
-const FLORA_TREES: int = 200
-const FLORA_BUSHES: int = 150
+# VEGETATION OVERHAUL (forest + clearings): trees/bushes are placed by the FloraField
+# density field (groves, treelines, ecotone edges, authored corridors) — these are
+# EXPECTED TOTALS for calibration/QA prints, not caps (the field's acceptance math in
+# procedural_flora is tuned to land near them: 6400 cells × mean_w 0.30 × accept 0.45
+# ≈ 760 trees after keep-out/river losses). GRASS is density-driven (per-cell probability
+# + spatial tiling) so its budgets are unused for placement — only visibility ranges.
+# FAIRNESS: all vegetation density is identical on every graphics preset (concealment).
+const FLORA_TREES: int = 760
+const FLORA_BUSHES: int = 650
 const GRASS_VIS_RANGE: float = 58.0  # near-layer visibility_range_end (m); wider so grass doesn't pop on the 160m map
 const GRASS_FAR_RANGE: float = 90.0  # far-layer visibility_range_end (m)
-const FLORA_STONES: int = 1000  # small render-only stones (MultiMesh)
-const FLORA_BOULDERS: int = 36  # big collidable cover rocks
+const FLORA_STONES: int = 1000  # textured pebbles (FloraClutter MultiMesh, render-only)
+const FLORA_BOULDERS: int = 36  # big collidable cover rocks (breakable STONE when destruction is on)
+const FLORA_SMALL_ROCKS: int = 60  # small shoot-only breakable rocks ("мелкие камни"; don't block)
+# FloraClutter expected per-layer totals (documentation + NET_DEBUG count checks).
+const FLORA_CLUTTER: Dictionary = {
+	"fern": 500, "flower": 280, "clover": 200, "mushroom": 180, "plant": 250, "flagstone": 60
+}
 # Building interior lighting (shadowless warm omnis; budget ≤ ~14 lights map-wide)
 const INTERIOR_LIGHT_ENERGY: float = 2.6
 const INTERIOR_LIGHT_RANGE: float = 10.0
@@ -116,6 +124,22 @@ const CARRY_SPEED_MULT: float = 0.5  # carrier move-speed multiplier while carry
 const KNOCKDOWN_SHIELD_ABSORB: float = 150.0  # damage a knockdown shield soaks while downed
 const SELF_REVIVE_ITEM: String = "loot_self_revive"  # consumable id that self-revives when downed
 const KNOCKDOWN_SHIELD_ITEM: String = "loot_knockdown_shield"
+
+# Ammo economy (the "ran dry mid-raid with no counterplay" fix): machines shed
+# usable rounds on death — a walk-up shard resupplies a FRACTION of every weapon's
+# reserve; an Ammo Box (inventory use) resupplies in full.
+const AMMO_DROP_CHANCE: float = 0.5  # chance an enemy death also drops an ammo shard
+const AMMO_SHARD_FRAC: float = 0.35  # reserve fraction one shard restores
+
+# Destructible trees ("разрушение-как-оружие"): shoot a trunk down — the falling
+# tree CRUSHES enemies, settles into cover, leaves a stump. Server-auth by index.
+const TREE_FELL_ENABLED: bool = true
+const TREE_HP: float = 30.0  # ~3 rifle hits fell a tree
+const TREE_CRUSH_DMG: float = 55.0  # crush cap for a fast-falling trunk
+const TREE_FALLEN_LIFETIME: float = 22.0  # seconds the fallen trunk persists as cover
+# Physics debris crush: chunk shards damage enemies they slam into (server-side).
+const DEBRIS_CRUSH_ENABLED: bool = true
+const DEBRIS_CRUSH_DMG_MAX: float = 16.0  # per-shard cap (a collapse = many shards)
 
 # Combat
 const WEAPON_NET_REPLICATION_HZ: float = 30.0
@@ -194,6 +218,9 @@ const NOISE_CHASE_FRACTION: float = 0.45
 # loud footsteps (so a patrol you walk right up to engages instead of standing idle). Beyond it,
 # the normal hearing/LOS stealth applies. Read by robot_enemy's perception.
 const PROXIMITY_AGGRO_RADIUS: float = 9.0
+# M3 territoriality: a NON-hunter chased past this far from its spawn point breaks
+# off and returns home (patrols garrison their POI instead of cross-map pursuits).
+const ENEMY_LEASH_RADIUS: float = 28.0
 # INVESTIGATE behaviour: move to the last-heard point at this speed mult, look around,
 # then give up after GIVEUP seconds with no confirmation and return to PATROL.
 const INVESTIGATE_SPEED_MULT: float = 0.8
@@ -512,7 +539,18 @@ const DEFAULT_FOV: float = 60.0
 const ADS_FOV: float = 42.0  # zoomed FOV when aiming (per-weapon may override)
 const ADS_SENS_SCALE: float = 0.5  # look sensitivity multiplier while aiming
 const ADS_SPRING_LENGTH: float = 2.0  # camera pulled in when aiming
-const DEFAULT_SPRING_LENGTH: float = 4.0
+const DEFAULT_SPRING_LENGTH: float = 3.5  # legacy single 3rd-person distance (kept for ref)
+# V cycles the camera through these THIRD-person distances (m, ×camera_distance_scale) then
+# first-person — so V "zooms out" instead of jumping into the head. Index 3 (size) = first-person.
+const VIEW_STEP_LENGTHS: Array = [3.0, 4.5, 6.5]  # 0 close · 1 medium · 2 far
+# FIRST-PERSON RESTORED as the 4th V-step (user: «мог видеть оружие и руку, но не
+# видел шлем — переключался на тот вид»): the local ModelRoot hides in FP so the
+# helmet NEVER shows — you see the weapon viewmodel + hands only. The spawn view
+# is still ALWAYS third-person medium (DEFAULT_VIEW_STEP + the SettingsManager
+# default_view force) — FP is opt-in per press, never the spawn state.
+const VIEW_STEP_COUNT: int = 4
+const DEFAULT_VIEW_STEP: int = 1  # spawn at MEDIUM (4.5 m) — the whole body is in frame
+const VIEW_STEP_FIRST_PERSON: int = 3
 const SHOULDER_OFFSET: float = 0.5  # over-the-shoulder camera x-offset (flipped by swap)
 const AIM_TWEEN_SPEED: float = 10.0  # lerp speed for fov/length/offset
 const PEEK_PROBE: float = 1.4  # side-raycast distance to detect a wall to lean past
@@ -531,13 +569,15 @@ const GRENADE_THROW_FORCE: float = 15.0
 
 # --- Grenade types (batch A): the synced per-type counts dict uses these ids. "frag"
 # is the classic damage grenade; the others are utility (see scripts/items/grenade_*.gd).
-const GRENADE_TYPES := ["frag", "smoke", "emp", "decoy"]
+const GRENADE_TYPES := ["frag", "smoke", "emp", "decoy", "incendiary", "cryo"]
 # Maps a grenade type to its consumable item id (bring-list / loot / stash economy).
 const GRENADE_ITEM_IDS := {
 	"frag": "loot_grenade",
 	"smoke": "loot_grenade_smoke",
 	"emp": "loot_grenade_emp",
 	"decoy": "loot_grenade_decoy",
+	"incendiary": "loot_grenade_incendiary",
+	"cryo": "loot_grenade_cryo",
 }
 const SMOKE_DURATION: float = 10.0  # smoke cloud lifetime (s)
 const SMOKE_RADIUS: float = 5.0  # LOS-blocking sphere radius (m)
@@ -547,6 +587,72 @@ const EMP_BOSS_STUN_MULT: float = 0.4  # bosses shrug most of the stun off
 const DECOY_DURATION: float = 8.0  # noise-beacon lifetime (s)
 const DECOY_PULSE: float = 1.5  # s between noise pulses
 const DECOY_LOUDNESS: float = NOISE_GRENADE * 0.8
+
+# --- MACHINE CHEMISTRY (Phase 5): enemy status-effect framework -----------------
+# Machines react to elemental/electro effects like NO human enemy can (the signature
+# "un-copyable machine lever"). 4 statuses, bit-packed for the visual-sync RPC.
+# Logic is authority-local (mirrors apply_stun); HP/position replicate the result.
+const CHEM_SHOCK: int = 1  # electric: stun + chains to nearby WET machines
+const CHEM_BURN: int = 2  # thermal DoT: amplified in desert, doused when wet
+const CHEM_SLOW: int = 4  # cryo: movement slow; longer in snow → freeze→shatter window
+const CHEM_BRITTLE: int = 8  # incoming-damage amplifier (a frozen machine shatters)
+# Shock / chain discharge.
+const CHEM_SHOCK_STUN: float = 1.0  # base stun seconds (reuses _stunned_until_ms)
+const CHEM_SHOCK_FX: float = 0.5  # arc-VFX window (independent of stun length)
+const CHEM_CHAIN_RADIUS: float = 6.0  # jump reach to the next wet machine (m)
+const CHEM_CHAIN_JUMPS: int = 3  # max extra machines per discharge
+const CHEM_CHAIN_FALLOFF: float = 0.75  # stun ×this per hop
+# Burn (DoT).
+const CHEM_BURN_TICK: float = 1.0  # seconds between burn ticks
+const CHEM_BURN_DESERT_MULT: float = 1.5  # desert heat amplifies burn dps
+const CHEM_BURN_RAIN_MULT: float = 0.0  # rain/wet douses burn (0 = extinguish)
+# Slow (cryo).
+const CHEM_SLOW_MIN_MULT: float = 0.2  # never freeze below this via slow
+const CHEM_SLOW_SNOW_MULT: float = 1.5  # snow lengthens the slow
+const CHEM_FREEZE_THRESHOLD: float = 0.5  # slow mult <= this latches BRITTLE (shatter combo)
+# Brittle.
+const CHEM_BRITTLE_DUR: float = 4.0  # seconds the amplifier lasts (auto-latched by deep slow)
+const CHEM_BRITTLE_MULT: float = 1.5  # incoming damage ×this while brittle
+# Visual gate.
+const CHEM_FX_DIST: float = 45.0  # status FX spawns only within this range of the camera (m)
+# --- Elemental ammo (Chemistry Phase 6) — SERVER-side numbers; clients only send the kind.
+const CHEM_AMMO_SHOCK_CHANCE: float = 0.25  # proc roll per landed shock-mag shot
+const CHEM_AMMO_SHOCK_STUN: float = 0.4  # seconds per proc (vs 1.0 for the EMP shock)
+const CHEM_AMMO_SHOCK_ICD: float = 2.5  # per-enemy cooldown between procs (anti-stunlock)
+const CHEM_AMMO_BURN_DUR: float = 2.5  # incendiary DoT window, refreshed per hit
+const CHEM_AMMO_BURN_DPS: float = 7.0  # incendiary DoT dps
+const CHEM_AMMO_SLOW_DUR: float = 1.8  # cryo slow window per hit
+const CHEM_AMMO_SLOW_STEP: float = 0.12  # each cryo hit deepens the slow by this much
+const CHEM_AMMO_SLOW_FLOOR: float = 0.42  # ramp floor — BELOW freeze threshold (shatter combo)
+# Nemesis learned counter (Phase 6): a rival the squad kept dousing in statuses.
+const NEMESIS_CHEM_MULT: float = 0.35  # status duration ×this on a chemistry_resist rival
+# --- Hijack & Pilot (v0.5-B2) — steal a SHOCK/EMP-stunned machine and drive it.
+const HIJACK_HOLD_TIME: float = 1.2  # hold-X seconds on a stunned machine to crack it
+const HIJACK_RANGE: float = 4.5  # max distance to hack (big hulls have 1.5-2m body radii)
+const HIJACK_TIME: float = 25.0  # pilot window; expiry = the machine blows from inside
+const HIJACK_SPEED_MULT: float = 1.15  # stolen machines drive a little hot
+const HIJACK_ATTACK_CD: float = 0.9  # piloted slam cooldown (fire button)
+const HIJACK_ATTACK_DMG_MULT: float = 1.4  # machine attack stat ×this per slam
+const HIJACK_ATTACK_RANGE: float = 3.6  # slam radius ahead of the hull
+const HIJACK_EXIT_BLAST_RADIUS: float = 6.0  # leaving the hull detonates it from inside
+const HIJACK_EXIT_BLAST_DMG: float = 70.0  # blast hits MACHINES only — the pilot hops clear
+const HIJACK_EJECT_IFRAMES: float = 1.0  # enemy-source safety after ejecting
+# Never hijackable: the boss, the burrower, and the true flyers (camera/motion breaks).
+const HIJACK_EXCLUDE: Array[String] = [
+	"robot_boss", "robot_sandworm", "robot_wasp", "robot_specter"
+]
+
+# --- Source: Incendiary grenade (Phase 5) — applies BURN in radius.
+const INCENDIARY_RADIUS: float = 5.0
+const INCENDIARY_BURN_DUR: float = 5.0
+const INCENDIARY_BURN_DPS: float = 8.0
+# --- Source: Cryo grenade (Phase 5) — applies SLOW (deep slow primes BRITTLE) in radius.
+const CRYO_RADIUS: float = 5.0
+const CRYO_SLOW_DUR: float = 4.0
+const CRYO_SLOW_MULT: float = 0.45
+# --- Source: the EMP grenade ALSO tags SHOCK (the only player-side shock → enables the rain chain).
+const EMP_SHOCK_DUR: float = 1.5
+const EMP_SHOCK_MAG: float = 1.0
 
 # --- Deployable gadgets (batch A): brought from the stash, placed with keys 6/7/8,
 # server-spawned under Arena/Net/Gadgets so every peer sees them.
@@ -879,12 +985,404 @@ const ELITE_MOD_STATS := {
 	"swift": {"speed_mult": 1.4},
 	"volatile": {"aoe_damage": 25.0, "aoe_radius": 4.0},
 	"regenerating": {"regen": 2.0},
+	"golden": {"health_mult": 1.8, "speed_mult": 1.25},
 }
 const ELITE_MOD_COLORS := {
 	"armored": Color(0.45, 0.62, 0.95),
 	"swift": Color(0.95, 0.85, 0.25),
 	"volatile": Color(0.95, 0.45, 0.15),
 	"regenerating": Color(0.35, 0.9, 0.45),
+	"golden": Color(1.0, 0.82, 0.1),
+}
+# M5.2 rare encounter: ~1% of ANY non-boss spawn is a GOLDEN elite (loot piñata:
+# tanky+fast; its death rains GOLDEN_ELITE_DROPS bonus rare pickups).
+const GOLDEN_ELITE_CHANCE: float = 0.01
+const GOLDEN_ELITE_DROPS: int = 4
+
+# --- Machine Nemesis (signature mechanic) ------------------------------------
+## A robot that SURVIVES a fight with the squad persists across raids, adapts to how it
+## was fought (learned counters), wears scars, and hunts the squad. Server-authoritative;
+## traits + scars ride the node NAME (the EnemyModifiers channel) so co-op replicates free.
+# M2.5: lowered 25→18 so mid archetypes qualify too — rivals birth noticeably more often.
+const NEMESIS_MIN_SCORE: int = 18
+const NEMESIS_MAX_TIER: int = 5  # leveling cap (each survival = +1 tier)
+const NEMESIS_TIER_HEALTH: float = 0.35  # health_mult = 1 + tier * this (a returning rival is tankier)
+const NEMESIS_RETURN_DELAY: float = 25.0  # s after match start before the rival is injected
+const NEMESIS_EMP_STUN_MULT: float = 0.35  # "emp_hard" trait: EMP stun lasts this fraction
+const NEMESIS_BLAST_MULT: float = 0.5  # "blast_hard" trait: incoming grenade/AoE damage fraction
+const NEMESIS_KEEN_THRESHOLD: float = 8.0  # s a candidate must stay UN-chased to teach "keen"
+# Phase 3 — defeat payoff (bounty to the killer) + caps.
+const NEMESIS_BOUNTY_CURRENCY: int = 400  # credits to the killer peer on a rival's defeat
+const NEMESIS_BOUNTY_REP: int = 80  # vendor reputation to the killer
+const NEMESIS_BOUNTY_XP: int = 200  # raider XP to the killer
+const NEMESIS_LOST_GEAR_CAP: int = 8  # max at-risk items the rival "wears" + drops on defeat
+const NEMESIS_FAVORITE_MIN: int = 2  # extractions at a zone before it counts as "favorite"
+const NEMESIS_HISTORY_CAP: int = 10  # retired rivals kept for the Hub codex
+# Phase 4 — successor: on a rival's defeat a nearby lieutenant inherits a weakened grudge.
+const NEMESIS_SUCCESSOR_ENABLED: bool = true
+const NEMESIS_HEIR_RADIUS: float = 35.0  # m around the death to find an heir
+
+# --- Power-Core Beacon (Phase 4) ---------------------------------------------
+## A boss/miniboss drops a glowing core the squad must CARRY to extract for a big reward —
+## but carrying pings every machine to your position (a growing beacon) + occupies hands
+## (no ADS, slower; firing still allowed). Power = exposure (Hunt-style).
+const POWER_CORE_BOUNTY: int = 600  # credits to the carrier on extract-with-core
+const POWER_CORE_REP: int = 120  # vendor reputation to the carrier
+const POWER_CORE_NOISE_MIN: float = 8.0  # beacon noise radius (m) at pickup
+const POWER_CORE_NOISE_MAX: float = 30.0  # …ramped to this
+const POWER_CORE_RAMP: float = 20.0  # s to ramp the beacon from MIN to MAX
+const POWER_CORE_NOISE_CD: float = 1.5  # s between beacon noise pulses
+const POWER_CORE_PICKUP_RADIUS: float = 2.5  # m — walk this close (server-checked) to grab it
+
+# --- Mutant Harvest: body-part SKILLS (signature mechanic) -------------------
+## Every enemy drops a UNIQUE body-part as world loot; the player chooses to pick it up (E) → it
+## becomes an ACTIVE SKILL on the bottom hotbar AND a visible LIMB on the body (Frankenstein).
+## Max 5 distinct skills; a duplicate UPGRADES (level↑) up to max_level (the user's "8 spider
+## legs"); per-raid. ENEMY_SKILLS maps each enemy archetype to a skill FAMILY; SKILL_DEFS carries
+## per-skill data (part token for ProceduralAbsorbed, signature color, name, active ability,
+## cooldown, max level). Colors are SATURATED so the limb/icon pops under the cold grade.
+const ENEMY_SKILLS := {
+	"robot_frosthound": "leap",
+	"robot_kappa": "leap",
+	"robot_tick": "leap",
+	"robot_avalanche": "slam",
+	"robot_heavy": "slam",
+	"robot_raiju": "blink",
+	"robot_cryomortar": "mortar",
+	"robot_dune_warden": "mortar",
+	"robot_bastion": "mortar",
+	"robot_scarab": "shield",
+	"robot_snow_golem": "shield",
+	"robot_oni": "ram",
+	"robot_oni_chief": "ram",
+	"robot_caller": "chainshock",
+	"robot_sandworm": "bite",
+	"robot_dustdevil": "whirlwind",
+	"robot_wasp": "whirlwind",
+	"robot_specter": "recon",
+	"robot_grunt": "recon",
+	"robot_elite": "recon",
+	"robot_boss": "recon",
+}
+const SKILL_FALLBACK_ID := "recon"
+const SKILL_DEFS := {
+	"leap":
+	{
+		"part": "claw",
+		"limb": "leg",
+		"color": Color(0.55, 0.95, 0.55),
+		"name_key": "LEAP",
+		"ability": "dash",
+		"cooldown": 6.0,
+		"max_level": 8
+	},
+	"slam":
+	{
+		"part": "fist",
+		"color": Color(0.45, 0.74, 1.0),
+		"name_key": "LEAP SLAM",
+		"ability": "leap_slam",
+		"cooldown": 10.0,
+		"max_level": 5
+	},
+	"blink":
+	{
+		"part": "blade",
+		"limb": "leg",
+		"color": Color(0.40, 0.90, 1.0),
+		"name_key": "BLINK",
+		"ability": "blink",
+		"cooldown": 8.0,
+		"max_level": 6
+	},
+	"mortar":
+	{
+		"part": "barrel",
+		"color": Color(1.0, 0.5, 0.15),
+		"name_key": "METEOR",
+		"ability": "meteor",
+		"cooldown": 13.0,
+		"max_level": 5
+	},
+	"shield":
+	{
+		"part": "shell",
+		"color": Color(0.95, 0.32, 0.14),
+		"name_key": "SHIELD",
+		"ability": "shield",
+		"cooldown": 14.0,
+		"max_level": 5
+	},
+	"ram":
+	{
+		"part": "horn",
+		"color": Color(0.92, 0.74, 0.30),
+		"name_key": "BREACH",
+		"ability": "breach",
+		"cooldown": 10.0,
+		"max_level": 4
+	},
+	"chainshock":
+	{
+		"part": "antenna",
+		"color": Color(0.95, 0.58, 0.20),
+		"name_key": "CHAIN SHOCK",
+		"ability": "chain",
+		"cooldown": 9.0,
+		"max_level": 6
+	},
+	"bite":
+	{
+		"part": "maw",
+		"color": Color(1.0, 0.62, 0.18),
+		"name_key": "BITE",
+		"ability": "bite_cone",
+		"cooldown": 7.0,
+		"max_level": 5
+	},
+	"whirlwind":
+	{
+		"part": "vane",
+		"color": Color(0.55, 0.85, 1.0),
+		"name_key": "STORM",
+		"ability": "storm",
+		"cooldown": 14.0,
+		"max_level": 5
+	},
+	"recon":
+	{
+		"part": "rotor",
+		"color": Color(0.40, 0.90, 1.0),
+		"name_key": "CLOAK",
+		"ability": "cloak",
+		"cooldown": 16.0,
+		"max_level": 6
+	},
+}
+
+
+## The skill definition (part/color/name/ability/cooldown/max_level) for `id`, or the fallback.
+func skill_def(id: String) -> Dictionary:
+	return SKILL_DEFS.get(id, SKILL_DEFS[SKILL_FALLBACK_ID])
+
+
+## Which skill family an enemy archetype drops (by enemy_id), or the fallback skill.
+func skill_for_enemy(enemy_id: String) -> String:
+	return String(ENEMY_SKILLS.get(enemy_id, SKILL_FALLBACK_ID))
+
+
+## The "[E]" interaction-prompt text for a world pickup id (power cache / body-part skill / loot).
+func loot_prompt(item_id: String) -> String:
+	if item_id == "power_cache":
+		return tr("Open Power Cache")
+	if item_id.begins_with("bodypart_"):
+		return tr("Pick up skill: %s") % tr(String(skill_def(item_id.substr(9))["name_key"]))
+	return tr("Pick up %s") % item_id.replace("loot_", "").capitalize()
+
+
+const SKILL_MAX_SLOTS: int = 5  # max distinct skills held (6th refused; can only upgrade)
+const SKILL_DROP_GUARANTEED: bool = true  # every enemy drops its body-part skill
+const SKILL_FX_DIST: float = 70.0  # m — skip cast/pickup FX beyond this (perf)
+const LIMB_CLUSTER_MAX: int = 24  # hard cap on limbs rendered on the body (perf + tidy)
+# Active-ability base tuning (skill level scales these — applied in SkillDirector):
+const SKILL_DASH_IMPULSE: float = 14.0  # forward+up leap velocity
+const SKILL_SLAM_RADIUS: float = 5.0
+const SKILL_SLAM_DAMAGE: float = 45.0
+const SKILL_SLAM_STAGGER: float = 1.4
+const SKILL_BLINK_RANGE: float = 9.0
+const SKILL_MORTAR_RADIUS: float = 4.0
+const SKILL_MORTAR_DAMAGE: float = 55.0
+const SKILL_SHIELD_AMOUNT: float = 60.0
+const SKILL_SHIELD_TIME: float = 5.0
+const SKILL_RAM_RANGE: float = 8.0
+const SKILL_RAM_DAMAGE: float = 50.0
+const SKILL_CHAIN_JUMPS: int = 2
+const SKILL_CHAIN_DAMAGE: float = 30.0
+# Bite widened (playtest: «дамажащие скилы бьют крошечную область»).
+const SKILL_BITE_RANGE: float = 6.5
+const SKILL_BITE_ANGLE: float = 60.0  # degrees half-angle of the bite cone
+const SKILL_BITE_DAMAGE: float = 50.0
+const SKILL_WHIRL_RADIUS: float = 4.5
+const SKILL_WHIRL_DAMAGE: float = 35.0
+const SKILL_RECON_RADIUS: float = 22.0
+
+# MOBA-style rework (v0.4.5): targeted casts aim at the CAMERA CROSSHAIR ground
+# point («метеорит в точку куда смотрим»), spectacle-first VFX.
+const SKILL_TARGET_RANGE: float = 30.0  # max planar cast distance from the caster
+# METEOR (mortar family): telegraph ring → a flaming rock falls → impact breaks
+# WALLS (BreakableChunk) + burns machines (chemistry) — Invoker/Doomfist grammar.
+const SKILL_METEOR_DELAY: float = 0.9  # telegraph seconds before impact
+const SKILL_METEOR_RADIUS: float = 5.0
+const SKILL_METEOR_DAMAGE: float = 75.0
+const SKILL_METEOR_BREAK_R: float = 2.6  # wall-chunk demolition radius at impact
+const SKILL_METEOR_BURN: float = 4.0  # burn seconds applied to victims
+# STORM (whirlwind family): a Crystal-Maiden-style field — explosions rain in a
+# ring around the CAST POINT for several seconds, slowing machines caught inside.
+const SKILL_STORM_TIME: float = 4.0
+const SKILL_STORM_PULSES: int = 6
+const SKILL_STORM_RING_MIN: float = 2.5
+const SKILL_STORM_RING_MAX: float = 7.0
+const SKILL_STORM_PULSE_RADIUS: float = 3.0
+const SKILL_STORM_PULSE_DMG: float = 24.0
+const SKILL_STORM_SLOW: float = 2.5  # slow seconds per pulse hit
+# LEAP SLAM (slam family): a ballistic leap TO the aim point + a landing shockwave.
+const SKILL_LEAP_TIME: float = 0.55  # airtime — the server delays the AoE to landing
+# BREACH (ram family): the charge SMASHES THROUGH breakable walls along its path.
+const SKILL_BREACH_BREAK_R: float = 1.5
+# CLOAK (recon family, «читаемость скилов» rework): active camo — machines drop you
+# as a target for the duration; firing BREAKS it. Reveal pulse pings enemies nearby.
+const SKILL_CLOAK_TIME: float = 5.0
+# SHIELD rework: a VISIBLE energy dome that CATCHES bullets (frozen in the field) —
+# absorption via the existing _overshield pool; the bubble lives until the pool
+# empties or SKILL_SHIELD_TIME passes.
+
+# --- Mutant Harvest DEPTH (v0.4.1): passives, set synergies, combos, evolution -------------
+## Each skill's archetype (drives SET bonuses) — melee / ranged / mobility / defense.
+const SKILL_ARCHETYPES := {
+	"leap": "mobility",
+	"slam": "melee",
+	"blink": "mobility",
+	"mortar": "ranged",
+	"shield": "defense",
+	"ram": "melee",
+	"chainshock": "ranged",
+	"bite": "melee",
+	"whirlwind": "melee",
+	"recon": "ranged",
+}
+## A PASSIVE that applies WHILE the limb is worn (level-scaled), even without casting.
+## stat: "damage" (gun + ability) or "toughness" (incoming-damage reduction). skill_id -> {..}.
+const SKILL_PASSIVES := {
+	"leap": {"stat": "toughness", "per_level": 0.015},
+	"slam": {"stat": "damage", "per_level": 0.04},
+	"blink": {"stat": "toughness", "per_level": 0.015},
+	"mortar": {"stat": "damage", "per_level": 0.03},
+	"shield": {"stat": "toughness", "per_level": 0.05},
+	"ram": {"stat": "damage", "per_level": 0.04},
+	"chainshock": {"stat": "damage", "per_level": 0.03},
+	"bite": {"stat": "damage", "per_level": 0.04},
+	"whirlwind": {"stat": "damage", "per_level": 0.035},
+	"recon": {"stat": "damage", "per_level": 0.025},
+}
+## SET bonuses: holding N distinct skills of an archetype grants a build-defining passive.
+## archetype -> [[count, stat, value], ...] (highest matching threshold per archetype applies).
+const SKILL_SETS := {
+	"melee": [[2, "damage", 0.12], [3, "damage", 0.25]],
+	"ranged": [[2, "damage", 0.10], [3, "damage", 0.20]],
+	"mobility": [[2, "toughness", 0.10]],
+	"defense": [[1, "toughness", 0.10]],
+}
+const SKILL_PASSIVE_DMG_CAP: float = 0.8  # cap total bonus gun/ability damage at +80%
+const SKILL_PASSIVE_TOUGH_CAP: float = 0.6  # cap total incoming-damage reduction at 60%
+# Combo: casting a DIFFERENT skill within the window empowers it (bigger effect + cd refund).
+const SKILL_COMBO_WINDOW: float = 3.0  # s after a cast that the next (different) cast can combo
+const SKILL_COMBO_MULT: float = 1.5  # empowered effect multiplier
+const SKILL_COMBO_CD_REFUND: float = 0.4  # fraction of the empowered cast's cooldown refunded
+# Evolution: a skill at max_level MUTATES — its effect gets this multiplier + a distinct look.
+const SKILL_EVOLVE_MULT: float = 1.6
+
+
+## Archetype of a skill (for set bonuses), or "" if unknown.
+func skill_archetype(id: String) -> String:
+	return String(SKILL_ARCHETYPES.get(id, ""))
+
+
+# --- Local building destruction (v0.4.1): shoot a wall -> a hole crumbles where you hit ----
+# Walls are split into a grid of breakable CELLS (BreakableChunk), so a burst punches a localized
+# hole exactly where you shoot (user's pick). With the toggle false, _solid is byte-identical to a
+# plain StaticBody3D (no cell, no naming) -> world + golden unaffected.
+const CHUNK_DESTRUCTION_ENABLED: bool = true  # master toggle for BreakableChunk wall cells
+const CHUNK_HP: float = 16.0  # HP per wall CELL — a shot (~10-12 dmg) pops a small cell precisely
+const CHUNK_NOISE: float = 14.0  # how loud a crumbling cell is to enemy hearing (m)
+const CHUNK_CELL_SIZE: float = 0.8  # wall grid-cell edge (m) — FINE "voxel-ish" hole granularity
+const CHUNK_GRID_MIN: float = 1.0  # walls whose wide/height ≤ this stay ONE cell (no grid)
+# Big flat slabs (floors/roofs/containers) grid at a coarser-than-wall cell. 2.8 → 1.4 in the
+# merged-render pass: containers/floors were breaking «кусками большими» (user), and with cells
+# batched into MultiMeshes the extra pieces cost bodies, not draw calls.
+const CHUNK_CELL_SIZE_BIG: float = 1.4  # grid edge (m) for floors/roofs/containers
+const CHUNK_BREAK_FLOORS: bool = true  # floors/roofs/containers/pillars also crumble (user's pick)
+# Falling physics DEBRIS on crumble (RigidBody shards that fall + tumble, then fade). Purely
+# local/visual (collision_layer 0, mask 1 = world only) so it never desyncs co-op or the navmesh.
+const CHUNK_DEBRIS_ENABLED: bool = true  # spawn falling RigidBody shards (vs static rubble)
+const CHUNK_DEBRIS_PER_CELL: int = 10  # shards per crumbled cell (scaled down near the global cap)
+const CHUNK_DEBRIS_CAP: int = 200  # global concurrent live shards — over this, cells drop fewer
+const CHUNK_DEBRIS_LIFETIME: float = 3.6  # seconds a shard lives before it fades + frees
+const CHUNK_DEBRIS_FADE: float = 2.4  # shard age (s) at which the fade-out starts
+const CHUNK_FLASH_ENABLED: bool = true  # a brief OmniLight pop on crumble (rate-limited; dark grade)
+# Merged-render (v0.4.4 perf): breakable BOX cells render in per-(parent,material) MultiMesh
+# batches (ChunkMeshMerger) instead of ~4k per-cell MeshInstances whose draw calls halved fps
+# at POIs. OFF = the old per-cell path (visual A/B / dial-back). World-triplanar materials make
+# the batched scaled unit-cube shade identically to the old sized box.
+const CHUNK_MERGED_RENDER: bool = true
+
+# --- Material-typed destruction (v0.4.3): a chunk's `material_kind` selects its debris look, break
+# SFX, HP, and bullet-penetration. Threaded onto the node at BUILD on EVERY peer (the build is
+# identical), so it never rides the crumble RPC. CONCRETE is the default → walls/floors are
+# unchanged and the golden OFF path stays byte-identical. AudioManager/ChunkDebris read it locally.
+const CHUNK_KIND_CONCRETE: int = 0
+const CHUNK_KIND_METAL: int = 1  # containers — thin steel: low HP + bullets penetrate + sparks
+const CHUNK_KIND_STONE: int = 2  # boulders + small rocks — earthy chunky shards
+# Per-kind tunables. `debris_mult`×CHUNK_DEBRIS_PER_CELL; `hp_mult`×CHUNK_HP (metal thinner → 0.6);
+# `shard_flat` = shard box height factor (metal=flat panels, stone=chunky); `shard_size` scale;
+# `metallic`/`roughness`/`tint_lighten` style the shards (lightened so they read in the dark grade).
+const CHUNK_KIND_DEFS := {
+	CHUNK_KIND_CONCRETE:
+	{
+		"debris_mult": 1.0,
+		"hp_mult": 1.0,
+		"shard_flat": 0.72,
+		"shard_size": 1.0,
+		"metallic": 0.2,
+		"roughness": 0.92,
+		"tint_lighten": 0.15,
+		"spark": false,
+		"sfx": "chunk_concrete",
+	},
+	CHUNK_KIND_METAL:
+	{
+		"debris_mult": 0.8,
+		"hp_mult": 0.6,
+		"shard_flat": 0.22,
+		"shard_size": 1.5,
+		"metallic": 0.7,
+		"roughness": 0.35,
+		"tint_lighten": 0.2,
+		"spark": true,
+		"sfx": "chunk_metal",
+	},
+	CHUNK_KIND_STONE:
+	{
+		"debris_mult": 1.3,
+		"hp_mult": 1.5,
+		"shard_flat": 0.85,
+		"shard_size": 0.8,
+		"metallic": 0.0,
+		"roughness": 1.0,
+		"tint_lighten": 0.1,
+		"spark": false,
+		"sfx": "chunk_stone",
+	},
+}
+# Bullet penetration: a METAL chunk lets the shot pass THROUGH (it's not solid cover like a wall) up
+# to MAX times, losing FALLOFF of its damage per pass; concrete/stone STOP the ray. The pierced
+# chunk still takes (scaled) damage so a container breaks. Anti-spam SFX throttle for crumbles.
+const CHUNK_PENETRATE_METAL: bool = true
+const CHUNK_PENETRATE_MAX: int = 2
+const CHUNK_PENETRATE_FALLOFF: float = 0.55
+const CHUNK_SFX_MIN_INTERVAL: float = 0.08  # min seconds between crumble SFX (burst → 1-2, not 14)
+# Small breakable rocks (_build_stones → shoot-only): on this NON-world layer so the navmesh + the
+# player ignore them (no tripping, no nav-fragmentation) but the weapon ray + grenades still break
+# them. The weapon's hurtbox_mask gets this bit added so shots register.
+const CHUNK_ROCK_LAYER: int = 8  # physics layer for shoot-only small rocks (bit 7)
+
+## Learned-counter trait → stat effects (same shape discipline as ELITE_MOD_STATS). Resists
+## that aren't a simple _stat_* mult (EMP/blast) are read at their resist site, not here.
+## "weakpoint_armored" sets the WeakPoint Hurtbox damage_multiplier to an ABSOLUTE armor_mult
+## (the former weak spot is now armored, ~0.8× body — works for any base 2.0/2.5/×3).
+const NEMESIS_TRAIT_STATS := {
+	"weakpoint_armored": {"armor_mult": 0.8},
+	"blast_hard": {"blast_mult": 0.5},
+	"keen": {"detect_mult": 1.4},
 }
 
 # --- Recon drone (robot_specter) ---------------------------------------------
@@ -976,7 +1474,9 @@ const PAINKILLER_DURATION: float = 60.0  # suppresses status PENALTIES (not the 
 # Insure equipped gear/attachments for a fraction of value; a DEATH converts insured
 # items to "pending" and they return to the stash after the real-time delay.
 const INSURANCE_COST_FRAC: float = 0.30
-const INSURANCE_RETURN_MINUTES: float = 10.0  # real minutes until a lost item returns
+# M5.6: was 10 real minutes — a friction timer nobody enjoyed. Insured gear now
+# returns by the time you're back in the Hub (30 s covers the summary screen).
+const INSURANCE_RETURN_MINUTES: float = 0.5
 
 # Biomes: WorldBounds.biome_at(x,z) (scripts/core/world_bounds.gd) classifies the 4×
 # map quadrants (NW urban / NE snow / SW desert / SE rain) for biome-EXCLUSIVE spawning.
@@ -1005,6 +1505,53 @@ const STAMINA_DRAIN: float = 28.0  # per second while sprinting
 const STAMINA_REGEN: float = 22.0  # per second while not sprinting
 const STAMINA_SPRINT_MIN: float = 10.0  # need at least this to start sprinting
 const INTERACT_RANGE: float = 3.5  # metres for the "[E]" prompt
+
+# --- Audio occlusion (D5.2) — a fight behind a wall must SOUND muffled -----------------
+# Every positional one-shot AudioManager spawns (teammate gunfire, explosions, machine
+# chirps, crumbles) periodically raycasts emitter→listener through the WORLD layer only;
+# a blocked ray drives a smoothed 0..1 factor into the emitter's built-in high-shelf filter
+# plus a small volume trim. Render/audio-only + peer-LOCAL (no netcode, no gameplay read).
+# Implementation + the "why both ends of the shelf" note: scripts/core/audio_occlusion.gd.
+const AUDIO_OCCLUSION_ENABLED: bool = true  # master toggle (false = engine-default SFX)
+const AUDIO_OCCLUSION_TICK: float = 0.13  # s between refresh batches (~7.7 Hz, never per-frame)
+const AUDIO_OCCLUSION_RAYS_PER_TICK: int = 8  # round-robin re-tests per batch
+const AUDIO_OCCLUSION_SEED_RAYS_PER_TICK: int = 4  # extra rays for BRAND-NEW emitters per batch
+const AUDIO_OCCLUSION_MAX_TRACKED: int = 48  # live emitters we bother tracking at once
+const AUDIO_OCCLUSION_MIN_DIST: float = 2.5  # m — closer than this nothing can be in between
+const AUDIO_OCCLUSION_MAX_DIST: float = 90.0  # m — beyond this it is rolled off to nothing anyway
+const AUDIO_OCCLUSION_SMOOTH: float = 0.20  # s time-constant — no clicking when running past cover
+const AUDIO_OCCLUSION_CUTOFF_OPEN_HZ: float = 5000.0  # = the AudioStreamPlayer3D default (untouched)
+const AUDIO_OCCLUSION_CUTOFF_BLOCKED_HZ: float = 750.0  # fully blocked → a dull thud through concrete
+const AUDIO_OCCLUSION_FILTER_OPEN_DB: float = -24.0  # = the engine default shelf depth
+# The engine scales the shelf's gain by distance attenuation, so the depth must be pushed
+# well past the default for the muffle to READ at mid range (the cutoff alone would not).
+const AUDIO_OCCLUSION_FILTER_BLOCKED_DB: float = -60.0
+const AUDIO_OCCLUSION_VOLUME_DB: float = -5.5  # extra loudness drop at full occlusion
+
+# --- Footsteps, foley & ambience v2 (D5.3 / D5.4 / D5.5) ------------------------------
+# The surface under the boot (biome / water / chunk material / indoors), the jump-land-
+# mantle foley and the sprint gear rattle whose level rides the HAUL WEIGHT the HEAT meter
+# already reads. All of it is peer-LOCAL render-only audio: no netcode, no gameplay read,
+# never built headless. Implementation + the clip synthesis: scripts/core/footstep_surfaces.gd.
+const FOLEY_ENABLED: bool = true  # master toggle (false = the old 3-sample footstep loop only)
+const FOLEY_WALK_INTERVAL: float = 0.50  # s between steps at walk pace
+const FOLEY_SPRINT_INTERVAL: float = 0.32  # ... and at a sprint
+const FOLEY_STEP_MIN_SPEED: float = 1.0  # horizontal m/s below which nobody is stepping
+const FOLEY_STEP_DIST: float = 34.0  # m — a teammate's steps beyond this are skipped
+const FOLEY_STEP_MIN_INTERVAL: float = 0.16  # per-player anti-spam floor on remote steps
+const FOLEY_SURFACE_TTL: float = 0.25  # s a surface verdict is reused (≈4 rays/s sprinting)
+const FOLEY_JUMP_MIN_VY: float = 2.0  # m/s upward before a leave-ground counts as a JUMP
+const FOLEY_LAND_MIN_SPEED: float = 5.0  # m/s of fall before the landing thud plays
+const FOLEY_JINGLE_INTERVAL: float = 0.62  # s between sprint gear rattles (± a hashed jitter)
+const FOLEY_JINGLE_DB_EMPTY: float = -30.0  # rattle level with an empty pack
+const FOLEY_JINGLE_DB_FULL: float = -13.0  # ... and at the weight cap (loud = you are a target)
+const AMBIENCE_POLL: float = 0.5  # s between day-night / indoor ambience re-evaluations
+const AMBIENCE_NIGHT_DB: float = -20.0  # night wind layer over the biome bed
+const AMBIENCE_DAY_DB: float = -26.0  # daytime air layer (deliberately fainter than night)
+const AMBIENCE_INDOOR_DB: float = -23.0  # room-tone hum that replaces the wind indoors
+const AMBIENCE_INDOOR_DUCK: float = 0.75  # how much of the outdoor layer a full indoor kills
+const AMBIENCE_CREAK_MIN: float = 12.0  # s between night metal creaks (min / max)
+const AMBIENCE_CREAK_MAX: float = 27.0
 
 # Runtime-mutable settings (driven by SettingsManager / the settings menu).
 var mouse_sensitivity: float = MOUSE_SENSITIVITY

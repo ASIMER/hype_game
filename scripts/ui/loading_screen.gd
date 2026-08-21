@@ -150,9 +150,12 @@ func prewarm(steps_label: String = "") -> void:
 	hide_screen()
 
 
-## Instantiates the shared procedural materials into a 1-mesh off-screen SubViewport
-## and renders one frame, forcing their shaders to compile up front. Wrapped so any
-## failure (missing autoload, headless edge) just returns without crashing boot.
+## Instantiates the shared procedural materials + every per-shot combat FX into an
+## off-screen SubViewport and renders a few frames, forcing their shader variants
+## (additive billboards, particle process shaders, the pooled-tracer shader, Label3D
+## text) to compile up front — the FIRST SHOT used to hitch on live compilation.
+## Wrapped so any failure (missing scene, headless edge) just returns without
+## crashing boot.
 func _compile_materials() -> void:
 	var vp := SubViewport.new()
 	# NOT tiny: a 16x16 3D buffer + the default env's GLOW made the renderer request an
@@ -162,6 +165,7 @@ func _compile_materials() -> void:
 	vp.size = Vector2i(128, 128)
 	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(vp)
+	vp.own_world_3d = true  # isolate: FX nodes must never flash into the menu world
 
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = BoxMesh.new()
@@ -174,6 +178,47 @@ func _compile_materials() -> void:
 		mesh.material_override = mat
 	vp.add_child(mesh)
 
+	# One ACTIVATED instance of each combat FX in front of the camera. Impact twice —
+	# the enemy/world modes hit different blend + Decal pipelines.
+	var fx: Array[Node] = []
+	if ResourceLoader.exists("res://scenes/fx/MuzzleFlash.tscn"):
+		fx.append((load("res://scenes/fx/MuzzleFlash.tscn") as PackedScene).instantiate())
+	if ResourceLoader.exists("res://scenes/fx/Impact.tscn"):
+		var impact_ps := load("res://scenes/fx/Impact.tscn") as PackedScene
+		var im_enemy := impact_ps.instantiate()
+		if im_enemy is Impact:
+			(im_enemy as Impact).set_enemy_hit(true)
+		fx.append(im_enemy)
+		fx.append(impact_ps.instantiate())
+	if ResourceLoader.exists("res://scripts/fx/muzzle_smoke.gd"):
+		fx.append((load("res://scripts/fx/muzzle_smoke.gd") as GDScript).new())
+	if ResourceLoader.exists("res://scripts/fx/shell_casings.gd"):
+		fx.append((load("res://scripts/fx/shell_casings.gd") as GDScript).new())
+	if ResourceLoader.exists("res://scenes/fx/DamageNumber.tscn"):
+		var dn := (load("res://scenes/fx/DamageNumber.tscn") as PackedScene).instantiate()
+		if dn is DamageNumber:
+			(dn as DamageNumber).setup(42.0, true)
+		fx.append(dn)
+	# The pooled-tracer gdshader on a 1-instance MultiMesh.
+	if ResourceLoader.exists("res://shaders/tracer.gdshader"):
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		mm.mesh = BoxMesh.new()
+		mm.instance_count = 1
+		mm.set_instance_transform(0, Transform3D(Basis(), Vector3.ZERO))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		var smat := ShaderMaterial.new()
+		smat.shader = load("res://shaders/tracer.gdshader")
+		smat.set_shader_parameter("u_now", 0.01)
+		mmi.material_override = smat
+		fx.append(mmi)
+	for f in fx:
+		vp.add_child(f)
+		if f is Node3D:
+			(f as Node3D).position = Vector3(randf_range(-0.4, 0.4), randf_range(-0.4, 0.4), 0.0)
+
 	var cam := Camera3D.new()
 	cam.position = Vector3(0, 0, 3)
 	# A plain Environment (no glow/SSAO/SDFGI/fog) for the prewarm camera: the SubViewport
@@ -183,6 +228,8 @@ func _compile_materials() -> void:
 	vp.add_child(cam)
 	cam.make_current()
 
-	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	await RenderingServer.frame_post_draw
+	# Particles need real simulated frames to push their process shaders through.
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	for _i in range(3):
+		await RenderingServer.frame_post_draw
 	vp.queue_free()

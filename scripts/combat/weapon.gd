@@ -27,13 +27,16 @@ const _MAX_BALLISTIC_SEGMENTS := 40
 @export var fire_rate: float = 8.0  # shots per second
 @export var max_range: float = 80.0
 @export var auto: bool = true  # held-to-fire
-@export var hurtbox_mask: int = 0b1000101  # layers: world(1) + enemy(3) + hurtbox(7)
+@export var hurtbox_mask: int = 0b11000101  # layers: world(1) + enemy(3) + hurtbox(7) + small-rock(8)
 
 var _cooldown: float = 0.0
 # Surface normal of the most recent resolved hit (Vector3.ZERO = none). Set in
 # _shoot right before `fired` is emitted; read synchronously in _on_fired to
 # orient the impact burst to the surface. Per-pellet, single-threaded — safe.
 var _last_hit_normal: Vector3 = Vector3.ZERO
+var _last_hit_weak: bool = false
+# Shape index of the final hit within its body (destructible trees: WHICH trunk).
+var _last_hit_shape: int = -1
 
 # --- VFX (purely visual/local, never networked) -----------------------------
 # Preloaded combat feedback scenes. Spawned from our own `fired` signal so the
@@ -51,6 +54,9 @@ var _muzzle_smoke_script: GDScript
 var _shell_script: GDScript
 ## Last WeaponData fired through fire_with — drives the per-class muzzle FX scale / shell count.
 var _last_data: WeaponData = null
+## Elemental ammo latch: the element applies once per SHOT (first landing pellet), so a
+## shotgun blast can't instant-freeze / multi-proc off a single trigger pull.
+var _element_done: bool = false
 
 
 func _ready() -> void:
@@ -100,6 +106,7 @@ func fire_with(from_node: Node3D, data: WeaponData, eff_spread: float = -1.0) ->
 	if from_node == null or data == null:
 		return false
 	_last_data = data
+	_element_done = false
 	_cooldown = 1.0 / maxf(0.1, data.fire_rate)
 	var pellets: int = maxi(1, data.pellets)
 	# Optional per-weapon muzzle velocity override (flatter trajectory for rifles,
@@ -189,6 +196,13 @@ func _shoot(
 	var resolved := false
 	var travelled := 0.0
 	_last_hit_normal = Vector3.ZERO
+	_last_hit_weak = false
+	# Bullet penetration through METAL chunks (containers = soft cover, not solid like walls): a metal
+	# cell is recorded + excluded and the ray keeps marching with damage falloff, up to a cap. The
+	# pierced cells still take (scaled) damage so the container breaks. Concrete/stone STOP the ray.
+	var pen_count := 0
+	var dmg_scale := 1.0
+	var pierced: Array[Dictionary] = []
 
 	for i in seg_count:
 		# Advance the projectile one ballistic segment (simple Euler integration).
@@ -212,9 +226,27 @@ func _shoot(
 		params.exclude = exclude
 		var result := space.intersect_ray(params)
 		if result:
-			hit_point = result["position"]
-			hit_node = result["collider"]
-			_last_hit_normal = result.get("normal", Vector3.ZERO)
+			var rnode: Node = result["collider"]
+			var rpos: Vector3 = result["position"]
+			var rnorm: Vector3 = result.get("normal", Vector3.ZERO)
+			if _can_penetrate(rnode, pen_count):
+				# Pass THROUGH this metal cell: record it (scaled damage), exclude its body so we
+				# don't re-hit the same face, drop damage, and resume marching from the impact.
+				arc.append(rpos)
+				pierced.append(
+					{"idx": (rnode as BreakableChunk).index, "n": rnorm, "d": dmg * dmg_scale}
+				)
+				var rid: RID = result.get("rid", RID())
+				if rid != RID():
+					exclude.append(rid)
+				pen_count += 1
+				dmg_scale *= Settings.CHUNK_PENETRATE_FALLOFF
+				pos = rpos + seg.normalized() * 0.05
+				continue
+			hit_point = rpos
+			hit_node = rnode
+			_last_hit_normal = rnorm
+			_last_hit_shape = int(result.get("shape", -1))
 			arc.append(hit_point)
 			resolved = true
 			break
@@ -229,17 +261,32 @@ func _shoot(
 	if not resolved:
 		hit_point = arc[arc.size() - 1]
 
+	# Damage every metal cell the bullet punched through (it still breaks the container).
+	for pc in pierced:
+		NetworkManager.request_damage_chunk(int(pc["idx"]), float(pc["d"]), pc["n"])
+
 	if hit_node != null:
 		var hb := _resolve_hurtbox(hit_node)
 		if hb:
-			# A weak-point hurtbox carries damage_multiplier > 1 (e.g. headshot).
+			# A weak-point hurtbox carries damage_multiplier > 1 (e.g. headshot). Penetration
+			# falloff (dmg_scale) cuts the damage of a shot that came through containers.
 			var is_crit := hb.damage_multiplier > 1.0 and crit_mult > 1.0
-			var dealt := dmg
+			# D4.5: stashed for the impact burst, which is spawned from `_on_fired` a signal
+			# later — the same reason `_last_hit_normal` is stashed here rather than passed.
+			# The multiplier alone is the test: `is_crit` also demands the weapon HAS a crit
+			# multiplier, and a weak point stays a weak point either way.
+			_last_hit_weak = hb.damage_multiplier > 1.0
+			var dealt := dmg * dmg_scale
 			if is_crit:
 				dealt *= crit_mult
 			# Active power-cache damage buff (Berserk / Frenzy) on the firing player.
 			if shooter != null and shooter.has_method("buff_damage_mult"):
 				dealt *= float(shooter.buff_damage_mult())
+			# Mutant-Harvest limb DAMAGE passive (melee/ranged limbs + set bonus) on the shooter.
+			if shooter != null:
+				var sk: Node = shooter.get_node_or_null("Skills")
+				if sk != null and sk.has_method("passive_damage_mult"):
+					dealt *= float(sk.passive_damage_mult())
 			# Server-authoritative damage: the host applies directly; a CLIENT routes
 			# the hit to the server (its local apply_hit would only damage its OWN copy
 			# of the enemy, never the authoritative one → the enemy never dies in co-op).
@@ -248,6 +295,16 @@ func _shoot(
 			else:
 				NetworkManager.request_hit(hb.get_path(), dealt, _shooter_peer(shooter))
 			hit.emit(hb.get_parent(), dealt)
+			# Elemental ammo (Chemistry Phase 6): the mag's element tags the machine —
+			# kind-only routing; the server derives every number and rolls shock's proc.
+			if (
+				not _element_done
+				and _is_enemy(hit_node)
+				and _last_data != null
+				and _last_data.element != ""
+			):
+				_element_done = true
+				NetworkManager.request_chemistry(hb.get_parent().get_path(), _last_data.element)
 			# Crit juice: a punch of camera shake everywhere, plus a brief hit-stop in
 			# single-player only (hit-stop scales Engine.time_scale, which would desync
 			# the shared co-op simulation — gate it to offline).
@@ -261,13 +318,30 @@ func _shoot(
 			# Lifesteal buff: heal the shooter for a fraction of damage dealt to an enemy.
 			if shooter != null and shooter.has_method("on_dealt_damage") and _is_enemy(hit_node):
 				shooter.on_dealt_damage(dealt * hb.damage_multiplier)
+		elif hit_node is BreakableGlass:
+			# Window pane: the bullet correctly STOPS on this (breaking) shot — the
+			# impact FX already targets the pane point; the server shatters + replicates.
+			NetworkManager.request_break_glass((hit_node as BreakableGlass).index)
+		elif hit_node is BreakableChunk:
+			# Building wall segment: route this shot's damage to the SERVER, which tracks HP
+			# and broadcasts the crumble once depleted (index-keyed, like glass). The surface
+			# normal rides along so the falling debris sprays toward the shooter.
+			NetworkManager.request_damage_chunk(
+				(hit_node as BreakableChunk).index, dmg * dmg_scale, _last_hit_normal
+			)
+		elif hit_node is StaticBody3D and hit_node.name == "TreeTrunks":
+			# Destructible tree: the raycast's shape index resolves WHICH trunk shape
+			# was hit (child order = the deterministic tree id). Server tracks tree HP.
+			var tree_idx: int = _tree_index_of(hit_node as StaticBody3D, _last_hit_shape)
+			if tree_idx >= 0:
+				NetworkManager.request_fell_tree(tree_idx, dmg * dmg_scale, _last_hit_normal)
 	fired_arc.emit(arc, hit_node)
 	fired.emit(hit_point, hit_node)
 	Events.weapon_fired.emit(shooter, wid)
 	# Co-op: let teammates SEE this shot. Our own FX already spawned via the `fired`
 	# signal above; broadcast the shot so the OTHER peers spawn the tracer/impact too.
 	NetworkManager.broadcast_shot(
-		_muzzle_position(), hit_point, arc, _is_enemy(hit_node), _last_hit_normal
+		_muzzle_position(), hit_point, arc, _is_enemy(hit_node), _last_hit_normal, wid
 	)
 
 
@@ -305,43 +379,53 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 	var muzzle := _muzzle_position()
 	var mscale: float = float(_last_data.muzzle_scale) if _last_data != null else 1.0
 
-	if _muzzle_flash_ps:
-		var mf := _muzzle_flash_ps.instantiate()
-		host.add_child(mf)
+	# All per-shot FX go through the FXPool when one exists (PERF: zero node/material
+	# churn under fire); the legacy instantiate path stays as the fallback.
+	var mf := FXPool.acquire_or_new("muzzle_flash", _muzzle_flash_ps, host)
+	if mf != null:
 		if mf is Node3D:
 			(mf as Node3D).global_position = muzzle
 		if mf.has_method("set_intensity"):
 			mf.call("set_intensity", mscale)
+		if mf.has_method("fire"):
+			mf.call("fire")
 
 	# Muzzle smoke puff drifting up off the barrel (builds a light haze on sustained fire).
-	if _muzzle_smoke_script != null:
-		var sm: Node = _muzzle_smoke_script.new()
-		host.add_child(sm)
+	var sm := FXPool.acquire_or_new("muzzle_smoke", _muzzle_smoke_script, host)
+	if sm != null:
 		if sm is Node3D:
 			(sm as Node3D).global_position = muzzle
 		if sm.has_method("set_scale_mult"):
 			sm.call("set_scale_mult", mscale)
+		if sm.has_method("fire"):
+			sm.call("fire")
 
 	# Shell casing ejection from the side port (skip the tube-fed shotgun's per-shot brass).
-	if _shell_script != null and (_last_data == null or _last_data.id != "shotgun"):
-		var et: Transform3D = _eject_transform()
-		var sc: Node = _shell_script.new()
-		host.add_child(sc)
-		if sc is Node3D:
-			(sc as Node3D).global_transform = et
+	if _last_data == null or _last_data.id != "shotgun":
+		var sc := FXPool.acquire_or_new("shells", _shell_script, host)
+		if sc != null:
+			if sc is Node3D:
+				(sc as Node3D).global_transform = _eject_transform()
+			if sc.has_method("fire"):
+				sc.call("fire")
 
 	# Tracer is drawn by _on_fired_arc (which follows the ballistic curve). We only
 	# spawn the impact burst here. (fired_arc always fires alongside fired.)
 
-	if _impact_ps:
-		var im := _impact_ps.instantiate()
-		if im is Impact:
-			(im as Impact).set_enemy_hit(_is_enemy(hit_node))
-			# Orient the burst to the surface normal if we can resolve one.
-			(im as Impact).set_surface_normal(_last_hit_normal)
-		host.add_child(im)
-		if im is Node3D:
-			(im as Node3D).global_position = hit_point
+	# D4.4: a hit now knows WHAT it hit. World surfaces resolve their material (concrete /
+	# metal / stone / dirt / glass / wood) and throw debris in a CONE off the surface normal,
+	# with the scorch projected ALONG that normal instead of straight down (it used to smear
+	# on the floor under a wall). Machines keep their own tuned robo-burst — a bullet into a
+	# chassis is not a bullet into a wall — and spawn_impact routes that case itself.
+	FXPool.spawn_impact(
+		host,
+		hit_point,
+		_last_hit_normal,
+		_is_enemy(hit_node),
+		FXPool.material_of(hit_node),
+		(hit_point - muzzle).normalized(),
+		_last_hit_weak
+	)
 
 
 ## Draws the tracer as a chain of short straight Tracer segments through the arc
@@ -349,7 +433,16 @@ func _on_fired(hit_point: Vector3, hit_node: Node) -> void:
 ## Tracer scene (one per segment) — kept cheap by the capped segment count. The
 ## first arc point is the muzzle, so the segment chain starts exactly at the barrel.
 func _on_fired_arc(arc_points: PackedVector3Array, _hit_node: Node) -> void:
-	if _tracer_ps == null or arc_points.size() < 2:
+	if arc_points.size() < 2:
+		return
+	# D4.4: the pooled streak draws the whole arc with a bright head segment and a fading
+	# tail. It replaces TracerPool, which is not merely older but WRONG: its
+	# `Basis(...).scaled(Vector3(1, dist, 1))` scales in the PARENT frame, so a horizontal
+	# shot never stretched its segments along the shot axis at all — the arc came out as a
+	# dotted line of metre-long cylinders with gaps between them.
+	if FXPool.spawn_tracer(_fx_host(), arc_points, _muzzle_position()) != null:
+		return
+	if _tracer_ps == null:
 		return
 	var host := _fx_host()
 	if host == null:
@@ -416,6 +509,29 @@ func _is_enemy(node: Node) -> bool:
 			return true
 		n = n.get_parent()
 	return false
+
+
+## Resolve a raycast shape index on the shared TreeTrunks body to the trunk
+## CollisionShape3D's child index — the deterministic FellableTree id.
+func _tree_index_of(body: StaticBody3D, shape_idx: int) -> int:
+	if shape_idx < 0:
+		return -1
+	var owner_id: int = body.shape_find_owner(shape_idx)
+	var shape_node: Node = body.shape_owner_get_owner(owner_id)
+	if shape_node == null:
+		return -1
+	return shape_node.get_index()
+
+
+## True when the bullet should PASS THROUGH `node` rather than stop: a METAL BreakableChunk
+## (container) while the per-shot penetration budget remains. Concrete/stone/enemies all stop.
+func _can_penetrate(node: Node, pen_count: int) -> bool:
+	if not Settings.CHUNK_PENETRATE_METAL or pen_count >= Settings.CHUNK_PENETRATE_MAX:
+		return false
+	return (
+		node is BreakableChunk
+		and int((node as BreakableChunk).material_kind) == Settings.CHUNK_KIND_METAL
+	)
 
 
 func _resolve_hurtbox(node: Node) -> Hurtbox:

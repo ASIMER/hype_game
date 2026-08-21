@@ -92,89 +92,96 @@ const VARIANTS := {
 }
 
 # Colour schemes: primary armour, secondary trim, accent (emissive glow).
+# D2: every `primary` carries a perceptual lift (v**0.72) over the values this catalog
+# shipped with. Once the machine roster went two-tone (light plate over black frame), the
+# PLAYER became the darkest object in frame — a raider who reads as a silhouette while the
+# things hunting them read as painted metal. The lift keeps each scheme's hue and their
+# relative ordering (void and ghost are still the dark ones, arctic still the bright one),
+# it just pulls the whole set off the floor. `secondary` stays dark on purpose: it is the
+# frame half of the same two-tone. `accent` is identity and is not touched.
 const PAINTS := {
 	"paint_raider":
 	{
-		"primary": Color(0.30, 0.40, 0.52),
+		"primary": Color(0.420, 0.517, 0.624),
 		"secondary": Color(0.18, 0.23, 0.30),
 		"accent": Color(0.25, 0.80, 0.85)
 	},
 	"paint_ash":
 	{
-		"primary": Color(0.42, 0.44, 0.47),
+		"primary": Color(0.535, 0.554, 0.581),
 		"secondary": Color(0.22, 0.23, 0.25),
 		"accent": Color(0.90, 0.55, 0.20)
 	},
 	"paint_crimson":
 	{
-		"primary": Color(0.55, 0.15, 0.15),
+		"primary": Color(0.650, 0.255, 0.255),
 		"secondary": Color(0.16, 0.10, 0.10),
 		"accent": Color(1.00, 0.55, 0.20)
 	},
 	"paint_forest":
 	{
-		"primary": Color(0.30, 0.40, 0.22),
+		"primary": Color(0.420, 0.517, 0.336),
 		"secondary": Color(0.20, 0.17, 0.10),
 		"accent": Color(0.75, 0.85, 0.30)
 	},
 	"paint_arctic":
 	{
-		"primary": Color(0.78, 0.84, 0.90),
+		"primary": Color(0.836, 0.882, 0.927),
 		"secondary": Color(0.35, 0.42, 0.50),
 		"accent": Color(0.35, 0.75, 1.00)
 	},
 	"paint_void":
 	{
-		"primary": Color(0.13, 0.13, 0.17),
+		"primary": Color(0.230, 0.230, 0.279),
 		"secondary": Color(0.07, 0.07, 0.09),
 		"accent": Color(0.70, 0.35, 1.00)
 	},
 	"paint_toxic":
 	{
-		"primary": Color(0.20, 0.26, 0.18),
+		"primary": Color(0.314, 0.379, 0.291),
 		"secondary": Color(0.12, 0.14, 0.10),
 		"accent": Color(0.55, 1.00, 0.25)
 	},
 	"paint_gold":
 	{
-		"primary": Color(0.72, 0.58, 0.22),
+		"primary": Color(0.789, 0.676, 0.336),
 		"secondary": Color(0.25, 0.20, 0.10),
 		"accent": Color(1.00, 0.85, 0.40)
 	},
 	"paint_ember":
 	{
-		"primary": Color(0.28, 0.20, 0.20),
+		"primary": Color(0.400, 0.314, 0.314),
 		"secondary": Color(0.14, 0.10, 0.10),
 		"accent": Color(1.00, 0.40, 0.15)
 	},
 	"paint_royal":
 	{
-		"primary": Color(0.28, 0.22, 0.45),
+		"primary": Color(0.400, 0.336, 0.563),
 		"secondary": Color(0.14, 0.11, 0.22),
 		"accent": Color(0.55, 0.65, 1.00)
 	},
 	"paint_foreman":
 	{
 		# Quest-exclusive schemes.
-		"primary": Color(0.36, 0.27, 0.13),
+		"primary": Color(0.479, 0.390, 0.230),
 		"secondary": Color(0.18, 0.14, 0.08),
 		"accent": Color(1.00, 0.72, 0.22)
 	},
 	"paint_salvage":
 	{
-		"primary": Color(0.20, 0.34, 0.36),
+		"primary": Color(0.314, 0.460, 0.479),
 		"secondary": Color(0.10, 0.17, 0.18),
 		"accent": Color(0.30, 0.95, 0.85)
 	},
 	"paint_ghost":
 	{
-		"primary": Color(0.16, 0.18, 0.22),
+		"primary": Color(0.267, 0.291, 0.336),
 		"secondary": Color(0.08, 0.09, 0.11),
 		"accent": Color(0.60, 0.95, 0.75)
 	},
 	"paint_warden":
 	{
-		"primary": Color(0.10, 0.10, 0.12),
+		"primary": Color(0.191, 0.191, 0.217),
 		"secondary": Color(0.05, 0.05, 0.06),
 		"accent": Color(1.00, 0.25, 0.30)
 	},
@@ -247,12 +254,12 @@ static func _mats(paint: Dictionary) -> Dictionary:
 	var secondary: Color = paint["secondary"]
 	var accent: Color = paint["accent"]
 	return {
-		"armor":
-		ProcMaterials.weathered(primary, 0.45, 0.55, 0.5, 7, Vector3(0.5, 0.5, 0.5), false),
-		"trim": ProceduralModels._mat(secondary, 0.5, 0.45),
-		"metal": ProceduralModels._mat(Color(0.15, 0.17, 0.19), 0.6, 0.4),
-		"dark": ProceduralModels._mat(Color(0.10, 0.11, 0.13), 0.5, 0.5),
-		"accent": ProceduralModels._mat(accent, 0.0, 0.3, accent, 6.0),
+		"armor": ProcPlating.armor_plate(primary, 7, Vector3(0.9, 0.9, 0.9)),
+		"trim": ProcPlating.lacquer(secondary, 9),
+		"metal": ProcPlating.steel(),
+		"dark": ProcPlating.rubber(Color(0.12, 0.13, 0.15), 5),
+		"suit": ProcPlating.rubber(secondary.lerp(Color(0.13, 0.14, 0.16), 0.6), 13),
+		"accent": ProcPlating.glow(accent, 3.5),
 	}
 
 

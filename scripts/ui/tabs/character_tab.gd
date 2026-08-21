@@ -228,7 +228,9 @@ func _build_preview_viewport(parent: Control) -> void:
 	_preview_vp = SubViewport.new()
 	_preview_vp.name = "PreviewVP"
 	_preview_vp.size = PREVIEW_SIZE
-	_preview_vp.transparent_bg = true
+	# Phase 3: an opaque lit STAGE instead of transparent-over-dark-glass — the dark
+	# default paint read as a "black mannequin on black" (audit).
+	_preview_vp.transparent_bg = false
 	_preview_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_preview_vp.msaa_3d = Viewport.MSAA_4X
 	svc.add_child(_preview_vp)
@@ -236,17 +238,18 @@ func _build_preview_viewport(parent: Control) -> void:
 	# Own World3D so the body renders in isolation.
 	var world := World3D.new()
 	var env := Environment.new()
-	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.085, 0.105, 0.13)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.5, 0.54, 0.62)
-	env.ambient_light_energy = 0.6
+	env.ambient_light_color = Color(0.55, 0.6, 0.68)
+	env.ambient_light_energy = 0.9
 	world.environment = env
 	_preview_vp.world_3d = world
 
 	# Key + fill lights (mirrors IconRenderer setup).
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-48, -128, 0)
-	key.light_energy = 1.1
+	key.light_energy = 1.4
 	_preview_vp.add_child(key)
 
 	var fill := DirectionalLight3D.new()
@@ -259,11 +262,12 @@ func _build_preview_viewport(parent: Control) -> void:
 	cam.name = "PreviewCam"
 	# Position slightly above center, pulled back enough to see the full figure.
 	cam.position = Vector3(0.0, 0.9, 2.6)
-	cam.look_at(Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	cam.fov = 42.0
 	cam.near = 0.1
 	cam.far = 30.0
 	_preview_vp.add_child(cam)
+	# look_at only works INSIDE the tree — calling it before add_child errors every hub open.
+	cam.look_at(Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	cam.current = true
 	cam.make_current()
 
@@ -377,7 +381,7 @@ func _make_variant_cell(
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(float(THUMB_SIZE), 0.0)
 	name_lbl.add_theme_color_override("font_color", COL_WHITE)
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", 13)
 	vbox.add_child(name_lbl)
 
 	# ── Action button ─────────────────────────────────────────────────────────
@@ -507,7 +511,7 @@ func _refresh_currency() -> void:
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	pc.add_child(UIStyle.micro_header(tr(title), UIStyle.TEAL, 15))
 	return pc
 

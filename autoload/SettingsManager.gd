@@ -21,47 +21,51 @@ const DEFAULTS := {
 	"shadows": 2,  # 0 1024, 1 2048, 2 4096, 3 8192
 	"fov": 60.0,  # 60..100
 	# Graphics quality (Godot does NOT auto-scale to hardware — these presets do it).
-	"graphics_quality": 3,  # 0 Low, 1 Medium, 2 High, 3 Ultra, 4 Ultra+RT (default = Ultra)
+	# DEFAULTS for every preset key mirror the Ultra+RT (tier 4) row of QUALITY_PRESETS,
+	# so a fresh install == the default preset exactly (one-click consistency).
+	"graphics_quality": 4,  # 0 Low, 1 Medium, 2 High, 3 Ultra, 4 Ultra+RT (the default)
 	"render_scale": 1.0,  # 0.5..1.0 viewport 3D render scale (FSR-style upscale; cheapest lever)
 	"sdfgi": true,  # global illumination (heavy)
 	"ssao": true,  # ambient occlusion
 	"glow": true,  # bloom
 	"clouds": true,  # Sky3D volumetric cumulus
 	"water_refraction": true,  # screen-space refractive water (vs flat cheap water)
-	"grass_density": 1.0,  # 0.3..1.0 grass-cap multiplier (rebuild-bound; applies next raid)
+	"grass_density": 1.0,  # FAIR-equal across presets (grass is concealment)
 	# "RT-style" reflections/GI tier (raster — Godot 4.6.3 has NO hardware ray tracing).
-	"ssr": false,  # screen-space reflections (Forward+; water/metal/wet) — Ultra+RT only
-	"ssil": false,  # screen-space indirect lighting — Ultra+RT only
-	"reflection_probes": false,  # baked ReflectionProbes at POIs (rebuild-bound; off-screen reflections)
+	"ssr": true,  # screen-space reflections (Forward+; water/metal/wet) — Ultra+RT default
+	"ssil": true,  # screen-space indirect lighting — Ultra+RT default
+	"reflection_probes": true,  # baked ReflectionProbes at POIs (rebuild-bound)
 	"voxelgi": false,  # EXPERIMENTAL voxel GI bake (rebuild-bound; heavy — never in a preset)
-	# Cinematic pass III — sliders have SANE CLAMPS but a "beyond Ultra" headroom; presets stay
-	# safe, the player can crank further. Numeric value is shown beside each slider in the menu.
-	"draw_distance": 1.0,  # 0.5..2.0 flora/grass visibility-range multiplier (rebuild-bound)
+	# Cinematic levers — sliders have SANE CLAMPS with "beyond Ultra" headroom; the player
+	# can crank further (= "Custom"). Numeric value shown beside each slider in the menu.
+	"draw_distance": 1.0,  # FAIR-equal across presets (flora sightlines)
 	"particle_density": 1.0,  # 0.0..1.5 ambient dust/ember amount multiplier (immediate)
-	"terrain_detail": 1.0,  # 1.0..2.0 ground-mesh subdivision multiplier (rebuild-bound)
-	"volumetric_fog_density": 1.0,  # 0.0..2.0 LOCAL fog-zone density multiplier (immediate; global density is always 0)
-	"shadow_distance": 140.0,  # 60..250 m directional shadow max distance (immediate)
-	"dof_amount": 0.0,  # 0.0..0.2 far depth-of-field blur amount (immediate; 0 = none)
-	"volumetric_fog": false,  # enable the global froxel volumetric fog (immediate)
-	"local_fog": false,  # spawn localized FogVolume zones at POIs (rebuild-bound)
-	"climate_zones": true,  # spawn localized rain/snow/desert zones at the far landmarks (rebuild-bound)
-	"climate_density": 1.0,  # 0.0..2.0 climate precipitation/haze density multiplier (immediate)
-	"god_rays": false,  # sun light shafts through the volumetric fog (immediate)
-	"dof": false,  # cinematic far depth-of-field (immediate)
-	"terrain_parallax": false,  # parallax-occlusion mapping on the ground (rebuild-bound; heavy)
+	"terrain_detail": 1.5,  # 1.0..2.0 ground-mesh subdivision multiplier (rebuild-bound)
+	"volumetric_fog_density": 1.0,  # FAIR-equal LOCAL fog-zone density multiplier
+	"shadow_distance": 200.0,  # 60..250 m directional shadow max distance (immediate)
+	"dof_amount": 0.06,  # FAIR-equal mild far blur (slider stays for personal tuning)
+	"volumetric_fog": true,  # FAIR: the fog/storm/mutator carrier — on for everyone
+	"local_fog": true,  # FAIR: fog banks visible to everyone (rebuild-bound)
+	"climate_zones": true,  # FAIR: rain/snow/desert for everyone (rebuild-bound)
+	"climate_density": 1.0,  # FAIR-equal precipitation/haze density
+	"god_rays": true,  # FAIR-equal light look inside fog (immediate)
+	"dof": true,  # FAIR-equal cinematic far depth-of-field (immediate)
+	"terrain_parallax": true,  # parallax-occlusion mapping (rebuild-bound; tier 3+)
 	# Diagnostics overlay
 	"language": "en",  # UI locale ("en" base/fallback, "ru", ... — TranslationServer)
 	"show_fps": false,  # minimal FPS counter
 	"show_detailed_stats": false,  # full perf + network panel
 	"stats_display_mode": 0,  # 0 Numeric, 1 Graphs, 2 Graphs+Numbers
 	"ui_fx_enabled": true,  # "military glass" UI FX: scanline/grain/vignette + modal blur
+	"hi_contrast_markers": false,  # M7.6 colorblind assist: bigger outlined map markers
+	"input_overrides": {},  # M7.6 remap: action name -> keycode (applied at boot)
 	# Interface / HUD layout (ultrawide comfort — lives in the Interface settings tab).
 	"ui_edge_margin": 0.0,  # 0.0..0.2 pull edge-anchored UI in toward center (frac of width)
 	"ui_top_margin": 0.0,  # 0.0..0.2 vertical inset for top/bottom-anchored UI (frac of height)
 	"hud_scale": 1.0,  # 0.8..1.4 global UI scale (Window.content_scale_factor)
 	# Camera (third-person rig — also in the Interface tab).
 	"camera_distance": 1.0,  # 0.6..1.4 × default third-person spring length
-	"camera_shoulder": 1.0,  # 0.0..1.0 × over-the-shoulder side offset
+	"camera_shoulder": 0.0,  # 0.0..1.0 × over-the-shoulder side offset (0 = centered behind-back)
 	"default_view": 0,  # 0 third-person, 1 first-person (on spawn)
 	# Audio (linear 0..1)
 	"master_volume": 0.9,
@@ -150,11 +154,20 @@ func _parse_res(res: String) -> Vector2i:
 	return Vector2i(int(parts[0]), int(parts[1]))
 
 
-## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra → 4 Ultra+RT). Ultra =
-## the hand-tuned look; Ultra+RT = Ultra plus the raster "RT-style" reflection/GI stack
-## (SSR + SSIL + reflection probes + max SDFGI). apply_quality_preset() writes each of these
-## into the live settings, then the per-lever apply functions + Events.graphics_quality_changed
-## carry them to the viewport / Environment / sky / grass / water. Order: Low, Med, High, Ultra, Ultra+RT.
+## Quality preset table. Index = graphics_quality (0 Low → 3 Ultra → 4 Ultra+RT). Ultra+RT
+## (the default) = Ultra plus the raster "RT-style" reflection/GI stack (SSR + SSIL +
+## reflection probes). apply_quality_preset() writes each of these into the live settings,
+## then the per-lever apply functions + Events.graphics_quality_changed carry them to the
+## viewport / Environment / sky / grass / water. Order: Low, Med, High, Ultra, Ultra+RT.
+##
+## FAIRNESS RULE (competitive integrity — игрок на Low не должен видеть лучше): every
+## lever that changes WHAT you can see is IDENTICAL on all five tiers — fog carriers
+## (volumetric/local fog + their densities), weather (climate zones/density), grass
+## (concealment), flora draw distance (sightlines), water refraction (seeing into water),
+## god rays, clouds, DOF (the same mild far-blur for everyone, per the user's call — the
+## dof_amount slider stays for personal tuning = "Custom"). Presets degrade IMAGE QUALITY
+## only: resolution scale, AA, shadows, GI/AO, the RT stack, terrain mesh detail, and the
+## gameplay-neutral ambient dust/embers density.
 const QUALITY_PRESETS := {
 	"render_scale": [0.6, 0.75, 0.9, 1.0, 1.0],
 	"msaa": [0, 1, 2, 2, 2],  # off / 2x / 4x / 4x / 4x
@@ -162,28 +175,27 @@ const QUALITY_PRESETS := {
 	"sdfgi": [false, false, true, true, true],
 	"ssao": [false, false, true, true, true],
 	"glow": [true, true, true, true, true],
-	"clouds": [false, true, true, true, true],
-	"water_refraction": [false, false, true, true, true],
-	"grass_density": [0.3, 0.6, 0.85, 1.0, 1.0],
+	"clouds": [true, true, true, true, true],  # FAIR: sky identical (detail freq stays tiered)
+	"water_refraction": [true, true, true, true, true],  # FAIR: seeing into water equal
+	"grass_density": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: grass is concealment
 	# RT-style tier (index 4 only): screen-space reflections + indirect light + baked probes.
 	# voxelgi stays false in every preset — it's an experimental manual-only toggle.
 	"ssr": [false, false, false, false, true],
 	"ssil": [false, false, false, false, true],
 	"reflection_probes": [false, false, false, false, true],
 	"voxelgi": [false, false, false, false, false],
-	# Cinematic pass III — tasteful defaults per tier; sliders can push beyond ("Custom").
-	"draw_distance": [0.6, 0.8, 1.0, 1.0, 1.2],
-	"particle_density": [0.3, 0.5, 0.85, 1.0, 1.0],
+	"draw_distance": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: equal flora sightlines
+	"particle_density": [0.3, 0.5, 0.85, 1.0, 1.0],  # ambient dust/embers ONLY (neutral)
 	"terrain_detail": [1.0, 1.0, 1.0, 1.3, 1.5],
-	"volumetric_fog_density": [1.0, 1.0, 1.0, 1.0, 1.0],
+	"volumetric_fog_density": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: fog banks equal
 	"shadow_distance": [80.0, 110.0, 140.0, 160.0, 200.0],
-	"dof_amount": [0.0, 0.0, 0.0, 0.06, 0.08],
-	"volumetric_fog": [false, false, false, true, true],
-	"local_fog": [false, false, false, true, true],
-	"climate_zones": [true, true, true, true, true],
-	"climate_density": [0.5, 0.7, 1.0, 1.0, 1.2],
-	"god_rays": [false, false, true, true, true],
-	"dof": [false, false, false, true, true],
+	"dof_amount": [0.06, 0.06, 0.06, 0.06, 0.06],  # FAIR: same mild far-blur for all
+	"volumetric_fog": [true, true, true, true, true],  # FAIR: the fog/storm/mutator carrier
+	"local_fog": [true, true, true, true, true],  # FAIR: fog banks visible to everyone
+	"climate_zones": [true, true, true, true, true],  # FAIR: rain/snow/sand for everyone
+	"climate_density": [1.0, 1.0, 1.0, 1.0, 1.0],  # FAIR: equal visibility through weather
+	"god_rays": [true, true, true, true, true],  # FAIR: equal light look inside fog
+	"dof": [true, true, true, true, true],  # FAIR (user's call: "вредит — так всем")
 	"terrain_parallax": [false, false, false, true, true],
 }
 
@@ -196,8 +208,30 @@ var _warned_newer := false
 
 func _ready() -> void:
 	load_config()
+	_apply_input_overrides()
 	# Apply after the first frame so the root viewport exists.
 	apply_all.call_deferred()
+
+
+## M7.6 remap: re-apply saved key overrides to the InputMap every boot. Only the
+## action's KEY events are swapped — mouse/pad events stay authored.
+func _apply_input_overrides() -> void:
+	var raw: Variant = get_value("input_overrides")
+	if not (raw is Dictionary):
+		return
+	for action in raw as Dictionary:
+		var act: String = String(action)
+		if not InputMap.has_action(act):
+			continue
+		var keycode: int = int((raw as Dictionary)[action])
+		if keycode <= 0:
+			continue
+		for ev in InputMap.action_get_events(act).duplicate():
+			if ev is InputEventKey:
+				InputMap.action_erase_event(act, ev)
+		var nk := InputEventKey.new()
+		nk.keycode = keycode as Key
+		InputMap.action_add_event(act, nk)
 
 
 ## Semantic-version compare: -1 if a<b, 0 if equal, 1 if a>b. Splits on ".",
@@ -245,6 +279,10 @@ func load_config() -> void:
 	_values = DEFAULTS.duplicate(true)
 	var cfg := ConfigFile.new()
 	if cfg.load(_path()) != OK:
+		# M7.6 GPU auto-preset: a FRESH profile (no settings.cfg) shouldn't launch
+		# the Ultra+RT default on weak hardware — pick a tier from the adapter name
+		# once; every later boot loads whatever the player saved.
+		_values["graphics_quality"] = _auto_quality_for_gpu()
 		return
 	# Version resilience: stamp lives in a "_meta" section (kept out of the settings
 	# key space). Missing = legacy save (compatible). NEWER than this build → warn once.
@@ -271,11 +309,65 @@ func load_config() -> void:
 	# the zones invisible — coerce anything in the old range to the 1.0 default.
 	if float(_values.get("volumetric_fog_density", 1.0)) <= 0.081:
 		_values["volumetric_fog_density"] = 1.0
+	# ONE-TIME CAMERA MIGRATION (centered behind-the-back default): a save written before the
+	# centered camera shipped carries the OLD over-the-shoulder value (camera_shoulder=1.0, maybe
+	# default_view=1) which would OVERRIDE the new 0.0 default — so an existing player never sees
+	# the behind-back framing. Force the centered third-person framing ONCE so they actually get
+	# it (they can re-pick shoulder/view in Settings after). Stamp keyed in "_meta" (NOT a version
+	# compare — GAME_VERSION wasn't bumped when the camera changed, so a save_ver test can't tell
+	# pre/post-centered saves apart); absence-of-flag is the signal, so it fires exactly once.
+	if not bool(cfg.get_value("_meta", "camera_centered_migrated", false)):
+		_values["camera_shoulder"] = 0.0
+		_values["default_view"] = 0
+		save()
+	# ONE-TIME CAMERA MIGRATION v2: the v1 flag above already stamped on most saves, so v1 can't
+	# re-fire — but users report STILL spawning in first-person ("from the head"), i.e. a saved
+	# default_view=1 the one-shot v1 never overrode. Re-force the behind-back third-person view ONCE
+	# more (separate flag so it fires exactly once on existing saves). The V key still toggles after.
+	if not bool(cfg.get_value("_meta", "camera_centered_v2", false)):
+		_values["camera_shoulder"] = 0.0
+		_values["default_view"] = 0
+		save()
+	# ONE-TIME PRESET MIGRATION (fairness rework): saves stamped before the threshold
+	# carry the OLD preset matrix (fog/weather off on Low-High, the old Ultra default) —
+	# re-apply the new Ultra+RT default so every player lands on the fair table once
+	# (they can re-pick any tier after; the whole table is fair now). The stamp lives in
+	# "_meta/presets_migrated" so the migration can never re-fire.
+	if not bool(cfg.get_value("_meta", "presets_migrated", false)):
+		for key in QUALITY_PRESETS:
+			_values[key] = QUALITY_PRESETS[key][4]
+		_values["graphics_quality"] = 4
+		save()
+
+
+## M7.6: coarse first-boot preset from the adapter string. Discrete/recent GPUs
+## (RTX / RX 6-9 / Arc) take the authored Ultra+RT; older discrete cards High;
+## anything integrated/unknown Medium. Headless keeps the default (never renders).
+func _auto_quality_for_gpu() -> int:
+	if DisplayServer.get_name() == "headless":
+		return int(DEFAULTS["graphics_quality"])
+	var gpu: String = RenderingServer.get_video_adapter_name().to_upper()
+	if gpu.contains("RTX") or gpu.contains("ARC"):
+		return 4
+	for tag in ["RX 6", "RX 7", "RX 8", "RX 9"]:
+		if gpu.contains(tag):
+			return 4
+	if gpu.contains("GTX") or gpu.contains("RX 5") or gpu.contains("VEGA"):
+		return 2
+	if gpu.contains("IRIS") or gpu.contains("UHD") or gpu.contains("RADEON(TM) GRAPHICS"):
+		return 1
+	return 2
 
 
 func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("_meta", "save_version", Settings.GAME_VERSION)
+	# Stamp the one-time preset migration (see load_config) — any save written by this
+	# build is already on the fair matrix, so the migration must never re-fire on it.
+	cfg.set_value("_meta", "presets_migrated", true)
+	# Stamp the one-time centered-camera migrations (v1 + v2, see load_config) likewise.
+	cfg.set_value("_meta", "camera_centered_migrated", true)
+	cfg.set_value("_meta", "camera_centered_v2", true)
 	for key in _values:
 		cfg.set_value("settings", key, _values[key])
 	cfg.save(_path())
@@ -446,7 +538,8 @@ func _apply_ui_fx(enabled: bool) -> void:
 func _apply_camera() -> void:
 	Settings.camera_distance_scale = clampf(float(get_value("camera_distance")), 0.6, 1.4)
 	Settings.camera_shoulder_scale = clampf(float(get_value("camera_shoulder")), 0.0, 1.0)
-	Settings.default_first_person = int(get_value("default_view")) == 1
+	# First-person spawn view is REMOVED — the saved value is ignored permanently.
+	Settings.default_first_person = false
 	Events.camera_settings_changed.emit()
 
 

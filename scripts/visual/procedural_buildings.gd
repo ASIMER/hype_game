@@ -26,63 +26,172 @@ class_name ProceduralBuildings
 ##
 ## `streaked()` (vertical rain-stain weathering) is used for TALL wall surfaces so
 ## stains run down; `weathered()` (broad grime mask) for slabs/roofs/horizontals.
+##
+## D3 — THESE COLOURS WERE DEAD CODE UNTIL THE D1 RELIGHT. The fine-grime detail layer ran
+## opaque in BLEND_MODE_MIX and replaced albedo outright, so every facade rendered as the
+## same grey noise no matter what was written here (which is why "чёрные здания" survived
+## several tuning passes). With the tint restored, each albedo below carries a perceptual
+## lift (v**0.78) — hue and the palette's internal ordering are preserved, the whole set
+## just clears the grade's readable floor. `metal`/`metal_dark` also drop from metallic
+## 0.40-0.45 to a paint-like value for the same reason the machine plates did: a metal
+## surface has no diffuse response and collapses to grey wherever there is nothing bright
+## to reflect (see ProcPlating.arch_finish).
+
+# --- MACRO GRADIENT (M6.9) — "grime settles low" -----------------------------------
+# Wall-class surfaces darken toward the ground and clear toward the roofline. Walls render
+# as ONE merged ArrayMesh per (parent, material) group (ChunkMeshMerger) baked from a SHARED
+# BoxMesh via SurfaceTool.append_from — there are no per-cell mesh nodes to tint and no
+# vertex-colour channel to write into. The gradient therefore rides the material's SECOND UV
+# projection: AO on UV2, with UV2 world-triplanar scaled to ZERO on X/Z so the texture's V
+# axis IS world height. Materials are not folded by the golden snapshot (GoldenSnapshot
+# ._fold_node folds node name/class/transform + MultiMesh buffers only) and the material
+# COUNT is unchanged, so the merge groups — and their ChunkMesh_N node names — stay identical.
+#
+# The ramp is SYMMETRIC about v=0.5 (dark) with v=0 clear, which buys three things:
+#   * seamless tiling — the sampler repeats every GRIME_PERIOD_M metres;
+#   * sign-independence — Godot negates the triplanar Y, and a symmetric ramp reads the
+#     same either way;
+#   * a no-op fallback — horizontal faces (and any surface without a UV2 projection) sample
+#     texel (0,0) = 1.0, i.e. completely untouched.
+# The NEXT dark band sits a full GRIME_PERIOD_M up; the tallest structure tops out near 35 m.
+const GRIME_PERIOD_M := 60.0  # world metres per ramp cycle
+const GRIME_REACH := 0.13  # ramp fraction the dark→clear rise spans (≈7.8 m of wall)
+const GRIME_FLOOR := 0.65  # darkest AO at ground level (1.0 = untouched)
+const GRIME_LIGHT_AFFECT := 0.3  # how much the skirt dims DIRECT light too (0 = ambient only)
+
+static var _grime_ramp_tex: ImageTexture = null
+
+
+## Gives a wall-class material the shared ground-grime skirt (see the block above). Mutates
+## and returns the SAME material — callers wrap their ProcMaterials result — so the material
+## count per building, and therefore the merged-chunk grouping, is unchanged.
+static func _ground_grime(m: StandardMaterial3D) -> StandardMaterial3D:
+	m.ao_enabled = true
+	m.ao_texture = _grime_ramp()
+	m.ao_on_uv2 = true
+	m.ao_light_affect = GRIME_LIGHT_AFFECT
+	m.uv2_triplanar = true
+	m.uv2_world_triplanar = true
+	# X/Z scale 0 → the triplanar U axis is constant and ONLY world Y drives the ramp; the
+	# horizontal (Y-plane) projection collapses onto texel (0,0), which is the clear end.
+	m.uv2_scale = Vector3(0.0, 1.0 / GRIME_PERIOD_M, 0.0)
+	m.uv2_offset = Vector3(0.0, 0.5, 0.0)  # world y=0 lands on the ramp's dark band
+	return m
+
+
+## The AO ramp: clear at v=0 and v=1, darkest at v=0.5, rising back over GRIME_REACH.
+## Grayscale and read LINEAR (runtime ImageTextures have no sRGB variant) — which is exactly
+## what AO wants, so unlike ProcMaterials' albedo bakes this one must NOT be srgb_to_linear'd.
+static func _grime_ramp() -> ImageTexture:
+	if _grime_ramp_tex != null:
+		return _grime_ramp_tex
+	var rows: int = 256
+	var img := Image.create(4, rows, false, Image.FORMAT_RGB8)
+	for y in range(rows):
+		var d: float = absf(float(y) / float(rows - 1) - 0.5)
+		var ao: float = lerpf(GRIME_FLOOR, 1.0, smoothstep(0.0, GRIME_REACH, d))
+		for x in range(4):
+			img.set_pixel(x, y, Color(ao, ao, ao))
+	img.generate_mipmaps()
+	_grime_ramp_tex = ImageTexture.create_from_image(img)
+	return _grime_ramp_tex
 
 
 ## Light worn concrete — broad grime, fully matte. Used for general walls/piers.
 ## Fine normal map + boosted relief (last arg) for crisp, detailed up-close concrete.
 static func mat_concrete(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.40, 0.40, 0.42), 0.0, 0.92, 0.5, sid * 7 + 3, 0.7, true)
+	return _ground_grime(
+		ProcMaterials.apply_pbr(
+			ProcMaterials.streaked(
+				Color(0.489, 0.489, 0.508), 0.0, 0.92, 0.5, sid * 7 + 3, 0.7, true
+			),
+			"concrete"
+		)
+	)
 
 
 ## Darker concrete for slabs/floors/roofs — horizontal grime (not streaked) + relief.
 static func mat_concrete_dark(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.27, 0.28, 0.30),
-		0.0,
-		0.94,
-		0.45,
-		sid * 13 + 5,
-		Vector3(0.13, 0.13, 0.13),
-		true,
-		0.7,
-		true
+	return _ground_grime(
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.360, 0.370, 0.391),
+				0.0,
+				0.94,
+				0.45,
+				sid * 13 + 5,
+				Vector3(0.13, 0.13, 0.13),
+				true,
+				0.7,
+				true
+			),
+			"concrete"
+		)
 	)
 
 
 ## Stained warehouse concrete — heavier dirt streaks + relief.
 static func mat_concrete_stained(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.33, 0.32, 0.30), 0.05, 0.9, 0.38, sid * 17 + 9, 0.7, true)
+	return _ground_grime(
+		ProcMaterials.apply_pbr(
+			ProcMaterials.streaked(
+				Color(0.421, 0.411, 0.391), 0.05, 0.9, 0.38, sid * 17 + 9, 0.7, true
+			),
+			"concrete"
+		)
+	)
 
 
 ## Mottled rust — broad noise so the corrosion patches read as blotchy, not striped.
 ## Moderate metallic + mid roughness so SDFGI reflections still catch. Strong normal
 ## relief for pitted, corroded depth (heightmap POM is unavailable on triplanar).
 static func mat_rust(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.46, 0.26, 0.16),
-		0.3,
-		0.6,
-		0.4,
-		sid * 23 + 1,
-		Vector3(0.12, 0.12, 0.12),
-		true,
-		0.8,
-		true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.546, 0.350, 0.239),
+			0.3,
+			0.6,
+			0.4,
+			sid * 23 + 1,
+			Vector3(0.12, 0.12, 0.12),
+			true,
+			0.8,
+			true
+		),
+		"rust"
 	)
 
 
 ## Dirtier structural metal — kept semi-reflective (metallic ~0.45, roughness ~0.55)
 ## so it reads as worn steel and SDFGI bounces off it.
 static func mat_metal(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.34, 0.37, 0.41), 0.45, 0.55, 0.5, sid * 29 + 4, Vector3(0.12, 0.12, 0.12), true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.431, 0.460, 0.499),
+			0.16,
+			0.55,
+			0.5,
+			sid * 29 + 4,
+			Vector3(0.12, 0.12, 0.12),
+			true
+		),
+		"metal"
 	)
 
 
 ## Dark grimy metal for ribs/door-ends/trim.
 static func mat_metal_dark(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.18, 0.19, 0.21), 0.4, 0.55, 0.5, sid * 31 + 2, Vector3(0.10, 0.10, 0.10), true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.262, 0.274, 0.296),
+			0.12,
+			0.55,
+			0.5,
+			sid * 31 + 2,
+			Vector3(0.10, 0.10, 0.10),
+			true
+		),
+		"metal"
 	)
 
 
@@ -93,15 +202,47 @@ static func mat_glass() -> StandardMaterial3D:
 	return ProceduralModels._mat(Color(0.35, 0.45, 0.55), 0.4, 0.1, Color(0.12, 0.18, 0.24), 0.6)
 
 
+# Day-night window glass pool [dark, dim, lit]: THREE shared materials; only the dim/lit
+# emission ENERGY is animated by world_atmosphere._apply_sun_ambient (warm windows at night).
+static var _glass_pool: Array[StandardMaterial3D] = []
+static var _glass_seq: int = 0
+static var _chunk_seq: int = 0  # per-build BreakableChunk id (reset by arena → co-op parity)
+
+
+static func glass_pool() -> Array[StandardMaterial3D]:
+	if _glass_pool.is_empty():
+		# TRANSPARENT glass (interactivity overhaul): alpha rides the albedo's 4th
+		# channel; metallic 0.4 + low roughness keeps the specular sky reflection that
+		# sells "glass" through the transparency. Panes are small → default alpha
+		# sorting is fine (fallback if shimmer vs water shows: ALPHA_DEPTH_PRE_PASS).
+		# INHABITED IN DAYLIGHT: the dim/lit panes carry a warm, more OPAQUE albedo (a room
+		# behind the glass rather than reflected sky), because the daytime warmth cannot come
+		# from emission — world_atmosphere drives emission_energy_multiplier to `k * night`,
+		# so anything set here is zeroed on the first sun ramp. The energies below are the
+		# pre-ramp/day baseline (what a model render or a pre-atmosphere frame shows).
+		var warm := Color(1.0, 0.85, 0.55)
+		var dark := ProceduralModels._mat(Color(0.30, 0.39, 0.48, 0.42), 0.4, 0.08)
+		var dim := ProceduralModels._mat(Color(0.40, 0.42, 0.44, 0.40), 0.4, 0.10, warm, 0.001)
+		var lit := ProceduralModels._mat(Color(0.60, 0.50, 0.36, 0.58), 0.3, 0.14, warm, 0.001)
+		dim.emission_energy_multiplier = 0.45
+		lit.emission_energy_multiplier = 1.6
+		for m: StandardMaterial3D in [dark, dim, lit]:
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_glass_pool = [dark, dim, lit]
+	return _glass_pool
+
+
 static func mat_container(sid: int) -> StandardMaterial3D:
 	# Pick a faded shipping-container color deterministically from seed, then weather
 	# it with vertical streaks (rust running down the corrugated panels).
+	# Brightened +~25% in the texture-quality pass: the old values went near-black on
+	# shaded faces under the cold grade + linear bake («чёрные контейнеры»).
 	var palette: Array[Color] = [
-		Color(0.42, 0.20, 0.14),  # rust red
-		Color(0.20, 0.34, 0.27),  # faded green
-		Color(0.18, 0.28, 0.40),  # navy
-		Color(0.46, 0.40, 0.20),  # ochre
-		Color(0.36, 0.37, 0.40),  # gray
+		Color(0.56, 0.27, 0.19),  # rust red
+		Color(0.27, 0.45, 0.36),  # faded green
+		Color(0.25, 0.38, 0.53),  # navy
+		Color(0.60, 0.52, 0.27),  # ochre
+		Color(0.47, 0.48, 0.52),  # gray
 	]
 	var idx: int = ProcHash.h(sid) % palette.size()
 	var c: Color = palette[idx]
@@ -114,7 +255,7 @@ static func mat_container(sid: int) -> StandardMaterial3D:
 ## reads through the bright daylight (the weathered grime overlay otherwise greys it out).
 static func mat_lacquer(sid: int = 0) -> StandardMaterial3D:
 	return ProcMaterials.weathered(
-		Color(0.70, 0.10, 0.08),
+		Color(0.757, 0.166, 0.139),
 		0.05,
 		0.45,
 		0.24,
@@ -128,43 +269,60 @@ static func mat_lacquer(sid: int = 0) -> StandardMaterial3D:
 
 ## Dark temple/lodge roof timber — broad grime, matte.
 static func mat_roofwood(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.15, 0.11, 0.09),
-		0.0,
-		0.82,
-		0.45,
-		sid * 31 + 2,
-		Vector3(0.10, 0.10, 0.10),
-		true,
-		0.7,
-		true
+	return ProcMaterials.apply_pbr(
+		ProcMaterials.weathered(
+			Color(0.228, 0.179, 0.153),
+			0.0,
+			0.82,
+			0.45,
+			sid * 31 + 2,
+			Vector3(0.10, 0.10, 0.10),
+			true,
+			0.7,
+			true
+		),
+		"timber"
 	)
 
 
 ## Off-white temple/lodge plaster wall — light grime.
 static func mat_plaster(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.84, 0.81, 0.74),
-		0.0,
-		0.9,
-		0.38,
-		sid * 41 + 9,
-		Vector3(0.07, 0.07, 0.07),
-		true,
-		0.6,
-		true
+	return _ground_grime(
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.873, 0.848, 0.791),
+				0.0,
+				0.9,
+				0.38,
+				sid * 41 + 9,
+				Vector3(0.07, 0.07, 0.07),
+				true,
+				0.6,
+				true
+			),
+			"plaster"
+		)
 	)
 
 
 ## Warm timber logs — alpine lodge walls. Vertical streaks read as plank/log grain.
 static func mat_timber(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.streaked(Color(0.34, 0.22, 0.13), 0.0, 0.85, 0.5, sid * 29 + 5, 0.7, true)
+	return _ground_grime(
+		ProcMaterials.apply_pbr(
+			ProcMaterials.streaked(
+				Color(0.431, 0.307, 0.204), 0.0, 0.85, 0.5, sid * 29 + 5, 0.7, true
+			),
+			"timber"
+		)
+	)
 
 
-## Bright snow — roof caps / lodge accents. Slightly glossy so it catches light.
+## Snow — roof caps / lodge accents. Albedo CAPPED at ~0.7 with a blue shadow lean
+## (art-panel P3: real snow reads white through CONTRAST — 0.9+ albedo under the
+## 2.8 sun merged sky/roof/ground into one blown sheet).
 static func mat_snow(sid: int = 0) -> StandardMaterial3D:
 	return ProcMaterials.weathered(
-		Color(0.90, 0.93, 0.98),
+		Color(0.740, 0.774, 0.840),
 		0.0,
 		0.62,
 		0.25,
@@ -179,31 +337,41 @@ static func mat_snow(sid: int = 0) -> StandardMaterial3D:
 ## Warm sandstone — desert ruins walls/columns/obelisk. Saturated tan with lighter grime so
 ## it reads sandy (not blown-out white) under the strong sun.
 static func mat_sandstone(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.74, 0.55, 0.31),
-		0.0,
-		0.9,
-		0.4,
-		sid * 19 + 7,
-		Vector3(0.11, 0.11, 0.11),
-		true,
-		0.75,
-		true
+	return _ground_grime(
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.791, 0.627, 0.401),
+				0.0,
+				0.9,
+				0.4,
+				sid * 19 + 7,
+				Vector3(0.11, 0.11, 0.11),
+				true,
+				0.75,
+				true
+			),
+			"stone"
+		)
 	)
 
 
 ## Darker weathered sandstone for caps / shadowed blocks.
 static func mat_sandstone_dark(sid: int = 0) -> StandardMaterial3D:
-	return ProcMaterials.weathered(
-		Color(0.56, 0.41, 0.23),
-		0.0,
-		0.92,
-		0.42,
-		sid * 17 + 4,
-		Vector3(0.12, 0.12, 0.12),
-		true,
-		0.75,
-		true
+	return _ground_grime(
+		ProcMaterials.apply_pbr(
+			ProcMaterials.weathered(
+				Color(0.636, 0.499, 0.318),
+				0.0,
+				0.92,
+				0.42,
+				sid * 17 + 4,
+				Vector3(0.12, 0.12, 0.12),
+				true,
+				0.75,
+				true
+			),
+			"stone"
+		)
 	)
 
 
@@ -218,24 +386,149 @@ static func mat_sandstone_dark(sid: int = 0) -> StandardMaterial3D:
 ## it. `rot_y_deg` rotates about Y only (keeps the box axis-aligned for collision via
 ## the StaticBody transform).
 static func _solid(
-	parent: Node3D, size: Vector3, mat: StandardMaterial3D, offset: Vector3, rot_y_deg: float = 0.0
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	rot_y_deg: float = 0.0,
+	breakable: bool = false,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
 ) -> StaticBody3D:
-	var body := StaticBody3D.new()
+	# `breakable` wall segments become a BreakableChunk (same box/collision; shoot to crumble).
+	# When the feature is OFF, the body + child names stay byte-identical to a plain _solid so the
+	# golden snapshot + world are completely unaffected (the destruction system is opt-in). `kind`
+	# (concrete/metal/stone) sets the debris/SFX/HP flavor locally; it is NOT folded into golden.
+	var make_chunk := breakable and Settings.CHUNK_DESTRUCTION_ENABLED
+	var body: StaticBody3D
+	if make_chunk:
+		_chunk_seq += 1
+		var c := BreakableChunk.new()
+		c.name = "Chunk_%d" % _chunk_seq
+		c.index = _chunk_seq
+		c.material_kind = kind
+		c.hp = Settings.CHUNK_HP * float(Settings.CHUNK_KIND_DEFS[kind]["hp_mult"])
+		c.chunk_size = size
+		c.chunk_color = mat.albedo_color
+		body = c
+	else:
+		body = StaticBody3D.new()
 	body.collision_layer = 1
 	body.collision_mask = 0
 	var basis := Basis.from_euler(Vector3(0.0, deg_to_rad(rot_y_deg), 0.0))
 	body.transform = Transform3D(basis, offset)
-	var mi := MeshInstance3D.new()
-	mi.mesh = ProceduralModels._box(size)
-	mi.material_override = mat
-	body.add_child(mi)
+	if make_chunk and Settings.CHUNK_MERGED_RENDER:
+		# Merged path: no per-cell MeshInstance — the cell renders inside a batched
+		# MultiMesh (ChunkMeshMerger.flush(), called by arena after the build, adds
+		# one MMI per (parent, material) group). ~4k fewer draw calls at POIs.
+		ChunkMeshMerger.queue(parent, body as BreakableChunk, size, mat)
+	else:
+		var mi := MeshInstance3D.new()
+		if make_chunk:
+			mi.name = "Mesh"
+		mi.mesh = ProceduralModels._box(size)
+		mi.material_override = mat
+		body.add_child(mi)
 	var col := CollisionShape3D.new()
+	if make_chunk:
+		col.name = "CollisionShape3D"
 	var shape := BoxShape3D.new()
 	shape.size = size
 	col.shape = shape
 	body.add_child(col)
 	parent.add_child(body)
 	return body
+
+
+## A shootable wall that crumbles LOCALLY: large walls split into a grid of ~CHUNK_CELL_SIZE
+## BreakableChunk cells (each an independent _solid breakable) so a burst punches a hole exactly
+## where you hit; small segments (≤ CHUNK_GRID_MIN) stay one cell. The thin horizontal axis is the
+## wall thickness (kept whole); the wide horizontal + the height are gridded. Cells tile flush (no
+## gaps); `_chunk_seq` increments in loop order → co-op byte-identical. When destruction is OFF, one
+## plain _solid is emitted (byte-identical → golden unaffected).
+static func _breakable_wall(
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	rot_y_deg: float = 0.0,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
+) -> void:
+	if not Settings.CHUNK_DESTRUCTION_ENABLED:
+		_solid(parent, size, mat, offset, rot_y_deg, false)
+		return
+	var thin_is_x: bool = size.x <= size.z  # the smaller horizontal extent is the wall thickness
+	var wide: float = size.z if thin_is_x else size.x
+	var thick: float = size.x if thin_is_x else size.z
+	if maxf(wide, size.y) <= Settings.CHUNK_GRID_MIN:
+		_solid(parent, size, mat, offset, rot_y_deg, true, kind)  # small wall — one breakable cell
+		return
+	var cols: int = maxi(1, int(ceil(wide / Settings.CHUNK_CELL_SIZE)))
+	var rows: int = maxi(1, int(ceil(size.y / Settings.CHUNK_CELL_SIZE)))
+	var cw: float = wide / float(cols)
+	var ch: float = size.y / float(rows)
+	var rot: float = deg_to_rad(rot_y_deg)
+	for r in rows:
+		var ly: float = -size.y * 0.5 + (float(r) + 0.5) * ch
+		for c in cols:
+			var lw: float = -wide * 0.5 + (float(c) + 0.5) * cw
+			var cell: Vector3 = Vector3(thick, ch, cw) if thin_is_x else Vector3(cw, ch, thick)
+			var lpos: Vector3 = Vector3(0.0, ly, lw) if thin_is_x else Vector3(lw, ly, 0.0)
+			var rp: Vector3 = lpos.rotated(Vector3.UP, rot) if rot != 0.0 else lpos
+			_solid(parent, cell, mat, offset + rp, rot_y_deg, true, kind)
+
+
+## Generalized breakable: split ANY box (floors/ceilings/containers/pillars, not just walls) into a
+## grid of BreakableChunk cells so it crumbles where you hit. The THINNEST axis is kept whole (the
+## slab/box "thickness"); the other two are gridded at `cell_size` (default coarse for big flat slabs
+## so "break everything" doesn't explode node counts). Gated on CHUNK_BREAK_FLOORS — when off (or
+## destruction off) one plain _solid is emitted (byte-identical → golden unaffected). `_chunk_seq`
+## increments in loop order → co-op byte-identical, exactly like _breakable_wall.
+static func _breakable_part(
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	rot_y_deg: float = 0.0,
+	cell_size: float = 0.0,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
+) -> void:
+	if not (Settings.CHUNK_DESTRUCTION_ENABLED and Settings.CHUNK_BREAK_FLOORS):
+		_solid(parent, size, mat, offset, rot_y_deg, false)
+		return
+	var cs: float = cell_size if cell_size > 0.0 else Settings.CHUNK_CELL_SIZE
+	# Thinnest axis kept whole; the other two are the gridded extents (ua, ub).
+	var ax: int = 0
+	if size.y <= size.x and size.y <= size.z:
+		ax = 1
+	elif size.z <= size.x and size.z <= size.y:
+		ax = 2
+	var ua: float = size.y if ax == 0 else size.x
+	var ub: float = size.z if ax != 2 else size.y
+	if maxf(ua, ub) <= Settings.CHUNK_GRID_MIN:
+		_solid(parent, size, mat, offset, rot_y_deg, true, kind)  # small part — one breakable cell
+		return
+	var na: int = maxi(1, int(ceil(ua / cs)))
+	var nb: int = maxi(1, int(ceil(ub / cs)))
+	var ca: float = ua / float(na)
+	var cb: float = ub / float(nb)
+	var rot: float = deg_to_rad(rot_y_deg)
+	for ia in na:
+		var la: float = -ua * 0.5 + (float(ia) + 0.5) * ca
+		for ib in nb:
+			var lb: float = -ub * 0.5 + (float(ib) + 0.5) * cb
+			var cell: Vector3
+			var lpos: Vector3
+			if ax == 0:
+				cell = Vector3(size.x, ca, cb)
+				lpos = Vector3(0.0, la, lb)
+			elif ax == 1:
+				cell = Vector3(ca, size.y, cb)
+				lpos = Vector3(la, 0.0, lb)
+			else:
+				cell = Vector3(ca, cb, size.z)
+				lpos = Vector3(la, lb, 0.0)
+			var rp: Vector3 = lpos.rotated(Vector3.UP, rot) if rot != 0.0 else lpos
+			_solid(parent, cell, mat, offset + rp, rot_y_deg, true, kind)
 
 
 ## Render-only decorative box (no collision) — for window glass, trim, signage that
@@ -248,6 +541,35 @@ static func _decor(
 	rot_deg: Vector3 = Vector3.ZERO
 ) -> MeshInstance3D:
 	return ProceduralModels._part(parent, ProceduralModels._box(size), mat, offset, rot_deg)
+
+
+## Tie render-only decor `pieces` to their NEAREST BreakableChunk cell among `root`'s direct
+## children, so each piece vanishes with the cell it decorates (no floating door plates /
+## coping after a break — «разрушаемость полная»). Positions compare in root-local space
+## (cells and decor are siblings). No-op when destruction is off (nothing ever breaks).
+static func _attach_decor(root: Node3D, pieces: Array) -> void:
+	if not Settings.CHUNK_DESTRUCTION_ENABLED:
+		return
+	var cells: Array = []
+	for ch in root.get_children():
+		if ch is BreakableChunk:
+			cells.append(ch)
+	if cells.is_empty():
+		return
+	for piece_v: Variant in pieces:
+		var piece := piece_v as Node3D
+		if piece == null:
+			continue
+		var best: BreakableChunk = null
+		var best_d: float = 1e9
+		for cell_v: Variant in cells:
+			var cell := cell_v as BreakableChunk
+			var dd: float = cell.position.distance_squared_to(piece.position)
+			if dd < best_d:
+				best_d = dd
+				best = cell
+		if best != null:
+			best.attached_decor.append(piece)
 
 
 ## A vertical collidable CYLINDER (round column / obelisk shaft) — both renders and collides
@@ -321,20 +643,24 @@ static func wall(
 	with_door: bool = false
 ) -> Node3D:
 	var root := Node3D.new()
-	var glass := mat_glass()
+	# Deterministic dark/dim/lit window pick (4/3/3 of 10) from the shared glass pool —
+	# 30% lit so a skyline reads as an inhabited city instead of a grid of dead panes.
+	_glass_seq += 1
+	var gpick: int = ProcHash.h(_glass_seq * 53 + int(length * 7.0 + height * 11.0)) % 10
+	var glass: StandardMaterial3D = glass_pool()[0 if gpick < 4 else (1 if gpick < 7 else 2)]
 	if with_door:
 		# Door gap centered, 1.6 wide × 2.2 tall. Left pier, right pier, lintel above.
 		var dw: float = 1.6
 		var dh: float = min(2.2, height - 0.2)
 		var side: float = (length - dw) * 0.5
 		if side > 0.05:
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(side, height, thickness),
 				mat,
 				Vector3(-(length - side) * 0.5, height * 0.5, 0.0)
 			)
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(side, height, thickness),
 				mat,
@@ -342,7 +668,7 @@ static func wall(
 			)
 		var lintel_h: float = height - dh
 		if lintel_h > 0.05:
-			_solid(
+			_breakable_wall(
 				root, Vector3(dw, lintel_h, thickness), mat, Vector3(0.0, dh + lintel_h * 0.5, 0.0)
 			)
 		# Small emissive door lamp beside the door (render-only, no OmniLight) so the
@@ -363,12 +689,14 @@ static func wall(
 		var head_y: float = sill_h + win_h
 		var ww: float = min(length * 0.5, 1.6)
 		var pier: float = (length - ww) * 0.5
-		# Sill strip across the full length.
-		_solid(root, Vector3(length, sill_h, thickness), mat, Vector3(0.0, sill_h * 0.5, 0.0))
+		# Sill strip across the full length (breakable — shoot a hole in it).
+		_breakable_wall(
+			root, Vector3(length, sill_h, thickness), mat, Vector3(0.0, sill_h * 0.5, 0.0)
+		)
 		# Header strip across the full length.
 		var header_h: float = height - head_y
 		if header_h > 0.05:
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(length, header_h, thickness),
 				mat,
@@ -376,25 +704,44 @@ static func wall(
 			)
 		# Side piers flanking the opening.
 		if pier > 0.05:
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(pier, win_h, thickness),
 				mat,
 				Vector3(-(length - pier) * 0.5, sill_h + win_h * 0.5, 0.0)
 			)
-			_solid(
+			_breakable_wall(
 				root,
 				Vector3(pier, win_h, thickness),
 				mat,
 				Vector3((length - pier) * 0.5, sill_h + win_h * 0.5, 0.0)
 			)
-		# Glass pane filling the opening (decorative, thin, no collision).
-		_decor(
-			root,
-			Vector3(ww, win_h, thickness * 0.4),
-			glass,
-			Vector3(0.0, sill_h + win_h * 0.5, 0.0)
-		)
+		# Glass pane filling the opening: a BREAKABLE solid (layer 1 — stops bullets
+		# and enemy LOS until shattered). Deterministic index from _glass_seq so the
+		# break replicates by id across peers (see BreakableGlass).
+		var pane_size := Vector3(ww, win_h, thickness * 0.4)
+		var pane := BreakableGlass.new()
+		pane.name = "Glass_%d" % _glass_seq
+		pane.index = _glass_seq
+		pane.pane_size = pane_size
+		pane.collision_layer = 1
+		pane.collision_mask = 0
+		pane.position = Vector3(0.0, sill_h + win_h * 0.5, 0.0)
+		var pane_mesh := MeshInstance3D.new()
+		pane_mesh.name = "Pane"
+		pane_mesh.mesh = ProceduralModels._box(pane_size)
+		pane_mesh.material_override = glass
+		# Sun must shine THROUGH glass (a transparent material still casts an opaque
+		# shadow unless casting is off).
+		pane_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pane.add_child(pane_mesh)
+		var pane_col := CollisionShape3D.new()
+		pane_col.name = "CollisionShape3D"
+		var pane_shape := BoxShape3D.new()
+		pane_shape.size = pane_size
+		pane_col.shape = pane_shape
+		pane.add_child(pane_col)
+		root.add_child(pane)
 		# Protruding sill ledge under the window (cheap silhouette detail; render-only).
 		var ledge := mat_concrete_dark(int(length * 17.0))
 		_decor(
@@ -405,45 +752,118 @@ static func wall(
 			root, Vector3(ww + 0.3, 0.1, thickness + 0.12), ledge, Vector3(0.0, head_y + 0.04, 0.0)
 		)
 	else:
-		_solid(root, Vector3(length, height, thickness), mat, Vector3(0.0, height * 0.5, 0.0))
+		_breakable_wall(
+			root, Vector3(length, height, thickness), mat, Vector3(0.0, height * 0.5, 0.0)
+		)
 	return root
 
 
 ## A horizontal floor/ceiling slab w(X) × d(Z), 0.3 thick, top face at local y=0
 ## (so place its node at the storey height you want the walking surface).
-static func floor_slab(w: float, d: float, mat: StandardMaterial3D) -> Node3D:
+## `hole` (slab-local XZ rect) cuts a STAIRWELL opening: zero-size = the exact old
+## single box (byte-identical golden for untouched callers), else up to 4 strips.
+static func floor_slab(
+	w: float, d: float, mat: StandardMaterial3D, hole: Rect2 = Rect2()
+) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+	if hole.size == Vector2.ZERO:
+		_breakable_slab(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+	else:
+		_slab_strips(root, w, d, mat, hole)
 	return root
+
+
+## A big flat slab / container body broken at the COARSE cell size (floors/ceilings/cargo). A const
+## can't reference the Settings autoload, so the coarse size is fetched at call time here. `kind`
+## flavors the debris/SFX (containers pass METAL, floors/roofs stay CONCRETE).
+static func _breakable_slab(
+	parent: Node3D,
+	size: Vector3,
+	mat: StandardMaterial3D,
+	offset: Vector3,
+	kind: int = Settings.CHUNK_KIND_CONCRETE
+) -> void:
+	_breakable_part(parent, size, mat, offset, 0.0, Settings.CHUNK_CELL_SIZE_BIG, kind)
+
+
+## Emit the 4 strip boxes of a holed slab deck (N/S full-width, W/E beside the hole). Each strip is
+## a breakable part so a holed floor/roof crumbles too.
+static func _slab_strips(
+	root: Node3D, w: float, d: float, mat: StandardMaterial3D, hole: Rect2
+) -> void:
+	var hx0: float = clampf(hole.position.x, -w * 0.5, w * 0.5)
+	var hx1: float = clampf(hole.end.x, -w * 0.5, w * 0.5)
+	var hz0: float = clampf(hole.position.y, -d * 0.5, d * 0.5)
+	var hz1: float = clampf(hole.end.y, -d * 0.5, d * 0.5)
+	var n_d: float = hz0 - (-d * 0.5)
+	if n_d > 0.05:
+		_breakable_slab(root, Vector3(w, 0.3, n_d), mat, Vector3(0.0, -0.15, -d * 0.5 + n_d * 0.5))
+	var s_d: float = d * 0.5 - hz1
+	if s_d > 0.05:
+		_breakable_slab(root, Vector3(w, 0.3, s_d), mat, Vector3(0.0, -0.15, d * 0.5 - s_d * 0.5))
+	var band_d: float = hz1 - hz0
+	var w_w: float = hx0 - (-w * 0.5)
+	if w_w > 0.05 and band_d > 0.05:
+		_breakable_slab(
+			root,
+			Vector3(w_w, 0.3, band_d),
+			mat,
+			Vector3(-w * 0.5 + w_w * 0.5, -0.15, hz0 + band_d * 0.5)
+		)
+	var e_w: float = w * 0.5 - hx1
+	if e_w > 0.05 and band_d > 0.05:
+		_breakable_slab(
+			root,
+			Vector3(e_w, 0.3, band_d),
+			mat,
+			Vector3(w * 0.5 - e_w * 0.5, -0.15, hz0 + band_d * 0.5)
+		)
 
 
 ## A flat roof slab (same as a floor but tinted, with a small parapet lip).
-static func roof(w: float, d: float, mat: StandardMaterial3D) -> Node3D:
+## `hole` cuts a roof-access opening exactly like floor_slab.
+static func roof(w: float, d: float, mat: StandardMaterial3D, hole: Rect2 = Rect2()) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
-	# Low parapet around the edges (knee height) so a roof reads as a roof.
+	if hole.size == Vector2.ZERO:
+		_breakable_slab(root, Vector3(w, 0.3, d), mat, Vector3(0.0, -0.15, 0.0))
+	else:
+		_slab_strips(root, w, d, mat, hole)
+	# Low parapet around the edges (knee height) so a roof reads as a roof. Breakable —
+	# one cell per strip (a 0.5 m trim; grid-cutting it would add ~100 bodies per roof).
 	var ph: float = 0.5
-	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, d * 0.5 - 0.12))
-	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, -d * 0.5 + 0.12))
-	_solid(root, Vector3(0.25, ph, d), mat, Vector3(w * 0.5 - 0.12, ph * 0.5, 0.0))
-	_solid(root, Vector3(0.25, ph, d), mat, Vector3(-w * 0.5 + 0.12, ph * 0.5, 0.0))
-	# Darker coping cap along the parapet top (cheap render-only silhouette trim).
+	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, d * 0.5 - 0.12), 0.0, true)
+	_solid(root, Vector3(w, ph, 0.25), mat, Vector3(0.0, ph * 0.5, -d * 0.5 + 0.12), 0.0, true)
+	_solid(root, Vector3(0.25, ph, d), mat, Vector3(w * 0.5 - 0.12, ph * 0.5, 0.0), 0.0, true)
+	_solid(root, Vector3(0.25, ph, d), mat, Vector3(-w * 0.5 + 0.12, ph * 0.5, 0.0), 0.0, true)
+	# Darker coping cap along the parapet top + vent stubs — render-only, TIED to their
+	# nearest breakable cell so nothing floats after the parapet/slab goes down.
 	var cap := mat_metal_dark(int(w * 53.0 + d))
-	_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, d * 0.5 - 0.12))
-	_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, -d * 0.5 + 0.12))
-	_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(w * 0.5 - 0.12, ph + 0.02, 0.0))
-	_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(-w * 0.5 + 0.12, ph + 0.02, 0.0))
-	# A vent/pipe stub on the roof for rooftop interest (render-only).
+	var trims: Array = []
+	trims.append(
+		_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, d * 0.5 - 0.12))
+	)
+	trims.append(
+		_decor(root, Vector3(w + 0.1, 0.08, 0.34), cap, Vector3(0.0, ph + 0.02, -d * 0.5 + 0.12))
+	)
+	trims.append(
+		_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(w * 0.5 - 0.12, ph + 0.02, 0.0))
+	)
+	trims.append(
+		_decor(root, Vector3(0.34, 0.08, d + 0.1), cap, Vector3(-w * 0.5 + 0.12, ph + 0.02, 0.0))
+	)
 	var vent := mat_metal(int(w * 71.0))
-	_decor(root, Vector3(0.5, 0.9, 0.5), vent, Vector3(w * 0.25, 0.45, -d * 0.2))
-	_decor(root, Vector3(0.3, 0.6, 0.3), vent, Vector3(-w * 0.28, 0.3, d * 0.22))
+	trims.append(_decor(root, Vector3(0.5, 0.9, 0.5), vent, Vector3(w * 0.25, 0.45, -d * 0.2)))
+	trims.append(_decor(root, Vector3(0.3, 0.6, 0.3), vent, Vector3(-w * 0.28, 0.3, d * 0.22)))
+	_attach_decor(root, trims)
 	return root
 
 
-## A square pillar of height h, radius r (box-section), base at local y=0.
+## A square pillar of height h, radius r (box-section), base at local y=0. Breakable: shoot the base
+## and the column crumbles into falling chunks (it does NOT structurally drop what it holds — Godot
+## 4.6.3 has no load-propagation solver, documented limitation).
 static func pillar(h: float, r: float, mat: StandardMaterial3D) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(r * 2.0, h, r * 2.0), mat, Vector3(0.0, h * 0.5, 0.0))
+	_breakable_slab(root, Vector3(r * 2.0, h, r * 2.0), mat, Vector3(0.0, h * 0.5, 0.0))
 	return root
 
 
@@ -476,14 +896,20 @@ static func rubble_pile(sid: int) -> Node3D:
 ## local y=0. Solid (blocks pathing) — read as crates/cargo.
 static func container(w: float, h: float, d: float, mat: StandardMaterial3D) -> Node3D:
 	var root := Node3D.new()
-	_solid(root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0))
-	# Corrugation ribs + a darker door end (decorative only).
-	var ribs := mat_metal_dark(int(w * 41.0 + d))
-	var n: int = int(d / 0.8)
-	for i in range(n):
-		var z: float = -d * 0.5 + 0.4 + i * 0.8
-		_decor(root, Vector3(w + 0.04, h * 0.9, 0.06), ribs, Vector3(0.0, h * 0.5, z))
-	_decor(root, Vector3(w * 0.9, h * 0.8, 0.04), ribs, Vector3(0.0, h * 0.5, d * 0.5 + 0.02))
+	# METAL: thinner (low HP), breaks into metal panels + sparks + a clang, and bullets PENETRATE it
+	# (soft cover, not a solid wall) — see weapon.gd + Settings.CHUNK_KIND_METAL.
+	_breakable_slab(
+		root, Vector3(w, h, d), mat, Vector3(0.0, h * 0.5, 0.0), Settings.CHUNK_KIND_METAL
+	)
+	# Corrugation comes ENTIRELY from the baked `corrugated` material now. The old decor
+	# ribs were THROUGH-plates slicing the interior every 0.8 m — render-only, so after the
+	# metal broke they hung mid-air («в контейнерах остаются плиты»). Only the darker door
+	# end remains, TIED to its nearest cell so it crumbles with the door face.
+	var end_mat := mat_metal_dark(int(w * 41.0 + d))
+	var door := _decor(
+		root, Vector3(w * 0.9, h * 0.8, 0.04), end_mat, Vector3(0.0, h * 0.5, d * 0.5 + 0.02)
+	)
+	_attach_decor(root, [door])
 	return root
 
 
@@ -513,6 +939,17 @@ static func build_tower(footprint: Vector2) -> Node3D:
 	var sh: float = 3.0  # storey height
 	# Ground slab.
 	_place(root, floor_slab(w, d, conc_d), Vector3(0, 0.0, 0))
+	# Interior STAIRWELL (vertical-access overhaul): one flight per storey stacked
+	# along the west wall — rise 3.0 over run 4.2 (~35.5°); every floor slab AND the
+	# roof are pierced by the same opening so the run continues to the rooftop.
+	var stair_x: float = -w * 0.5 + th + 1.05
+	var stair_z: float = -5.6
+	var stair_run: float = 4.2
+	var stair_hole: Rect2 = ProceduralStairs.hole_rect(
+		Vector2(stair_x, stair_z), Vector2(0, 1), stair_run, sh, 2.0
+	)
+	var stair_mat := mat_metal(17)
+	var tread_mat := mat_metal_dark(19)
 	for s in range(storeys):
 		var y: float = s * sh
 		# Every storey (incl. the ground floor) gets windows now → daylight reaches the
@@ -527,12 +964,34 @@ static func build_tower(footprint: Vector2) -> Node3D:
 		_place_wall(root, d, sh, th, conc, Vector3(w * 0.5 - th * 0.5, y, 0), 90.0, win, false)
 		# Warm ceiling lamp per storey, centered just under this storey's ceiling slab.
 		_light_fixture(root, Vector3(0.0, y + sh - 0.35, 0.0), 100 + s)
-		# Floor slab above each storey (the next storey's floor / final roof handled after).
+		# D3: furnish the storey. Render-only by default — the navmesh bakes from COLLIDERS,
+		# so furniture physically cannot break enemy pathing — and the keep-out list carries
+		# the door and the stairwell so nothing is placed where the player or a machine walks.
+		_place(
+			root,
+			ProceduralInteriors.furnish(
+				"tower",
+				w,
+				d,
+				sh,
+				800 + s * 37,
+				[Vector2(0.0, -d * 0.5), Vector2(stair_x, stair_z + stair_run * 0.5)]
+			),
+			Vector3(0, y, 0)
+		)
+		# Stair flight up from this storey (the top one exits onto the roof).
+		ProceduralStairs.flight(
+			root, Vector3(stair_x, y, stair_z), stair_run, sh, 2.0, 0.0, stair_mat, tread_mat
+		)
+		# Floor slab above each storey, pierced by the stairwell opening.
 		if s < storeys - 1:
-			_place(root, floor_slab(w - 0.4, d - 0.4, conc_d), Vector3(0, (s + 1) * sh, 0))
+			_place(
+				root, floor_slab(w - 0.4, d - 0.4, conc_d, stair_hole), Vector3(0, (s + 1) * sh, 0)
+			)
 	var top: float = storeys * sh
-	# Roof + small rooftop utility housing.
-	_place(root, roof(w, d, conc_d), Vector3(0, top, 0))
+	root.set_meta("roof_h", top)  # ProceduralBuildingDetail rooftop-kit anchor
+	# Roof (with the stairwell exit opening) + small rooftop utility housing.
+	_place(root, roof(w, d, conc_d, stair_hole), Vector3(0, top, 0))
 	_place(
 		root, container(w * 0.35, 2.0, d * 0.35, mat_metal(2)), Vector3(w * 0.18, top, -d * 0.15)
 	)
@@ -560,6 +1019,19 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 	var conc := mat_concrete_stained(int(w + d * 3.0))
 	var th: float = 0.4
 	var h: float = 5.0
+	root.set_meta("roof_h", h)  # ProceduralBuildingDetail rooftop-kit anchor
+	# Roof-access STAIR (vertical-access overhaul): one 5.0 m flight along the back
+	# wall in BOTH modes, running +X; the (wing-)roof gets the matching exit opening.
+	# Base sits +8 from the west wall: at +4 the low end was pocketed between the
+	# back-corner cover container and the rising lip — unenterable (live climb QA).
+	var stair_base := Vector3(-w * 0.5 + 8.0, 0.0, -d * 0.5 + th + 1.05)
+	var stair_run: float = 7.0
+	var stair_hole: Rect2 = ProceduralStairs.hole_rect(
+		Vector2(stair_base.x, stair_base.z), Vector2(1, 0), stair_run, h, 2.0
+	)
+	ProceduralStairs.flight(
+		root, stair_base, stair_run, h, 2.0, 90.0, mat_metal(23), mat_metal_dark(29)
+	)
 	# Back wall (north, -Z) + two side walls always; front wall only if NOT courtyard.
 	_place_wall(root, w, h, th, conc, Vector3(0, 0, -d * 0.5 + th * 0.5), 0.0, true, false)
 	# Side walls — if courtyard, only the OUTER halves (skip the inner span near origin).
@@ -573,11 +1045,13 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 			_place_wall(
 				root, seg, h, th, conc, Vector3(w * 0.5 - th * 0.5, 0, cz), 90.0, true, false
 			)
-			# Roof wing only over the closed (north) portion, leaving center open.
+			# Roof wing only over the closed (north) portion, leaving center open. The
+			# stair hole is converted into the wing slab's LOCAL frame (offset wing_cz).
 			var wing_cz: float = -COURT_CLEAR - (d * 0.5 - COURT_CLEAR) * 0.5 + 0.25
+			var wing_hole := Rect2(stair_hole.position - Vector2(0.0, wing_cz), stair_hole.size)
 			_place(
 				root,
-				roof(w, d * 0.5 - COURT_CLEAR + 0.5, mat_metal_dark(int(w))),
+				roof(w, d * 0.5 - COURT_CLEAR + 0.5, mat_metal_dark(int(w)), wing_hole),
 				Vector3(0, h, wing_cz)
 			)
 			# Two hanging warm lamps under the roof wing (thin rod + fixture) so the
@@ -599,12 +1073,26 @@ static func build_warehouse(footprint: Vector2, courtyard: bool = true) -> Node3
 			container(3.0, 2.6, 6.0, mat_container(11)),
 			Vector3(w * 0.5 - 2.0, 0, -d * 0.5 + 4.0)
 		)
+		# Mantle step-crates onto each cover container (their courtyard-facing +Z face).
+		ProceduralStairs.crate_steps(root, Vector3(-w * 0.5 + 2.0, 0.0, -d * 0.5 + 7.55), 0.0, 31)
+		ProceduralStairs.crate_steps(root, Vector3(w * 0.5 - 2.0, 0.0, -d * 0.5 + 7.55), 0.0, 37)
 	else:
 		_place_wall(root, d, h, th, conc, Vector3(-w * 0.5 + th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, d, h, th, conc, Vector3(w * 0.5 - th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, w, h, th, conc, Vector3(0, 0, d * 0.5 - th * 0.5), 0.0, false, true)
-		_place(root, roof(w, d, mat_metal_dark(int(w + d))), Vector3(0, h, 0))
+		_place(root, roof(w, d, mat_metal_dark(int(w + d)), stair_hole), Vector3(0, h, 0))
 		_place(root, container(3.0, 2.6, 6.0, mat_container(7)), Vector3(-w * 0.5 + 2.5, 0, 0))
+		# Mantle step-crates onto the lone cover container (its interior +X face).
+		ProceduralStairs.crate_steps(root, Vector3(-w * 0.5 + 4.55, 0.0, 0.0), 90.0, 33)
+		# D3: warehouse fit-out — racking, pallets, crates, a workbench. Keep-outs are the
+		# roller door (+Z wall) and the cover container that already stands inside.
+		_place(
+			root,
+			ProceduralInteriors.furnish(
+				"warehouse", w, d, h, 900, [Vector2(0.0, d * 0.5), Vector2(-w * 0.5 + 2.5, 0.0)]
+			),
+			Vector3.ZERO
+		)
 	return root
 
 
@@ -616,10 +1104,14 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 	var w: float = footprint.x
 	var d: float = footprint.y
 	# Weathered brick — vertical streaks (rain stains down the brickwork).
-	var brick := ProcMaterials.streaked(Color(0.40, 0.30, 0.26), 0.0, 0.85, 0.45, int(w * 19.0 + d))
+	var brick := ProcMaterials.apply_pbr(
+		ProcMaterials.streaked(Color(0.489, 0.391, 0.350), 0.0, 0.85, 0.45, int(w * 19.0 + d)),
+		"brick"
+	)
 	var conc_d := mat_concrete_dark(int(w + d * 2.0))
 	var th: float = 0.3
 	var sh: float = 3.0
+	root.set_meta("roof_h", sh * 2.0)  # ProceduralBuildingDetail rooftop-kit anchor
 	# Ground slab.
 	_place(root, floor_slab(w, d, conc_d), Vector3(0, 0.0, 0))
 	# Back + sides (ground). Front wall (with door) only if not courtyard.
@@ -634,10 +1126,31 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 			_place_wall(
 				root, seg, sh, th, brick, Vector3(w * 0.5 - th * 0.5, 0, cz), 90.0, true, false
 			)
-			# Upper floor + walls only over the closed (back) wing.
+			# Upper floor + walls only over the closed (back) wing. Vertical access:
+			# ONE flight (ground→wing floor, +X) along the back wall; the wing slab
+			# gets the matching opening (hole rect converted into the wing pieces'
+			# LOCAL frame via wing_cz). NO second flight: a same-lane switchback
+			# converges into a headroom wedge that jams the climber, and the 3 m wing
+			# strip has no room for a parallel lane (live climb QA) — the wing ROOF
+			# stays decorative. Base +4.5 from the west wall: at +1.0 the low end was
+			# pocketed against the wall, unenterable.
 			var wing_d: float = d * 0.5 - COURT_CLEAR + 0.5
 			var wing_cz: float = -COURT_CLEAR - (d * 0.5 - COURT_CLEAR) * 0.5 + 0.25
-			_place(root, floor_slab(w - 0.2, wing_d, conc_d), Vector3(0, sh, wing_cz))
+			var hs_z: float = -d * 0.5 + th + 1.05
+			var hs_base1 := Vector2(-w * 0.5 + 4.5, hs_z)
+			var hole1: Rect2 = ProceduralStairs.hole_rect(hs_base1, Vector2(1, 0), 4.2, sh, 2.0)
+			ProceduralStairs.flight(
+				root,
+				Vector3(hs_base1.x, 0.0, hs_z),
+				4.2,
+				sh,
+				2.0,
+				90.0,
+				mat_metal(43),
+				mat_metal_dark(47)
+			)
+			var wing_hole1 := Rect2(hole1.position - Vector2(0.0, wing_cz), hole1.size)
+			_place(root, floor_slab(w - 0.2, wing_d, conc_d, wing_hole1), Vector3(0, sh, wing_cz))
 			_place_wall(
 				root, w, sh, th, brick, Vector3(0, sh, -d * 0.5 + th * 0.5), 0.0, true, false
 			)
@@ -650,18 +1163,46 @@ static func build_house(footprint: Vector2, courtyard: bool = true) -> Node3D:
 		_place_wall(root, d, sh, th, brick, Vector3(-w * 0.5 + th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, d, sh, th, brick, Vector3(w * 0.5 - th * 0.5, 0, 0), 90.0, true, false)
 		_place_wall(root, w, sh, th, brick, Vector3(0, 0, d * 0.5 - th * 0.5), 0.0, false, true)
+		# Vertical access: two stacked +X flights along the north wall — ground→upper
+		# storey→roof; the upper slab + main roof share the opening (the decorative
+		# stepped cap is verified clear of the exit band in z).
+		var nstair_base := Vector3(-w * 0.5 + 1.0, 0.0, -d * 0.5 + th + 1.05)
+		var nhole: Rect2 = ProceduralStairs.hole_rect(
+			Vector2(nstair_base.x, nstair_base.z), Vector2(1, 0), 4.2, sh, 2.0
+		)
+		ProceduralStairs.flight(
+			root, nstair_base, 4.2, sh, 2.0, 90.0, mat_metal(43), mat_metal_dark(47)
+		)
+		ProceduralStairs.flight(
+			root,
+			Vector3(nstair_base.x, sh, nstair_base.z),
+			4.2,
+			sh,
+			2.0,
+			90.0,
+			mat_metal(43),
+			mat_metal_dark(47)
+		)
 		# Upper storey.
-		_place(root, floor_slab(w - 0.2, d - 0.2, conc_d), Vector3(0, sh, 0))
+		_place(root, floor_slab(w - 0.2, d - 0.2, conc_d, nhole), Vector3(0, sh, 0))
 		_place_wall(root, w, sh, th, brick, Vector3(0, sh, -d * 0.5 + th * 0.5), 0.0, true, false)
 		_place_wall(root, w, sh, th, brick, Vector3(0, sh, d * 0.5 - th * 0.5), 0.0, true, false)
 		_place_wall(root, d, sh, th, brick, Vector3(-w * 0.5 + th * 0.5, sh, 0), 90.0, true, false)
 		_place_wall(root, d, sh, th, brick, Vector3(w * 0.5 - th * 0.5, sh, 0), 90.0, true, false)
-		# Stepped roof (pitched look).
-		_place(root, roof(w, d, conc_d), Vector3(0, sh * 2.0, 0))
+		# Stepped roof (pitched look) — the main deck gets the stair exit opening.
+		_place(root, roof(w, d, conc_d, nhole), Vector3(0, sh * 2.0, 0))
 		_place(root, roof(w * 0.6, d * 0.6, conc_d), Vector3(0, sh * 2.0 + 0.4, 0))
 		# One warm lamp per floor (ground + upper).
 		_light_fixture(root, Vector3(0.0, sh - 0.35, 0.0), 222)
 		_light_fixture(root, Vector3(0.0, sh * 2.0 - 0.35, 0.0), 223)
+		# D3: dwelling fit-out on both floors. Keep-outs: the +Z door and the stair base.
+		var hdoors: Array[Vector2] = [
+			Vector2(0.0, d * 0.5), Vector2(-w * 0.5 + 1.0, -d * 0.5 + th + 1.05)
+		]
+		_place(root, ProceduralInteriors.furnish("house", w, d, sh, 940, hdoors), Vector3.ZERO)
+		_place(
+			root, ProceduralInteriors.furnish("house", w, d, sh, 941, hdoors), Vector3(0.0, sh, 0.0)
+		)
 	return root
 
 
@@ -735,6 +1276,18 @@ static func build_container_yard(footprint: Vector2, courtyard: bool = true) -> 
 				container(sx, ch, sz, mat_container(sd + lv)),
 				Vector3(cx + jitter, lv * ch, cz)
 			)
+		# Vertical access (only when the spot actually built — the intrusion skip above
+		# covers the attachment too): the 2-level south stack gets a welded ramp along
+		# its OUTER long face up to the 5.2 m top; the 1-level SW stack gets mantle
+		# step-crates at its outer face.
+		if sd == 8:
+			# EAST approach (-X run): the western corridor at this z band is occupied by
+			# the spot-4 crate chain (live climb QA jammed the player against crate C).
+			ProceduralStairs.yard_ramp(
+				root, Vector3(6.9, 0.0, cz + sz * 0.5 + 1.0), -90.0, float(levels) * ch, 53
+			)
+		elif sd == 4:
+			ProceduralStairs.crate_steps(root, Vector3(cx, 0.0, cz + sz * 0.5 + 0.55), 0.0, 59)
 	# A couple of rubble piles in open corners for ground detail (clear of center).
 	_place(root, rubble_pile(sd_seed(1)), Vector3(-ed_x * 0.4, 0, ed_z * 0.6))
 	# A pole lamp lighting the container area (3 m pole + fixture), placed just OUTSIDE
@@ -968,7 +1521,7 @@ static func _build_aframe(
 	)
 	# Front + back gable panels under the ridge.
 	var gable := ProcMaterials.weathered(
-		Color(0.30, 0.20, 0.12),
+		Color(0.391, 0.285, 0.191),
 		0.0,
 		0.85,
 		0.45,
@@ -1058,7 +1611,7 @@ static func _ruin_wall(
 		var sz: Vector3 = (
 			Vector3(0.55, hgt, seg_len * 0.92) if along_z else Vector3(seg_len * 0.92, hgt, 0.55)
 		)
-		_solid(parent, sz, mat, pos)
+		_breakable_wall(parent, sz, mat, pos)
 		if toppled:
 			var jitter: float = (ProcHash.hf(hk + 2) - 0.5) * 1.4
 			var bpos: Vector3 = (

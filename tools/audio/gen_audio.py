@@ -10,6 +10,7 @@ import math
 import os
 import random
 import struct
+import sys
 import wave
 
 # ---------------------------------------------------------------------------
@@ -531,9 +532,730 @@ def gen_music() -> list[float]:
     return _fade(mixed, 0.25, 0.25)
 
 
+def gen_glass_break() -> list[float]:
+    """Window shatter: a bright high-passed noise CRACK followed by 4-6 staggered
+    decaying sine 'tinkles' (falling shards). ~0.55 s total."""
+    total = 0.55
+    n = int(SAMPLE_RATE * total)
+    # The crack: short bright noise burst, high-passed hard.
+    crack = _noise(0.08, amp=1.0, seed=300)
+    crack = _highpass(crack, 2500)
+    crack = _adsr(crack, 0.001, 0.02, 0.2, 0.05)
+    out = crack + [0.0] * (n - len(crack))
+    # Shard tinkles: staggered short decaying sines at glassy frequencies.
+    rng_seed = 301
+    offsets = [0.05, 0.10, 0.16, 0.24, 0.31, 0.40]
+    freqs = [2600.0, 3400.0, 4200.0, 5100.0, 3000.0, 5800.0]
+    for k in range(len(offsets)):
+        dur = 0.06 + 0.03 * ((rng_seed + k * 7) % 4)
+        tink = _sine(freqs[k], dur, amp=0.35)
+        tink = _adsr(tink, 0.001, dur * 0.25, 0.0, dur * 0.7)
+        start = int(offsets[k] * SAMPLE_RATE)
+        for i in range(len(tink)):
+            if start + i < n:
+                out[start + i] += tink[i]
+    # Clamp + fade.
+    out = [max(-1.0, min(1.0, s)) for s in out]
+    return _fade(out, 0.001, 0.06)
+
+
+def gen_chunk_concrete() -> list[float]:
+    """Concrete crumble: a low sub THUMP + a gritty muffled rubble gurgle (double-lowpassed noise)
+    + a short mid CRACK attack. The 'обвал' centerpiece — heavy + dusty. ~0.55 s."""
+    total = 0.55
+    n = int(SAMPLE_RATE * total)
+    # Sub thump: descending 70 -> 40 Hz sine (weight under the break).
+    boom = []
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        f = 70.0 * math.exp(-t * 5.0)
+        boom.append(0.9 * math.sin(2 * math.pi * f * i / SAMPLE_RATE))
+    boom = _adsr(boom, 0.002, 0.12, 0.2, 0.40)
+    # Rubble body: noise → double single-pole lowpass for a granular, muffled scatter.
+    body = _noise(total, amp=0.9, seed=310)
+    body = _lowpass(body, 800)
+    body = _lowpass(body, 800)
+    body = _adsr(body, 0.001, 0.18, 0.25, 0.32)
+    # Mid crack transient so the break has an attack edge.
+    crack = _noise(0.06, amp=0.7, seed=311)
+    crack = _highpass(crack, 400)
+    crack = _adsr(crack, 0.001, 0.03, 0.0, 0.03)
+    crack = crack + [0.0] * (n - len(crack))
+    return _fade(_mix(boom, body, crack), 0.001, 0.06)
+
+
+def gen_chunk_metal() -> list[float]:
+    """Container clang: 3 INHARMONIC resonant partials (metallic ring) + a high-passed impact crunch
+    + a small low thump for weight. ~0.45 s."""
+    total = 0.45
+    n = int(SAMPLE_RATE * total)
+    # Inharmonic partials (not octaves → metal, not a tone).
+    ring_a = _adsr(_sine(322.0, total, amp=0.5), 0.001, 0.25, 0.0, 0.24)
+    ring_b = _adsr(_sine(505.0, total, amp=0.32), 0.001, 0.22, 0.0, 0.21)
+    ring_c = _adsr(_sine(781.0, total, amp=0.22), 0.001, 0.20, 0.0, 0.19)
+    # Impact crunch.
+    crunch = _noise(0.08, amp=0.8, seed=320)
+    crunch = _highpass(crunch, 900)
+    crunch = _adsr(crunch, 0.001, 0.04, 0.0, 0.04)
+    crunch = crunch + [0.0] * (n - len(crunch))
+    # Low body thump.
+    thump = _adsr(_sine(90.0, 0.14, amp=0.4), 0.001, 0.05, 0.0, 0.09)
+    thump = thump + [0.0] * (n - len(thump))
+    return _fade(_mix(ring_a, ring_b, ring_c, crunch, thump), 0.001, 0.05)
+
+
+def gen_chunk_stone() -> list[float]:
+    """Rock crack: a sharp DRY high-passed crack (brighter than concrete, little sub) + a short
+    lowpassed gravel tail + a small mid thump. ~0.4 s."""
+    total = 0.4
+    n = int(SAMPLE_RATE * total)
+    # Sharp dry crack.
+    crack = _noise(0.07, amp=1.0, seed=330)
+    crack = _highpass(crack, 1200)
+    crack = _lowpass(crack, 5000)
+    crack = _adsr(crack, 0.001, 0.025, 0.1, 0.03)
+    crack = crack + [0.0] * (n - len(crack))
+    # Gravel tail.
+    grav = _noise(total, amp=0.5, seed=331)
+    grav = _lowpass(grav, 1500)
+    grav = _adsr(grav, 0.001, 0.10, 0.2, 0.22)
+    # Small mid thump for body (quieter than concrete).
+    thump = _adsr(_sine(120.0, 0.1, amp=0.35), 0.001, 0.04, 0.0, 0.06)
+    thump = thump + [0.0] * (n - len(thump))
+    return _fade(_mix(crack, grav, thump), 0.001, 0.05)
+
+
+def _chord_pad(freqs: list[float], dur: float, amp: float, detune: float = 0.6) -> list[float]:
+    """Detuned dual-osc pad for a chord segment, slow tremolo, lowpassed."""
+    n = int(SAMPLE_RATE * dur)
+    out = [0.0] * n
+    for note in freqs:
+        for osc, det in ((0.55, 0.0), (0.45, detune)):
+            ph = 0.0
+            step = 2 * math.pi * (note + det) / SAMPLE_RATE
+            for i in range(n):
+                t = i / SAMPLE_RATE
+                trem = 1.0 + 0.12 * math.sin(2 * math.pi * 0.19 * t + note)
+                out[i] += amp * osc * trem * math.sin(ph)
+                ph += step
+    return _lowpass(out, 900)
+
+
+def gen_music_long() -> list[float]:
+    """~96 s evolving dark-ambient loop: 4-chord minor progression pads + sub pulse +
+    sparse inharmonic metallic hits + slow noise swells. Replaces the 6 s pad stub."""
+    seg_dur = 24.0
+    chords = [
+        [82.41, 98.00, 123.47],   # Em (E2 G2 B2)
+        [65.41, 82.41, 98.00],    # C  (C2 E2 G2)
+        [55.00, 65.41, 82.41],    # Am (A1 C2 E2)
+        [61.74, 73.42, 92.50],    # Bdim-ish (B1 D2 F#2)
+    ]
+    out: list[float] = []
+    for ci, chord in enumerate(chords):
+        seg = _chord_pad(chord, seg_dur, 0.30)
+        # Slow bandpassed noise swell across the segment (cinematic breath).
+        swell = _lowpass(_highpass(_noise(seg_dur, 0.5, seed=500 + ci), 250), 900)
+        n = len(seg)
+        for i in range(n):
+            t = i / SAMPLE_RATE
+            env = 0.5 - 0.5 * math.cos(2 * math.pi * t / seg_dur)  # rise+fall per segment
+            seg[i] += swell[i] * 0.16 * env
+        # Sub pulse every 2 s (soft 42 Hz thump).
+        thump_len = int(0.30 * SAMPLE_RATE)
+        for beat in range(int(seg_dur / 2.0)):
+            start = int(beat * 2.0 * SAMPLE_RATE)
+            for i in range(thump_len):
+                if start + i < n:
+                    tt = i / SAMPLE_RATE
+                    envp = math.exp(-tt * 9.0)
+                    seg[start + i] += 0.22 * envp * math.sin(2 * math.pi * 42.0 * tt)
+        # Sparse metallic rings (inharmonic partials, quiet, seeded offsets).
+        rng = random.Random(900 + ci)
+        for _hit in range(2):
+            start = int(rng.uniform(3.0, seg_dur - 4.0) * SAMPLE_RATE)
+            ring_len = int(2.2 * SAMPLE_RATE)
+            for i in range(ring_len):
+                if start + i < n:
+                    tt = i / SAMPLE_RATE
+                    envr = math.exp(-tt * 2.2)
+                    v = 0.055 * envr * (
+                        math.sin(2 * math.pi * 317.0 * tt)
+                        + 0.6 * math.sin(2 * math.pi * 503.0 * tt)
+                        + 0.4 * math.sin(2 * math.pi * 787.0 * tt)
+                    )
+                    seg[start + i] += v
+        out.extend(seg)
+    # Soft-clip the mix and keep the loop seam quiet.
+    out = [math.tanh(s * 0.85) for s in out]
+    return _fade(out, 0.4, 0.6)
+
+
+def _amb_wind(dur: float, lp: float, amp: float, seed: int, gust_hz: float = 0.07) -> list[float]:
+    wind = _lowpass(_noise(dur, amp, seed=seed), lp)
+    n = len(wind)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        wind[i] *= 0.6 + 0.4 * (0.5 + 0.5 * math.sin(2 * math.pi * gust_hz * t + seed))
+    return wind
+
+
+def gen_amb_urban() -> list[float]:
+    """Urban ruins: low wind + faint machine hum + a distant groan once per loop."""
+    dur = 28.0
+    wind = _amb_wind(dur, 200, 0.55, seed=1100)
+    n = len(wind)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        hum = 0.05 * math.sin(2 * math.pi * 55.0 * t) + 0.03 * math.sin(2 * math.pi * 110.3 * t)
+        wind[i] += hum * (0.7 + 0.3 * math.sin(2 * math.pi * 0.05 * t))
+    groan = _lowpass(_noise(2.5, 0.35, seed=1101), 300)
+    groan = _adsr(groan, 0.8, 0.6, 0.4, 1.0)
+    start = int(14.0 * SAMPLE_RATE)
+    for i in range(len(groan)):
+        if start + i < n:
+            wind[start + i] += groan[i] * 0.4
+    return _fade(wind, 0.3, 0.3)
+
+
+def gen_amb_snow() -> list[float]:
+    """Alpine: whistling airy wind — band-swept noise, no hum, cold gusts."""
+    dur = 28.0
+    base = _amb_wind(dur, 500, 0.5, seed=1200, gust_hz=0.11)
+    whistle = _highpass(_lowpass(_noise(dur, 0.30, seed=1201), 1100), 350)
+    n = len(base)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        base[i] += whistle[i] * (0.35 + 0.35 * math.sin(2 * math.pi * 0.09 * t + 1.0))
+    return _fade(base, 0.3, 0.3)
+
+
+def gen_amb_desert() -> list[float]:
+    """Desert: dry mid wind + thin grit shimmer + slow deep swells."""
+    dur = 28.0
+    base = _amb_wind(dur, 420, 0.5, seed=1300, gust_hz=0.05)
+    grit = _highpass(_noise(dur, 0.12, seed=1301), 2400)
+    sub = _lowpass(_noise(dur, 0.4, seed=1302), 90)
+    n = len(base)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        base[i] += grit[i] * (0.5 + 0.5 * math.sin(2 * math.pi * 0.23 * t))
+        base[i] += sub[i] * (0.4 + 0.6 * (0.5 + 0.5 * math.sin(2 * math.pi * 0.03 * t)))
+    return _fade(base, 0.3, 0.3)
+
+
+def gen_amb_rain() -> list[float]:
+    """Rain biome: steady patter (banded noise flutter) + low rumble + a soft far thunder."""
+    dur = 28.0
+    patter = _highpass(_lowpass(_noise(dur, 0.6, seed=1400), 6500), 1400)
+    n = len(patter)
+    flutter = random.Random(1401)
+    amp = 0.8
+    for i in range(n):
+        if i % 441 == 0:  # ~10 ms grains — rain density flicker
+            amp = 0.65 + flutter.random() * 0.5
+        patter[i] *= amp
+    rumble = _lowpass(_noise(dur, 0.35, seed=1402), 120)
+    thunder = _lowpass(_noise(4.0, 0.6, seed=1403), 160)
+    thunder = _adsr(thunder, 1.2, 1.0, 0.35, 1.6)
+    start = int(17.0 * SAMPLE_RATE)
+    for i in range(n):
+        patter[i] = patter[i] * 0.55 + rumble[i] * 0.5
+    for i in range(len(thunder)):
+        if start + i < n:
+            patter[start + i] += thunder[i] * 0.5
+    return _fade(patter, 0.3, 0.3)
+
+
+def gen_robot_alert() -> list[float]:
+    """Machine spotted you: two rising FM chirps + a click. Stealth-relevant cue."""
+    def chirp(f0: float, f1: float, dur: float, amp: float) -> list[float]:
+        n = int(SAMPLE_RATE * dur)
+        out = []
+        ph = 0.0
+        for i in range(n):
+            t = i / n
+            f = f0 + (f1 - f0) * t
+            ph += 2 * math.pi * f / SAMPLE_RATE
+            v = math.sin(ph) + 0.35 * math.sin(2 * ph)  # square-ish edge
+            out.append(amp * v)
+        return _adsr(out, 0.004, dur * 0.2, 0.6, dur * 0.4)
+
+    click = _adsr(_highpass(_noise(0.03, 0.8, seed=1500), 1800), 0.001, 0.01, 0.0, 0.019)
+    gap = _silence(0.05)
+    c1 = chirp(620.0, 1150.0, 0.16, 0.7)
+    c2 = chirp(780.0, 1500.0, 0.20, 0.75)
+    return _fade(_concat(click, c1, gap, c2), 0.002, 0.03)
+
+
+def gen_robot_death() -> list[float]:
+    """Power-down: descending quantized sweep + spark crackle (layered under the boom)."""
+    dur = 0.85
+    n = int(SAMPLE_RATE * dur)
+    sweep = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 880.0 * math.exp(-t * 3.2) + 55.0
+        f = round(f / 40.0) * 40.0  # coarse steps → glitchy power-down
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        sweep.append(0.6 * math.sin(ph) * (1.0 - t * 0.6))
+    sweep = _adsr(sweep, 0.004, 0.1, 0.7, 0.35)
+    crackle = _highpass(_noise(dur, 0.4, seed=1600), 2200)
+    rng = random.Random(1601)
+    gate = 0.0
+    for i in range(n):
+        if i % 220 == 0:
+            gate = 1.0 if rng.random() < 0.35 else 0.15
+        crackle[i] *= gate * (1.0 - i / n)
+    return _fade(_mix(sweep, crackle), 0.002, 0.06)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
+def gen_music_combat() -> list[float]:
+    """COMBAT overlay stem (M1 music layers): 24 s percussive dark loop — kick
+    pulse + metallic hats + a tense low drone. Faded IN over the calm bed while
+    machines are actively fighting the player; loops seamlessly."""
+    dur = 24.0
+    n = int(SAMPLE_RATE * dur)
+    bpm = 132.0
+    beat = 60.0 / bpm
+
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Kick: pitch-dropping sine thump every beat.
+    kick = []
+    kn = int(SAMPLE_RATE * 0.16)
+    ph = 0.0
+    for i in range(kn):
+        t = i / kn
+        f = 120.0 - 75.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        kick.append(0.9 * math.sin(ph) * (1.0 - t) ** 1.5)
+    # Metallic hat: short highpassed noise tick.
+    hat = _adsr(_highpass(_noise(0.05, 0.5, seed=3100), 4000), 0.001, 0.02, 0.2, 0.028)
+    total_beats = int(dur / beat)
+    for b in range(total_beats):
+        t0 = b * beat
+        add(kick, t0, 1.0 if b % 4 != 3 else 0.7)
+        add(hat, t0 + beat * 0.5, 0.5)
+        if b % 8 in (2, 6):
+            add(hat, t0 + beat * 0.75, 0.35)
+    # Tense drone: slow-beating detuned low pair, present the whole loop.
+    drone_a = _sine(55.0, dur, 0.16)
+    drone_b = _sine(55.9, dur, 0.14)
+    drone = _lowpass(_mix(drone_a, drone_b), 300)
+    for i in range(n):
+        out[i] += drone[i]
+    # Gentle loop-safe fade only at the extreme edges (kept tiny for looping).
+    return _fade([math.tanh(s * 0.9) for s in out], 0.01, 0.01)
+
+
+def gen_music_tension() -> list[float]:
+    """TENSION stem (v0.5-B3 music layers): ~36 s sparse unease between calm and combat —
+    a slow sub heartbeat, a barely-there detuned shimmer, sparse metallic pings and a
+    breathing air swell. Faded IN while machines SEARCH near the player; loops seamlessly."""
+    dur = 36.0
+    n = int(SAMPLE_RATE * dur)
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Slow sub heartbeat: a soft pitch-dropping thump pair every 2.4 s.
+    thump = []
+    tn = int(SAMPLE_RATE * 0.22)
+    ph = 0.0
+    for i in range(tn):
+        t = i / tn
+        f = 52.0 - 18.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        thump.append(0.5 * math.sin(ph) * (1.0 - t) ** 2)
+    beat_period = 2.4
+    for b in range(int(dur / beat_period)):
+        t0 = b * beat_period
+        add(thump, t0, 0.9)
+        add(thump, t0 + 0.34, 0.55)
+    # Detuned high shimmer with a slow breathing LFO (very quiet — unease, not melody).
+    shimmer_a = _sine(659.3, dur, 0.022)
+    shimmer_b = _sine(663.1, dur, 0.020)
+    for i in range(n):
+        lfo = 0.5 + 0.5 * math.sin(2 * math.pi * i / SAMPLE_RATE / 9.0)
+        out[i] += (shimmer_a[i] + shimmer_b[i]) * lfo
+    # Sparse metallic pings on an irregular (but loop-stable) grid.
+    ping = _adsr(_highpass(_noise(0.5, 0.30, seed=4200), 2600), 0.002, 0.1, 0.25, 0.4)
+    for t0 in (3.1, 8.7, 13.4, 19.9, 26.2, 31.8):
+        add(ping, t0, 0.8)
+    # Breathing air bed: lowpassed noise with an 18 s swell cycle.
+    air = _lowpass(_noise(dur, 0.10, seed=4300), 500)
+    for i in range(n):
+        swell = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(2 * math.pi * i / SAMPLE_RATE / 18.0))
+        out[i] += air[i] * swell
+    return _fade([math.tanh(s) for s in out], 0.02, 0.02)
+
+
+def gen_music_hangar() -> list[float]:
+    """HANGAR theme: the menu/hub bed, ~40 s.
+
+    The shell used to borrow the raid's `music` bed, which is a tense in-mission drone —
+    it made standing in your own hangar feel like being hunted, and it left the player no
+    contrast to arrive from when the raid actually started. This is the opposite pole of
+    the same world: still cold and mechanical, but at REST. A slow major-ish drone chord,
+    a distant hall reverb wash, and the machine shop's own idle — a soft compressor cycle
+    and rare tool clinks. No pulse and no rhythm on purpose: a beat here would compete
+    with the menu, and the moment the raid's percussive stems come in has to feel new.
+    """
+    dur = 40.0
+    n = int(SAMPLE_RATE * dur)
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Sustained chord (A2 / E3 / C#4) with slow independent LFOs so it never sits still.
+    for freq, amp, lfo_s in ((110.0, 0.085, 13.0), (164.8, 0.055, 17.0), (277.2, 0.030, 21.0)):
+        tone = _sine(freq, dur, amp)
+        for i in range(n):
+            lfo = 0.62 + 0.38 * math.sin(2 * math.pi * i / SAMPLE_RATE / lfo_s)
+            out[i] += tone[i] * lfo
+    # A fifth an octave down, very quiet — gives the chord a floor without muddying it.
+    sub = _sine(82.4, dur, 0.045)
+    for i in range(n):
+        out[i] += sub[i]
+    # Hall wash: heavily lowpassed noise breathing on a 24 s cycle (the empty big room).
+    hall = _lowpass(_noise(dur, 0.075, seed=7710), 380)
+    for i in range(n):
+        swell = 0.4 + 0.6 * (0.5 + 0.5 * math.sin(2 * math.pi * i / SAMPLE_RATE / 24.0))
+        out[i] += hall[i] * swell
+    # Shop idle: a compressor that cycles on and off, softer than the chord.
+    hum = _lowpass(_noise(3.4, 0.06, seed=7720), 900)
+    for t0 in (1.5, 15.2, 28.6):
+        add(_fade(hum, 0.6, 0.9), t0, 0.9)
+    # Rare tool clinks, placed off the LFO periods so the loop seam stays unpredictable.
+    clink = _adsr(_highpass(_noise(0.35, 0.22, seed=7730), 3100), 0.001, 0.06, 0.18, 0.28)
+    for t0 in (6.3, 19.1, 33.7):
+        add(clink, t0, 0.7)
+    return _fade([math.tanh(s) for s in out], 0.03, 0.03)
+
+
+def gen_music_boss() -> list[float]:
+    """BOSS stem (v0.5-B3 music layers): ~24 s heavy industrial assault — driving kick,
+    a two-note low riff, dense metallic hats, a dissonant alarm stab and a constant sub.
+    REPLACES the combat stem while a live boss is near; loops seamlessly."""
+    dur = 24.0
+    n = int(SAMPLE_RATE * dur)
+    bpm = 140.0
+    beat = 60.0 / bpm
+    out = [0.0] * n
+
+    def add(samples: list[float], at_s: float, gain: float = 1.0) -> None:
+        start = int(at_s * SAMPLE_RATE)
+        for j, v in enumerate(samples):
+            k = start + j
+            if 0 <= k < n:
+                out[k] += v * gain
+
+    # Hard kick: deeper + punchier than the combat stem's.
+    kick = []
+    kn = int(SAMPLE_RATE * 0.18)
+    ph = 0.0
+    for i in range(kn):
+        t = i / kn
+        f = 135.0 - 90.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        kick.append(1.0 * math.sin(ph) * (1.0 - t) ** 1.4)
+    hat = _adsr(_highpass(_noise(0.04, 0.55, seed=5100), 5000), 0.001, 0.015, 0.2, 0.022)
+    # Low riff note: buzzy stacked-harmonic pulse (saw-ish), lowpassed.
+    def riff_note(freq: float, note_dur: float) -> list[float]:
+        m = int(SAMPLE_RATE * note_dur)
+        buf = []
+        phase = 0.0
+        for i in range(m):
+            phase += 2 * math.pi * freq / SAMPLE_RATE
+            v = (
+                math.sin(phase)
+                + 0.5 * math.sin(2 * phase)
+                + 0.33 * math.sin(3 * phase)
+                + 0.25 * math.sin(4 * phase)
+            )
+            buf.append(0.30 * v)
+        return _adsr(_lowpass(buf, 700), 0.004, 0.05, 0.75, 0.08)
+
+    riff_a = riff_note(55.0, beat * 0.45)  # A1
+    riff_c = riff_note(65.4, beat * 0.45)  # C2
+    total_beats = int(dur / beat)
+    for b in range(total_beats):
+        t0 = b * beat
+        add(kick, t0, 1.0)
+        if b % 4 == 3:
+            add(kick, t0 + beat * 0.5, 0.8)  # driving double on the bar end
+        add(hat, t0 + beat * 0.5, 0.5)
+        if b % 2 == 1:
+            add(hat, t0 + beat * 0.25, 0.3)
+            add(hat, t0 + beat * 0.75, 0.35)
+        # Two-note riff: A1 pumping eighths, C2 lift on the last bar of each 4.
+        note = riff_c if (b % 16) >= 12 else riff_a
+        add(note, t0, 1.0)
+        add(note, t0 + beat * 0.5, 0.75)
+    # Dissonant alarm stab every 4 bars (392+415 Hz — a minor-second scream).
+    stab_n = int(SAMPLE_RATE * 0.5)
+    stab = []
+    ph_a = 0.0
+    ph_b = 0.0
+    for i in range(stab_n):
+        t = i / stab_n
+        ph_a += 2 * math.pi * 392.0 / SAMPLE_RATE
+        ph_b += 2 * math.pi * 415.3 / SAMPLE_RATE
+        stab.append(0.16 * (math.sin(ph_a) + math.sin(ph_b)) * (1.0 - t))
+    for bar4 in range(int(total_beats / 16)):
+        add(stab, bar4 * 16 * beat + 8 * beat, 1.0)
+    # Constant sub dread.
+    sub = _lowpass(_sine(41.2, dur, 0.14), 120)
+    for i in range(n):
+        out[i] += sub[i]
+    return _fade([math.tanh(s * 0.85) for s in out], 0.01, 0.01)
+
+
+def gen_shot_tail_far() -> list[float]:
+    """D5.1 far tail — the low BOOM that rolls back in after a shot fired across the field.
+    Deliberately ATTACK-LESS (the crack is a separate, already-recorded layer; a distant
+    report has no click) and built as a canyon roll: the body plus four progressively
+    duller, quieter reflections. Carries a deliberate 200-900 Hz grit band so the
+    per-emitter distance filter has something to chew on — otherwise a 200 m boom would
+    only be QUIETER than a 40 m one, never duller. ~1.15 s."""
+    total = 1.15
+    n = int(SAMPLE_RATE * total)
+    # Body: double-lowpassed noise, slow attack, long exponential decay.
+    body = _lowpass(_lowpass(_noise(total, 1.0, seed=6100), 260), 260)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        body[i] *= min(1.0, t / 0.03) * math.exp(-t * 3.4)
+    # Mid grit — the band the distance filter works on.
+    grit = _lowpass(_highpass(_noise(total, 0.5, seed=6101), 200), 900)
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        grit[i] *= min(1.0, t / 0.02) * math.exp(-t * 6.0)
+    # Sub: 62 -> 34 Hz drop, the weight you feel rather than hear.
+    sub = []
+    ph = 0.0
+    for i in range(n):
+        t = i / SAMPLE_RATE
+        f = 34.0 + 28.0 * math.exp(-t * 4.0)
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        sub.append(0.8 * math.sin(ph) * math.exp(-t * 2.6))
+    out = [body[i] * 0.9 + grit[i] * 0.35 + sub[i] for i in range(n)]
+    for delay_s, gain, lp in (
+        (0.085, 0.55, 200.0),
+        (0.185, 0.38, 160.0),
+        (0.330, 0.24, 130.0),
+        (0.550, 0.14, 110.0),
+    ):
+        echo = _lowpass(body, lp)
+        start = int(delay_s * SAMPLE_RATE)
+        for i in range(n - start):
+            out[start + i] += echo[i] * gain
+    return _fade([math.tanh(s * 0.9) for s in out], 0.004, 0.12)
+
+
+def gen_shot_tail_slap() -> list[float]:
+    """D5.1 INDOOR tail — a room slap-back instead of the open-field roll: four tight,
+    bright reflections (the walls are metres away, not hundreds) over a small low thump.
+    Dry on purpose; the SFX bus reverb adds the room on top. ~0.34 s."""
+    total = 0.34
+    n = int(SAMPLE_RATE * total)
+    out = [0.0] * n
+    tap = _lowpass(_highpass(_noise(0.05, 1.0, seed=6200), 500), 3200)
+    tap = _adsr(tap, 0.001, 0.02, 0.15, 0.028)
+    for delay_s, gain, lp in (
+        (0.000, 0.90, 3200.0),
+        (0.042, 0.60, 2400.0),
+        (0.095, 0.40, 1600.0),
+        (0.165, 0.22, 1100.0),
+    ):
+        echo = _lowpass(tap, lp)
+        start = int(delay_s * SAMPLE_RATE)
+        for i in range(len(echo)):
+            if start + i < n:
+                out[start + i] += echo[i] * gain
+    thump = _adsr(_sine(96.0, 0.12, amp=0.5), 0.002, 0.04, 0.0, 0.07)
+    for i in range(min(len(thump), n)):
+        out[i] += thump[i]
+    return _fade([math.tanh(s) for s in out], 0.002, 0.05)
+
+
+def gen_bullet_whizz(
+    seed: int = 6300, f0: float = 2600.0, f1: float = 700.0, dur: float = 0.15
+) -> list[float]:
+    """D5.1 near miss — the ZIP of a round passing within a couple of metres: a dry crack
+    at the head, a band of air that darkens as it goes by, and a descending tone (the
+    Doppler of the pass). Short and dry; the room is the SFX bus's job."""
+    n = int(SAMPLE_RATE * dur)
+    bright = _highpass(_noise(dur, 1.0, seed=seed), 1800)
+    dark = _lowpass(_highpass(_noise(dur, 1.0, seed=seed + 1), 400), 1200)
+    air = []
+    for i in range(n):
+        t = i / n
+        env = math.exp(-((t - 0.25) ** 2) / 0.05)  # approach -> pass -> gone
+        air.append((bright[i] * (1.0 - t) + dark[i] * t) * env * 0.8)
+    tone = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = f0 + (f1 - f0) * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        tone.append(0.35 * math.sin(ph) * math.exp(-t * 5.0))
+    crack = _adsr(_highpass(_noise(0.012, 0.9, seed=seed + 2), 2500), 0.0005, 0.006, 0.0, 0.005)
+    crack = crack + [0.0] * (n - len(crack))
+    return _fade(_mix(air, tone, crack), 0.001, 0.02)
+
+
+def gen_skill_cast() -> list[float]:
+    """Generic ability cast: a bright two-tone energy chirp (dash/blink/shield…)."""
+
+    def chirp(f0: float, f1: float, dur: float, amp: float) -> list[float]:
+        n = int(SAMPLE_RATE * dur)
+        out = []
+        ph = 0.0
+        for i in range(n):
+            t = i / n
+            f = f0 + (f1 - f0) * t
+            ph += 2 * math.pi * f / SAMPLE_RATE
+            out.append(amp * (math.sin(ph) + 0.25 * math.sin(2 * ph)))
+        return _adsr(out, 0.004, 0.03, 0.7, dur * 0.5)
+
+    return _fade(_concat(chirp(520, 980, 0.1, 0.7), chirp(760, 1400, 0.12, 0.6)), 0.002, 0.04)
+
+
+def gen_skill_meteor() -> list[float]:
+    """Meteor call: a falling WHISTLE (1500→240 Hz) over a growing low rumble —
+    the impact itself reuses the existing explosion sample."""
+    dur = 0.9
+    n = int(SAMPLE_RATE * dur)
+    whistle = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 1500.0 - 1260.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        whistle.append(0.55 * math.sin(ph) * (0.4 + 0.6 * t))
+    rumble = _lowpass(_noise(dur, 0.8, seed=2100), 160)
+    rumble = [v * (i / n) for i, v in enumerate(rumble)]
+    return _fade(_mix(_adsr(whistle, 0.05, 0.1, 0.9, 0.2), rumble), 0.004, 0.05)
+
+
+def gen_skill_storm() -> list[float]:
+    """Storm field: 4 s of swirling wind with an icy shimmer tremolo."""
+    dur = 4.2
+    n = int(SAMPLE_RATE * dur)
+    wind = _lowpass(_noise(dur, 0.85, seed=2200), 900)
+    out = []
+    for i, v in enumerate(wind):
+        t = i / n
+        trem = 0.55 + 0.45 * math.sin(2 * math.pi * 5.2 * t * dur)
+        out.append(v * trem * (0.35 + 0.65 * math.sin(math.pi * t)))
+    shimmer = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 1800.0 + 700.0 * math.sin(2 * math.pi * 0.8 * t * dur)
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        shimmer.append(0.12 * math.sin(ph) * (0.5 + 0.5 * math.sin(2 * math.pi * 3.0 * t * dur)))
+    return _fade(_mix(out, shimmer), 0.05, 0.4)
+
+
+def gen_skill_leap() -> list[float]:
+    """Leap take-off: an upward whoosh (rising band of noise + sine sweep)."""
+    dur = 0.35
+    n = int(SAMPLE_RATE * dur)
+    woosh = _highpass(_noise(dur, 0.7, seed=2300), 500)
+    woosh = [v * (i / n) for i, v in enumerate(woosh)]
+    sweep = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 240.0 + 640.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        sweep.append(0.4 * math.sin(ph) * t)
+    return _fade(_mix(woosh, sweep), 0.004, 0.06)
+
+
+def gen_skill_slam() -> list[float]:
+    """Slam landing: a deep body thud + dirt burst."""
+    dur = 0.45
+    thud = []
+    ph = 0.0
+    n = int(SAMPLE_RATE * dur)
+    for i in range(n):
+        t = i / n
+        f = 82.0 - 40.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        thud.append(0.95 * math.sin(ph) * (1.0 - t) ** 1.6)
+    dirt = _lowpass(_noise(0.22, 0.7, seed=2400), 700)
+    dirt = _adsr(dirt, 0.002, 0.05, 0.4, 0.15)
+    return _fade(_mix(thud, dirt + _silence(dur - 0.22)), 0.002, 0.08)
+
+
+def gen_skill_breach() -> list[float]:
+    """Breach charge: a mean descending roar with metallic grit."""
+    dur = 0.55
+    n = int(SAMPLE_RATE * dur)
+    roar = []
+    ph = 0.0
+    for i in range(n):
+        t = i / n
+        f = 220.0 - 130.0 * t
+        ph += 2 * math.pi * f / SAMPLE_RATE
+        v = math.sin(ph) + 0.45 * math.sin(2 * ph) + 0.2 * math.sin(3 * ph)
+        roar.append(0.6 * v * (1.0 - t * 0.5))
+    grit = _highpass(_noise(dur, 0.35, seed=2500), 1400)
+    grit = [v * (1.0 - i / n) for i, v in enumerate(grit)]
+    return _fade(_mix(_adsr(roar, 0.01, 0.08, 0.8, 0.2), grit), 0.003, 0.08)
+
+
+def gen_skill_zap() -> list[float]:
+    """Chain shock: electric crackle + two descending zap blips."""
+    dur = 0.35
+    n = int(SAMPLE_RATE * dur)
+    crackle = _highpass(_noise(dur, 0.6, seed=2600), 2400)
+    rng = random.Random(2601)
+    gate = 0.0
+    for i in range(n):
+        if i % 180 == 0:
+            gate = 1.0 if rng.random() < 0.4 else 0.1
+        crackle[i] *= gate * (1.0 - i / n)
+
+    def blip(f0: float, f1: float, dur_b: float, amp: float) -> list[float]:
+        nb = int(SAMPLE_RATE * dur_b)
+        out = []
+        ph = 0.0
+        for i in range(nb):
+            t = i / nb
+            f = f0 + (f1 - f0) * t
+            ph += 2 * math.pi * f / SAMPLE_RATE
+            out.append(amp * math.sin(ph))
+        return _adsr(out, 0.002, 0.02, 0.5, dur_b * 0.4)
+
+    blips = _concat(blip(1600, 700, 0.09, 0.55), _silence(0.05), blip(1300, 500, 0.09, 0.45))
+    return _fade(_mix(crackle, blips + _silence(max(0.0, dur - 0.23))), 0.002, 0.05)
+
 
 def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -564,7 +1286,49 @@ def main() -> None:
         # Water immersion (Lane B)
         ("water_splash.wav",   gen_water_splash),
         ("underwater.wav",     gen_underwater),
+        # Breakable windows
+        ("glass_break.wav",    gen_glass_break),
+        # Material-typed building/rock collapse (Destruction 2.1)
+        ("chunk_concrete.wav", gen_chunk_concrete),
+        ("chunk_metal.wav",    gen_chunk_metal),
+        ("chunk_stone.wav",    gen_chunk_stone),
+        # Production audio pass (2026-08): long evolving music, biome ambient beds,
+        # robot vocalizations (alert = stealth info, death = power-down).
+        ("music_long.wav",     gen_music_long),
+        ("amb_urban.wav",      gen_amb_urban),
+        ("amb_snow.wav",       gen_amb_snow),
+        ("amb_desert.wav",     gen_amb_desert),
+        ("amb_rain.wav",       gen_amb_rain),
+        ("robot_alert.wav",    gen_robot_alert),
+        ("robot_death.wav",    gen_robot_death),
+        # M1 music layers: combat overlay stem (converted to .ogg for the loop).
+        ("music_combat.wav",   gen_music_combat),
+        # v0.5-B3 music layers: tension + boss stems (converted to .ogg, WAVs deleted).
+        ("music_tension.wav",  gen_music_tension),
+        ("music_boss.wav",     gen_music_boss),
+        # Hangar theme: the shell/menu bed, so the hub stops borrowing the raid's drone.
+        ("music_hangar.wav",   gen_music_hangar),
+        # D5.1 gunfire body: the distant boom that rolls back in, the indoor slap-back
+        # and the bullet whizz-by (two variants so a burst of near misses is not one clip).
+        ("shot_tail_far.wav",  gen_shot_tail_far),
+        ("shot_tail_slap.wav", gen_shot_tail_slap),
+        ("bullet_whizz.wav",   lambda: gen_bullet_whizz(6300, 2600.0, 700.0, 0.15)),
+        ("bullet_whizz2.wav",  lambda: gen_bullet_whizz(6320, 3300.0, 980.0, 0.12)),
+        # MOBA skill rework (v0.4.5): per-ability cast/impact sounds.
+        ("skill_cast.wav",     gen_skill_cast),
+        ("skill_meteor.wav",   gen_skill_meteor),
+        ("skill_storm.wav",    gen_skill_storm),
+        ("skill_leap.wav",     gen_skill_leap),
+        ("skill_slam.wav",     gen_skill_slam),
+        ("skill_breach.wav",   gen_skill_breach),
+        ("skill_zap.wav",      gen_skill_zap),
     ]
+
+    # Optional CLI filter: `python gen_audio.py music_long amb_rain` regenerates only
+    # the named jobs (base name, no extension) instead of all 32.
+    wanted = {a.lower() for a in sys.argv[1:]}
+    if wanted:
+        jobs = [j for j in jobs if j[0].rsplit(".", 1)[0].lower() in wanted]
 
     generated = 0
     for filename, fn in jobs:

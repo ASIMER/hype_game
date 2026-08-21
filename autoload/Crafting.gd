@@ -101,6 +101,7 @@ func craft(r: CraftRecipe) -> bool:
 	if r.cost > 0:
 		MetaProgression.spend(r.cost)
 	Stash.add(r.output_id, maxi(1, r.output_count))
+	Events.crafted.emit(r.id, r.output_id)
 	return true
 
 

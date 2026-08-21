@@ -233,7 +233,7 @@ func _build_skill_rows() -> void:
 		var desc_lbl := Label.new()
 		desc_lbl.text = tr(String(info.get("desc", "")))
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
-		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.add_theme_font_size_override("font_size", 13)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		text_col.add_child(desc_lbl)
 
@@ -306,7 +306,7 @@ func _build_power_rows() -> void:
 		var desc_lbl := Label.new()
 		desc_lbl.text = tr(String(info.get("desc", "")))
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
-		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.add_theme_font_size_override("font_size", 13)
 		text_col.add_child(desc_lbl)
 
 		var status := Label.new()
@@ -433,7 +433,7 @@ func _rebuild_mastery_rows() -> void:
 
 		# XP sub-label + the current "veteran" handling bonus from this level.
 		var xp_lbl := Label.new()
-		xp_lbl.add_theme_font_size_override("font_size", 11)
+		xp_lbl.add_theme_font_size_override("font_size", 12)
 		xp_lbl.add_theme_color_override("font_color", COL_DIM)
 		var bonus_txt := ""
 		if lvl > 0:
@@ -597,7 +597,7 @@ func _make_panel() -> PanelContainer:
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	pc.add_child(UIStyle.micro_header(title, UIStyle.TEAL, 15))
 	return pc
 

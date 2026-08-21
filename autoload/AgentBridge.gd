@@ -177,8 +177,7 @@ func _handle_line(line: String) -> void:
 			_pending_look += Vector2(float(json.get("dx", 0.0)), float(json.get("dy", 0.0)))
 			_send({"ok": true})
 		"aim":
-			# Precisely point the player's camera at a target (engine-side math, exact). target:
-			# "nearest"(default) | enemy name | "weakpoint" | "point" (the world x,y,z).
+			# Exact engine-side aim. target: "nearest"(def) | enemy name | "weakpoint" | "point"(x,y,z).
 			var atgt := str(json.get("target", "nearest"))
 			var aimed := false
 			if atgt == "point":
@@ -286,6 +285,33 @@ func _handle_line(line: String) -> void:
 			# QA: NavigationServer visibility (maps/regions/per-enemy agent path state)
 			# for diagnosing ground-enemy pathing failures. Read-only.
 			_send(NavDebug.capture(get_tree()))
+		"probe":
+			# QA (read-only): first layer-1 surface below {x,y,z} — drives loot_audit.py.
+			var ppos := Vector3(
+				float(json.get("x", 0.0)), float(json.get("y", 0.0)), float(json.get("z", 0.0))
+			)
+			var snapped: Vector3 = LootPickup.snap_to_surface(get_tree().current_scene, ppos)
+			_send({"ok": true, "hit": [snapped.x, snapped.y, snapped.z]})
+		"glass":
+			# QA: breakable windows. No args = summary; {break, index|nearest} = server shatter.
+			if bool(json.get("break", false)) and GameState.is_local_authority_server():
+				var gi: int = int(json.get("index", -1))
+				var gpl3: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
+				if bool(json.get("nearest", false)) and gpl3 is Node3D:
+					gi = BreakableGlass.nearest_unbroken((gpl3 as Node3D).global_position)
+				NetworkManager.request_break_glass(gi)
+			_send(BreakableGlass.debug_summary())
+		"nemesis":
+			# QA: Machine Nemesis. {action:"state"|"force_birth"|"inject"} — logic in NemesisQA
+			# (kept out of this file — it's at the 1800-line ceiling).
+			_send(NemesisQA.run(get_tree(), json))
+		"chemistry":  # QA: Machine Chemistry (Phase 5) — logic in ChemistryQA (file at the ceiling).
+			_send(await ChemistryQA.run(get_tree(), json))
+		"chunk":  # QA: BreakableChunk wall destruction — logic in AgentChunkDebug (file at ceiling).
+			_send(AgentChunkDebug.run(get_tree(), json))
+		"perf":
+			# QA: frame-time sampling ({window: seconds}) — fps/frame_ms p95/draws/nodes.
+			_send(await PerfProbe.capture(get_tree(), float(json.get("window", 1.0))))
 		"mutator":
 			# QA (batch C): {id:"fog"|"double_loot"|"elite_patrols"|"night_raid"|""} forces
 			# the raid mutator for every FOLLOWING deploy AND applies it immediately
@@ -522,9 +548,15 @@ func _handle_line(line: String) -> void:
 			_send({"ok": _ui_action(str(json.get("action", "")))})
 		"setting":
 			# Debug: get/set a SettingsManager value (verify apply + persist).
+			# graphics_quality routes through apply_quality_preset so the WHOLE lever
+			# bundle lands (one-click semantics — same path as the menu dropdown);
+			# a bare set_value would only change the label and leave the matrix stale.
 			var skey := str(json.get("key", ""))
 			if json.has("value"):
-				SettingsManager.set_value(skey, json.get("value"))
+				if skey == "graphics_quality":
+					SettingsManager.apply_quality_preset(int(json.get("value")))
+				else:
+					SettingsManager.set_value(skey, json.get("value"))
 			_send({"ok": true, "value": SettingsManager.get_value(skey)})
 		"goto":
 			# Face a world XZ point and walk forward toward it for `duration`.
@@ -535,8 +567,7 @@ func _handle_line(line: String) -> void:
 			_do_action(str(json.get("action", "")))
 			_send({"ok": true})
 		"hold":
-			# Sustained input hold (crouch/interact/carry/jump -> _held; fire/sprint/ads ->
-			# their own bools). The counterpart to tap-only `act`.
+			# Sustained hold (crouch/interact/… → _held; fire/sprint/ads → bools) vs tap-only `act`.
 			var hact := str(json.get("action", ""))
 			var hon := bool(json.get("on", true))
 			match hact:
@@ -548,6 +579,8 @@ func _handle_line(line: String) -> void:
 					ads = hon
 				_:
 					_held[hact] = hon
+					# Engine-level too so Input.is_action_pressed consumers (TAB scoreboard) see it.
+					(Input.action_press if hon else Input.action_release).call(hact)
 			_send({"ok": true})
 		"noise":
 			# QA: inject an AI-audible noise at the player ({loudness, kind}) — isolates
@@ -949,7 +982,23 @@ func _debug_power(json: Dictionary) -> Dictionary:
 	return {"ok": false, "error": "unknown action"}
 
 
+# The crosshair report is refreshed from _physics_process (space-state queries are
+# only thread-safe inside the physics step — physics/3d/run_on_separate_thread);
+# the verb + state assembly read this cache (≤1 physics frame stale, fine for QA).
+var _crosshair_cache: Dictionary = {"ok": false, "error": "not ready"}
+
+
+func _physics_process(_delta: float) -> void:
+	if not active:
+		return
+	_crosshair_cache = _crosshair_raycast()
+
+
 func _debug_crosshair() -> Dictionary:
+	return _crosshair_cache
+
+
+func _crosshair_raycast() -> Dictionary:
 	var p: Node = _local_player(get_tree().get_nodes_in_group(Groups.PLAYERS))
 	var cam: Camera3D = p.get_node_or_null("CameraPivot/SpringArm3D/Camera3D") if p else null
 	if cam == null:
@@ -1039,9 +1088,8 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array 
 	var path: String = scene_map.get(eid, "")
 	if path == "" or not ResourceLoader.exists(path):
 		return false
-	# Resolve the replicated enemy container from the ARENA first — deriving it from
-	# "any live enemy's parent" fails on a fully swept field (QA kill-sweeps), which
-	# made the FIRST debug spawn after a sweep silently no-op.
+	# Resolve the replicated enemy container from the ARENA first — "any live enemy's
+	# parent" fails on a swept field (the FIRST spawn after a QA sweep no-op'd).
 	var container: Node = null
 	var arena_node: Node = get_tree().get_first_node_in_group(Groups.ARENA)
 	if arena_node != null:
@@ -1057,8 +1105,7 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array 
 	var enemy: Node = (load(path) as PackedScene).instantiate()
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
-	# Forced elite modifiers: encode prefix letters into the node name (the same
-	# replication channel the wave roll uses; robot_enemy parses it in _ready).
+	# Forced elite modifiers: letters ride the node name (robot_enemy parses in _ready).
 	if not mods.is_empty():
 		var flags := ""
 		var letter := {"armored": "A", "swift": "S", "volatile": "V", "regenerating": "R"}
@@ -1072,9 +1119,11 @@ func _debug_spawn(eid: String, dist: float, as_hunter: bool = true, mods: Array 
 	if fwd.length_squared() < 0.0001:
 		fwd = Vector3.FORWARD
 	var spot: Vector3 = (p as Node3D).global_position + fwd.normalized() * dist
-	# Snap Y to the TERRAIN at the target XZ — the player's own Y is wrong on slopes
-	# (an offset spawn ended inside a dune / in the air and fell through the world,
-	# leaving 'ghost' enemies kilometres below that polluted every QA state dump).
+	# Clamp XZ into the world rect (an edge-facing spawn landed OUTSIDE the perimeter
+	# wall — the boss fell into the void forever, v0.5-B3 QA), then snap Y to TERRAIN
+	# (the player's own Y is wrong on slopes; offset spawns fell through the world).
+	spot.x = clampf(spot.x, WorldBounds.X_MIN + 4.0, WorldBounds.X_MAX - 4.0)
+	spot.z = clampf(spot.z, WorldBounds.Z_MIN + 4.0, WorldBounds.Z_MAX - 4.0)
 	spot.y = ProceduralTerrain.height_at(spot.x, spot.z) + 0.5
 	(enemy as Node3D).global_position = spot
 	return true
@@ -1195,11 +1244,11 @@ func _ui_action(action: String) -> bool:
 			if sm and sm.has_method("open"):
 				sm.open()
 				return true
-		"open_servers", "close_servers":
-			# Show/hide the main-menu server browser overlay (screenshot QA).
-			var sb := scene.find_child("ServerBrowser", true, false)
+		"open_servers", "close_servers", "open_credits", "close_credits":
+			var ov := "ServerBrowser" if action.ends_with("servers") else "CreditsScreen"
+			var sb := scene.find_child(ov, true, false)
 			if sb and sb.has_method("open"):
-				if action == "open_servers":
+				if action.begins_with("open"):
 					sb.open()
 				else:
 					sb.close()
@@ -1232,11 +1281,9 @@ func _ui_action(action: String) -> bool:
 				return true
 			Events.map_toggled.emit(action == "open_map")
 			return true
-		"hub_stash", "hub_loadout", "hub_workshop", "hub_shop", "hub_quests", "hub_gunsmith", "hub_raider", "hub_character":
-			# Switch the open Hub's active tab (screenshot QA of each tab).
-			var hub := scene.find_child("Hub", true, false)
-			if hub == null or not hub.has_method("_switch_tab"):
-				return false
+		_:
+			# Switch the open Hub's active tab (screenshot QA of each tab). Unknown actions
+			# fall through to `return false` below.
 			var idx: int = (
 				{
 					"hub_stash": 0,
@@ -1246,12 +1293,16 @@ func _ui_action(action: String) -> bool:
 					"hub_quests": 4,
 					"hub_gunsmith": 5,
 					"hub_raider": 6,
-					"hub_character": 7
+					"hub_character": 7,
+					"hub_rivals": 8
 				}
-				. get(action, 0)
+				. get(action, -1)
 			)
-			hub._switch_tab(idx)
-			return true
+			if idx >= 0:
+				var hub := scene.find_child("Hub", true, false)
+				if hub != null and hub.has_method("_switch_tab"):
+					hub._switch_tab(idx)
+					return true
 	return false
 
 
@@ -1399,6 +1450,13 @@ func _snapshot() -> Dictionary:
 		"deaths": GameState.deaths,
 		"mobs_killed": GameState.mobs_killed,
 	}
+	# Synced Nemesis codex mirror (populated on CLIENTS by NetworkManager._rpc_nemesis_codex;
+	# the host reads codex_data() directly so this stays {} there). Lets the harness confirm
+	# the host→client codex sync without opening the Hub UI.
+	d["nemesis_codex"] = {
+		"active": GameState.nemesis_active,
+		"history": GameState.nemesis_history,
+	}
 	var p: Node = _local_player(players)
 	if p == null:
 		d["player"] = null
@@ -1537,6 +1595,10 @@ func _snapshot() -> Dictionary:
 		# EMP stun (server-side window; duck-typed so this works pre-feature too).
 		var stun_ms: Variant = e.get("_stunned_until_ms")
 		erec["stunned"] = stun_ms != null and int(stun_ms) > Time.get_ticks_msec()
+		# Machine Chemistry (Phase 5): remaining seconds per active status (duck-typed).
+		var cstat: Dictionary = e.chemistry_status() if e.has_method("chemistry_status") else {}
+		if not cstat.is_empty():
+			erec["status"] = cstat
 		# Elite modifiers (batch D) + the recon drone's channel progress (duck-typed).
 		var emods: Variant = e.get("modifiers")
 		if emods is Array and not (emods as Array).is_empty():
@@ -1544,6 +1606,13 @@ func _snapshot() -> Dictionary:
 		var chan: Variant = e.get("_channel_t")
 		if chan != null:
 			erec["channel"] = float(chan)
+		# Machine Nemesis (duck-typed so this is safe pre-feature).
+		var is_nem: bool = bool(e.get("is_nemesis")) if "is_nemesis" in e else false
+		if is_nem:
+			erec["is_nemesis"] = true
+			erec["nemesis_tier"] = int(e.get("nemesis_tier"))
+			erec["nemesis_traits"] = e.get("nemesis_traits")
+			erec["scar_seed"] = int(e.get("scar_seed"))
 		enemies.append(erec)
 	d["enemies"] = enemies
 
@@ -1578,6 +1647,7 @@ func _snapshot() -> Dictionary:
 						else false
 					),
 					"cosmetics": pl.get("cosmetics") if "cosmetics" in pl else {},
+					"skills": pl.get("skills") if "skills" in pl else {},
 					"downed": pl.is_downed() if pl.has_method("is_downed") else false,
 				}
 			)

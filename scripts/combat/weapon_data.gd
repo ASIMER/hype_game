@@ -20,6 +20,10 @@ class_name WeaponData
 @export var crit_mult: float = 2.0  # extra multiplier applied on weak-point hits
 # Audible-noise radius multiplier; suppressor lowers it. 1.0 = baseline NOISE_GUNFIRE.
 @export var noise_mult: float = 1.0
+# Elemental ammo (Machine Chemistry Phase 6): "" = plain rounds, else "shock"|"burn"|"slow".
+# Set by an equipped elemental mag (AttachmentData.element); each landed hit routes the
+# KIND to the server, which derives every number from Settings.CHEM_AMMO_*.
+@export var element: String = ""
 ## --- Feel / juice (cosmetic) ---
 ## View-model kickback magnitude per shot (0 = use `recoil`). The held gun punches back+up then
 ## springs to rest. Set higher for heavy guns (shotgun/DMR), lower for SMG.

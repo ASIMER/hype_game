@@ -16,9 +16,15 @@ const SMOKE := "smoke_clouds"  # active smoke-grenade clouds (enemy LOS test)
 const DOMES := "shield_domes"  # active shield-dome gadgets (damage-mult test)
 const WAVE_MANAGER := "wave_manager"  # the per-match WaveManager registers itself
 const LOCKED_DOORS := "locked_doors"  # key-gated annex doors (batch C)
+const NIGHT_LIGHTS := "night_lights"  # street-lamp OmniLights driven by the day-night ramp
+const BREAKABLE_GLASS := "breakable_glass"  # window panes a bullet/blast can shatter
+const BREAKABLE_CHUNK := "breakable_chunk"  # building wall segments a bullet/blast can crumble
+const NEMESIS := "nemesis"  # the active Machine Nemesis (map marker + kill-payoff lookup)
+const POWER_CORE := "power_core"  # a boss/miniboss-dropped carriable beacon (map marker)
 
 # Load-bearing child-node names (get_node_or_null targets on players/enemies).
 const NODE_HEALTH := "Health"
 const NODE_HURTBOX := "Hurtbox"
 const NODE_WEAKPOINT := "WeakPoint"
 const NODE_MODEL_ROOT := "ModelRoot"
+const NODE_HIJACK := "Hijack"  # the player's code-built Hijack&Pilot component

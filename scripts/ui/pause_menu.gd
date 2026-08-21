@@ -23,6 +23,8 @@ func _ready() -> void:
 	UIStyle.hover_lift($Panel/VBox/ResumeBtn)
 	UIStyle.hover_lift($Panel/VBox/SettingsBtn)
 	UIStyle.hover_lift($Panel/VBox/QuitBtn)
+	# Mid-raid quit loses at-risk gear — dress it as the destructive action it is.
+	UIStyle.danger($Panel/VBox/QuitBtn)
 	# Frosted-glass backdrop behind the panel.
 	var bg := GlassBackdrop.new()
 	add_child(bg)
@@ -58,4 +60,9 @@ func _on_settings_closed() -> void:
 
 
 func _on_quit_to_menu() -> void:
-	quit_to_menu_pressed.emit()
+	# Phase 3 error-prevention: mid-raid quit loses the at-risk haul — say so first.
+	UIStyle.confirm(
+		self,
+		tr("Quit mid-raid? Everything you are carrying will be LOST."),
+		func() -> void: quit_to_menu_pressed.emit()
+	)

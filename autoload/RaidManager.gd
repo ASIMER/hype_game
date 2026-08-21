@@ -22,6 +22,13 @@ var _committed_attachments: Array = []
 var _committed_gear: Array = []
 
 
+## The at-risk item ids this peer brought into the raid (gear + attachments) — still
+## populated at the moment of death (cleared only on extract in _deposit). The Machine
+## Nemesis reads this on the owning peer's death so a surviving rival can "wear" + drop it.
+func committed_item_ids() -> Array:
+	return _committed_gear + _committed_attachments
+
+
 ## Called LOCALLY by each peer when it deploys (from the hub / single-player start).
 ## Pulls the brought consumables + equipped attachments out of this machine's stash so
 ## death actually loses them. Clamps to what the stash holds.

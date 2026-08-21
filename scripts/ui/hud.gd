@@ -16,6 +16,7 @@ class_name HUD
 @onready var banner: Label = $Root/Banner
 
 var _local_player: Node = null
+static var _view_tip_shown: bool = false  # one-shot per session: V-toggle / appearance tip
 
 
 func _ready() -> void:
@@ -53,11 +54,43 @@ func _ready() -> void:
 	Events.world_event_started.connect(_on_world_event_started)
 	Events.environmental_surge_changed.connect(_on_surge_changed)
 
+	# M2 talking boss — spoken lines get their own speech chip under the boss bar.
+	Events.boss_bark.connect(_on_boss_bark)
+
+	# M7.9 first contact (one per raid; flag resets with the match).
+	Events.enemy_chase_started.connect(_on_first_contact)
+	Events.match_started.connect(func() -> void: _first_contact_done = false)
+
+	# M7.7 controller affordance: acknowledge pad hot-plug in the feed.
+	Input.joy_connection_changed.connect(
+		func(_dev: int, connected: bool) -> void:
+			if connected:
+				Events.notify.emit(tr("Controller connected"), 0)
+	)
+
+	# Machine Nemesis — the rival's story beats (born / returns / defeated).
+	Events.nemesis_born.connect(_on_nemesis_born)
+	Events.nemesis_returned.connect(_on_nemesis_returned)
+	Events.nemesis_defeated.connect(_on_nemesis_defeated)
+
+	# Power-Core Beacon (Phase 4) — reuses the red banner widget.
+	Events.power_core_spawned.connect(_on_power_core_spawned)
+	Events.power_core_extracted.connect(_on_power_core_extracted)
+
 	# Raid mutator chip (batch C) — set before deploy, re-synced at match start.
 	Events.raid_mutator_changed.connect(_on_mutator_changed)
 
 	# Status-effect chips (batch B: bleed / fracture / painkiller, local player only).
 	Events.status_changed.connect(_on_status_changed)
+
+	# M4 return-loop widgets (lane files; each is a self-contained Control).
+	add_child((load("res://scripts/ui/raid_levelup.gd") as GDScript).new())
+	add_child((load("res://scripts/ui/xp_popup.gd") as GDScript).new())
+	add_child((load("res://scripts/ui/quest_tracker.gd") as GDScript).new())
+	# M5.1 raid contracts: deploy-time 1-of-3 offer + progress chip.
+	add_child((load("res://scripts/ui/raid_contract_offer.gd") as GDScript).new())
+	# M6.8 offscreen world-event chevrons + sonar sting.
+	add_child((load("res://scripts/ui/event_chevrons.gd") as GDScript).new())
 
 	extract_panel.visible = false
 	# Nudge the extraction progress panel LOWER so it never overlaps the bottom-centre
@@ -67,7 +100,8 @@ func _ready() -> void:
 	extract_panel.offset_bottom = -70.0
 	banner.visible = false
 	# Glass theme variations for the progress bars.
-	health_bar.theme_type_variation = "FillAmber"
+	# Design system: teal = vitals (the theme default fill); orange stays a WARNING
+	# color. A red fill swaps in only when critical (see _set_health).
 	extract_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(UIStyle.TEAL))
 	_set_health(Settings.PLAYER_MAX_HEALTH, Settings.PLAYER_MAX_HEALTH)
 	_update_wave_label(GameState.current_wave)
@@ -90,9 +124,20 @@ var _status_row: HBoxContainer  # status-effect chips (batch B), above the healt
 var _status_chips: Dictionary = {}  # effect name -> the chip Label
 var _storm_banner: Label
 var _storm_banner_t: float = 0.0
+# Adaptive combat fade (ARC pattern): the ammo group runs bright in combat and
+# translucent at rest; the key-hint sheet dims after the first minutes and yields
+# its corner to the storm alarm entirely.
+var _ammo_box: VBoxContainer = null
+var _hints_label: Label = null
+var _combat_heat: float = 0.0
+var _match_t: float = 0.0
+var _hp_crit: bool = false
 # World-event banner — stacked 44px below the storm banner (offset_top -76 vs -120).
 var _event_banner: Label
 var _event_banner_t: float = 0.0
+
+var _nemesis_banner: Label  # Machine Nemesis born/returns/defeated (red, above the others)
+var _nemesis_banner_t: float = 0.0
 # Surge vignette — a subtle colour-rect pulse while a sensor-blackout surge is active.
 var _surge_vignette: ColorRect
 var _surge_active: bool = false
@@ -113,6 +158,8 @@ func _build_hud_widgets() -> void:
 	$Root.add_child(_crosshair)
 	_minimap = (load("res://scripts/ui/minimap.gd") as Script).new()
 	$Root.add_child(_minimap)
+	# Skill hotbar (Mutant Harvest) — bottom-center, fills as the player harvests skills.
+	$Root.add_child((load("res://scripts/ui/skill_hotbar.gd") as Script).new())
 
 	# Match-timer readout (mm:ss), top-centre just under the wave label. Goes red as
 	# the storm approaches. Polls GameState as a fallback so it shows even before the
@@ -165,7 +212,7 @@ func _build_hud_widgets() -> void:
 		var chip := Label.new()
 		chip.text = tr(String(effect[1]))
 		chip.visible = false
-		chip.add_theme_font_size_override("font_size", 12)
+		chip.add_theme_font_size_override("font_size", 13)
 		chip.add_theme_color_override("font_color", effect[2])
 		chip.add_theme_stylebox_override("normal", UIStyle.chip(effect[2]))
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -189,7 +236,7 @@ func _build_hud_widgets() -> void:
 	_storm_banner.offset_top = -120.0
 	_storm_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_storm_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_storm_banner.add_theme_font_size_override("font_size", 30)
+	_storm_banner.add_theme_font_size_override("font_size", 34)
 	_storm_banner.add_theme_color_override("font_color", UIStyle.RED)
 	_storm_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_storm_banner.add_theme_constant_override("outline_size", 5)
@@ -216,6 +263,23 @@ func _build_hud_widgets() -> void:
 	_event_banner.visible = false
 	$Root.add_child(_event_banner)
 
+	# Machine Nemesis banner — highest of the three (offset_top -160 so it never overlaps the
+	# storm/event banners), blood-red to match the rival's signature ring.
+	_nemesis_banner = Label.new()
+	_nemesis_banner.set_anchors_preset(Control.PRESET_CENTER)
+	_nemesis_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_nemesis_banner.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_nemesis_banner.offset_top = -160.0
+	_nemesis_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_nemesis_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_nemesis_banner.add_theme_font_size_override("font_size", 26)
+	_nemesis_banner.add_theme_color_override("font_color", Color(0.95, 0.16, 0.16))
+	_nemesis_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_nemesis_banner.add_theme_constant_override("outline_size", 5)
+	_nemesis_banner.text = ""
+	_nemesis_banner.visible = false
+	$Root.add_child(_nemesis_banner)
+
 	# Sensor-surge vignette — a very faint orange/green tint at the screen edges while
 	# the blackout is active. Kept subtle (max alpha 0.12) so it reads as ambience
 	# rather than damage. Uses MOUSE_FILTER_IGNORE so it never eats input.
@@ -236,6 +300,7 @@ func _build_hud_widgets() -> void:
 	# Ammo + weapon readout, pinned to the bottom-right corner and GROWING up-left
 	# (grow BEGIN) so multi-line content never clips off-screen at any resolution.
 	var ammo_box := VBoxContainer.new()
+	_ammo_box = ammo_box
 	ammo_box.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	ammo_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	ammo_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -264,6 +329,7 @@ func _build_hud_widgets() -> void:
 
 	# Key hints (bottom-right, above the ammo box, dim, right-aligned, grow up-left).
 	var hints := Label.new()
+	_hints_label = hints
 	hints.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	hints.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	hints.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -271,14 +337,14 @@ func _build_hud_widgets() -> void:
 	hints.offset_bottom = -86.0
 	hints.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hints.add_theme_font_size_override("font_size", 12)
+	hints.add_theme_font_size_override("font_size", 13)
 	hints.add_theme_color_override(
 		"font_color", Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.7)
 	)
 	# This long string is a LOCALIZATION KEY (locale/ui.csv) — splitting it would break
 	# the translation lookup, so it stays one line.
 	hints.text = tr(
-		"WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   Q Swap shoulder\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"  # gdlint: ignore=max-line-length
+		"WASD Move   Shift Sprint   Space Jump\nLMB Fire   RMB Aim   V Camera Zoom\n1-5 / Wheel Weapon   R Reload\nG Grenade   H Heal   E Loot   I Inventory   M Map"  # gdlint: ignore=max-line-length
 	)
 	$Root.add_child(hints)
 
@@ -356,6 +422,7 @@ func _refresh_weapon_label() -> void:
 
 
 func _on_ammo_changed(ammo: int, reserve: int) -> void:
+	_combat_heat = 6.0  # firing/reloading = combat → keep the ammo group bright
 	_set_ammo(ammo, reserve)
 
 
@@ -390,7 +457,9 @@ func _on_grenade_selection_changed(type: String, count: int) -> void:
 
 # --- Feedback overlays (built in code so HUD.tscn stays simple) -------------
 
-var _hurt_flash: ColorRect
+# Radial damage vignette (was a flat full-screen ColorRect — the critic panel read
+# the hard-edged red wash as "washes out the HUD exactly when you're dying").
+var _hurt_flash: TextureRect
 var _hit_marker: Label
 var _hit_marker_t: float = 0.0
 var _last_health: float = -1.0
@@ -415,11 +484,336 @@ var _team_down_angle: float = 0.0  # screen radians toward the nearest downed te
 var _team_down_shown: bool = false
 var _team_poll_t: float = 0.0
 
+# M2 boss fight: top-center boss HP bar (code-built; visible while a boss lives).
+var _boss_poll_t: float = 0.0
+var _boss_bar_root: Control = null
+var _boss_bar: ProgressBar = null
+var _boss_name_label: Label = null
+
+# M2 talking boss: the speech chip under the boss bar (Events.boss_bark).
+var _bark_chip: PanelContainer = null
+var _bark_label: Label = null
+var _bark_tween: Tween = null
+
+# Hijack & Pilot (v0.5-B2): the hack prompt / pilot chip (polled at the boss cadence).
+var _hijack_chip: PanelContainer = null
+var _hijack_chip_label: Label = null
+
+# M3 stealth detect-meter: are the machines aware of ME right now?
+var _eye_poll_t: float = 0.0
+var _eye_label: Label = null
+# M3 night hint: one notify per nightfall («machines see worse in the dark»).
+var _was_night: bool = false
+# M7.9 first-contact stinger: fires once per raid on the first machine CHASE.
+var _first_contact_done: bool = false
+
+# M7.5 squad cards (co-op only): teammate name + live HP at the left edge.
+var _squad_poll_t: float = 0.0
+var _squad_box: VBoxContainer = null
+
+
+func _update_squad_cards() -> void:
+	var offline: bool = not multiplayer.has_multiplayer_peer() or multiplayer.get_peers().is_empty()
+	if offline or GameState.phase != GameState.Phase.IN_MATCH:
+		if _squad_box != null:
+			_squad_box.visible = false
+		return
+	if _squad_box == null:
+		_squad_box = VBoxContainer.new()
+		_squad_box.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+		_squad_box.anchor_top = 0.5
+		_squad_box.anchor_bottom = 0.5
+		_squad_box.offset_left = 14.0
+		_squad_box.offset_top = -80.0
+		_squad_box.add_theme_constant_override("separation", 6)
+		_squad_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_squad_box)
+	for c in _squad_box.get_children():
+		c.queue_free()
+	var my_id: int = multiplayer.get_unique_id()
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
+		if not is_instance_valid(p) or str(p.name).to_int() == my_id:
+			continue
+		var hp: Node = p.get_node_or_null(Groups.NODE_HEALTH)
+		if hp == null:
+			continue
+		var peer_info: Dictionary = GameState.peers.get(str(p.name).to_int(), {})
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 1)
+		var nick := Label.new()
+		nick.text = String(peer_info.get("name", str(p.name)))
+		nick.add_theme_font_size_override("font_size", 11)
+		var downed: bool = p.has_method("is_downed") and p.is_downed()
+		nick.add_theme_color_override(
+			"font_color", Color(1.0, 0.35, 0.3) if downed else Color(0.85, 0.9, 0.92)
+		)
+		row.add_child(nick)
+		var bar := ProgressBar.new()
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(96, 6)
+		bar.max_value = maxf(1.0, float(hp.get("max_health")))
+		bar.value = float(hp.get("current"))
+		bar.add_theme_stylebox_override(
+			"fill", UIStyle.glow_fill(Color(1.0, 0.4, 0.3) if downed else UIStyle.TEAL)
+		)
+		row.add_child(bar)
+		_squad_box.add_child(row)
+	_squad_box.visible = _squad_box.get_child_count() > 0
+
+
+func _on_first_contact(_enemy: Node) -> void:
+	if _first_contact_done or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	_first_contact_done = true
+	_flash_nemesis_banner(tr("⚠ FIRST CONTACT — THE MACHINES KNOW YOU ARE HERE"), 3.5)
+	Events.screen_shake.emit(0.18)
+
+
+# M4.3 HEAT: the loot you carry makes you a target — a live meter of haul weight.
+var _heat_poll_t: float = 0.0
+var _heat_bar: ProgressBar = null
+var _heat_row: HBoxContainer = null
+
+
+## Heat = carried-weight ratio of the LOCAL player (the server biases hunts
+## toward the hottest raider — wave_manager reads the same ratio). Meter sits
+## by the health readout; hidden while empty-handed.
+func _update_heat_meter() -> void:
+	var lp := _local_player as Node
+	if lp == null or not is_instance_valid(lp):
+		if _heat_row != null:
+			_heat_row.visible = false
+		return
+	var inv: Node = lp.get_node_or_null("Inventory")
+	if inv == null or not inv.has_method("total_weight"):
+		return
+	var cap: float = float(inv.weight_capacity()) if inv.has_method("weight_capacity") else 1.0
+	var ratio: float = clampf(float(inv.total_weight()) / maxf(0.001, cap), 0.0, 1.0)
+	if _heat_row == null:
+		_heat_row = HBoxContainer.new()
+		_heat_row.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_heat_row.offset_left = 14.0
+		_heat_row.offset_top = -136.0
+		_heat_row.offset_bottom = -118.0
+		_heat_row.add_theme_constant_override("separation", 6)
+		_heat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var cap_label := Label.new()
+		cap_label.text = tr("HEAT")
+		cap_label.theme_type_variation = "HeaderSmall"
+		_heat_row.add_child(cap_label)
+		_heat_bar = ProgressBar.new()
+		_heat_bar.show_percentage = false
+		_heat_bar.max_value = 1.0
+		_heat_bar.custom_minimum_size = Vector2(110, 10)
+		_heat_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_heat_row.add_child(_heat_bar)
+		add_child(_heat_row)
+	_heat_row.visible = ratio > 0.02
+	_heat_bar.value = ratio
+	var col := Color(0.35, 0.78, 0.72)
+	if ratio > 0.7:
+		col = Color(1.0, 0.32, 0.25)
+	elif ratio > 0.4:
+		col = Color(0.98, 0.66, 0.2)
+	_heat_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(col))
+
+
+## Poll enemy awareness of the LOCAL player: red «SPOTTED» when something in
+## CHASE/ATTACK targets us (host reads the real target; a client falls back to
+## distance since _target never replicates), amber «SEARCHING» when an
+## INVESTIGATE walk is closing on our position. Legalizes crouch-stealth+decoy.
+func _update_stealth_eye() -> void:
+	var lp := _local_player as Node3D
+	if lp == null or not is_instance_valid(lp):
+		if _eye_label != null:
+			_eye_label.visible = false
+		return
+	var seen := false
+	var searching := false
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if not (e is Node3D) or not is_instance_valid(e):
+			continue
+		var st: int = int(e.get("current_state")) if "current_state" in e else 0
+		if st == 1 or st == 2:
+			var tgt: Variant = e.get("_target")
+			if tgt is Node:
+				if tgt == _local_player:
+					seen = true
+					break
+			elif (e as Node3D).global_position.distance_to(lp.global_position) < 45.0:
+				seen = true
+				break
+		elif st == 3 and (e as Node3D).global_position.distance_to(lp.global_position) < 30.0:
+			searching = true
+	if _eye_label == null:
+		_eye_label = Label.new()
+		_eye_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_eye_label.offset_left = 14.0
+		_eye_label.offset_top = -112.0
+		_eye_label.offset_bottom = -90.0
+		_eye_label.theme_type_variation = "HeaderSmall"
+		_eye_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_eye_label)
+	if seen:
+		_eye_label.text = tr("▲ SPOTTED")
+		_eye_label.add_theme_color_override("font_color", Color(1.0, 0.32, 0.28))
+		_eye_label.visible = true
+	elif searching:
+		_eye_label.text = tr("◉ SEARCHING")
+		_eye_label.add_theme_color_override("font_color", Color(0.98, 0.72, 0.25))
+		_eye_label.visible = true
+	else:
+		_eye_label.visible = false
+
+
+func _on_boss_bark(text: String) -> void:
+	if _bark_chip == null:
+		_bark_chip = PanelContainer.new()
+		_bark_chip.add_theme_stylebox_override("panel", UIStyle.chip(UIStyle.RED))
+		_bark_chip.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_bark_chip.anchor_left = 0.5
+		_bark_chip.anchor_right = 0.5
+		_bark_chip.offset_top = 98.0
+		_bark_chip.offset_bottom = 124.0
+		_bark_chip.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_bark_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_bark_label = Label.new()
+		_bark_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_bark_label.add_theme_color_override("font_color", Color(1.0, 0.62, 0.55))
+		_bark_chip.add_child(_bark_label)
+		add_child(_bark_chip)
+	_bark_label.text = "▸ %s" % text
+	_bark_chip.visible = true
+	_bark_chip.modulate.a = 0.0
+	if _bark_tween != null and _bark_tween.is_valid():
+		_bark_tween.kill()
+	_bark_tween = _bark_chip.create_tween()
+	_bark_tween.tween_property(_bark_chip, "modulate:a", 1.0, 0.14)
+	_bark_tween.tween_interval(3.6)
+	_bark_tween.tween_property(_bark_chip, "modulate:a", 0.0, 0.5)
+	_bark_tween.tween_callback(func() -> void: _bark_chip.visible = false)
+
+
+## Hijack & Pilot (v0.5-B2): bottom-center chip — the hack prompt near a stunned machine,
+## the pilot timer + eject hint while flying a stolen hull. Polled at the boss cadence.
+func _update_hijack_chip() -> void:
+	var text := ""
+	var hj: Node = null
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
+		if p.is_multiplayer_authority():
+			hj = p.get_node_or_null(Groups.NODE_HIJACK)
+			break
+	if hj != null:
+		if bool(hj.call("is_piloting")):
+			var secs: int = int(ceil(float(hj.call("time_left"))))
+			text = tr("PILOTING %s — %ds · [X] EJECT") % [String(hj.call("pilot_label")), secs]
+		else:
+			text = String(hj.call("prompt_text"))
+	if text == "":
+		if _hijack_chip != null:
+			_hijack_chip.visible = false
+		return
+	if _hijack_chip == null:
+		_hijack_chip = PanelContainer.new()
+		_hijack_chip.add_theme_stylebox_override("panel", UIStyle.chip(UIStyle.TEAL))
+		_hijack_chip.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_hijack_chip.anchor_left = 0.5
+		_hijack_chip.anchor_right = 0.5
+		_hijack_chip.anchor_top = 0.68
+		_hijack_chip.anchor_bottom = 0.68
+		_hijack_chip.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_hijack_chip.grow_vertical = Control.GROW_DIRECTION_BOTH
+		_hijack_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_hijack_chip_label = Label.new()
+		_hijack_chip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_hijack_chip_label.add_theme_color_override("font_color", Color(0.45, 0.95, 0.88))
+		_hijack_chip.add_child(_hijack_chip_label)
+		add_child(_hijack_chip)
+	_hijack_chip_label.text = text
+	_hijack_chip.visible = true
+
+
+## Build the boss bar lazily; poll the enemies group for a live robot_boss and
+## drive the bar. Color shifts with the fight phase (amber → orange → red).
+func _update_boss_bar() -> void:
+	var boss: Node = null
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if not is_instance_valid(e):
+			continue
+		if "enemy_id" in e and str(e.get("enemy_id")) == "robot_boss":
+			boss = e
+			break
+	if boss == null:
+		if _boss_bar_root != null:
+			_boss_bar_root.visible = false
+		return
+	var hp: Node = boss.get_node_or_null(Groups.NODE_HEALTH)
+	if hp == null or bool(hp.get("is_dead")):
+		if _boss_bar_root != null:
+			_boss_bar_root.visible = false
+		return
+	if _boss_bar_root == null:
+		_build_boss_bar()
+	_boss_bar_root.visible = true
+	var ratio: float = float(hp.get("current")) / maxf(1.0, float(hp.get("max_health")))
+	_boss_bar.value = ratio * 100.0
+	var col := Color(0.95, 0.62, 0.2)
+	if ratio <= 0.33:
+		col = Color(1.0, 0.25, 0.2)
+	elif ratio <= 0.66:
+		col = Color(1.0, 0.45, 0.15)
+	_boss_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(col))
+
+
+func _build_boss_bar() -> void:
+	_boss_bar_root = PanelContainer.new()
+	_boss_bar_root.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.RED))
+	_boss_bar_root.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_boss_bar_root.anchor_left = 0.5
+	_boss_bar_root.anchor_right = 0.5
+	_boss_bar_root.offset_left = -230.0
+	_boss_bar_root.offset_right = 230.0
+	_boss_bar_root.offset_top = 46.0
+	_boss_bar_root.offset_bottom = 92.0
+	_boss_bar_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	_boss_bar_root.add_child(vb)
+	_boss_name_label = Label.new()
+	_boss_name_label.text = "REAPER"
+	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_name_label.theme_type_variation = "HeaderSmall"
+	_boss_name_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+	vb.add_child(_boss_name_label)
+	_boss_bar = ProgressBar.new()
+	_boss_bar.show_percentage = false
+	_boss_bar.custom_minimum_size = Vector2(0, 14)
+	_boss_bar.max_value = 100.0
+	vb.add_child(_boss_bar)
+	add_child(_boss_bar_root)
+
 
 func _build_feedback_overlays() -> void:
 	# Full-screen red vignette pulse when the local player takes damage.
-	_hurt_flash = ColorRect.new()
-	_hurt_flash.color = Color(0.8, 0.0, 0.0, 0.0)
+	_hurt_flash = TextureRect.new()
+	var hurt_grad := Gradient.new()
+	hurt_grad.set_color(0, Color(0.8, 0.0, 0.0, 0.0))
+	hurt_grad.set_color(1, Color(0.8, 0.0, 0.0, 1.0))
+	hurt_grad.set_offset(0, 0.45)
+	var hurt_tex := GradientTexture2D.new()
+	hurt_tex.gradient = hurt_grad
+	hurt_tex.fill = GradientTexture2D.FILL_RADIAL
+	hurt_tex.fill_from = Vector2(0.5, 0.5)
+	# Radius PAST the corners (0.5→-0.32 ≈ 0.82 of the texture): with the radius at
+	# the edge midpoint the corners sat beyond the gradient at full red — the
+	# "vignette" rendered as a hard red frame with a circular window.
+	hurt_tex.fill_to = Vector2(0.5, -0.32)
+	hurt_tex.width = 256
+	hurt_tex.height = 256
+	_hurt_flash.texture = hurt_tex
+	_hurt_flash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_hurt_flash.stretch_mode = TextureRect.STRETCH_SCALE
+	_hurt_flash.modulate.a = 0.0
 	_hurt_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_hurt_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hurt_flash)
@@ -479,8 +873,8 @@ func _build_downed_overlay() -> void:
 
 
 func _process(delta: float) -> void:
-	if _hurt_flash and _hurt_flash.color.a > 0.0:
-		_hurt_flash.color.a = maxf(0.0, _hurt_flash.color.a - delta * 2.4)
+	if _hurt_flash and _hurt_flash.modulate.a > 0.0:
+		_hurt_flash.modulate.a = maxf(0.0, _hurt_flash.modulate.a - delta * 2.4)
 	if _hit_marker and _hit_marker.visible:
 		_hit_marker_t -= delta
 		if _hit_marker_t <= 0.0:
@@ -500,20 +894,70 @@ func _process(delta: float) -> void:
 	if _team_poll_t <= 0.0:
 		_team_poll_t = 0.16
 		_update_teammate_down()
+	# M2 boss fight: top-center boss HP bar (throttled poll for a live boss).
+	_boss_poll_t -= delta
+	if _boss_poll_t <= 0.0:
+		_boss_poll_t = 0.4
+		_update_boss_bar()
+		_update_hijack_chip()
+	# M3 stealth: awareness eye (throttled ~3 Hz) + the nightfall stealth hint.
+	_eye_poll_t -= delta
+	if _eye_poll_t <= 0.0:
+		_eye_poll_t = 0.34
+		_update_stealth_eye()
+	# M4.3 heat meter (1 Hz).
+	_heat_poll_t -= delta
+	if _heat_poll_t <= 0.0:
+		_heat_poll_t = 1.0
+		_update_heat_meter()
+	# M7.5 squad cards (2 Hz, co-op only — hides itself offline).
+	_squad_poll_t -= delta
+	if _squad_poll_t <= 0.0:
+		_squad_poll_t = 0.5
+		_update_squad_cards()
+		var night: bool = DayNight.is_night(DayNight.current_hour())
+		if night and not _was_night and GameState.phase == GameState.Phase.IN_MATCH:
+			Events.notify.emit(tr("NIGHT: machine optics degraded — they see worse"), 0)
+		_was_night = night
 	# Keep the teammate arrow pulsing while shown (even when the local player is up).
 	if _team_down_shown and not _down_active:
 		_down_pulse += delta
 		if _down_overlay:
 			_down_overlay.queue_redraw()
-	# Fade the storm banner out after its flash.
-	if _storm_banner and _storm_banner.visible:
+	# STORM: while the final wave runs, the alarm stays ALIVE — a pulsing banner + a
+	# faint red screen-pulse floor (audit: the one-shot 4 s banner left the game's
+	# highest-stakes moment with no visible warning at all).
+	if _storm_banner and GameState.final_wave:
+		# Downed instructions own the screen centre — the banner yields while the
+		# local player is down (the red floor-pulse keeps signalling the storm).
+		_storm_banner.visible = not _down_active
+		var pt: float = Time.get_ticks_msec() / 180.0
+		_storm_banner.modulate.a = 0.78 + 0.22 * sin(pt)
+		if _hurt_flash:
+			_hurt_flash.modulate.a = maxf(_hurt_flash.modulate.a, 0.08 + 0.06 * sin(pt * 0.7))
+	elif _storm_banner and _storm_banner.visible:
+		# Pre-storm warning flash: timed fade as before.
 		_storm_banner_t -= delta
 		_storm_banner.modulate.a = (
 			clampf(_storm_banner_t / 1.0, 0.0, 1.0) if _storm_banner_t < 1.0 else 1.0
 		)
-		# Keep a steady pulse while it lingers, then hide.
 		if _storm_banner_t <= 0.0:
 			_storm_banner.visible = false
+	# Adaptive combat fade (ARC): ammo group bright in combat, translucent at rest.
+	if _ammo_box:
+		_combat_heat = maxf(0.0, _combat_heat - delta)
+		var target_a: float = 1.0 if _combat_heat > 0.0 else 0.55
+		_ammo_box.modulate.a = move_toward(_ammo_box.modulate.a, target_a, delta * 2.0)
+	# Key-hint sheet: full for the first 75 s, then dims; hidden during the storm so
+	# the corner belongs to the alarm.
+	if _hints_label:
+		_match_t += delta
+		if GameState.final_wave:
+			_hints_label.visible = false
+		else:
+			_hints_label.visible = true
+			var target_h: float = 1.0 if _match_t < 75.0 else 0.35
+			_hints_label.modulate.a = move_toward(_hints_label.modulate.a, target_h, delta * 1.5)
 	# Fade the world-event banner.
 	if _event_banner and _event_banner.visible:
 		_event_banner_t -= delta
@@ -522,6 +966,14 @@ func _process(delta: float) -> void:
 		)
 		if _event_banner_t <= 0.0:
 			_event_banner.visible = false
+
+	if _nemesis_banner and _nemesis_banner.visible:
+		_nemesis_banner_t -= delta
+		_nemesis_banner.modulate.a = (
+			clampf(_nemesis_banner_t / 1.0, 0.0, 1.0) if _nemesis_banner_t < 1.0 else 1.0
+		)
+		if _nemesis_banner_t <= 0.0:
+			_nemesis_banner.visible = false
 	# Pulse the surge vignette while active.
 	if _surge_active and _surge_vignette != null:
 		_surge_pulse += delta
@@ -548,11 +1000,16 @@ func _on_world_event_started(kind: int, _pos: Vector3, label: String) -> void:
 			col = Color(1.00, 0.55, 0.15)  # surge — orange
 		_:
 			col = UIStyle.WHITE
-	_event_banner.text = tr("⚠ %s") % label.to_upper()
+	# Distance in the announcement (panel consensus: WHAT + WHERE, not just a word) —
+	# the colored pillar (EventBeacons) + compass diamond carry the bearing.
+	var dist: int = 0
+	if _local_player != null and is_instance_valid(_local_player):
+		dist = int((_local_player as Node3D).global_position.distance_to(_pos))
+	_event_banner.text = tr("⚠ %s — %dm") % [label.to_upper(), dist]
 	_event_banner.add_theme_color_override("font_color", col)
 	_event_banner.visible = true
 	_event_banner.modulate.a = 1.0
-	_event_banner_t = 4.0
+	_event_banner_t = 6.0
 
 
 func _on_surge_changed(active: bool, kind: int) -> void:
@@ -611,6 +1068,16 @@ func _exit_tree() -> void:
 		Events.world_event_started.disconnect(_on_world_event_started)
 	if Events.environmental_surge_changed.is_connected(_on_surge_changed):
 		Events.environmental_surge_changed.disconnect(_on_surge_changed)
+	if Events.nemesis_born.is_connected(_on_nemesis_born):
+		Events.nemesis_born.disconnect(_on_nemesis_born)
+	if Events.nemesis_returned.is_connected(_on_nemesis_returned):
+		Events.nemesis_returned.disconnect(_on_nemesis_returned)
+	if Events.nemesis_defeated.is_connected(_on_nemesis_defeated):
+		Events.nemesis_defeated.disconnect(_on_nemesis_defeated)
+	if Events.power_core_spawned.is_connected(_on_power_core_spawned):
+		Events.power_core_spawned.disconnect(_on_power_core_spawned)
+	if Events.power_core_extracted.is_connected(_on_power_core_extracted):
+		Events.power_core_extracted.disconnect(_on_power_core_extracted)
 
 
 # --- Match timer / storm warning -------------------------------------------
@@ -645,6 +1112,79 @@ func _on_final_wave_started() -> void:
 		_storm_banner.visible = true
 		_storm_banner.modulate.a = 1.0
 		_storm_banner_t = 4.0  # lingers ~4s, then fades in the final second
+
+
+func _flash_nemesis_banner(text: String, secs: float, col: Color = Color(0.95, 0.16, 0.16)) -> void:
+	if _nemesis_banner == null:
+		return
+	_nemesis_banner.add_theme_color_override("font_color", col)
+	_nemesis_banner.text = text
+	_nemesis_banner.visible = true
+	_nemesis_banner.modulate.a = 1.0
+	_nemesis_banner_t = secs
+
+
+func _on_nemesis_born(serial: String, _title: String) -> void:
+	_flash_nemesis_banner(tr("MACHINE ESCAPED: %s — IT LEARNS. IT WILL HUNT YOU") % serial, 5.0)
+	_show_hunter_intro()
+
+
+func _on_nemesis_returned(serial: String, title: String, _node: Node) -> void:
+	var who: String = "%s, %s" % [serial, title] if title != "" else serial
+	_flash_nemesis_banner(tr("YOUR HUNTER IS HERE: %s") % who.to_upper(), 5.0)
+	_show_hunter_intro()
+
+
+func _on_nemesis_defeated(serial: String) -> void:
+	_flash_nemesis_banner(tr("HUNTER DESTROYED: %s — BOUNTY + YOUR GEAR BACK") % serial, 4.5)
+
+
+## One-time HUNTER teaching card (the mechanic read as noise before it was explained).
+## Auto-dismisses; stamped per profile so veterans never see it again.
+func _show_hunter_intro() -> void:
+	if MetaProgression.nemesis_intro_done:
+		return
+	MetaProgression.mark_nemesis_intro_done()
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.RED))
+	card.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	card.anchor_left = 1.0
+	card.anchor_right = 1.0
+	card.offset_left = -420.0
+	card.offset_right = -36.0
+	card.offset_top = -110.0
+	card.offset_bottom = 110.0
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	card.add_child(vb)
+	var title := Label.new()
+	title.text = tr("THE HUNTER")
+	title.theme_type_variation = "HeaderSmall"
+	title.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+	vb.add_child(title)
+	var body := Label.new()
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.text = tr(
+		"A machine that SURVIVES your raid remembers how you fought it.\nNext raid it returns: stronger, scarred, adapted to your tactics.\nKill it to win back the gear you lost — plus a bounty.\nTrack it: the red skull on your map."  # gdlint: ignore=max-line-length
+	)
+	body.add_theme_font_size_override("font_size", 13)
+	vb.add_child(body)
+	add_child(card)
+	card.modulate.a = 0.0
+	var tw := card.create_tween()
+	tw.tween_property(card, "modulate:a", 1.0, 0.3)
+	tw.tween_interval(11.0)
+	tw.tween_property(card, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(card.queue_free)
+
+
+func _on_power_core_spawned(_node: Node) -> void:
+	_flash_nemesis_banner(tr("⚡ POWER CORE DROPPED — CARRY IT OUT"), 4.0)
+
+
+func _on_power_core_extracted(_peer: int) -> void:
+	Events.notify.emit(tr("Power Core extracted!"), 1)
 	if _timer_label:
 		_timer_label.text = tr("⚠ FINAL WAVE")
 		_timer_label.add_theme_color_override("font_color", UIStyle.RED)
@@ -657,7 +1197,7 @@ func _on_damage_dealt(target: Node, _amount: float, source: Node) -> void:
 		# A light wash only — the DIRECTIONAL blood arc (damage_indicator.gd) is the
 		# primary "where am I being hit from" cue, so keep this from drowning it in red.
 		if _hurt_flash:
-			_hurt_flash.color.a = maxf(_hurt_flash.color.a, 0.22)
+			_hurt_flash.modulate.a = maxf(_hurt_flash.modulate.a, 0.5)
 	elif (
 		source != null
 		and source == _local_player
@@ -882,6 +1422,12 @@ func _on_local_player_spawned(player: Node) -> void:
 	var hp: Node = player.get_node_or_null(Groups.NODE_HEALTH)
 	if hp and "current" in hp and "max_health" in hp:
 		_set_health(hp.current, hp.max_health)
+	# One-shot tip: how to toggle the camera + where to change appearance (the user couldn't
+	# find either). Static flag → shows once per session, not every raid.
+	if not _view_tip_shown:
+		_view_tip_shown = true
+		if not MetaProgression.onboarding_done:  # veterans stop seeing the tip every match
+			Events.notify.emit(tr("V zooms the camera: close / medium / far / first-person"), 0)
 
 
 func _on_player_health_changed(player: Node, current: float, max_health: float) -> void:
@@ -892,9 +1438,21 @@ func _on_player_health_changed(player: Node, current: float, max_health: float) 
 
 
 func _set_health(current: float, max_health: float) -> void:
+	# Damage = combat: brighten the adaptive ammo group.
+	if current < _last_health:
+		_combat_heat = 6.0
+	_last_health = current
 	health_bar.max_value = max_health
 	health_bar.value = current
 	health_label.text = "%d / %d" % [int(round(current)), int(round(max_health))]
+	# Teal vitals by default; RED fill only when critical (<30%, the heartbeat line).
+	var crit: bool = max_health > 0.0 and current / max_health < 0.3
+	if crit != _hp_crit:
+		_hp_crit = crit
+		if crit:
+			health_bar.add_theme_stylebox_override("fill", UIStyle.glow_fill(UIStyle.RED))
+		else:
+			health_bar.remove_theme_stylebox_override("fill")
 
 
 # --- Waves -----------------------------------------------------------------
@@ -960,6 +1518,7 @@ func _on_run_rewards(currency: int, breakdown: Dictionary) -> void:
 
 
 func _on_match_won() -> void:
+	_hide_downed()  # a finish-damage death skips bleedout — never leave the crawl hints up
 	var msg := tr("EXTRACTED — YOU WIN")
 	if _reward_line != "":
 		msg += "\n" + _reward_line
@@ -967,6 +1526,7 @@ func _on_match_won() -> void:
 
 
 func _on_match_lost() -> void:
+	_hide_downed()
 	_show_banner(tr("KIA — gear lost"), Color(1.0, 0.35, 0.35))
 
 

@@ -120,7 +120,7 @@ func _build_layout() -> void:
 	cols.add_child(left_col)
 
 	var unlk_hdr_panel := PanelContainer.new()
-	unlk_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	unlk_hdr_panel.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	left_col.add_child(unlk_hdr_panel)
 	unlk_hdr_panel.add_child(UIStyle.micro_header("WEAPON UNLOCKS", UIStyle.TEAL, 15))
 
@@ -149,7 +149,7 @@ func _build_layout() -> void:
 	cols.add_child(right_col)
 
 	var upg_hdr_panel := PanelContainer.new()
-	upg_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	upg_hdr_panel.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	right_col.add_child(upg_hdr_panel)
 	upg_hdr_panel.add_child(UIStyle.micro_header("PERMANENT UPGRADES", UIStyle.TEAL, 15))
 
@@ -172,7 +172,7 @@ func _build_layout() -> void:
 
 	# ── CRAFT section (below the two columns) ─────────────────────────────────
 	var craft_hdr_panel := PanelContainer.new()
-	craft_hdr_panel.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	craft_hdr_panel.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	root_vbox.add_child(craft_hdr_panel)
 	craft_hdr_panel.add_child(UIStyle.micro_header("CRAFT", UIStyle.TEAL, 15))
 
@@ -301,7 +301,7 @@ func _build_upgrade_rows() -> void:
 		var desc_lbl := Label.new()
 		desc_lbl.text = info["desc"]
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
-		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.add_theme_font_size_override("font_size", 13)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		vname.add_child(desc_lbl)
 
@@ -392,7 +392,7 @@ func _icon_cell(id: String, count: int, cell_size: int) -> Panel:
 		badge.add_theme_color_override("font_color", Color.WHITE)
 		badge.add_theme_color_override("font_outline_color", Color.BLACK)
 		badge.add_theme_constant_override("outline_size", 4)
-		badge.add_theme_font_size_override("font_size", 12)
+		badge.add_theme_font_size_override("font_size", 13)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(badge)
 	return slot
@@ -458,7 +458,7 @@ func _build_craft_rows() -> void:
 		status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		status_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		status_lbl.add_theme_font_size_override("font_size", 12)
+		status_lbl.add_theme_font_size_override("font_size", 13)
 		row.add_child(status_lbl)
 
 		# ── CRAFT button ─────────────────────────────────────────────────────

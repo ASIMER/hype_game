@@ -93,15 +93,11 @@ func _explode() -> void:
 ## Frag default: local explosion FX + a broadcast event + server-only radial
 ## damage and an AI-audible noise report.
 func _detonate_effect(pos: Vector3) -> void:
-	var host := _fx_host()
-
-	# Visual explosion (local on every peer).
-	if host and ResourceLoader.exists(_EXPLOSION_SCENE):
-		var fx = load(_EXPLOSION_SCENE).instantiate()
-		if fx:
-			host.add_child(fx)
-			if fx is Node3D:
-				(fx as Node3D).global_position = pos
+	# Visual explosion (local on every peer). D4.4: the pooled composite — fireball, smoke
+	# column and spark cone — keyed by grenade type, so a frag and a cryo no longer detonate
+	# in the same orange puff. `grenade_type` is what tells them apart, and the radius sizes
+	# the blast to what the damage actually reaches.
+	FXPool.spawn_explosion(_fx_host(), pos, grenade_type, Settings.GRENADE_RADIUS)
 
 	# Broadcast for audio / screenshake / other listeners.
 	Events.grenade_exploded.emit(pos, Settings.GRENADE_DAMAGE, Settings.GRENADE_RADIUS)
@@ -112,6 +108,9 @@ func _detonate_effect(pos: Vector3) -> void:
 		# Grenade explosion is AI-audible; _detonate_effect runs under the
 		# server-auth gate here so report_noise emits directly (no RPC needed).
 		NetworkManager.report_noise(pos, Settings.NOISE_GRENADE, 2)
+		# Blast shatters every window pane + crumbles every wall segment in radius.
+		BreakableGlass.break_in_radius(pos, Settings.GRENADE_RADIUS)
+		BreakableChunk.break_in_radius(pos, Settings.GRENADE_RADIUS)
 
 
 ## Damage every "enemies" node within `radius`, scaled by distance falloff
@@ -131,7 +130,12 @@ func _apply_radial_damage(center: Vector3, damage: float, radius: float) -> void
 			continue
 		# Linear falloff from 1.0 at centre to 0.25 at the rim.
 		var falloff := lerpf(1.0, 0.25, clampf(dist / radius, 0.0, 1.0))
-		health.take_damage(damage * falloff, _thrower)
+		var dmg := damage * falloff
+		# Machine Nemesis "blast_hard" learned counter shrugs off explosives (duck-typed; a
+		# non-nemesis returns dmg unchanged). Source stays _thrower → kill-attribution intact.
+		if e.has_method("filter_blast"):
+			dmg = e.filter_blast(dmg)
+		health.take_damage(dmg, _thrower)
 
 
 ## Where to parent the explosion FX so it lives in the world, not under us

@@ -13,6 +13,14 @@ const TICK_COL := Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.55)
 const CARD_COL := Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.95)
 const AMBER := UIStyle.AMBER  # centre marker
 const EXTRACT_COL := Color(0.3, 1.0, 0.5)  # green
+# World-event signal hues (mirrors EventBeacons/map legend).
+const EVENT_COLS := {
+	0: Color(0.95, 0.75, 0.25),
+	1: Color(0.95, 0.30, 0.95),
+	2: Color(0.30, 0.80, 0.95),
+	3: Color(1.0, 0.45, 0.10),
+	4: Color(1.0, 0.35, 0.35),
+}
 
 var _player: Node3D = null
 
@@ -140,6 +148,38 @@ func _draw() -> void:
 				),
 				EXTRACT_COL
 			)
+
+	# World-event markers: a DIAMOND in the event's signal color at mid-strip (evac
+	# triangles own the top edge) — «событие ТАМ» readable from the compass alone.
+	for ev in get_tree().get_nodes_in_group(Groups.WORLD_EVENTS):
+		if not is_instance_valid(ev):
+			continue
+		var epos: Vector3
+		if ev.has_meta("event_pos"):
+			epos = ev.get_meta("event_pos")
+		elif ev is Node3D:
+			epos = (ev as Node3D).global_position
+		else:
+			continue
+		var ekind: int = int(ev.get_meta("event_kind")) if ev.has_meta("event_kind") else -1
+		var ecol: Color = EVENT_COLS.get(ekind, Color(1.0, 0.8, 0.3))
+		var einfo := _bearing_to_x(
+			atan2(epos.x - _player.global_position.x, -(epos.z - _player.global_position.z)),
+			heading
+		)  # gdlint: ignore=max-line-length
+		var ex: float = clampf(einfo["x"], 6.0, STRIP_W - 6.0)
+		var ey := 15.0
+		draw_colored_polygon(
+			PackedVector2Array(
+				[
+					Vector2(ex, ey - 4),
+					Vector2(ex + 4, ey),
+					Vector2(ex, ey + 4),
+					Vector2(ex - 4, ey),
+				]
+			),
+			ecol
+		)
 
 	# Teammate markers (co-op): small green UPWARD triangles at the BOTTOM of the strip (so they
 	# never collide with the evac triangles at the top). Downed → amber. Empty in single-player.

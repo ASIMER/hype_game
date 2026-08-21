@@ -6,6 +6,7 @@ class_name MuzzleFlash
 
 const LIFETIME := 0.055
 
+var pooled := false  # set by FXPool; end-of-life releases instead of freeing
 var _t := 0.0
 var _intensity := 1.0  # per-weapon-class size/brightness (set_intensity)
 var _base_energy := 8.0
@@ -48,6 +49,23 @@ func _ready() -> void:
 ## weapon right after spawn.
 func set_intensity(mult: float) -> void:
 	_intensity = clampf(mult, 0.4, 2.5)
+	_apply_intensity()
+
+
+## (Re)start the flash for a pooled reuse: reset the clock, re-randomize the roll
+## (keeps the per-shot variation the one-shot path had), restore alphas.
+func fire() -> void:
+	_t = 0.0
+	visible = true
+	set_process(true)
+	if _quad != null:
+		_quad.rotation.z = randf() * TAU
+	if _streak != null:
+		_streak.rotation.z = randf() * TAU
+	if _quad_mat != null:
+		_quad_mat.albedo_color.a = 1.0
+	if _streak_mat != null:
+		_streak_mat.albedo_color.a = 0.9
 	_apply_intensity()
 
 
@@ -97,4 +115,7 @@ func _process(delta: float) -> void:
 		var s := _intensity * (1.0 + k * 0.7)
 		_quad.scale = Vector3(s, s, s)
 	if _t >= LIFETIME:
-		queue_free()
+		if pooled and FXPool.active != null:
+			FXPool.active.release(self)
+		else:
+			queue_free()

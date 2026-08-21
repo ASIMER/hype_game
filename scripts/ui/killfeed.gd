@@ -59,7 +59,8 @@ func _ready() -> void:
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
 		vp.size_changed.connect(_apply_hud_inset)
-	Events.wave_started.connect(func(w, _c): _push(tr("WAVE %d") % w, COL_WAVE))
+	# Wave STARTS are owned by the big top-center label (audit: the tiny top-left
+	# duplicate just added noise); the feed keeps only the positive CLEARED beat.
 	Events.wave_cleared.connect(func(w): _push(tr("WAVE %d CLEARED") % w, COL_GOOD))
 	Events.item_picked_up.connect(_on_pickup)
 	Events.entity_died.connect(_on_entity_died)
@@ -121,9 +122,13 @@ func _on_pickup(_player: Node, item_id: String, count: int) -> void:
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
 	if entity != null and entity.is_in_group(Groups.ENEMIES):
+		# P0 fix (UI audit): entity.name is the raw node name ("RobotEnemy2",
+		# "RobotElite_modAV…") — derive a readable label from the archetype id
+		# instead ("robot_frosthound" → "Frosthound").
 		var label := tr("Enemy")
-		if entity is Node and entity.name != "":
-			label = String(entity.name)
+		var eid: String = String(entity.get("enemy_id")) if "enemy_id" in entity else ""
+		if eid != "":
+			label = eid.trim_prefix("robot_").capitalize()
 		_push(tr("%s destroyed") % label, COL_DIM)
 
 
@@ -158,10 +163,9 @@ func _draw() -> void:
 		var alpha := 1.0 if t > FADE else clampf(t / FADE, 0.0, 1.0)
 		var base: Color = l["color"]
 		var col := Color(base.r, base.g, base.b, base.a * alpha)
-		# Subtle glass chip background behind each line.
-		var bg_col := Color(
-			UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.55 * alpha
-		)
+		# Glass chip background behind each line. M6.6: 0.55 washed out to pale
+		# grey over bright sky/snow biomes — 0.8 keeps the dark-smoke read.
+		var bg_col := Color(UIStyle.GLASS_BG.r, UIStyle.GLASS_BG.g, UIStyle.GLASS_BG.b, 0.8 * alpha)
 		draw_rect(
 			Rect2(Vector2(-4.0, y - LINE_H + 3.0), Vector2(WIDTH + 8.0, LINE_H - 2.0)), bg_col, true
 		)

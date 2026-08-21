@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestLine" load_steps=2 format=3 uid="uid://cqlnemesis01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_line.gd" id="1_ql"]
+
+[resource]
+script = ExtResource("1_ql")
+id = "ql_nemesis"
+title = "What the Machines Learn"
+intro = "Someone has been cataloguing the machines since before you got here, and they have noticed the thing nobody wants to say out loud: the ones that survive you come back different. The Archivist wants proof, then a serial number, then a lineage — and finally the thing all of them are learning from."
+giver = "The Archivist"
+quest_ids = PackedStringArray("q_nem_witness", "q_nem_field_notes", "q_nem_serial", "q_nem_lineage", "q_nem_archive")
+accent = 0

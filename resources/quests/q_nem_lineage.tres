@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqnemlineage01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_nem_lineage"
+title = "Broken Lineage"
+desc = "Kill a rival and the swarm hands its grudge to the nearest machine. Break the heir too — and this time carry the core all the way out. Extract with 1 Nemesis Core."
+daily = false
+obj_type = "extract_item"
+obj_target = "loot_nemesis_core"
+obj_count = 1
+reward_currency = 1700
+reward_item_ids = PackedStringArray("loot_circuit_pack")
+reward_item_counts = PackedInt32Array(2)
+reward_blueprints = PackedStringArray("bp_stim")
+unlock = PackedStringArray()
+prereq = PackedStringArray("q_nem_serial")
+lore = "\"You did not end it. You promoted somebody. Bring me the heir's core and I will show you what it inherited.\" — The Archivist"
+giver = "The Archivist"
+questline = "ql_nemesis"
+offer_weight = 0
+reward_xp = 700
+reward_giver_rep = 4
+reward_skill_points = 1

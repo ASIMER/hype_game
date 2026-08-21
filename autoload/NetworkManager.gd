@@ -15,6 +15,31 @@ func _ready() -> void:
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 	Events.entity_died.connect(_on_entity_died)
+	# M6: world events are server-directed, so their Events fires never reached
+	# co-op clients (no banner/beacon/marker on the join side). Mirror them.
+	Events.world_event_started.connect(_relay_world_event_started)
+	Events.world_event_ended.connect(_relay_world_event_ended)
+
+
+# ----------------------------------------------------- world-event client sync
+func _relay_world_event_started(kind: int, pos: Vector3, label: String) -> void:
+	if GameState.is_local_authority_server() and not multiplayer.get_peers().is_empty():
+		_rpc_world_event_started.rpc(kind, pos, label)
+
+
+func _relay_world_event_ended(kind: int, success: bool) -> void:
+	if GameState.is_local_authority_server() and not multiplayer.get_peers().is_empty():
+		_rpc_world_event_ended.rpc(kind, success)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_world_event_started(kind: int, pos: Vector3, label: String) -> void:
+	Events.world_event_started.emit(kind, pos, label)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_world_event_ended(kind: int, success: bool) -> void:
+	Events.world_event_ended.emit(kind, success)
 
 
 # ---------------------------------------------------------------- host / join
@@ -331,6 +356,31 @@ func _do_hit(target_path: NodePath, amount: float, attacker_peer: int) -> void:
 		hb.apply_hit(amount, _player_for_peer(attacker_peer))
 
 
+## Elemental-ammo chemistry (Phase 6): a landed elemental hit routes the ELEMENT KIND only —
+## the SERVER derives every number from Settings.CHEM_AMMO_* (mirrors request_hit's shape,
+## but with zero client-supplied magnitudes). Host applies directly; a client RPCs.
+func request_chemistry(target_path: NodePath, kind: String) -> void:
+	if GameState.is_local_authority_server():
+		_do_chemistry(target_path, kind)
+	else:
+		_chemistry_rpc.rpc_id(1, target_path, kind)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _chemistry_rpc(target_path: NodePath, kind: String) -> void:
+	if not multiplayer.is_server():
+		return
+	_do_chemistry(target_path, kind)
+
+
+func _do_chemistry(target_path: NodePath, kind: String) -> void:
+	if kind not in ["shock", "burn", "slow"]:
+		return
+	var enemy := get_node_or_null(target_path)
+	if enemy != null:
+		MachineChemistry.apply_ammo(enemy, kind)
+
+
 func _player_for_peer(peer_id: int) -> Node:
 	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
 		if str(p.name).to_int() == peer_id:
@@ -341,17 +391,27 @@ func _player_for_peer(peer_id: int) -> Node:
 ## Broadcast a fired shot to OTHER peers so teammates see the tracer/muzzle/impact
 ## (the shooter already spawned its own FX locally). Unreliable — purely cosmetic.
 func broadcast_shot(
-	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	enemy_hit: bool,
+	normal: Vector3,
+	wid: String = ""
 ) -> void:
 	if multiplayer.has_multiplayer_peer() and not is_offline:
-		_shot_rpc.rpc(muzzle, hit_point, arc, enemy_hit, normal)
+		_shot_rpc.rpc(muzzle, hit_point, arc, enemy_hit, normal, wid)
 
 
 @rpc("any_peer", "call_remote", "unreliable")
 func _shot_rpc(
-	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	enemy_hit: bool,
+	normal: Vector3,
+	wid: String = ""
 ) -> void:
-	Events.remote_shot.emit(muzzle, hit_point, arc, enemy_hit, normal)
+	Events.remote_shot.emit(muzzle, hit_point, arc, enemy_hit, normal, wid)
 
 
 # =========================================================== noise -> server AI
@@ -372,6 +432,107 @@ func _noise_rpc(world_pos: Vector3, loudness: float, kind: int) -> void:
 	if not multiplayer.is_server():
 		return
 	Events.noise_emitted.emit(world_pos, loudness, kind)
+
+
+# =========================================================== breakable window glass
+## A pane was hit — route the break to the SERVER (authoritative), which validates and
+## broadcasts so every peer shatters the SAME pane. Panes are addressed by their
+## deterministic build index (wall roots are anonymous → node-path RPCs can't target
+## them; the index registry lives in BreakableGlass). The break is also a small noise
+## the server AI investigates.
+func request_break_glass(index: int) -> void:
+	if GameState.is_local_authority_server():
+		_server_break_glass(index)
+	else:
+		_break_glass_request_rpc.rpc_id(1, index)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _break_glass_request_rpc(index: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_break_glass(index)
+
+
+func _server_break_glass(index: int) -> void:
+	var pane: BreakableGlass = BreakableGlass.by_index(index)
+	if pane == null or pane.broken:
+		return
+	report_noise(pane.global_position, BreakableGlass.NOISE_LOUDNESS, 1)
+	_glass_broken_rpc.rpc(index)
+
+
+@rpc("authority", "call_local", "reliable")
+func _glass_broken_rpc(index: int) -> void:
+	var pane: BreakableGlass = BreakableGlass.by_index(index)
+	if pane != null:
+		pane.shatter()
+
+
+## Building wall-segment damage (BreakableChunk, index-keyed like glass). HP is server-only:
+## the host applies directly; a client routes the shot's damage via rpc_id(1). When a hit
+## depletes the segment, the server broadcasts the crumble to every peer. `normal` is the shot's
+## surface normal (points toward the shooter) so the falling debris sprays the right way; it rides
+## through to crumble() — Vector3.ZERO for a grenade (radial burst).
+func request_damage_chunk(index: int, dmg: float, normal: Vector3 = Vector3.ZERO) -> void:
+	if GameState.is_local_authority_server():
+		_server_damage_chunk(index, dmg, normal)
+	else:
+		_damage_chunk_request_rpc.rpc_id(1, index, dmg, normal)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _damage_chunk_request_rpc(index: int, dmg: float, normal: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_damage_chunk(index, dmg, normal)
+
+
+func _server_damage_chunk(index: int, dmg: float, normal: Vector3) -> void:
+	var chunk: BreakableChunk = BreakableChunk.by_index(index)
+	if chunk == null or chunk.broken:
+		return
+	if chunk.server_take_damage(dmg):
+		report_noise(chunk.global_position, BreakableChunk.NOISE_LOUDNESS, 1)
+		_chunk_broken_rpc.rpc(index, normal)
+
+
+@rpc("authority", "call_local", "reliable")
+func _chunk_broken_rpc(index: int, normal: Vector3) -> void:
+	var chunk: BreakableChunk = BreakableChunk.by_index(index)
+	if chunk != null:
+		chunk.crumble(normal)
+
+
+# ================================================== destructible trees (by index)
+## Shot damage to a tree trunk (index = TreeTrunks child order, deterministic on
+## every peer — the glass/chunk discipline). Server owns HP; the fell broadcasts.
+func request_fell_tree(index: int, dmg: float, normal: Vector3 = Vector3.ZERO) -> void:
+	if GameState.is_local_authority_server():
+		_server_fell_tree(index, dmg, normal)
+	else:
+		_fell_tree_request_rpc.rpc_id(1, index, dmg, normal)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _fell_tree_request_rpc(index: int, dmg: float, normal: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_fell_tree(index, dmg, normal)
+
+
+func _server_fell_tree(index: int, dmg: float, normal: Vector3) -> void:
+	if not FellableTree.server_take_damage(index, dmg):
+		return
+	report_noise(FellableTree.position_of(index), FellableTree.NOISE_LOUDNESS, 1)
+	_tree_felled_rpc.rpc(index, normal)
+
+
+@rpc("authority", "call_local", "reliable")
+func _tree_felled_rpc(index: int, normal: Vector3) -> void:
+	var host: Node = get_tree().current_scene
+	if host != null:
+		FellableTree.do_fell(host, index, normal)
 
 
 # ============================================== server-spawned throwables / gadgets
@@ -491,6 +652,92 @@ func _on_entity_died(entity: Node, killer: Node) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _credit_kill_rpc(enemy_id: String = "") -> void:
 	Progression.credit_kill(enemy_id)
+
+
+# ===================================================== Machine Nemesis (Phase 3)
+## Server-side: grant the Machine Nemesis defeat BOUNTY to `peer` (currency + vendor rep +
+## XP). Routed like the kill credit — the host grants itself directly, a remote killer gets
+## it on ITS OWN machine via rpc_id so its profile/HUD update correctly.
+func grant_nemesis_bounty(peer: int) -> void:
+	if not GameState.is_local_authority_server() or peer <= 0:
+		return
+	if peer == _peer_of_local():
+		_award_nemesis_bounty()
+	else:
+		_grant_nemesis_bounty_rpc.rpc_id(peer)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _grant_nemesis_bounty_rpc() -> void:
+	_award_nemesis_bounty()
+
+
+func _award_nemesis_bounty() -> void:
+	MetaProgression.earn(Settings.NEMESIS_BOUNTY_CURRENCY)
+	MetaProgression.grant_rep(Settings.NEMESIS_BOUNTY_REP)
+	MetaProgression.add_xp(Settings.NEMESIS_BOUNTY_XP, "nemesis_kill")
+
+
+## A peer whose player just truly DIED reports its at-risk (committed) gear ids to the HOST
+## so the NemesisDirector can have the surviving rival "wear" + drop it on defeat ("reclaim
+## your armor"). The host applies directly; a client routes to the host via rpc_id(1).
+func report_nemesis_loss(ids: Array) -> void:
+	if ids.is_empty():
+		return
+	if GameState.is_local_authority_server():
+		_record_nemesis_loss(ids)
+	else:
+		_report_loss_rpc.rpc_id(1, ids)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _report_loss_rpc(ids: Array) -> void:
+	if GameState.is_local_authority_server():
+		_record_nemesis_loss(ids)
+
+
+func _record_nemesis_loss(ids: Array) -> void:
+	var dir: Node = get_node_or_null("/root/NemesisDirector")
+	if dir != null:
+		dir.call("record_lost_gear", ids)
+
+
+# ===================================================== Phase 4 synergy layers
+## Server-side: reward the carrier `peer` who EXTRACTED with the Power-Core (currency + rep +
+## the core item in their stash). Routed to that peer's own machine like the kill credit.
+func grant_power_core(peer: int) -> void:
+	if not GameState.is_local_authority_server() or peer <= 0:
+		return
+	if peer == _peer_of_local():
+		_award_power_core()
+	else:
+		_grant_power_core_rpc.rpc_id(peer)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _grant_power_core_rpc() -> void:
+	_award_power_core()
+
+
+func _award_power_core() -> void:
+	MetaProgression.earn(Settings.POWER_CORE_BOUNTY)
+	MetaProgression.grant_rep(Settings.POWER_CORE_REP)
+	Stash.add("loot_power_core", 1)
+
+
+## Host → clients: push the Machine Nemesis codex (active rival + retired history) so a co-op
+## client's Hub "Rivals" tab can display it (the host owns nemesis.cfg). Called by the
+## NemesisDirector on birth/level/defeat + match start (catch-up for late joiners).
+func sync_nemesis_codex(active: Dictionary, history: Array) -> void:
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		_rpc_nemesis_codex.rpc(active, history)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_nemesis_codex(active: Dictionary, history: Array) -> void:
+	GameState.nemesis_active = active
+	GameState.nemesis_history = history
+	Events.nemesis_codex_synced.emit()
 
 
 ## Walk up from a node (hurtbox/weapon/player) to the owning player and return its
@@ -698,6 +945,7 @@ func _on_peer_connected(id: int) -> void:
 	# Server: a new client joined the ENet session. Roster is filled once the
 	# client calls _register_self. WS-G wires entity spawning off match_started.
 	if multiplayer.is_server():
+		_relax_peer_timeout(id)
 		if Settings.NET_DEBUG:
 			print("[net] peer %d connected to server" % id)
 		_broadcast_roster.rpc_id(id, _serialize_roster())
@@ -719,7 +967,22 @@ func _on_peer_disconnected(id: int) -> void:
 
 
 func _on_connected_to_server() -> void:
+	_relax_peer_timeout(1)
 	_register_self.rpc_id(1, local_player_name)
+
+
+## Widen the ENet inactivity window for one link (both ends call this on connect).
+## The arena build stalls the main thread for seconds at a time (5k+ breakable chunks,
+## merged-mesh bakes, navmesh) — at ENet's ~5–30s defaults the OTHER side times the
+## frozen peer out mid-load, the server begins the match without it, and the dropped
+## client zombies in an empty world. 20s min / 90s max survives the heaviest load.
+func _relax_peer_timeout(peer_id: int) -> void:
+	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if enet == null:
+		return
+	var link: ENetPacketPeer = enet.get_peer(peer_id)
+	if link != null:
+		link.set_timeout(64, 20000, 90000)
 
 
 func _on_connection_failed() -> void:

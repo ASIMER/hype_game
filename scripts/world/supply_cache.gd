@@ -150,6 +150,14 @@ func _crack() -> void:
 	# even if loot_tables.gd hasn't landed yet.
 	_spawn_loot()
 
+	# M5.3 ALARM VAULT: ~35% of cracks trip a silent alarm — a reinforcement wave
+	# converges on the cache AND a second loot roll drops as hazard pay. Routed
+	# through AIDirector so the response respects the wave manager's caps.
+	if _is_server and randf() < 0.35:
+		Events.notify.emit(tr("⚠ VAULT ALARM TRIPPED — they are coming for the cache"), 2)
+		AIDirector.request_reinforcements(3, global_position)
+		_spawn_loot()
+
 	# Beacon goes bright gold then fades.
 	_apply_beacon_crack()
 

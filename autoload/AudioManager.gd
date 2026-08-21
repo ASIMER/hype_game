@@ -47,6 +47,42 @@ const SOUNDS := {
 	# Water immersion (Lane B): entry splash + looping submerged ambience.
 	"water_splash": "res://assets/audio/water_splash.ogg",
 	"underwater": "res://assets/audio/underwater.ogg",
+	# Breakable windows (interactivity overhaul).
+	"glass_break": "res://assets/audio/glass_break.wav",
+	# Material-typed building/rock collapse (Destruction 2.1).
+	"chunk_concrete": "res://assets/audio/chunk_concrete.wav",
+	"chunk_metal": "res://assets/audio/chunk_metal.wav",
+	"chunk_stone": "res://assets/audio/chunk_stone.wav",
+	# Production audio pass: biome ambient beds + robot vocalizations (gen_audio.py).
+	"amb_urban": "res://assets/audio/amb_urban.ogg",
+	"amb_snow": "res://assets/audio/amb_snow.ogg",
+	"amb_desert": "res://assets/audio/amb_desert.ogg",
+	"amb_rain": "res://assets/audio/amb_rain.ogg",
+	"robot_alert": "res://assets/audio/robot_alert.ogg",
+	"robot_death": "res://assets/audio/robot_death.ogg",
+	# 96 s evolving dark loop (gen_music_long) — swapped in when the STORM hits.
+	"music_storm": "res://assets/audio/music_storm.ogg",
+	# M1 music layers: percussive combat overlay stem faded in while machines fight.
+	"music_combat": "res://assets/audio/music_combat.ogg",
+	# v0.5-B3 music layers: TENSION (machines searching nearby) + BOSS (live boss) stems.
+	"music_tension": "res://assets/audio/music_tension.ogg",
+	"music_boss": "res://assets/audio/music_boss.ogg",
+	"music_hangar": "res://assets/audio/music_hangar.ogg",
+	# MOBA skill rework (v0.4.5): per-ability cast/impact sounds (gen_audio.py).
+	"skill_cast": "res://assets/audio/skill_cast.wav",
+	"skill_meteor": "res://assets/audio/skill_meteor.wav",
+	"skill_storm": "res://assets/audio/skill_storm.wav",
+	"skill_leap": "res://assets/audio/skill_leap.wav",
+	"skill_slam": "res://assets/audio/skill_slam.wav",
+	"skill_breach": "res://assets/audio/skill_breach.wav",
+	"skill_zap": "res://assets/audio/skill_zap.wav",
+	# D5.1 gunfire body: the delayed distant boom, its indoor slap-back twin, and the
+	# near-miss zip (two variants). Layers OVER the recorded per-class cracks above —
+	# the recordings are the muzzle, these are the world answering it.
+	"shot_tail_far": "res://assets/audio/shot_tail_far.wav",
+	"shot_tail_slap": "res://assets/audio/shot_tail_slap.wav",
+	"bullet_whizz": "res://assets/audio/bullet_whizz.wav",
+	"bullet_whizz2": "res://assets/audio/bullet_whizz2.wav",
 }
 
 ## Per-sound volume trim (dB).  Unlisted sounds play at 0 dB.
@@ -75,17 +111,299 @@ const SOUND_DB := {
 	"music": -20.0,
 	"water_splash": -5.0,
 	"underwater": -12.0,
+	"glass_break": -6.0,
+	"chunk_concrete": -5.0,
+	"chunk_metal": -6.0,
+	"chunk_stone": -7.0,
+	"robot_alert": -9.0,
+	"robot_death": -7.0,
+	"skill_cast": -8.0,
+	"skill_meteor": -5.0,
+	"skill_storm": -8.0,
+	"skill_leap": -7.0,
+	"skill_slam": -4.0,
+	"skill_breach": -6.0,
+	"skill_zap": -7.0,
+	# The far tail sits UNDER the crack by design: it is felt more than heard, and its 3D
+	# emitter carries much further than the crack's (TAIL_UNIT_SIZE), so it needs the room.
+	"shot_tail_far": -6.0,
+	"shot_tail_slap": -11.0,
+	"bullet_whizz": -6.0,
+	"bullet_whizz2": -6.0,
+}
+
+# In-raid ambient bed per biome (the base "ambient" wind is the fallback + menu bed).
+const _AMB_BY_BIOME := {
+	"urban": "amb_urban",
+	"snow": "amb_snow",
+	"desert": "amb_desert",
+	"rain": "amb_rain",
 }
 
 ## Master toggle + trim.  Public so a settings menu can drive them later.
 var enabled := true
 var master_db := -3.0
 
+# Ducking (M1 audio mix): loud one-shots dip the "Bed" bus (music+ambient), then
+# it recovers at ~26 dB/s — combat reads punchy without a manual mix pass.
+var _duck_db: float = 0.0
+var _bed_bus_idx: int = -1
+
+# M1 music layers: the combat percussion stem rides OVER the calm bed, mixed by
+# live threat (any machine in CHASE/ATTACK within 45 m). Own player — never
+# touched by the storm-swap tweens.
+var _combat_player: AudioStreamPlayer = null
+var _combat_mix: float = 0.0
+var _combat_poll: float = 0.0
+var _combat_hot: bool = false
+
+# v0.5-B3 music layers: two more stems over the SAME 0.5 s threat poll — TENSION
+# (machines searching close by / a fight brewing at range) and BOSS (a live robot_boss
+# ≤90 m REPLACES the combat stem with the heavy one). Priority: boss > combat > tension.
+var _tension_player: AudioStreamPlayer = null
+var _tension_mix: float = 0.0
+var _tension_hot: bool = false
+var _boss_player: AudioStreamPlayer = null
+var _boss_mix: float = 0.0
+var _boss_hot: bool = false
+
+# D5.2 audio occlusion: every positional one-shot we spawn is registered with this
+# component, which raycasts emitter→listener and muffles what is behind a wall. All of
+# the logic (rays, budgets, smoothing) lives in scripts/core/audio_occlusion.gd — this
+# file only hands it the players it creates. Null when headless / toggled off.
+var _occlusion: AudioOcclusion = null
+
+# M1 reverb zones: one-shots live on an "SFX" bus whose reverb wet/room blends
+# between OUTDOOR (airy, low) and INDOOR (roomy) from a ceiling raycast.
+var _sfx_bus_idx: int = -1
+var _reverb: AudioEffectReverb = null
+var _indoor_mix: float = 0.0
+var _indoor_target: float = 0.0
+var _indoor_poll: float = 0.0
+
+
+## Duck the music/ambient bed by `db` (negative). Deeper requests win.
+func duck(db: float) -> void:
+	_duck_db = minf(_duck_db, db)
+
+
+## The hangar/shell theme, driven by PHASE rather than by signals. Every route into and out
+## of the shell — boot, deploy, death, the summary screen, a restart, a co-op client dropping
+## back to the menu — is a phase change, so reading the phase covers all of them; wiring this
+## to `match_started` alone would have left the theme silent after a raid ended.
+## Runs unconditionally in `_process` (like the duck recovery) because the shell has no local
+## player and the rest of `_process` returns early without one.
+func _tick_hangar(delta: float) -> void:
+	if _hangar_player == null:
+		return
+	var want: bool = GameState.phase != GameState.Phase.IN_MATCH and enabled
+	var target: float = (MUSIC_HANGAR_DB + master_db) if want else -80.0
+	if want and not _hangar_player.playing:
+		_hangar_player.play()
+	var cur: float = _hangar_player.volume_db
+	if is_equal_approx(cur, target):
+		if not want and _hangar_player.playing:
+			_hangar_player.stop()  # silent AND stopped, so it costs nothing in a raid
+		return
+	var step: float = HANGAR_FADE_DB_PER_S * delta
+	_hangar_player.volume_db = clampf(target, cur - step, cur + step)
+
+
+## Music layers (M1 combat + v0.5-B3 tension/boss): ONE 0.5 s threat poll drives three
+## stems over the calm bed. Priority boss > combat > tension; each fades in fast, out slow.
+func _tick_music_layers(delta: float) -> void:
+	if _combat_player == null:
+		return
+	var live: bool = (
+		_local_player != null
+		and is_instance_valid(_local_player)
+		and GameState.phase == GameState.Phase.IN_MATCH
+	)
+	if live:
+		_combat_poll -= delta
+		if _combat_poll <= 0.0:
+			_combat_poll = 0.5
+			_poll_threat()
+	var boss_on: bool = live and _boss_hot
+	var combat_on: bool = live and _combat_hot and not boss_on
+	var tension_on: bool = live and _tension_hot and not combat_on and not boss_on
+	_combat_mix = _drive_stem(_combat_player, _combat_mix, combat_on, 1.6, 0.35, -9.0, delta)
+	_boss_mix = _drive_stem(_boss_player, _boss_mix, boss_on, 1.6, 0.35, -8.0, delta)
+	_tension_mix = _drive_stem(_tension_player, _tension_mix, tension_on, 0.9, 0.5, -14.0, delta)
+
+
+## Classify the local threat picture into the three stem "hot" flags (0.5 s cadence).
+func _poll_threat() -> void:
+	_combat_hot = false
+	_tension_hot = false
+	_boss_hot = false
+	var ppos: Vector3 = (_local_player as Node3D).global_position
+	for e in get_tree().get_nodes_in_group(Groups.ENEMIES):
+		if not (e is Node3D):
+			continue
+		var d: float = (e as Node3D).global_position.distance_to(ppos)
+		if d <= 90.0 and String(e.get("enemy_id")) == "robot_boss":
+			_boss_hot = true
+		var st: int = int(e.get("current_state")) if "current_state" in e else 0
+		if (st == 1 or st == 2) and d <= 45.0:
+			_combat_hot = true
+		elif st == 3 and d <= 35.0:
+			_tension_hot = true  # machines SEARCHING close by — unease creeps in
+		elif (st == 1 or st == 2) and d <= 70.0:
+			_tension_hot = true  # a fight brewing just out of earshot
+
+
+## Fade one stem toward hot/cold and manage its play/stop. Returns the new mix.
+func _drive_stem(
+	p: AudioStreamPlayer,
+	mix: float,
+	hot: bool,
+	in_rate: float,
+	out_rate: float,
+	hi_db: float,
+	delta: float
+) -> float:
+	if p == null:
+		return 0.0
+	var rate: float = in_rate if hot else out_rate
+	var m: float = clampf(mix + (1.0 if hot else -1.0) * rate * delta, 0.0, 1.0)
+	if m <= 0.01:
+		if p.playing:
+			p.stop()
+		return m
+	if not p.playing:
+		p.play()
+	p.volume_db = lerpf(-46.0, hi_db, m)
+	return m
+
+
+## Reverb-zone blend: a ceiling above the player → INDOOR (roomier, wetter).
+func _tick_reverb_zone(delta: float) -> void:
+	if _reverb == null or _local_player == null or not is_instance_valid(_local_player):
+		return
+	_indoor_poll -= delta
+	if _indoor_poll <= 0.0:
+		_indoor_poll = 1.0
+		var body := _local_player as Node3D
+		if body != null and body.is_inside_tree():
+			var space := body.get_world_3d().direct_space_state
+			var from: Vector3 = body.global_position + Vector3.UP * 0.6
+			var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.UP * 8.0, 1)
+			var hit: Dictionary = space.intersect_ray(q)
+			_indoor_target = 1.0 if not hit.is_empty() else 0.0
+	_indoor_mix = lerpf(_indoor_mix, _indoor_target, clampf(2.5 * delta, 0.0, 1.0))
+	_reverb.wet = lerpf(0.06, 0.3, _indoor_mix)
+	_reverb.room_size = lerpf(0.3, 0.72, _indoor_mix)
+
+
+## 0..1 "how enclosed is the listener" — the smoothed ceiling probe the reverb zone already
+## pays for. FootstepSurfaces reads it so a floor it could not raycast still reads as built.
+func indoor_ratio() -> float:
+	return _indoor_mix
+
+
+## D5.4 ambience v2 — a TIME-OF-DAY layer and an INDOOR room tone OVER the biome bed.
+## Day/night comes from DayNight.sun_ratio, a pure function of the SYNCED match clock, so
+## every peer (and the headless server, which builds none of this) agrees for free; indoors
+## is the reverb probe's ceiling test. Inside, the outdoor layer is ducked away and a low
+## hum comes up, so a doorway becomes an audible threshold. Evaluated on AMBIENCE_POLL —
+## the per-frame cost is one Vector3 lerp — and a missing layer is synthesized ONE per
+## frame so the first nightfall never builds three beds in one tick.
+func _tick_ambience(delta: float) -> void:
+	if _foley == null:
+		return
+	_amb2_poll -= delta
+	if _amb2_poll <= 0.0:
+		_amb2_poll = Settings.AMBIENCE_POLL
+		_eval_ambience()
+	_amb2_w = _amb2_w.lerp(_amb2_target, clampf(0.8 * delta, 0.0, 1.0))
+	var built := false
+	if _amb_night == null and _amb2_w.y > 0.05:
+		_amb_night = _make_layer_player("amb_night_wind")
+		built = true
+	if not built and _amb_day == null and _amb2_w.x > 0.05:
+		_amb_day = _make_layer_player("amb_day_air")
+		built = true
+	if not built and _amb_indoor == null and _amb2_w.z > 0.05:
+		_amb_indoor = _make_layer_player("amb_indoor_hum")
+	_drive_ambient_layer(_amb_night, _amb2_w.y, Settings.AMBIENCE_NIGHT_DB)
+	_drive_ambient_layer(_amb_day, _amb2_w.x, Settings.AMBIENCE_DAY_DB)
+	_drive_ambient_layer(_amb_indoor, _amb2_w.z, Settings.AMBIENCE_INDOOR_DB)
+
+
+## Re-target the three ambience weights (day, night, indoor). Outside a live raid they all
+## go to zero, so the lobby/menu keeps exactly the bed it had before this pass.
+func _eval_ambience() -> void:
+	var live: bool = (
+		GameState.phase == GameState.Phase.IN_MATCH
+		and _local_player != null
+		and is_instance_valid(_local_player)
+	)
+	if not live:
+		_amb2_target = Vector3.ZERO
+		return
+	var sun: float = DayNight.sun_ratio(DayNight.current_hour())
+	var indoor: float = clampf(_indoor_mix, 0.0, 1.0)
+	var outdoor: float = 1.0 - indoor * Settings.AMBIENCE_INDOOR_DUCK
+	_amb2_target = Vector3(sun * outdoor, (1.0 - sun) * outdoor, indoor)
+	_tick_creaks()
+
+
+## Sporadic metal groans after dark — cooling ruins. Interval AND pitch are hashed off a
+## sequence counter (never randf), non-positional and deliberately faint; the first tick
+## only arms the timer so nightfall does not creak the instant the sun ratio crosses.
+func _tick_creaks() -> void:
+	if _amb2_target.y < 0.45:
+		return
+	_creak_timer -= Settings.AMBIENCE_POLL
+	if _creak_timer > 0.0:
+		return
+	_creak_seq += 1
+	_creak_timer = ProcHash.hrange(
+		_creak_seq * 53 + 9, Settings.AMBIENCE_CREAK_MIN, Settings.AMBIENCE_CREAK_MAX
+	)
+	if _creak_seq <= 1:
+		return
+	_foley.play_clip("metal_creak", ProcHash.hrange(_creak_seq * 71 + 5, 0.78, 1.24), 0.0)
+
+
+## Fade one ambience layer to its weight; stopped outright below audibility so an idle
+## layer costs no mixer voice.
+func _drive_ambient_layer(p: AudioStreamPlayer, w: float, base_db: float) -> void:
+	if p == null:
+		return
+	if w <= 0.02:
+		if p.playing:
+			p.stop()
+		return
+	if not p.playing:
+		p.play()
+	p.volume_db = lerpf(-42.0, base_db + master_db, clampf(w, 0.0, 1.0))
+
+
+## A looping ambience layer on the "Bed" bus, fed by the runtime-synthesized clip bank.
+func _make_layer_player(id: String) -> AudioStreamPlayer:
+	var p := AudioStreamPlayer.new()
+	p.bus = "Bed"
+	p.volume_db = -60.0
+	add_child(p)
+	var stream: AudioStream = FootstepSurfaces.stream_for(id)
+	if stream != null:
+		_set_stream_loop(stream)
+		p.stream = stream
+	return p
+
+
 # ---------------------------------------------------------------------------
 # Shot throttle (weapon_fired fires ~8/s in full auto)
 # ---------------------------------------------------------------------------
 const SHOT_MIN_INTERVAL := 0.05
 var _last_shot_time := -1.0
+
+# Crumble SFX throttle: a grenade/burst snaps many cells in one frame → play 1-2 layered crumbles,
+# not 14. material_kind (0/1/2) selects the sound.
+var _last_chunk_sfx_time := -1.0
+const _CHUNK_SFX_BY_KIND := ["chunk_concrete", "chunk_metal", "chunk_stone"]
 
 # ---------------------------------------------------------------------------
 # Stream cache (null when the file is absent)
@@ -119,6 +437,11 @@ const HEARTBEAT_HP_THRESHOLD := 0.30  # ratio of max_health
 # ---------------------------------------------------------------------------
 var _ambient_player: AudioStreamPlayer = null
 var _music_player: AudioStreamPlayer = null
+var _hangar_player: AudioStreamPlayer = null
+# Biome-bed crossfade state: which bed id is playing + a 2 s poll of the player's biome.
+var _ambient_id := ""
+var _amb_poll := 0.0
+var _amb_tween: Tween = null
 # Underwater ambience bed + Master-bus lowpass for the muffled submerged effect.
 var _underwater_player: AudioStreamPlayer = null
 var _underwater_lowpass_idx := -1  # index of the lowpass effect we add to Master (-1 = none)
@@ -127,6 +450,30 @@ const UNDERWATER_BASE_DB := -12.0
 const AMBIENT_BASE_DB := -19.0  # real wind-loop bed — quiet, atmospheric
 const MUSIC_BASE_DB := -23.0  # tense dark-ambient music — deliberately quiet
 const MUSIC_WAVE_DB := -18.0  # slight raise during active waves
+## Hangar/shell theme. Louder than the raid bed on purpose: the shell has no
+## gunfire to sit under, and arriving into a raid should feel like the music
+## LEFT rather than like nothing changed.
+const MUSIC_HANGAR_DB := -19.0
+const HANGAR_FADE_DB_PER_S := 9.0
+
+# D5.3 footsteps/foley: surface classification, jump-land-mantle and the weight-scaled gear
+# rattle live in the component (scripts/core/footstep_surfaces.gd) — this file only routes
+# playback and hands it the ONE positional-emitter path so occlusion still applies. Null
+# when headless / FOLEY_ENABLED is off, and every call site guards on that.
+var _foley: FootstepSurfaces = null
+
+# D5.4 ambience v2: three layers ON TOP of the biome bed — daytime air, night wind and an
+# indoor room tone — mixed by the day-night clock and the reverb probe's ceiling test.
+# _amb2_w/_amb2_target pack the weights as (day, night, indoor) so the per-frame smoothing
+# is one value-type lerp instead of three floats.
+var _amb_day: AudioStreamPlayer = null
+var _amb_night: AudioStreamPlayer = null
+var _amb_indoor: AudioStreamPlayer = null
+var _amb2_poll: float = 0.0
+var _amb2_w: Vector3 = Vector3.ZERO
+var _amb2_target: Vector3 = Vector3.ZERO
+var _creak_timer: float = 0.0
+var _creak_seq: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -135,13 +482,7 @@ const MUSIC_WAVE_DB := -18.0  # slight raise during active waves
 func _ready() -> void:
 	# Cache streams; absent files resolve to null.
 	for id in SOUNDS:
-		var path: String = SOUNDS[id]
-		if ResourceLoader.exists(path):
-			var res := load(path)
-			if res is AudioStream:
-				_streams[id] = res
-				continue
-		_streams[id] = null
+		_streams[id] = _resolve_stream(String(SOUNDS[id]))
 
 	# Round-robin pool for non-positional one-shots.
 	for i in POOL_SIZE:
@@ -171,6 +512,69 @@ func _ready() -> void:
 		# Wire UI click to all buttons added after this point.
 		get_tree().node_added.connect(_on_node_added)
 
+		# AUDIO MIX (M1): the music/ambient beds live on their own "Bed" bus so loud
+		# one-shots can DUCK them (bus volume dip) without touching the per-player
+		# volume tweens (storm crossfade etc. keep owning player.volume_db).
+		_bed_bus_idx = AudioServer.bus_count
+		AudioServer.add_bus(_bed_bus_idx)
+		AudioServer.set_bus_name(_bed_bus_idx, "Bed")
+		AudioServer.set_bus_send(_bed_bus_idx, "Master")
+		_music_player.bus = "Bed"
+		_ambient_player.bus = "Bed"
+		_underwater_player.bus = "Bed"
+
+		# Threat stems (start silent; mixed in _process by the live threat poll).
+		# NOTE the stream ASSIGNMENT here: the M1 combat stem was created but never
+		# stream-assigned — .play() was a silent no-op and the layer never sounded
+		# (latent bug caught by the v0.5-B3 layer work).
+		_combat_player = _make_looping_player("music_combat", -9.0)
+		_combat_player.volume_db = -80.0
+		_combat_player.bus = "Bed"
+		_assign_stem_stream(_combat_player, "music_combat")
+		_tension_player = _make_looping_player("music_tension", -14.0)
+		_tension_player.volume_db = -80.0
+		_tension_player.bus = "Bed"
+		_assign_stem_stream(_tension_player, "music_tension")
+		_boss_player = _make_looping_player("music_boss", -8.0)
+		_boss_player.volume_db = -80.0
+		_boss_player.bus = "Bed"
+		_assign_stem_stream(_boss_player, "music_boss")
+		# Hangar/shell theme. The menu and hub used to borrow the raid's tense drone,
+		# which made standing in your own hangar feel like being hunted and left the
+		# raid nothing to arrive from. Driven by PHASE in _process (below) rather than
+		# by signals, so every route into and out of the shell — boot, deploy, death,
+		# summary, restart — is covered without hunting for the matching event.
+		_hangar_player = _make_looping_player("music_hangar", MUSIC_HANGAR_DB)
+		_hangar_player.volume_db = -80.0
+		_hangar_player.bus = "Bed"
+		_assign_stem_stream(_hangar_player, "music_hangar")
+
+		# "SFX" bus with a blendable reverb (outdoor air ↔ indoor room).
+		_sfx_bus_idx = AudioServer.bus_count
+		AudioServer.add_bus(_sfx_bus_idx)
+		AudioServer.set_bus_name(_sfx_bus_idx, "SFX")
+		AudioServer.set_bus_send(_sfx_bus_idx, "Master")
+		_reverb = AudioEffectReverb.new()
+		_reverb.wet = 0.06
+		_reverb.room_size = 0.3
+		AudioServer.add_bus_effect(_sfx_bus_idx, _reverb)
+		for p in _pool:
+			p.bus = "SFX"
+
+		# Occlusion component (D5.2). A child node so it owns its own _process tick and
+		# this file stays a thin router (docs/AUDIT.md — AudioManager is not to grow).
+		if Settings.AUDIO_OCCLUSION_ENABLED:
+			_occlusion = AudioOcclusion.new()
+			_occlusion.name = "AudioOcclusion"
+			add_child(_occlusion)
+
+		# Footstep/foley component (D5.3) — same reasoning as the occlusion child: it owns
+		# its own tick + Events wiring, this file stays a router.
+		if Settings.FOLEY_ENABLED:
+			_foley = FootstepSurfaces.new()
+			_foley.name = "FootstepSurfaces"
+			add_child(_foley)
+
 	# Events bus connections.
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.damage_dealt.connect(_on_damage_dealt)
@@ -187,6 +591,18 @@ func _ready() -> void:
 	Events.local_player_spawned.connect(_on_local_player_spawned)
 	Events.player_health_changed.connect(_on_player_health_changed)
 	Events.water_state_changed.connect(_on_water_state_changed)
+	Events.glass_broken.connect(_on_glass_broken)
+	Events.chunk_broken.connect(_on_chunk_broken)
+	Events.enemy_chase_started.connect(_on_enemy_chase_started)
+	Events.final_wave_started.connect(_on_final_wave)
+	# D5.1: the shot layers a teammate's crack cannot carry — the delayed far boom and the
+	# whizz of a round that passed US. Needs the trajectory, so it hangs off remote_shot
+	# itself rather than off play_remote_shot (which only ever gets the muzzle).
+	Events.remote_shot.connect(_on_remote_shot)
+	# D5.5 world one-shots that had no voice at all until now.
+	Events.door_opened.connect(_on_door_opened)
+	Events.power_reveal_started.connect(_on_power_reveal_started)
+	Events.blueprint_learned.connect(_on_blueprint_learned)
 	if Events.has_signal("match_started"):
 		Events.match_started.connect(_on_match_started)
 
@@ -195,34 +611,44 @@ func _ready() -> void:
 # _process — footstep ticker (independent of player input, reads velocity)
 # ---------------------------------------------------------------------------
 func _process(delta: float) -> void:
+	# Ducking recovery runs unconditionally (a duck must release even menu-side).
+	if _duck_db < 0.0 and _bed_bus_idx >= 0:
+		_duck_db = minf(_duck_db + 26.0 * delta, 0.0)
+		AudioServer.set_bus_volume_db(_bed_bus_idx, _duck_db)
+	_tick_music_layers(delta)
+	_tick_hangar(delta)
+	_tick_reverb_zone(delta)
+	_tick_ambience(delta)
+	_tick_shot_layers(delta)
 	if not enabled or _local_player == null:
 		return
 	if not is_instance_valid(_local_player):
 		_local_player = null
 		return
 
-	# Footstep logic: player must be on the floor and moving.
-	if not _local_player.has_method("is_on_floor"):
-		return
-	if not _local_player.is_on_floor():
-		return
+	# Biome ambient bed: 2 s poll of the local player's biome → crossfade the bed.
+	_amb_poll -= delta
+	if _amb_poll <= 0.0:
+		_amb_poll = 2.0
+		_update_biome_bed()
 
+	# Footsteps moved to the FootstepSurfaces component (D5.3): the step you hear now
+	# depends on the surface under the boot, not on a 3-sample round-robin. The LEGACY
+	# ticker below stays as the fallback for when the component is off/absent.
+	if _foley != null:
+		return
+	if not _local_player.has_method("is_on_floor") or not _local_player.is_on_floor():
+		return
 	var vel: Vector3 = _local_player.velocity if "velocity" in _local_player else Vector3.ZERO
 	var horiz_speed := Vector2(vel.x, vel.z).length()
 	if horiz_speed < FOOTSTEP_SPEED_THRESHOLD:
 		return
-
 	_footstep_timer -= delta
 	if _footstep_timer > 0.0:
 		return
-
-	# Pick interval based on speed.
 	var is_sprinting := horiz_speed > (Settings.PLAYER_SPRINT_SPEED * 0.6)
 	_footstep_timer = FOOTSTEP_SPRINT_INTERVAL if is_sprinting else FOOTSTEP_WALK_INTERVAL
-
-	# Play random variant positionally.
-	var variant := "footstep%d" % (randi() % 3 + 1)
-	_play_at(variant, _local_player)
+	_play_at("footstep%d" % (randi() % 3 + 1), _local_player)
 
 
 # ---------------------------------------------------------------------------
@@ -232,25 +658,59 @@ func _process(delta: float) -> void:
 
 func _on_grenade_exploded(_world_pos: Vector3, _damage: float, _radius: float) -> void:
 	_play("explosion")
+	duck(-8.0)
+
+
+## A window pane shattered (fires on every peer) — positional tinkle at the pane.
+func _on_glass_broken(pane: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if pane is Node3D:
+		_play_at("glass_break", pane)
+
+
+## A building/rock chunk crumbled (fires on every peer) — a material-typed collapse boom at the
+## cell. Throttled so a grenade snapping a whole section plays 1-2 layered crumbles, not 14.
+func _on_chunk_broken(chunk: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if not (chunk is Node3D):
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if _last_chunk_sfx_time >= 0.0 and now - _last_chunk_sfx_time < Settings.CHUNK_SFX_MIN_INTERVAL:
+		return
+	_last_chunk_sfx_time = now
+	var kind: int = 0
+	if "material_kind" in chunk:
+		kind = clampi(int(chunk.material_kind), 0, 2)
+	_play_at_pitched(_CHUNK_SFX_BY_KIND[kind], chunk, randf_range(0.94, 1.06))
 
 
 ## Per-weapon-class gunfire trim. Each class now has its OWN recorded firearm
 ## (shot_<class>), so this is just a light pitch nudge (SMG reuses the pistol crack,
 ## pitched up to read snappier) + a small volume trim on top of SOUND_DB. A tiny
 ## random pitch jitter is applied per shot so repeated fire never sounds identical.
+## D5.1 adds `tail_*` to the same table: ONE far-boom clip is shared by every class and
+## leaned per chassis — a pistol's report rolls thin and short, a DMR's is the one you hear
+## a valley away. (Pitching a heavily-lowpassed boom is exactly how a bigger charge reads.)
 const SHOT_CLASS := {
-	"pistol": {"pitch": 1.0, "vol": 0.0},
-	"rifle": {"pitch": 1.0, "vol": 0.0},
-	"smg": {"pitch": 1.12, "vol": -1.0},
-	"shotgun": {"pitch": 0.97, "vol": 0.0},
-	"dmr": {"pitch": 0.98, "vol": 0.0},
+	"pistol": {"pitch": 1.0, "vol": 0.0, "tail_pitch": 1.18, "tail_vol": -5.0},
+	"rifle": {"pitch": 1.0, "vol": 0.0, "tail_pitch": 1.0, "tail_vol": 0.0},
+	"smg": {"pitch": 1.12, "vol": -1.0, "tail_pitch": 1.14, "tail_vol": -4.0},
+	"shotgun": {"pitch": 0.97, "vol": 0.0, "tail_pitch": 0.86, "tail_vol": 1.0},
+	"dmr": {"pitch": 0.98, "vol": 0.0, "tail_pitch": 0.80, "tail_vol": 2.0},
 }
 
 
-func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
+func _on_weapon_fired(shooter: Node, weapon_id: String) -> void:
+	# Entity SFX only while a match runs — a lingering/tearing-down world must never
+	# keep shooting sounds into the lobby (UI/extract/win-lose SFX stay ungated).
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
 	var now := Time.get_ticks_msec() / 1000.0
 	if _last_shot_time >= 0.0 and now - _last_shot_time < SHOT_MIN_INTERVAL:
 		return
+	duck(-4.0)
 	_last_shot_time = now
 	var cfg: Dictionary = SHOT_CLASS.get(weapon_id, SHOT_CLASS["rifle"])
 	# Route to the class-specific recorded firearm; fall back to the generic shot if
@@ -259,6 +719,44 @@ func _on_weapon_fired(_shooter: Node, weapon_id: String) -> void:
 	if _streams.get(shot_id, null) == null:
 		shot_id = "shot"
 	_play_pitched(shot_id, float(cfg["pitch"]) * randf_range(0.96, 1.04), float(cfg["vol"]))
+	# D5.1: your OWN report rolling back off the ruins a fifth of a second later. Only the
+	# local body's gun — a turret (or any other weapon.gd owner) is not you.
+	if shooter != null and shooter == _local_player:
+		_queue_own_tail(cfg)
+
+
+## Teammate gunfire (v0.5-B3): a POSITIONAL shot crack at a remote muzzle. The co-op FX
+## broadcast rendered tracers/flash since the co-op pass, but the audio was silently
+## missing — squad fire was mute. One self-freeing 3D player per shot, SFX bus.
+func play_remote_shot(world_pos: Vector3, weapon_id: String) -> void:
+	if not enabled or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	var cfg: Dictionary = SHOT_CLASS.get(weapon_id, SHOT_CLASS["rifle"])
+	var sid: String = "shot_" + weapon_id
+	var stream: AudioStream = _streams.get(sid, null)
+	if stream == null:
+		sid = "shot"
+		stream = _streams.get("shot", null)
+	if stream == null:
+		return
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX"
+	p.max_db = 0.0
+	p.unit_size = 14.0
+	p.max_distance = 120.0
+	p.volume_db = master_db + SOUND_DB.get(sid, 0.0) + float(cfg["vol"]) - 2.0
+	p.pitch_scale = clampf(float(cfg["pitch"]) * randf_range(0.96, 1.04), 0.2, 3.0)
+	scene.add_child(p)
+	p.global_position = world_pos
+	p.finished.connect(p.queue_free)
+	_track_3d(p)
+	p.play()
 
 
 ## Like _play but with a pitch_scale + extra volume trim (for layered gunfire).
@@ -276,15 +774,364 @@ func _play_pitched(id: String, pitch: float, vol_extra: float) -> void:
 	p.play()
 
 
+# ---------------------------------------------------------------------------
+# D5.1 — gunfire body: the far tail + the bullet whizz-by
+# ---------------------------------------------------------------------------
+## A gun is a CRACK (the real per-class recordings above) plus two things no muzzle sample
+## can carry: the low BOOM that rolls back out of the world a moment later, and — for a
+## round that passes you — the zip of the air it dragged with it. Both are DELAYED, so both
+## go through one small pending queue: the tail by honest physics (dist / 340 m/s), the
+## whizz by the bullet's own flight time to the point where it went past the listener.
+##
+## Everything here is client-local: it reads the ALREADY-replicated remote_shot broadcast,
+## spawns render-only emitters and networks nothing. Two peers hearing one shot differently
+## is BY DESIGN — they are standing in different places. Headless never queues anything.
+const SPEED_OF_SOUND := 340.0  # m/s
+const TAIL_MAX_PENDING := 12  # queue cap — a burst DROPS layers rather than flooding voices
+const TAIL_OWN_INTERVAL := 0.22  # s between your own tails (full auto rolls, never mud)
+const TAIL_REMOTE_INTERVAL := 0.10  # s between teammates' tails
+const TAIL_MIN_DIST := 8.0  # m — nearer than this the crack IS the whole sound
+const TAIL_MAX_DIST := 220.0  # m — past this a shot is not worth a boom
+const TAIL_OWN_DELAY := 0.20  # s — your own report coming back off the ruins
+const TAIL_SLAP_DELAY := 0.055  # s — an indoor first reflection is nearly instant
+const TAIL_INDOOR_MIX := 0.55  # indoor_ratio() above which a shot slaps instead of rolling
+const TAIL_SLAP_MAX_DIST := 40.0  # m — a FAR shot still rolls in, even to an indoor listener
+const TAIL_OWN_DB := -7.0  # your own roll comes back off FAR surfaces — always under the crack
+const TAIL_SLAP_DB := -6.0
+const TAIL_REMOTE_DB := 0.0
+# Emitter ceiling. Inverse-distance would hand a 15 m boom +12 dB and drown the crack that
+# made it; capped, the tail reads FLAT out to ~105 m and only then rolls off — which is
+# exactly how a real report behaves, and it leaves the near field to the recorded crack.
+const TAIL_MAX_DB := -14.0
+const TAIL_UNIT_SIZE := 60.0  # the boom carries FAR further than the crack (which is 14)
+const TAIL_AUDIBLE_DIST := 300.0
+const TAIL_CUTOFF_NEAR_HZ := 3200.0
+const TAIL_CUTOFF_FAR_HZ := 420.0
+const TAIL_SHELF_NEAR_DB := -18.0
+const TAIL_SHELF_FAR_DB := -52.0
+const WHIZZ_RADIUS := 2.5  # m from the chest for a round to count as a near miss
+const WHIZZ_MIN_FROM_MUZZLE := 6.0  # m — closer than this it is a squadmate's barrel, not a miss
+const WHIZZ_COOLDOWN := 0.12  # s — a burst gives a couple of zips, not eight
+const WHIZZ_MAX_DELAY := 0.14  # s — the tracer is drawn instantly; never drift off it
+const WHIZZ_EAR_UP := 1.2  # m — chest height on the BODY (not the third-person camera)
+# The near/far contrast of a zip CANNOT come from 3D attenuation: the engine measures the
+# emitter against the CAMERA, which in third person sits metres behind the body that was
+# nearly hit — so the miss distance is folded in here instead, and the cap only guards the
+# first-person case where camera and body coincide.
+const WHIZZ_NEAR_DB := -4.0
+const WHIZZ_FAR_DB := -13.0
+const WHIZZ_MAX_DB := -10.0
+const WHIZZ_UNIT_SIZE := 4.0
+const WHIZZ_AUDIBLE_DIST := 25.0
+const WHIZZ_MAX_SEGS := 24  # arc nodes worth testing — an arc cannot cost a frame
+const WHIZZ_IDS := ["bullet_whizz", "bullet_whizz2"]
+const _LAYER_TAIL := 0  # positional boom (distance-shelved)
+const _LAYER_WHIZZ := 1  # positional zip (tight, unshelved)
+const _LAYER_POOL := 2  # non-positional (your own report — it comes from everywhere)
+
+var _pending_shots: Array[Dictionary] = []
+var _last_own_tail := -1.0
+var _last_remote_tail := -1.0
+var _last_whizz := -1.0
+var _whizz_seq := 0
+
+
+## Advance the delayed layers. Early-out on an empty queue; one float per entry otherwise.
+## The queue is DROPPED outside a live match, so a tail can never roll into the summary
+## screen and a paused solo raid cannot bank booms while _process is frozen.
+func _tick_shot_layers(delta: float) -> void:
+	if _pending_shots.is_empty():
+		return
+	if not enabled or GameState.phase != GameState.Phase.IN_MATCH:
+		_pending_shots.clear()
+		return
+	for i in range(_pending_shots.size() - 1, -1, -1):
+		var e: Dictionary = _pending_shots[i]
+		var left: float = float(e["t"]) - delta
+		e["t"] = left
+		if left > 0.0:
+			continue
+		_pending_shots.remove_at(i)
+		_fire_shot_layer(e)
+
+
+## Schedule one delayed layer. Over the cap it is a hard DROP, not a resize: twelve pending
+## booms is already more than a mix can hold, and dropping is silent while flooding is not.
+func _queue_shot_layer(
+	kind: int, id: String, delay: float, pos: Vector3, pitch: float, db: float, dist: float
+) -> void:
+	if _streams.get(id, null) == null or _pending_shots.size() >= TAIL_MAX_PENDING:
+		return
+	var entry: Dictionary = {
+		"kind": kind,
+		"id": id,
+		"t": maxf(delay, 0.0),
+		"pos": pos,
+		"pitch": pitch,
+		"db": db,
+		"dist": dist,
+	}
+	_pending_shots.append(entry)
+
+
+## Play one due layer. The zip and the boom are both positional but want opposite emitter
+## shapes (a 2 m pass by your ear vs something that must still read at 200 m), so each gets
+## its own; a pool entry (your own report) is non-positional by design.
+func _fire_shot_layer(e: Dictionary) -> void:
+	var id: String = String(e["id"])
+	var stream: AudioStream = _streams.get(id, null)
+	if stream == null:
+		return
+	var kind: int = int(e["kind"])
+	var db: float = float(e["db"]) + float(SOUND_DB.get(id, 0.0))
+	var pitch: float = float(e["pitch"])
+	if kind == _LAYER_POOL:
+		play_stream(stream, pitch, db)
+		return
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	var p := _make_shot_player(stream, pitch, db)
+	if p == null:
+		return
+	if kind == _LAYER_WHIZZ:
+		p.max_db = WHIZZ_MAX_DB
+		p.unit_size = WHIZZ_UNIT_SIZE
+		p.max_distance = WHIZZ_AUDIBLE_DIST
+	else:
+		var t: float = clampf(float(e["dist"]) / TAIL_MAX_DIST, 0.0, 1.0)
+		p.max_db = TAIL_MAX_DB
+		p.unit_size = TAIL_UNIT_SIZE
+		p.max_distance = TAIL_AUDIBLE_DIST
+		# BOTH ends of the built-in shelf move with distance: the engine already scales the
+		# shelf's GAIN by attenuation, so dropping the cutoff alone is nearly inaudible
+		# (the lesson AudioOcclusion documents). Together they read as "far away", not "quiet".
+		p.attenuation_filter_cutoff_hz = lerpf(TAIL_CUTOFF_NEAR_HZ, TAIL_CUTOFF_FAR_HZ, t)
+		p.attenuation_filter_db = lerpf(TAIL_SHELF_NEAR_DB, TAIL_SHELF_FAR_DB, t)
+	scene.add_child(p)
+	var pos: Vector3 = e["pos"]
+	p.global_position = pos
+	p.play()
+
+
+## The shared body of a D5.1 positional one-shot: self-freeing, on the reverb-carrying SFX
+## bus, parented to the WORLD (never to a shooter — a tail must outlive the muzzle that made
+## it). Deliberately NOT occlusion-tracked: AudioOcclusion drives the very same attenuation
+## shelf this layer uses to encode DISTANCE, and the two would overwrite each other.
+func _make_shot_player(stream: AudioStream, pitch: float, db: float) -> AudioStreamPlayer3D:
+	if DisplayServer.get_name() == "headless":
+		return null
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
+	p.pitch_scale = clampf(pitch, 0.2, 3.0)
+	p.volume_db = master_db + db
+	p.max_db = 0.0
+	p.finished.connect(p.queue_free)
+	return p
+
+
+## Your OWN shot's answer from the world. Distance is zero, so there is nothing to delay by
+## travel time — what returns is the report itself: an open-field roll after ~0.2 s, or, with
+## a ceiling overhead, the room's slap ~0.05 s later. Throttled well below the fire rate: in
+## full auto the roll must be a rhythm under the cracks, not one boom per bullet.
+func _queue_own_tail(cfg: Dictionary) -> void:
+	if _local_player == null or not is_instance_valid(_local_player):
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _last_own_tail >= 0.0 and now - _last_own_tail < TAIL_OWN_INTERVAL:
+		return
+	_last_own_tail = now
+	var pitch: float = float(cfg.get("tail_pitch", 1.0)) * randf_range(0.97, 1.03)
+	var vol: float = float(cfg.get("tail_vol", 0.0))
+	var indoors: bool = _indoor_mix >= TAIL_INDOOR_MIX
+	var id: String = "shot_tail_slap" if indoors else "shot_tail_far"
+	var delay: float = TAIL_SLAP_DELAY if indoors else TAIL_OWN_DELAY
+	var db: float = (TAIL_SLAP_DB if indoors else TAIL_OWN_DB) + vol
+	_queue_shot_layer(_LAYER_POOL, id, delay, Vector3.ZERO, pitch, db, 0.0)
+
+
+## A teammate's shot, straight off the co-op broadcast (never our own — _shot_rpc is
+## call_remote). Two layers ride it: the delayed boom from the muzzle, and, if the round
+## actually passed within arm's reach, the whizz at the point where it went by.
+func _on_remote_shot(
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	_enemy_hit: bool,
+	_normal: Vector3,
+	wid: String = ""
+) -> void:
+	if not enabled or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	if _local_player == null or not is_instance_valid(_local_player):
+		return
+	var body := _local_player as Node3D
+	if body == null or not body.is_inside_tree():
+		return
+	var ear: Vector3 = body.global_position + Vector3.UP * WHIZZ_EAR_UP
+	_queue_remote_tail(muzzle, ear.distance_to(muzzle), wid)
+	_queue_whizz(muzzle, hit_point, arc, ear)
+
+
+## The teammate's boom: delayed by real travel time and left to the emitter's rolloff + shelf
+## for how loud and how dull it lands. The CRACK itself is deliberately NOT delayed
+## (play_remote_shot fires it at once) — the tracer is drawn in a single frame and a late
+## crack would visibly lag it; the boom is the layer that is allowed to carry the range.
+func _queue_remote_tail(muzzle: Vector3, dist: float, wid: String) -> void:
+	if dist < TAIL_MIN_DIST or dist > TAIL_MAX_DIST:
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _last_remote_tail >= 0.0 and now - _last_remote_tail < TAIL_REMOTE_INTERVAL:
+		return
+	_last_remote_tail = now
+	var cfg: Dictionary = SHOT_CLASS.get(wid, SHOT_CLASS["rifle"])
+	var pitch: float = float(cfg.get("tail_pitch", 1.0)) * randf_range(0.97, 1.03)
+	var vol: float = float(cfg.get("tail_vol", 0.0))
+	# Indoors a NEARBY shot slaps off the walls instead of rolling; a far one still rolls in
+	# from outside, just shelved down by the emitter.
+	if _indoor_mix >= TAIL_INDOOR_MIX and dist <= TAIL_SLAP_MAX_DIST:
+		var slap_db: float = TAIL_SLAP_DB + vol
+		_queue_shot_layer(
+			_LAYER_TAIL, "shot_tail_slap", TAIL_SLAP_DELAY, muzzle, pitch, slap_db, dist
+		)
+		return
+	var delay: float = dist / SPEED_OF_SOUND
+	_queue_shot_layer(
+		_LAYER_TAIL, "shot_tail_far", delay, muzzle, pitch, TAIL_REMOTE_DB + vol, dist
+	)
+
+
+## A round that passed CLOSE. The zip is placed where it actually went by — in third person
+## that is usually in front of the camera rather than at the body — and delayed by the
+## bullet's own flight time to that point, so a distant shooter's zip reaches you BEFORE its
+## report: the crack-then-thump ordering a real near miss has. Clamped so it can never drift
+## off the tracer, which is drawn instantly.
+func _queue_whizz(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, ear: Vector3
+) -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _last_whizz >= 0.0 and now - _last_whizz < WHIZZ_COOLDOWN:
+		return
+	var closest: Vector3 = _closest_on_path(muzzle, hit_point, arc, ear)
+	var miss: float = ear.distance_to(closest)
+	if miss > WHIZZ_RADIUS or closest.distance_to(muzzle) < WHIZZ_MIN_FROM_MUZZLE:
+		return  # too wide to hear, or the "miss" is a squadmate's barrel beside your head
+	_last_whizz = now
+	_whizz_seq += 1
+	var id: String = String(WHIZZ_IDS[_whizz_seq % WHIZZ_IDS.size()])
+	var travel: float = muzzle.distance_to(closest) / maxf(Settings.BULLET_MUZZLE_VELOCITY, 1.0)
+	var t: float = clampf(miss / WHIZZ_RADIUS, 0.0, 1.0)
+	# A hair's-breadth pass reads brighter and louder than one a couple of metres out.
+	var pitch: float = lerpf(1.1, 0.9, t) * randf_range(0.94, 1.06)
+	var db: float = lerpf(WHIZZ_NEAR_DB, WHIZZ_FAR_DB, t)
+	_queue_shot_layer(_LAYER_WHIZZ, id, minf(travel, WHIZZ_MAX_DELAY), closest, pitch, db, miss)
+
+
+## Closest point on the shot's flight path to `ear`. Uses the REAL ballistic arc the
+## broadcast carries whenever it has one — bullets drop here, so a straight muzzle→hit
+## segment would misjudge a long shot by metres — and falls back to that segment otherwise.
+func _closest_on_path(
+	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, ear: Vector3
+) -> Vector3:
+	if arc.size() < 2:
+		return Geometry3D.get_closest_point_to_segment(ear, muzzle, hit_point)
+	var best: Vector3 = muzzle
+	var best_d: float = INF
+	var prev: Vector3 = muzzle
+	var count: int = mini(arc.size(), WHIZZ_MAX_SEGS)
+	for i in count:
+		var cur: Vector3 = arc[i]
+		var c: Vector3 = Geometry3D.get_closest_point_to_segment(ear, prev, cur)
+		var d: float = ear.distance_squared_to(c)
+		if d < best_d:
+			best_d = d
+			best = c
+		prev = cur
+	return best
+
+
 func _on_damage_dealt(target: Node, _amount: float, _source: Node) -> void:
+	# The lobby "I'm being hit" loop fix, layer 2: damage in a lingering world
+	# (post-match teardown, bleed ticks) must never reach the speakers.
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
 	_play_at("hit", target)
 
 
 func _on_entity_died(entity: Node, _killer: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
 	if entity != null and entity.is_in_group(Groups.PLAYERS):
 		_play_at("player_death", entity)
 	else:
 		_play_at("explosion", entity)
+		# Machine power-down layered under the boom (one of three voices, see D5.5).
+		_play_machine_voice(entity as Node3D, "robot_death")
+
+
+## A machine locked on (calm→CHASE, throttled at the enemy) — positional alert chirp.
+func _on_enemy_chase_started(enemy: Node) -> void:
+	if GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	_play_machine_voice(enemy as Node3D, "robot_alert")
+
+
+## D5.5 machine vocalizations v2. A wave of eight machines must not chirp with ONE voice
+## eight times, so both the VARIANT (0 = the authored clip, 1..2 = synthesized siblings)
+## and the pitch are hashed off the node NAME — which is already identical on every peer
+## (it carries the elite/nemesis tokens), so two players hear the same machine the same way
+## with zero new state and zero RPC. The pitch then leans with the CHASSIS: a boss growls,
+## a drone chirps.
+func _play_machine_voice(who: Node3D, base_id: String) -> void:
+	if who == null or not who.is_inside_tree():
+		return
+	var nm: String = who.name
+	var pitch: float = FootstepSurfaces.pitch_for_name(nm, 0.86, 1.18) * _voice_scale(who)
+	var variant: int = FootstepSurfaces.variant_for_name(nm, 3)
+	var stream: AudioStream = null
+	var db: float = 0.0
+	if variant == 0 or _foley == null:
+		stream = _streams.get(base_id, null)
+		db = SOUND_DB.get(base_id, 0.0)
+	else:
+		var sid: String = "%s%d" % [base_id, variant + 1]
+		stream = FootstepSurfaces.stream_for(sid)
+		db = FootstepSurfaces.db_for(sid)
+	play_world(stream, who.global_position, pitch, db, 60.0)
+
+
+## Bigger chassis = deeper voice. Max health is the one bulk proxy EVERY archetype carries
+## (there is no size field), and it is read off the node so elite/nemesis tiers deepen too.
+func _voice_scale(who: Node) -> float:
+	var h := who.get_node_or_null(Groups.NODE_HEALTH)
+	if h == null or not ("max_health" in h):
+		return 1.0
+	return clampf(1.12 - float(h.max_health) / 1400.0, 0.78, 1.12)
+
+
+## An annex door ground open (fires on every peer) — motor + latch AT the door.
+func _on_door_opened(door: Node) -> void:
+	if _foley == null or not (door is Node3D):
+		return
+	_foley.play_clip_at("door_open", (door as Node3D).global_position, 1.0, 0.0)
+
+
+## A power cache cracked open. Hooked to the OWNER-side reveal (not the server-side
+## power_cache_opened) so a co-op client hears its own cache — non-positional, it is yours.
+func _on_power_reveal_started(_power_id: String) -> void:
+	if _foley == null:
+		return
+	_foley.play_clip("cache_open", 1.0, 0.0)
+
+
+## Workshop chime — a blueprint entered the book (learned, bought or extracted).
+func _on_blueprint_learned(_blueprint: String) -> void:
+	if _foley == null:
+		return
+	_foley.play_clip("craft_done", 1.0, 0.0)
 
 
 func _on_extraction_started(_player: Node, _zone: Node) -> void:
@@ -316,6 +1163,27 @@ func _on_match_lost() -> void:
 	_fade_beds_out()
 
 
+## The STORM hit — crossfade the music bed to the intense evolving loop, a touch
+## louder than the wave level. _on_match_started reassigns the normal track, so a
+## restart resets this automatically.
+func _on_final_wave() -> void:
+	if _music_player == null or _streams.get("music_storm") == null:
+		return
+	var tw := create_tween()
+	tw.tween_property(_music_player, "volume_db", -60.0, 1.0)
+	tw.tween_callback(_swap_music_storm)
+	tw.tween_property(_music_player, "volume_db", MUSIC_WAVE_DB + master_db + 2.0, 2.0)
+
+
+func _swap_music_storm() -> void:
+	var stream: AudioStream = _streams.get("music_storm")
+	if stream == null or _music_player == null:
+		return
+	_set_stream_loop(stream)
+	_music_player.stream = stream
+	_music_player.play()
+
+
 # ---------------------------------------------------------------------------
 # Event handlers — new
 # ---------------------------------------------------------------------------
@@ -335,10 +1203,44 @@ func _on_local_player_spawned(player: Node) -> void:
 	_on_match_started()
 
 
+## Crossfade the looping ambient bed to the local player's biome (urban wind stays the
+## fallback when a bed file is absent). Runs on a cheap 2 s poll; render/audio-only.
+func _update_biome_bed() -> void:
+	if _ambient_player == null or GameState.phase != GameState.Phase.IN_MATCH:
+		return
+	if not (_local_player is Node3D):
+		return
+	var pos: Vector3 = (_local_player as Node3D).global_position
+	var biome: String = WorldBounds.biome_at(pos.x, pos.z)
+	var want: String = _AMB_BY_BIOME.get(biome, "ambient")
+	if _streams.get(want) == null:
+		want = "ambient"
+	if want == _ambient_id:
+		return
+	_ambient_id = want
+	if _amb_tween != null and _amb_tween.is_valid():
+		_amb_tween.kill()
+	_amb_tween = create_tween()
+	_amb_tween.tween_property(_ambient_player, "volume_db", -60.0, 1.2)
+	_amb_tween.tween_callback(_swap_ambient_stream.bind(want))
+	_amb_tween.tween_property(_ambient_player, "volume_db", AMBIENT_BASE_DB + master_db, 1.8)
+
+
+func _swap_ambient_stream(id: String) -> void:
+	var stream: AudioStream = _streams.get(id)
+	if stream == null or _ambient_player == null:
+		return
+	_set_stream_loop(stream)
+	_ambient_player.stream = stream
+	_ambient_player.play()
+
+
 func _on_match_started() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	# Start ambient + music beds.
+	# Start ambient + music beds (the biome poll swaps the bed a moment later).
+	_ambient_id = "ambient"
+	_amb_poll = 4.0
 	if _ambient_player != null and _streams.get("ambient") != null:
 		var amb: AudioStream = _streams["ambient"]
 		_set_stream_loop(amb)
@@ -459,6 +1361,18 @@ func _on_button_pressed() -> void:
 	_play("ui_click")
 
 
+## Soft panel-open/close whoosh for UI overlays (map/inventory/modals) — the click
+## pitched down so no new asset is needed; open reads higher than close.
+func ui_panel(open: bool) -> void:
+	_play_pitched("ui_click", 0.8 if open else 0.65, -2.0)
+
+
+## Skill cast/impact one-shot with a little pitch life (SkillDirector/SkillVFX,
+## already distance-gated + headless-skipped upstream).
+func play_skill(id: String) -> void:
+	_play_pitched(id, randf_range(0.94, 1.06), 0.0)
+
+
 # ---------------------------------------------------------------------------
 # Playback helpers
 # ---------------------------------------------------------------------------
@@ -482,23 +1396,100 @@ func _play(id: String) -> void:
 ## Positional one-shot at a Node3D; falls back to the pool for non-3D nodes.
 ## The AudioStreamPlayer3D is self-freeing so the pool is never starved.
 func _play_at(id: String, where: Node) -> void:
+	_play_at_pitched(id, where, 1.0)
+
+
+## Positional one-shot with a pitch tweak (variety on repeated crumbles). THE one place a
+## 3D one-shot is born (plain _play_at routes here at pitch 1.0) — so occlusion has exactly
+## one hook instead of two copies drifting apart.
+func _play_at_pitched(id: String, where: Node, pitch: float) -> void:
 	if not enabled:
 		return
 	var stream: AudioStream = _streams.get(id, null)
 	if stream == null:
 		return
-	if where is Node3D and (where as Node3D).is_inside_tree():
-		var p := AudioStreamPlayer3D.new()
-		p.stream = stream
-		p.bus = "Master"
-		p.volume_db = master_db + SOUND_DB.get(id, 0.0)
-		p.max_distance = 60.0
-		p.finished.connect(p.queue_free)
-		(where as Node3D).add_child(p)
-		p.global_position = (where as Node3D).global_position
-		p.play()
-	else:
+	if not (where is Node3D) or not (where as Node3D).is_inside_tree():
 		_play(id)
+		return
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
+	p.pitch_scale = clampf(pitch, 0.5, 2.0)
+	p.volume_db = master_db + SOUND_DB.get(id, 0.0)
+	p.max_distance = 60.0
+	p.finished.connect(p.queue_free)
+	(where as Node3D).add_child(p)
+	p.global_position = (where as Node3D).global_position
+	_track_3d(p)
+	p.play()
+
+
+## Hand a just-spawned positional player to the occlusion component (no-op when headless /
+## disabled). Called AFTER volume_db + global_position are final: the component captures the
+## base volume and seeds the emitter with an immediate ray, so a 0.3 s gunshot is already
+## muffled on its first sample.
+func _track_3d(p: AudioStreamPlayer3D) -> void:
+	if _occlusion != null:
+		_occlusion.track(p)
+
+
+## Non-positional one-shot of an ALREADY-BUILT stream (the runtime clip bank has no entry
+## in SOUNDS, so the component hands the stream over instead of an id).
+func play_stream(stream: AudioStream, pitch: float, db: float) -> void:
+	if not enabled or stream == null:
+		return
+	var p := _pool[_pool_next]
+	_pool_next = (_pool_next + 1) % POOL_SIZE
+	p.stream = stream
+	p.pitch_scale = clampf(pitch, 0.2, 3.0)
+	p.volume_db = master_db + db
+	p.play()
+
+
+## POSITIONAL one-shot of a built stream at a world POINT. Mirrors play_remote_shot (self-
+## freeing player under the current scene, SFX bus, occlusion-tracked). Parenting to the
+## world rather than to the emitter is deliberate: a machine's power-down must not be cut
+## off the instant the machine frees itself.
+func play_world(
+	stream: AudioStream, world_pos: Vector3, pitch: float, db: float, max_dist: float
+) -> void:
+	if not enabled or stream == null or DisplayServer.get_name() == "headless":
+		return
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	var p := AudioStreamPlayer3D.new()
+	p.stream = stream
+	p.bus = "SFX" if _sfx_bus_idx >= 0 else "Master"
+	p.pitch_scale = clampf(pitch, 0.2, 3.0)
+	p.volume_db = master_db + db
+	p.max_distance = max_dist
+	p.finished.connect(p.queue_free)
+	scene.add_child(p)
+	p.global_position = world_pos
+	_track_3d(p)
+	p.play()
+
+
+## Load one entry of SOUNDS, tolerating the WAV↔OGG swap the audio pipeline performs: the
+## generator (tools/audio/gen_audio.py) always writes .wav and the long clips are then
+## converted to .ogg and the .wav deleted. The listed path always WINS — the twin is only
+## consulted when it is missing — so an .ogg conversion (or a stray generated .wav dupe of
+## an .ogg id) never silently changes which file an existing id plays. null = absent, which
+## every call site already treats as "skip this sound".
+func _resolve_stream(path: String) -> AudioStream:
+	var twin: String = ""
+	if path.ends_with(".wav"):
+		twin = path.get_basename() + ".ogg"
+	elif path.ends_with(".ogg"):
+		twin = path.get_basename() + ".wav"
+	for candidate: String in [path, twin]:
+		if candidate == "" or not ResourceLoader.exists(candidate):
+			continue
+		var res := load(candidate)
+		if res is AudioStream:
+			return res as AudioStream
+	return null
 
 
 ## Creates a dedicated child AudioStreamPlayer with loop mode set.
@@ -511,6 +1502,16 @@ func _make_looping_player(id: String, vol_db: float) -> AudioStreamPlayer:
 	# We stash the id so we can re-apply it when the stream is loaded.
 	p.set_meta("sound_id", id)
 	return p
+
+
+## Give a threat-stem player its looping stream once at boot (streams are cached before
+## the player block in _ready). Stems keep their stream forever — only volume mixes.
+func _assign_stem_stream(p: AudioStreamPlayer, id: String) -> void:
+	var stream: AudioStream = _streams.get(id)
+	if p == null or stream == null:
+		return
+	_set_stream_loop(stream)
+	p.stream = stream
 
 
 ## Force a stream to loop, regardless of WAV vs Ogg Vorbis backing.
@@ -529,6 +1530,9 @@ func _tween_volume(player: AudioStreamPlayer, target_db: float, duration_s: floa
 
 ## Fade both ambient and music beds out on match end.
 func _fade_beds_out() -> void:
+	# D5.1: drop any boom still travelling — the match is over, nothing may roll into the
+	# summary screen (the tick's phase guard would catch it a frame later; this is instant).
+	_pending_shots.clear()
 	if _ambient_player != null:
 		_tween_volume(_ambient_player, -80.0, 3.0)
 	if _music_player != null:

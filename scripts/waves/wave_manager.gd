@@ -199,12 +199,19 @@ func _ready() -> void:
 	var director: Node = get_node_or_null("/root/AIDirector")
 	if director != null:
 		director.call("set_wave_manager", self)
+	# Same registration for the NemesisDirector so it can inject the persistent rival.
+	var nem: Node = get_node_or_null("/root/NemesisDirector")
+	if nem != null:
+		nem.call("set_wave_manager", self)
 
 
 func _exit_tree() -> void:
 	var director: Node = get_node_or_null("/root/AIDirector")
 	if director != null:
 		director.call("set_wave_manager", null)
+	var nem: Node = get_node_or_null("/root/NemesisDirector")
+	if nem != null:
+		nem.call("set_wave_manager", null)
 
 
 func _resolve_arena() -> Node3D:
@@ -533,6 +540,14 @@ func _crosses_river(a: Vector3, b: Vector3) -> bool:
 ## across the surviving markers (index % count — the de-stack fix). Falls back gracefully:
 ## near-markers → any same-side marker → the raw index marker.
 const NEAR_SPAWN_RADIUS: float = 70.0  # markers within this of a player are "local"
+# Never MATERIALIZE an enemy in a player's face (playtest: «спавнятся прямо возле
+# меня, словно телепортировались») — markers closer than this to ANY player are
+# excluded entirely; enemies arrive from outside the immediate bubble instead.
+const SPAWN_MIN_PLAYER_DIST: float = 32.0
+# Spawn grace: for the first N seconds of a match the near-player marker BIAS is
+# suspended (waves draw from the full ok-pool instead) — the near+hidden combo
+# was landing the whole wave-1 pack on the player ~13 s after deploy.
+const SPAWN_GRACE_TIME: float = 60.0
 
 
 func _spawn_xform(index: int) -> Transform3D:
@@ -544,19 +559,86 @@ func _spawn_xform(index: int) -> Transform3D:
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
 	var ok: Array[int] = []
 	var near: Array[int] = []
+	var near_hidden: Array[int] = []
 	for i in n:
 		var origin: Vector3 = _arena.get_enemy_spawn_point(i).origin
 		if not _spawn_ok_for_players(origin, players):
 			continue
-		ok.append(i)
+		var too_close := false
+		var is_near := false
 		for p in players:
-			if origin.distance_to(p) <= NEAR_SPAWN_RADIUS:
-				near.append(i)
+			var d: float = origin.distance_to(p)
+			if d < SPAWN_MIN_PLAYER_DIST:
+				too_close = true
 				break
-	var pick_from: Array[int] = near if not near.is_empty() else ok
+			if d <= NEAR_SPAWN_RADIUS:
+				is_near = true
+		if too_close:
+			continue
+		ok.append(i)
+		if is_near:
+			near.append(i)
+			# M3: prefer near markers the squad can't SEE («материализовался прямо
+			# передо мной» killer) — soft preference, visible markers stay a fallback.
+			if not _spawn_visible_to_players(origin, players):
+				near_hidden.append(i)
+	# Spawn grace: early in the match ignore the near-bias entirely — the squad
+	# gets breathing room to orient before the hunt closes in.
+	var elapsed: float = GameState.match_duration - GameState.match_time_left
+	var pick_from: Array[int] = []
+	if elapsed >= SPAWN_GRACE_TIME:
+		pick_from = near_hidden
+		if pick_from.is_empty():
+			pick_from = near
+	if pick_from.is_empty():
+		pick_from = ok
 	if pick_from.is_empty():
 		return _jittered_spawn(_arena.get_enemy_spawn_point(index))
+	# M4.3 HEAT: a raider hauling >50% of carry weight draws the hunt — when any
+	# candidate marker sits near the HOTTEST player, spawn among those instead.
+	var hot: Vector3 = _hottest_player_pos()
+	if hot != Vector3.INF:
+		var hot_marks: Array[int] = []
+		for i in pick_from:
+			if _arena.get_enemy_spawn_point(i).origin.distance_to(hot) <= NEAR_SPAWN_RADIUS:
+				hot_marks.append(i)
+		if not hot_marks.is_empty():
+			pick_from = hot_marks
 	return _jittered_spawn(_arena.get_enemy_spawn_point(pick_from[index % pick_from.size()]))
+
+
+## Position of the up player with the highest carried-weight ratio, if anyone is
+## over the 0.5 heat threshold; Vector3.INF when nobody is hot (no bias).
+func _hottest_player_pos() -> Vector3:
+	var best: float = 0.5
+	var pos: Vector3 = Vector3.INF
+	for p in get_tree().get_nodes_in_group(Groups.PLAYERS):
+		if not (p is Node3D) or not is_instance_valid(p):
+			continue
+		if p.has_method("is_downed") and p.is_downed():
+			continue
+		var inv: Node = p.get_node_or_null("Inventory")
+		if inv == null or not inv.has_method("total_weight"):
+			continue
+		var ratio: float = float(inv.total_weight()) / maxf(0.001, float(inv.weight_capacity()))
+		if ratio > best:
+			best = ratio
+			pos = (p as Node3D).global_position
+	return pos
+
+
+## True when ANY player has a clear world-geometry line to the marker (an enemy
+## appearing there would pop into existence on someone's screen).
+func _spawn_visible_to_players(origin: Vector3, players: Array) -> bool:
+	if _arena == null:
+		return false
+	var space := _arena.get_world_3d().direct_space_state
+	var spot: Vector3 = origin + Vector3.UP * 1.4
+	for p in players:
+		var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 1.6, spot, 1)
+		if space.intersect_ray(q).is_empty():
+			return true
+	return false
 
 
 ## Spread each spawn around its marker on a small golden-angle DISC so a burst of enemies that
@@ -598,6 +680,12 @@ func _spawn_enemy(index: int, scene_path: String = "", as_hunter: bool = true) -
 		enemy.add_to_group(Groups.ENEMIES)
 	# Apply hunter flag only when the property exists (guard against scene variants
 	# that may not have it — prevents "Invalid set index" at runtime).
+	# SPAWN GRACE: during the opening SPAWN_GRACE_TIME the wave spawns as PATROLS
+	# (perception-driven) instead of beeline hunters — pre-fix a cross-biome pack
+	# force-chased the freshly-spawned player and downed them ~15 s into the raid.
+	var elapsed_g: float = GameState.match_duration - GameState.match_time_left
+	if as_hunter and elapsed_g < SPAWN_GRACE_TIME and not GameState.final_wave:
+		as_hunter = false
 	if "hunter" in enemy:
 		enemy.hunter = as_hunter
 	# Elite modifiers (batch D): NAME-ENCODE the rolled prefixes — auto-spawn replicates
@@ -635,6 +723,13 @@ func _roll_modifiers(xform: Transform3D, scene_path: String, bonus: float = 0.0)
 		+ (Settings.ELITE_MOD_BIOME_BONUS if biome != "urban" else 0.0)
 		+ bonus
 	)
+	# M5.2 rare encounter: the GOLDEN elite — ~1% of any spawn, independent of the
+	# elite chance. Tanky, fast, and its death showers bonus loot (loot_spawner
+	# reads the G flag). M5.5: the host's raider level feeds the pool — veterans
+	# see the jackpot a bit more often (caps at 1.6× around level 10).
+	var gold_meta: float = 1.0 + 0.06 * float(mini(MetaProgression.raider_level, 10))
+	if randf() < Settings.GOLDEN_ELITE_CHANCE * gold_meta:
+		return "G"
 	if randf() > chance:
 		return ""
 	var letters := ["A", "S", "V", "R"]
@@ -788,6 +883,56 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 	Events.enemy_spawned.emit(enemy)
 
 
+## Inject the persistent Machine Nemesis (server-only). A thin variant of the reinforcement
+## spawn: the scene comes from the SAVED profile (not a biome roll), the rival is a forced
+## hunter, and the `_NEM` token is appended to the node NAME before add_child so the rival's
+## tier/traits/scars replicate to every co-op client for free. Returns the spawned node (or
+## null if capacity/scene/arena is unavailable). Placement is the nearest marker to `near_pos`
+## (the grudge target), reusing the river-safe de-stack jitter.
+func spawn_nemesis(profile: NemesisProfile, near_pos: Vector3) -> Node:
+	if not GameState.is_local_authority_server():
+		return null
+	if _enemies_container == null or _arena == null or profile == null:
+		return null
+	# NOTE: deliberately NOT gated on reinforcement_capacity() — the nemesis is the SIGNATURE
+	# rival and exactly ONE node, so it must always return when scheduled (one body over the
+	# alive-cap is harmless; the squad has to kill it anyway).
+	var scene_path: String = profile.scene_path
+	if not ResourceLoader.exists(scene_path):
+		push_warning("WaveManager: nemesis scene %s missing — skipping" % scene_path)
+		return null
+	var xform: Transform3D = _xform_near(near_pos)
+	var enemy: Node = (load(scene_path) as PackedScene).instantiate()
+	if not enemy.is_in_group(Groups.ENEMIES):
+		enemy.add_to_group(Groups.ENEMIES)
+	if "hunter" in enemy:
+		enemy.hunter = true  # the rival force-CHASEs the squad (existing hunter AI)
+	enemy.name = "%s%s" % [enemy.name, profile.to_name_token()]
+	_enemies_container.add_child(enemy, true)
+	if enemy is Node3D:
+		(enemy as Node3D).global_transform = xform
+	_alive_enemies.append(enemy)
+	Events.enemy_spawned.emit(enemy)
+	return enemy
+
+
+## Nearest enemy marker to `near_pos`, re-jittered (river-safe + de-stack). Mirrors the
+## marker-sampling in spawn_reinforcements but for a single pinned spawn.
+func _xform_near(near_pos: Vector3) -> Transform3D:
+	if _arena == null or not _arena.has_method("get_enemy_spawn_point"):
+		return Transform3D.IDENTITY
+	var best_i: int = 0
+	var best_d: float = INF
+	var n: int = _arena.enemy_marker_count() if _arena.has_method("enemy_marker_count") else 16
+	for i in maxi(1, n):
+		var origin: Vector3 = _arena.get_enemy_spawn_point(i).origin
+		var dd: float = origin.distance_to(near_pos)
+		if dd < best_d:
+			best_d = dd
+			best_i = i
+	return _jittered_spawn(_arena.get_enemy_spawn_point(best_i))
+
+
 # ---------------------------------------------------------------------------
 # Camp-punish detection
 # ---------------------------------------------------------------------------
@@ -796,6 +941,11 @@ func _spawn_enemy_reinforcement(index: int, scene_path: String, as_hunter: bool)
 func _tick_camp_detection(delta: float) -> void:
 	# Only active during a wave (not storm — storm is already overwhelming).
 	if not _wave_active or _storm:
+		_camp_timer = 0.0
+		return
+	# Spawn grace also covers anti-camp: sorting your inventory 25 s after deploy
+	# must not summon a flank squad onto the spawn yard.
+	if GameState.match_duration - GameState.match_time_left < SPAWN_GRACE_TIME:
 		_camp_timer = 0.0
 		return
 

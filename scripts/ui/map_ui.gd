@@ -2,7 +2,7 @@ extends CanvasLayer
 class_name MapUI
 ## Full-screen tactical MAP overlay (toggled with the 'M' key). Unlike the minimap
 ## (top-right, player-relative, heading-up), this is a NORTH-UP, world-aligned
-## top-down view of the whole 160x160 arena. Renders:
+## top-down view of the whole 320x320 arena. Renders:
 ##   - the map frame + a reference grid,
 ##   - named POIs (zones of interest) at their world centres (from arena.get_poi_points),
 ##   - every extraction zone (group "extraction") as OPEN (green, pulsing) vs CLOSED
@@ -118,6 +118,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_open and event.is_action_pressed("ui_cancel"):
 		set_open(false)
 		get_viewport().set_input_as_handled()
+	elif _is_open and event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		# M7.7 zoom: wheel scales the projection about the player (1×..3×).
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			zoom = clampf(zoom * 1.25, 1.0, 3.0)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			zoom = clampf(zoom / 1.25, 1.0, 3.0)
+		else:
+			return
+		if _draw:
+			_draw.queue_redraw()
+		get_viewport().set_input_as_handled()
 
 
 ## Shows/hides the map, frees/recaptures the mouse, and announces on the Events bus.
@@ -129,9 +141,13 @@ func set_open(open: bool) -> void:
 		return
 	_is_open = open
 	visible = open
+	AudioManager.ui_panel(open)
 	if open:
 		_mutator = GameState.raid_mutator
+		zoom = 1.0  # M7.7: every open starts at full-map view
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if _draw:
+			UIStyle.pop_in(_draw, UIStyle.Dir.DOWN, 0.0, 0.15)
 	else:
 		# Restore capture so the player can keep playing — unless something else
 		# (a pause menu) owns the cursor.
@@ -151,6 +167,8 @@ func _on_map_toggled(open: bool) -> void:
 	if open:
 		_mutator = GameState.raid_mutator
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if _draw:
+			UIStyle.pop_in(_draw, UIStyle.Dir.DOWN, 0.0, 0.15)
 	elif not get_tree().paused:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if _draw:
@@ -309,14 +327,73 @@ func _poi_tier(index: int) -> int:
 
 ## World (x,z) → panel-local pixel coords. NORTH-UP, world-aligned (no yaw):
 ## +x → right, +z (south) → down. Maps the 320×320 world rectangle onto the panel rect.
+## M7.7 map zoom: mouse wheel scales the projection about the PLAYER (1×..3×).
+var zoom: float = 1.0
+
+
 func world_to_panel(wpos: Vector3, panel: Rect2) -> Vector2:
 	var nx: float = clampf((wpos.x - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0)
 	var nz: float = clampf((wpos.z - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0)
-	return panel.position + Vector2(nx * panel.size.x, nz * panel.size.y)
+	var p := Vector2(nx, nz)
+	if zoom > 1.001 and _player != null and is_instance_valid(_player):
+		var cx: float = clampf(
+			(_player.global_position.x - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+		)
+		var cz: float = clampf(
+			(_player.global_position.z - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+		)
+		p = Vector2(cx, cz) + (p - Vector2(cx, cz)) * zoom
+	var out := panel.position + Vector2(p.x * panel.size.x, p.y * panel.size.y)
+	# Zoomed projections can leave the panel — pin markers to the frame edge so
+	# they read as off-view indicators instead of spilling over the gutters.
+	out.x = clampf(out.x, panel.position.x, panel.position.x + panel.size.x)
+	out.y = clampf(out.y, panel.position.y, panel.position.y + panel.size.y)
+	return out
 
 
 func get_player() -> Node3D:
 	return _player
+
+
+# --- M7.3 ortho terrain underlay ---------------------------------------------
+# Baked ONCE (lazy, first map open) straight from the same functions the terrain
+# builds with (height_at / water_surface_at / biome_at) — no viewport capture,
+# deterministic, and it can never disagree with the real ground.
+var _underlay: ImageTexture = null
+
+
+func underlay() -> Texture2D:
+	if _underlay == null:
+		_bake_underlay()
+	return _underlay
+
+
+func _bake_underlay() -> void:
+	var n: int = 176
+	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+	for iz in n:
+		for ix in n:
+			var wx: float = WorldBounds.X_MIN + WorldBounds.SPAN * (float(ix) + 0.5) / float(n)
+			var wz: float = WorldBounds.Z_MIN + WorldBounds.SPAN * (float(iz) + 0.5) / float(n)
+			img.set_pixel(ix, iz, _underlay_color(wx, wz))
+	_underlay = ImageTexture.create_from_image(img)
+
+
+func _underlay_color(wx: float, wz: float) -> Color:
+	var h: float = ProceduralTerrain.height_at(wx, wz)
+	var ws: float = ProceduralTerrain.water_surface_at(wx, wz)
+	if not is_nan(ws) and ws > h:
+		return Color(0.12, 0.2, 0.26)
+	var base := Color(0.17, 0.19, 0.18)
+	match WorldBounds.biome_at(wx, wz):
+		"snow":
+			base = Color(0.3, 0.33, 0.38)
+		"desert":
+			base = Color(0.31, 0.26, 0.18)
+		"rain":
+			base = Color(0.15, 0.21, 0.19)
+	var shade: float = clampf(0.78 + h * 0.05, 0.55, 1.3)
+	return base * shade
 
 
 func get_arena() -> Node:
@@ -333,11 +410,17 @@ func get_pulse() -> float:
 class MapDraw:
 	extends Control
 	var owner_ui: MapUI = null
+	# Anti-collision ledger for text labels (Phase 4): placed rects this frame; a
+	# colliding label steps down until free (audit: POI/extract names fused into
+	# unreadable clots).
+	var _placed_labels: Array[Rect2] = []
 
 	func _draw() -> void:
 		if owner_ui == null:
 			return
-		var font := ThemeDB.fallback_font
+		_placed_labels.clear()
+		# The project theme's body font — not the engine fallback.
+		var font := get_theme_default_font()
 		# --- Backdrop dim over the gameplay view (glass tone).
 		draw_rect(
 			Rect2(Vector2.ZERO, size),
@@ -354,6 +437,24 @@ class MapDraw:
 		draw_rect(
 			panel, Color(UIStyle.PANEL_BG.r, UIStyle.PANEL_BG.g, UIStyle.PANEL_BG.b, 0.92), true
 		)
+		# M7.3 ortho terrain underlay (zoom-aware texture region about the player).
+		var terrain_tex: Texture2D = owner_ui.underlay()
+		if terrain_tex != null:
+			var ts: Vector2 = terrain_tex.get_size()
+			var region := Rect2(Vector2.ZERO, ts)
+			var pl: Node3D = owner_ui.get_player()
+			if owner_ui.zoom > 1.001 and pl != null and is_instance_valid(pl):
+				var cxn: float = clampf(
+					(pl.global_position.x - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+				)
+				var czn: float = clampf(
+					(pl.global_position.z - WorldBounds.X_MIN) / WorldBounds.SPAN, 0.0, 1.0
+				)
+				var half: float = 0.5 / owner_ui.zoom
+				region = Rect2(
+					Vector2(cxn - half, czn - half) * ts, Vector2(half * 2.0, half * 2.0) * ts
+				)
+			draw_texture_rect_region(terrain_tex, panel, region, Color(1, 1, 1, 0.55))
 		# Amber accent border with thin inner light edge (glass frame).
 		draw_rect(panel, Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.55), false, 2.0)
 		var inset: float = 2.0
@@ -366,7 +467,7 @@ class MapDraw:
 			false,
 			1.0
 		)
-		_draw_grid(panel)
+		_draw_grid(font, panel)
 		_draw_compass(font, panel)
 
 		# --- POIs (zones of interest).
@@ -375,19 +476,38 @@ class MapDraw:
 		_draw_extractions(font, panel)
 		# --- World events (supply cache / miniboss / contested POI / surge).
 		_draw_world_events(font, panel)
-		# --- Enemies.
+		# --- Enemies. (M7.6: hi-contrast markers grow + outline every dot.)
+		var hi_c: bool = bool(SettingsManager.get_value("hi_contrast_markers"))
+		var er: float = 4.5 if hi_c else 3.0
 		for e in owner_ui.get_tree().get_nodes_in_group(Groups.ENEMIES):
 			if e is Node3D:
 				var ep := owner_ui.world_to_panel((e as Node3D).global_position, panel)
-				draw_circle(ep, 3.0, Color(1.0, 0.32, 0.32, 0.95))
+				if hi_c:
+					draw_circle(ep, er + 1.5, Color(0, 0, 0, 0.85))
+				draw_circle(ep, er, Color(1.0, 0.32, 0.32, 0.95))
+		# --- Machine Nemesis (the rival): a bigger blood-red ring + core so it stands out.
+		for n in owner_ui.get_tree().get_nodes_in_group(Groups.NEMESIS):
+			if n is Node3D:
+				var npos := owner_ui.world_to_panel((n as Node3D).global_position, panel)
+				draw_arc(npos, 7.0, 0.0, TAU, 24, Color(0.95, 0.12, 0.12, 0.95), 2.0)
+				draw_circle(npos, 4.0, Color(0.95, 0.12, 0.12, 0.95))
+		# --- Power-Core Beacon: an amber diamond/core (the prize to carry out).
+		for pc in owner_ui.get_tree().get_nodes_in_group(Groups.POWER_CORE):
+			if pc is Node3D:
+				var cpos := owner_ui.world_to_panel((pc as Node3D).global_position, panel)
+				draw_arc(cpos, 6.0, 0.0, TAU, 20, Color(1.0, 0.62, 0.12, 0.95), 2.0)
+				draw_circle(cpos, 3.5, Color(1.0, 0.72, 0.2, 0.95))
 		# --- Player arrow.
 		_draw_player(panel)
 		# --- Title + match timer + legend.
 		_draw_overlay_text(font, panel)
+		# --- Side gutters (Phase 4): the letterbox becomes functional — legend
+		# column on the left, live extraction board on the right.
+		_draw_side_panels(font, panel)
 
-	func _draw_grid(panel: Rect2) -> void:
+	func _draw_grid(font: Font, panel: Rect2) -> void:
 		var col := Color(1, 1, 1, 0.06)
-		# 8 cells = one line every 20 world metres.
+		# 8 cells = one line every 40 world metres.
 		var cells := 8
 		for i in range(1, cells):
 			var fx: float = panel.position.x + panel.size.x * float(i) / float(cells)
@@ -403,6 +523,30 @@ class MapDraw:
 				Vector2(panel.position.x + panel.size.x, fy),
 				col,
 				1.0
+			)
+		# Coordinate refs (Phase 4): A–H across the top, 1–8 down the left — callouts
+		# like "evac at C5" become possible over voice.
+		var ref_col := Color(1, 1, 1, 0.28)
+		for i in range(cells):
+			var cx: float = panel.position.x + panel.size.x * (float(i) + 0.5) / float(cells)
+			draw_string(
+				font,
+				Vector2(cx - 4.0, panel.position.y + 14.0),
+				char(65 + i),
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				12,
+				ref_col
+			)
+			var cy: float = panel.position.y + panel.size.y * (float(i) + 0.5) / float(cells)
+			draw_string(
+				font,
+				Vector2(panel.position.x + 5.0, cy + 4.0),
+				str(i + 1),
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				12,
+				ref_col
 			)
 		# Centre crosshair (origin = Plaza).
 		var ctr := owner_ui.world_to_panel(Vector3.ZERO, panel)
@@ -479,14 +623,8 @@ class MapDraw:
 			var label: String = (
 				tr(owner_ui.POI_NAMES[i]) if i < owner_ui.POI_NAMES.size() else tr("POI %d") % i
 			)
-			draw_string(
-				font,
-				p + Vector2(8, 4),
-				label,
-				HORIZONTAL_ALIGNMENT_LEFT,
-				-1,
-				12,
-				Color(tier_col.r, tier_col.g, tier_col.b, 0.95)
+			_place_label(
+				font, p + Vector2(8, 4), label, 12, Color(tier_col.r, tier_col.g, tier_col.b, 0.95)
 			)
 
 	# Typed extraction-zone hues (batch C): the bright (open) and dim (closed) tone
@@ -496,10 +634,13 @@ class MapDraw:
 		"paid": Color(1.0, 0.78, 0.25),  # amber/gold
 		"signal": Color(0.72, 0.45, 1.0),  # violet
 	}
+	# CLOSED zones are ONE neutral grey regardless of type (a per-type tint read as
+	# "alive/go here" at a glance — critic-panel finding; the type stays in the tag
+	# TEXT: "PAID"/"SIGNAL").
 	const ZONE_HUE_CLOSED := {
-		"": Color(0.55, 0.6, 0.62),  # classic — grey
-		"paid": Color(0.6, 0.52, 0.34),  # muted gold
-		"signal": Color(0.5, 0.42, 0.62),  # muted violet
+		"": Color(0.52, 0.56, 0.59),
+		"paid": Color(0.52, 0.56, 0.59),
+		"signal": Color(0.52, 0.56, 0.59),
 	}
 
 	func _draw_extractions(font: Font, panel: Rect2) -> void:
@@ -539,7 +680,7 @@ class MapDraw:
 				tag += "  %ds" % int(ceil(remaining))
 			elif not is_open_z:
 				tag += "  " + tr("(closed)")
-			draw_string(font, zp + Vector2(10, 4), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col)
+			_place_label(font, zp + Vector2(10, 4), tag, 12, col)
 
 	# Small typed glyph drawn centred on an extraction marker: a "$" for paid zones
 	# and a stylized lightning zigzag for signal zones (font-glyph-free so it renders
@@ -676,10 +817,13 @@ class MapDraw:
 		var yaw: float = pl.rotation.y
 		var fwd := Vector2(-sin(yaw), -cos(yaw))  # +screen-down = +z
 		var side := Vector2(-fwd.y, fwd.x)
-		var tip := pp + fwd * 11.0
-		var bl := pp - fwd * 6.0 + side * 6.0
-		var br := pp - fwd * 6.0 - side * 6.0
-		draw_colored_polygon(PackedVector2Array([tip, bl, br]), Color(0.4, 0.85, 1.0, 0.95))
+		# Bigger arrow + dark outline (audit: "player marker vanishes among POI dots").
+		var tip := pp + fwd * 15.0
+		var bl := pp - fwd * 8.0 + side * 8.0
+		var br := pp - fwd * 8.0 - side * 8.0
+		var pts := PackedVector2Array([tip, bl, br])
+		draw_colored_polygon(pts, Color(0.4, 0.85, 1.0, 0.95))
+		draw_polyline(PackedVector2Array([tip, bl, br, tip]), Color(0.03, 0.08, 0.12, 0.9), 1.5)
 		draw_circle(pp, 2.5, Color(0.9, 0.97, 1.0))
 
 	func _draw_overlay_text(font: Font, panel: Rect2) -> void:
@@ -740,49 +884,166 @@ class MapDraw:
 			Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.85)
 		)
 
-		# Legend below the panel — two rows to accommodate the extra event types.
-		var ly: float = panel.position.y + panel.size.y + 18.0
-		var lx: float = panel.position.x
-		_legend_swatch(lx, ly, Color(0.4, 0.85, 1.0), tr("You"))
-		_legend_swatch(lx + 70.0, ly, Color(0.25, 1.0, 0.45), tr("Evac (open)"))
-		_legend_swatch(lx + 200.0, ly, Color(0.55, 0.6, 0.62), tr("Evac (closed)"))
-		_legend_swatch(lx + 340.0, ly, Color(0.85, 0.78, 0.4), tr("POI"))
-		_legend_swatch(lx + 410.0, ly, Color(1.0, 0.32, 0.32), tr("Enemy"))
+		# "[M] close" hint under the panel.
 		draw_string(
 			font,
-			Vector2(panel.position.x + panel.size.x - 120.0, ly + 5.0),
+			Vector2(
+				panel.position.x + panel.size.x - 120.0, panel.position.y + panel.size.y + 18.0
+			),
 			tr("[M] close"),
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
 			12,
 			Color(UIStyle.DIM.r, UIStyle.DIM.g, UIStyle.DIM.b, 0.7)
 		)
-		# Second row: world events + tier key.
-		var ly2: float = ly + 20.0
-		_legend_swatch(lx, ly2, Color(0.95, 0.75, 0.25), tr("Supply Cache"))
-		_legend_swatch(lx + 130.0, ly2, Color(0.95, 0.30, 0.95), tr("Mini-boss"))
-		_legend_swatch(lx + 240.0, ly2, Color(0.30, 0.80, 0.95), tr("Contested"))
-		_legend_swatch(lx + 340.0, ly2, Color(1.00, 0.45, 0.10), tr("Surge"))
-		# Tier dots.
-		_legend_swatch(
-			lx + 430.0, ly2, Settings.RISK_TIER_COLORS.get(1, Color.WHITE) as Color, tr("Tier 1")
+
+	# ── Side gutters (Phase 4): legend column left, live extraction board right ──
+
+	## The old letterbox strips become functional space: a vertical LEGEND on the
+	## left and the EXTRACTIONS board (state + countdown per zone, open first) on the
+	## right — squad coordination reads from one glance. Falls back gracefully when a
+	## gutter is too narrow (very square windows): the legend rows just clip out.
+	func _draw_side_panels(font: Font, panel: Rect2) -> void:
+		var gutter_l: float = panel.position.x
+		var gutter_r: float = size.x - (panel.position.x + panel.size.x)
+		# LEFT: legend column.
+		if gutter_l >= 130.0:
+			var lx: float = 16.0
+			var ly: float = panel.position.y + 8.0
+			draw_string(
+				font,
+				Vector2(lx, ly),
+				tr("LEGEND"),
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				14,
+				Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.9)
+			)
+			ly += 12.0
+			var rows: Array = [
+				[Color(0.4, 0.85, 1.0), tr("You")],
+				[Color(0.25, 1.0, 0.45), tr("Evac (open)")],
+				[Color(0.55, 0.6, 0.62), tr("Evac (closed)")],
+				[Color(0.85, 0.78, 0.4), tr("POI")],
+				[Color(1.0, 0.32, 0.32), tr("Enemy")],
+				[Color(0.95, 0.75, 0.25), tr("Supply Cache")],
+				[Color(0.95, 0.30, 0.95), tr("Mini-boss")],
+				[Color(0.30, 0.80, 0.95), tr("Contested")],
+				[Color(1.00, 0.45, 0.10), tr("Surge")],
+				[Settings.RISK_TIER_COLORS.get(1, Color.WHITE) as Color, tr("Tier 1")],
+				[Settings.RISK_TIER_COLORS.get(2, Color.WHITE) as Color, tr("Tier 2")],
+				[Settings.RISK_TIER_COLORS.get(3, Color.WHITE) as Color, tr("Tier 3")],
+			]
+			for row: Array in rows:
+				ly += 21.0
+				_legend_swatch(font, lx + 5.0, ly, row[0] as Color, String(row[1]))
+		# RIGHT: extraction board.
+		if gutter_r >= 150.0:
+			var rx: float = panel.position.x + panel.size.x + 16.0
+			var ry: float = panel.position.y + 8.0
+			draw_string(
+				font,
+				Vector2(rx, ry),
+				tr("EXTRACTIONS"),
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				14,
+				Color(UIStyle.AMBER.r, UIStyle.AMBER.g, UIStyle.AMBER.b, 0.9)
+			)
+			ry += 12.0
+			for e: Dictionary in _extraction_rows():
+				ry += 21.0
+				if ry > panel.position.y + panel.size.y:
+					break
+				var col: Color = e["col"]
+				draw_circle(Vector2(rx + 5.0, ry - 4.0), 4.0, col)
+				draw_string(
+					font,
+					Vector2(rx + 15.0, ry),
+					String(e["text"]),
+					HORIZONTAL_ALIGNMENT_LEFT,
+					-1,
+					13,
+					Color(col.r, col.g, col.b, 0.95)
+				)
+
+	## Sorted board rows: open zones first (by soonest close), then closed (by soonest
+	## open). Text: "EVAC 4 · PAID · 38s" / "EVAC 7 · closed 17s".
+	func _extraction_rows() -> Array:
+		var rows: Array = []
+		for z in owner_ui.get_tree().get_nodes_in_group(Groups.EXTRACTION):
+			if not (z is Node3D):
+				continue
+			var w: Dictionary = owner_ui._window_for(z)
+			var is_open_z: bool = bool(w.get("open", true))
+			if z.has_method("override_active") and bool(z.call("override_active")):
+				is_open_z = true
+			var remaining: float = float(w.get("remaining", 0.0))
+			var ztype: String = String(z.get("zone_type")) if "zone_type" in z else ""
+			var num: String = String(z.name).trim_prefix("ExtractionZone")
+			if num == "":
+				num = "1"
+			var label: String = tr("EVAC %s") % num
+			if ztype == "paid":
+				label += " · " + tr("PAID")
+			elif ztype == "signal":
+				label += " · " + tr("SIGNAL")
+			if is_open_z and remaining > 0.0:
+				label += " · %ds" % int(ceil(remaining))
+			elif not is_open_z:
+				label += " · " + tr("closed")
+				if remaining > 0.0:
+					label += " %ds" % int(ceil(remaining))
+			var hue: Color = (
+				(
+					ZONE_HUE_OPEN.get(ztype, ZONE_HUE_OPEN[""]) as Color
+					if is_open_z
+					else ZONE_HUE_CLOSED.get(ztype, ZONE_HUE_CLOSED[""])
+				)
+				as Color
+			)
+			rows.append({"text": label, "col": hue, "open": is_open_z, "t": remaining})
+		rows.sort_custom(
+			func(a: Dictionary, b: Dictionary) -> bool:
+				if bool(a["open"]) != bool(b["open"]):
+					return bool(a["open"])
+				return float(a["t"]) < float(b["t"])
 		)
-		_legend_swatch(
-			lx + 500.0, ly2, Settings.RISK_TIER_COLORS.get(2, Color.WHITE) as Color, tr("Tier 2")
-		)
-		_legend_swatch(
-			lx + 570.0, ly2, Settings.RISK_TIER_COLORS.get(3, Color.WHITE) as Color, tr("Tier 3")
+		return rows
+
+	## Place a label, stepping DOWN past already-placed labels so names never fuse.
+	func _place_label(font: Font, at: Vector2, text: String, fsize: int, col: Color) -> void:
+		var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x
+		var r := Rect2(at + Vector2(0.0, -float(fsize)), Vector2(w, float(fsize) + 4.0))
+		for _attempt in range(4):
+			var hit := false
+			for pr: Rect2 in _placed_labels:
+				if pr.intersects(r):
+					hit = true
+					break
+			if not hit:
+				break
+			r.position.y += float(fsize) + 3.0
+		_placed_labels.append(r)
+		draw_string(
+			font,
+			r.position + Vector2(0.0, float(fsize)),
+			text,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			fsize,
+			col
 		)
 
-	func _legend_swatch(x: float, y: float, col: Color, label: String) -> void:
+	func _legend_swatch(font: Font, x: float, y: float, col: Color, label: String) -> void:
 		draw_circle(Vector2(x, y), 4.0, col)
 		draw_string(
-			ThemeDB.fallback_font,
+			font,
 			Vector2(x + 10.0, y + 5.0),
 			label,
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
-			12,
+			13,
 			Color(UIStyle.TEXT.r, UIStyle.TEXT.g, UIStyle.TEXT.b, 0.9)
 		)
 

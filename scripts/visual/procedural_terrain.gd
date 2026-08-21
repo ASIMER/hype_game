@@ -209,6 +209,12 @@ static func _pad_w(x: float, z: float) -> float:
 
 
 # ---------------------------------------------------------------- river geometry
+## PUBLIC river-centerline distance — FloraField uses it for the riparian treeline
+## band (trees hugging the banks). Same math the channel carve uses.
+static func river_distance(x: float, z: float) -> float:
+	return _river_dist(x, z)
+
+
 ## Distance from (x,z) to the polyline river centerline (world units).
 static func _river_dist(x: float, z: float) -> float:
 	var p := Vector2(x, z)
@@ -590,10 +596,20 @@ static func _build_ground_material() -> ShaderMaterial:
 	m.set_shader_parameter("tex2_albedo", _gload("Rock029_Color.jpg"))
 	m.set_shader_parameter("tex2_normal", _gload("Rock029_NormalGL.jpg"))
 	m.set_shader_parameter("tex2_rough", _gload("Rock029_Roughness.jpg"))
-	# World-space tiling (metres per texture repeat). ~3.5 m grass, ~4 m dirt, ~5 m rock.
-	m.set_shader_parameter("scale0", 0.285)  # 1/3.5
-	m.set_shader_parameter("scale1", 0.25)  # 1/4
-	m.set_shader_parameter("scale2", 0.20)  # 1/5
+	# 4th layer: gravel/crushed-stone APRONS around the POI/zone pads (ragged mask baked
+	# below) — building surrounds read as worked ground instead of lawn-to-wall.
+	m.set_shader_parameter("texg_albedo", _gload("Gravel022_Color.jpg"))
+	m.set_shader_parameter("texg_normal", _gload("Gravel022_NormalGL.jpg"))
+	m.set_shader_parameter("texg_rough", _gload("Gravel022_Roughness.jpg"))
+	m.set_shader_parameter("scaleg", 0.30)
+	m.set_shader_parameter("pad_mask", _bake_pad_mask())
+	m.set_shader_parameter("map_origin", Vector2(WorldBounds.X_MIN, WorldBounds.Z_MIN))
+	m.set_shader_parameter("map_span", WorldBounds.SPAN)
+	# World-space tiling (metres per texture repeat), retuned for the 2K sets:
+	# ~4.5 m grass, ~5 m dirt, ~6.3 m rock — fewer repeats AND more texels per metre.
+	m.set_shader_parameter("scale0", 0.22)
+	m.set_shader_parameter("scale1", 0.20)
+	m.set_shader_parameter("scale2", 0.16)
 	# Height blend (world-Y, metres). Grass below ~2.5 m, dirt fades in by ~5 m.
 	m.set_shader_parameter("dirt_lo", 2.5)
 	m.set_shader_parameter("dirt_hi", 5.5)
@@ -608,6 +624,25 @@ static func _build_ground_material() -> ShaderMaterial:
 	# decent height proxy → ZERO new asset dependency); see _GROUND_SHADER. 0.04 m max relief.
 	m.set_shader_parameter("parallax_scale", 0.04 if Settings.terrain_parallax_enabled else 0.0)
 	return m
+
+
+## Bake a 192² R8 world-rect mask of the POI/zone pad APRONS for the gravel splat:
+## value = _pad_w × a per-texel hash breakup so apron rims read ragged, not stamped
+## discs. Render-only (no heights/transforms change → golden-safe); ~37k pad evals,
+## well under a second inside the arena-build coroutine.
+static func _bake_pad_mask() -> ImageTexture:
+	var n: int = 192
+	var img := Image.create(n, n, false, Image.FORMAT_R8)
+	for ty in range(n):
+		for tx in range(n):
+			var wx: float = WorldBounds.X_MIN + (float(tx) + 0.5) / float(n) * WorldBounds.SPAN
+			var wz: float = WorldBounds.Z_MIN + (float(ty) + 0.5) / float(n) * WorldBounds.SPAN
+			var w: float = _pad_w(wx, wz)
+			if w <= 0.001:
+				continue
+			var rag: float = ProcHash.hf(ProcHash.h(7351 + tx * 193 + ty * 71))
+			img.set_pixel(tx, ty, Color(clampf(w * (0.55 + 0.45 * rag), 0.0, 1.0), 0.0, 0.0))
+	return ImageTexture.create_from_image(img)
 
 
 # Embedded triplanar splat shader (kept in this file to keep Lane C self-contained — owns
@@ -627,10 +662,18 @@ uniform sampler2D tex1_rough : hint_default_white, filter_linear_mipmap, repeat_
 uniform sampler2D tex2_albedo : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D tex2_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform sampler2D tex2_rough : hint_default_white, filter_linear_mipmap, repeat_enable;
+// Gravel apron layer (POI/zone pad surrounds) — weighted by the baked pad mask.
+uniform sampler2D texg_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D texg_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D texg_rough : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D pad_mask : hint_default_black, filter_linear, repeat_disable;
+uniform vec2 map_origin = vec2(-80.0, -80.0);
+uniform float map_span = 320.0;
+uniform float scaleg = 0.30;
 
-uniform float scale0 = 0.285;
-uniform float scale1 = 0.25;
-uniform float scale2 = 0.20;
+uniform float scale0 = 0.22;
+uniform float scale1 = 0.20;
+uniform float scale2 = 0.16;
 uniform float dirt_lo = 2.5;
 uniform float dirt_hi = 5.5;
 uniform float rock_slope_lo = 0.66;
@@ -647,6 +690,26 @@ varying vec3 v_wnrm;
 void vertex() {
 	v_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+
+// Cheap 2D hash + smooth value noise for the ANTI-TILING macro variation and the
+// dry-patch tint (frequency 0.022 matches the grass shader so dry grass sits on
+// dry ground). Pure functions of world position — deterministic on every peer.
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 345.45));
+	p += dot(p, p + 34.345);
+	return fract(p.x * p.y);
+}
+
+float vnoise01(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 s = f * f * (3.0 - 2.0 * f);
+	float a = hash21(i);
+	float b = hash21(i + vec2(1.0, 0.0));
+	float c = hash21(i + vec2(0.0, 1.0));
+	float d = hash21(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, s.x), mix(c, d, s.x), s.y);
 }
 
 // World-space triplanar albedo for one set. `duv` shifts ONLY the dominant plane (selected by
@@ -771,21 +834,66 @@ void fragment() {
 	}
 	// ---------------------------------------------------------------------------------------
 
+	// Gravel apron weight from the baked pad mask (never on steep rock).
+	vec2 map_uv = (v_wpos.xz - map_origin) / map_span;
+	float gravel_w = texture(pad_mask, map_uv).r * (1.0 - rock_w);
+
 	vec3 a0 = tri_albedo(tex0_albedo, v_wpos, bw, scale0, dom, duv);
 	vec3 a1 = tri_albedo(tex1_albedo, v_wpos, bw, scale1, dom, duv);
 	vec3 a2 = tri_albedo(tex2_albedo, v_wpos, bw, scale2, dom, duv);
+	vec3 ag = tri_albedo(texg_albedo, v_wpos, bw, scaleg, dom, duv);
 	vec3 base = mix(a0, a1, dirt_w);
+	base = mix(base, ag, gravel_w);
 	base = mix(base, a2, rock_w);
+
+	// ANTI-TILING macro variation: low-frequency value-noise brightness drift breaks the
+	// repeat read at mid distance; a second noise pulls the GRASS layer toward sun-dried
+	// straw in ~45 m patches (matches the grass shader's dry patches).
+	float macro = vnoise01(v_wpos.xz * 0.013);
+	base *= mix(0.90, 1.10, macro);
+	float dry = smoothstep(0.55, 0.80,
+		vnoise01(v_wpos.xz * 0.022) * 0.65 + vnoise01(v_wpos.xz * 0.044) * 0.35);
+	float grass_only = (1.0 - dirt_w) * (1.0 - rock_w) * (1.0 - gravel_w);
+	base = mix(base, base * vec3(1.10, 1.03, 0.78), dry * 0.35 * grass_only);
 
 	float r0 = tri_rough(tex0_rough, v_wpos, bw, scale0, dom, duv);
 	float r1 = tri_rough(tex1_rough, v_wpos, bw, scale1, dom, duv);
 	float r2 = tri_rough(tex2_rough, v_wpos, bw, scale2, dom, duv);
-	float rough = mix(mix(r0, r1, dirt_w), r2, rock_w);
+	float rg = tri_rough(texg_rough, v_wpos, bw, scaleg, dom, duv);
+	float rough = mix(mix(mix(r0, r1, dirt_w), rg, gravel_w), r2, rock_w);
 
 	vec3 n0 = tri_normal_world(tex0_normal, v_wpos, wn, bw, scale0, dom, duv);
 	vec3 n1 = tri_normal_world(tex1_normal, v_wpos, wn, bw, scale1, dom, duv);
 	vec3 n2 = tri_normal_world(tex2_normal, v_wpos, wn, bw, scale2, dom, duv);
-	vec3 worldN = normalize(mix(mix(n0, n1, dirt_w), n2, rock_w));
+	vec3 ng = tri_normal_world(texg_normal, v_wpos, wn, bw, scaleg, dom, duv);
+	vec3 worldN = normalize(mix(mix(mix(n0, n1, dirt_w), ng, gravel_w), n2, rock_w));
+
+	// ---- PER-BIOME GROUND COLOUR (golden-safe: albedo only, heights untouched) -------------
+	// The 4 quadrants split at world (80, 80) — matches WorldBounds.biome_at. Recolour the
+	// ground per biome so biomes read as DIFFERENT places (urban grey-concrete / desert ochre /
+	// snow cool off-white / rain dark wet-slate), smooth-blended ~16 m across the seams. The
+	// recolour is by LUMINANCE (keeps the texture's relief/variation) toward each biome's hue.
+	float bx = smoothstep(72.0, 88.0, v_wpos.x);
+	float bz = smoothstep(72.0, 88.0, v_wpos.z);
+	// Saturated/distinct biome hues so each biome survives the global cold grade (desert must
+	// still read WARM ochre, snow cold-bright — the grade pulls everything cool otherwise).
+	// D1 RELIGHT: urban and rain sat at luma ~0.33 / ~0.29 and, multiplied by the texture's
+	// own luminance, landed the ground far under the grade's readable floor — both quadrants
+	// read as one dark slate with no material in it. Raised to keep the SAME hue relationships
+	// while clearing that floor; the blend weight also drops (0.80 → 0.66) so the ambientCG
+	// gravel/rock detail survives instead of being flattened into a single tinted value.
+	vec3 bc_urban = vec3(0.44, 0.45, 0.48);
+	vec3 bc_desert = vec3(0.74, 0.54, 0.26);
+	// Snow capped below blowout (art-panel P3): 0.74+ ground under the 2.8 sun merged
+	// with the fog/sky into one white sheet — contrast carries "snow", not albedo.
+	vec3 bc_snow = vec3(0.66, 0.71, 0.80);
+	vec3 bc_rain = vec3(0.35, 0.40, 0.47);
+	vec3 biome_col = mix(mix(bc_urban, bc_desert, bz), mix(bc_snow, bc_rain, bz), bx);
+	float bl = dot(base, vec3(0.299, 0.587, 0.114));
+	base = mix(base, biome_col * bl * 2.0, 0.66);
+	// Wet sheen for the rain quadrant: lower the floor roughness so it reads glossy/wet.
+	float wet = bx * bz;
+	rough = mix(rough, rough * 0.55, wet * 0.6);
 
 	ALBEDO = base;
 	ROUGHNESS = clamp(rough, 0.04, 1.0);
@@ -983,19 +1091,37 @@ static func _arc_v(samples: Array[Vector2], i: int) -> float:
 
 
 # ---------------------------------------------------------------- backdrop
-## Render-only mountain ring well OUTSIDE the walls (radius 115-170), 8-12 deterministic
-## grey rocky peaks with snowy tops. NO collision. Sells «горы» on the DISTANT horizon —
-## peak height scales with distance (closer ones small ~18-25 m, far ones up to ~45 m) so
-## the ring reads as a far-off range, never a wall-side pyramid looming over the player.
+# Peak shell tuning. The top RING sits at 0.92 of the height and a single jittered apex
+# vertex closes the cap, so the summit is a faceted point instead of a lathe spike.
+const PEAK_SEGMENTS: int = 16
+const PEAK_RINGS: int = 5
+const PEAK_T_TOP: float = 0.92
+const PEAK_RIDGE_AMP: float = 0.34  # radial displacement as a fraction of the local radius
+const PEAK_SNOW_T: float = 0.62  # snow line as a fraction of the height (wobbled per column)
+const PEAK_SNOW_PROUD: float = 0.35  # metres the snow shell floats over the rock (no z-fight)
+
+
+## Render-only mountain ring well OUTSIDE the walls, 14 deterministic peaks with snow
+## caps. NO collision. Sells «горы» on the DISTANT horizon — peak height scales with
+## distance (closer ones ~30 m, far ones up to ~68 m) so the ring reads as a far-off
+## range, never a wall-side pyramid looming over the player. Each peak is a RIDGED shell
+## (a noise-displaced cone with faceted flanks), NOT a smooth cone: on the skyline a
+## smooth cone reads as a folded paper pyramid, which is exactly what a silhouette this
+## far away is judged on.
 static func _build_backdrop(root: Node3D) -> void:
 	var container := Node3D.new()
 	container.name = "MountainBackdrop"
 	# Ring the bigger 320×320 map: centre on the world centre (80,80), well outside the walls.
 	container.position = Vector3(WorldBounds.CX, 0.0, WorldBounds.CZ)
 	root.add_child(container)
+	# Two-stop height look, shared by every peak: dark slate rock body + a RESTRAINED snow
+	# cap (the old 0.85/0.90 whites blew out against the cold grade and read as plastic).
 	var rock_mat := StandardMaterial3D.new()
-	rock_mat.albedo_color = Color(0.32, 0.33, 0.36)
-	rock_mat.roughness = 1.0
+	rock_mat.albedo_color = Color(0.22, 0.24, 0.27)
+	rock_mat.roughness = 0.9
+	var snow_mat := StandardMaterial3D.new()
+	snow_mat.albedo_color = Color(0.62, 0.66, 0.74)
+	snow_mat.roughness = 0.9
 	var count: int = 14
 	for i in range(count):
 		var ang: float = (TAU * float(i) / float(count)) + ProcHash.hf(i * 7 + 1) * 0.4
@@ -1010,37 +1136,102 @@ static func _build_backdrop(root: Node3D) -> void:
 		var pz: float = sin(ang) * rad
 		var peak := MeshInstance3D.new()
 		peak.name = "Peak%d" % i
-		var cone := CylinderMesh.new()
-		cone.top_radius = base_r * 0.04
-		cone.bottom_radius = base_r
-		cone.height = height
-		cone.radial_segments = 7
-		peak.mesh = cone
 		peak.material_override = rock_mat
-		# Sit the cone so its base is near the ground level (slightly sunk).
+		# Sit the shell so its base is near the ground level (slightly sunk).
 		peak.position = Vector3(px, height * 0.5 - 4.0, pz)
 		# Slight tilt + scale jitter so the ring isn't a uniform fan.
 		peak.rotation = Vector3(
 			0.0, ProcHash.hf(i * 23 + 9) * TAU, deg_to_rad((ProcHash.hf(i * 29 + 4) - 0.5) * 10.0)
 		)
 		peak.scale = Vector3(1.0, 1.0 + ProcHash.hf(i * 31) * 0.3, 0.85 + ProcHash.hf(i * 37) * 0.4)
+		peak.mesh = _peak_shell(i, height, base_r, 0.0, 0.0, Transform3D.IDENTITY)
 		peak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		container.add_child(peak)
-		# Snowy cap: a smaller white cone near the top.
+		# Snowy cap: the SAME ridged shell clipped to its top third and floated slightly
+		# proud, so the snow line follows the ridges instead of ringing the peak. It stays
+		# a SIBLING with an identity basis (the node layout + transforms are what the
+		# golden snapshot folds), so the peak's own yaw/tilt/scale are baked into the cap's
+		# VERTICES instead — that is the only way the two shells stay glued together.
 		var snow := MeshInstance3D.new()
-		var scone := CylinderMesh.new()
-		scone.top_radius = base_r * 0.03
-		scone.bottom_radius = base_r * 0.32
-		scone.height = height * 0.34
-		scone.radial_segments = 7
-		snow.mesh = scone
-		var snow_mat := StandardMaterial3D.new()
-		snow_mat.albedo_color = Color(0.85, 0.87, 0.90)
-		snow_mat.roughness = 0.85
+		var snow_xf := Transform3D(peak.transform.basis, Vector3(0.0, -height * 0.33, 0.0))
+		snow.mesh = _peak_shell(i, height, base_r, PEAK_SNOW_T, PEAK_SNOW_PROUD, snow_xf)
 		snow.material_override = snow_mat
 		snow.position = Vector3(px, height * 0.5 - 4.0 + height * 0.33, pz)
 		snow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		container.add_child(snow)
+
+
+## ONE ridged peak shell: a low-poly cone spanning `t_lo`..1 of `height`, its radius pushed
+## in and out by a RIDGED FastNoiseLite seeded from the peak INDEX (a fixed integer seed —
+## deterministic, no randf/randi/Time anywhere in the world path) and closed by a jittered
+## apex. Normals are per-FACE, so the flanks read as rock planes rather than a lathe.
+## `proud` floats a shell that many metres over the one beneath it (the snow over the
+## rock); `xf` is baked into the vertices. Vertices are centred on the cone's mid-height —
+## the CylinderMesh convention the peak node positions were authored against.
+static func _peak_shell(
+	idx: int, height: float, base_r: float, t_lo: float, proud: float, xf: Transform3D
+) -> ArrayMesh:
+	var noise := FastNoiseLite.new()
+	noise.seed = 9173 + idx * 131
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
+	noise.fractal_octaves = 3
+	noise.frequency = 1.0
+	# Columns of ring points, bottom → top. A shell that starts ABOVE the base (the snow
+	# cap) wobbles its bottom ring per column; the rock keeps t_lo = 0 exactly so its skirt
+	# never lifts off the ground and exposes the open underside.
+	var cols: Array = []
+	for j in range(PEAK_SEGMENTS):
+		var ang: float = TAU * float(j) / float(PEAK_SEGMENTS)
+		var dir := Vector3(cos(ang), 0.0, sin(ang))
+		var t0: float = t_lo
+		if t_lo > 0.0:
+			t0 = clampf(t_lo + noise.get_noise_2d(dir.x * 2.2, dir.z * 2.2) * 0.07, 0.05, 0.8)
+		var col: Array[Vector3] = []
+		for k in range(PEAK_RINGS):
+			var t: float = lerpf(t0, PEAK_T_TOP, float(k) / float(PEAK_RINGS - 1))
+			col.append(xf * _peak_point(noise, dir, t, height, base_r, proud))
+		cols.append(col)
+	var apex: Vector3 = (
+		xf
+		* Vector3(
+			ProcHash.hrange(idx * 57 + 3, -0.07, 0.07) * base_r,
+			height * 0.5 + proud * 0.5,
+			ProcHash.hrange(idx * 57 + 4, -0.07, 0.07) * base_r
+		)
+	)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in range(PEAK_SEGMENTS):
+		var a: Array[Vector3] = cols[j]
+		var b: Array[Vector3] = cols[(j + 1) % PEAK_SEGMENTS]
+		for k in range(PEAK_RINGS - 1):
+			_peak_tri(st, a[k], b[k], a[k + 1])
+			_peak_tri(st, a[k + 1], b[k], b[k + 1])
+		_peak_tri(st, a[PEAK_RINGS - 1], b[PEAK_RINGS - 1], apex)
+	return st.commit()
+
+
+## One shell vertex: ridged radial displacement + a vertical wobble that fades out toward
+## the summit, laid on a concave flank profile. PURE — a function of (dir, t) alone.
+static func _peak_point(
+	noise: FastNoiseLite, dir: Vector3, t: float, height: float, base_r: float, proud: float
+) -> Vector3:
+	var d: float = noise.get_noise_3d(dir.x * 2.2, t * 1.7, dir.z * 2.2)
+	var prof: float = pow(1.0 - t, 1.35)  # concave flanks: broad skirt, steep shoulders
+	var rad: float = base_r * prof * (1.0 + d * PEAK_RIDGE_AMP) + proud
+	var y: float = height * (t - 0.5) + d * height * 0.05 * (1.0 - t) + proud * 0.5
+	return Vector3(dir.x * rad, y, dir.z * rad)
+
+
+## One flat-shaded triangle. Winding matches the terrain mesh (Godot front faces are CW),
+## and the face normal is derived from that same winding — (v0-v2)×(v0-v1) — so it always
+## points OUT of the shell no matter how the noise pushed the vertices around.
+static func _peak_tri(st: SurfaceTool, v0: Vector3, v1: Vector3, v2: Vector3) -> void:
+	st.set_normal((v0 - v2).cross(v0 - v1).normalized())
+	st.add_vertex(v0)
+	st.add_vertex(v1)
+	st.add_vertex(v2)
 
 
 # ---------------------------------------------------------------- river props

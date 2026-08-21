@@ -37,44 +37,36 @@ const CATALOG := {
 		"model_scale": 1.55,
 		"model_rot_deg": Vector3(0, 180, 0)
 	},
-	# three.js RobotExpressive.glb (Quaternius / Tomás Laulhé, CC0). ~4.6m tall,
+	# v0.5-B4: the starter troopers are PROCEDURAL now (ProceduralModelsTroopers) — the
+	# old RobotExpressive .glbs left a dark toy blob with unpainted eyes after the reskin.
 	"robot_grunt":
 	{
-		# feet at y=0; ModelRoot sits at capsule centre (y=0.8) so drop the feet to ground.
-		"model": "res://assets/models/robots/grunt.glb",
+		"model": "",
 		"icon": "",
 		"prim": Prim.CAPSULE,
 		"size": Vector3(0.9, 1.6, 0.9),
-		"color": Color(0.85, 0.25, 0.2),
-		"model_scale": 0.33,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.7, 0)
+		"color": Color(0.85, 0.25, 0.2)
 	},
 	"robot_heavy":
 	{
-		# Same RobotExpressive, scaled for the heavy variant (BOX hitbox, ~1.8m tall).
-		"model": "res://assets/models/robots/heavy.glb",
+		"model": "",
 		"icon": "",
 		"prim": Prim.BOX,
 		"size": Vector3(1.4, 1.8, 1.4),
-		"color": Color(0.6, 0.15, 0.15),
-		"model_scale": 0.36,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.9, 0)
+		"color": Color(0.6, 0.15, 0.15)
 	},
-	# Kenney Starter-Kit-FPS blaster.glb (CC0). ~1.6m long down +Z; shrink to a held weapon.
-	# Weapons: Kenney Blaster Kit (CC0) glTF view-models. Barrel faces +Z so held guns
+	# D4.1: the five guns are PROCEDURAL again (`ProceduralWeapons`), so their `model` is
+	# blank — a .glb WINS over a builder, and the Kenney blasters are toy-shaped next to the
+	# rebuilt receivers/sights/stocks. The scale/rot/offset keys are gone with them: builder
+	# output is authored at final size and orientation. The .glb files stay on disk, unused
+	# (same disposition as the grunt/heavy/elite bodies retired in v0.5-B4).
 	"rifle":
 	{
-		# rotate 180° to point -Z; share Textures/colormap.png. See docs/ASSETS.md.
-		"model": "res://assets/models/weapons/rifle.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/rifle.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.12, 0.18, 0.8),
-		"color": Color(0.2, 0.2, 0.22),
-		"model_scale": 0.34,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.2, 0.2, 0.22)
 	},
 	# Khronos glTF-Sample-Assets Box.glb (CC0). Unit cube centred at origin; shrink to
 	"crate":
@@ -106,48 +98,35 @@ const CATALOG := {
 	},
 	"smg":
 	{
-		# --- Weapons: Kenney Blaster Kit (CC0) glTF view-models (was procedural). ---
-		"model": "res://assets/models/weapons/smg.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/smg.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.1, 0.16, 0.55),
-		"color": Color(0.18, 0.18, 0.2),
-		"model_scale": 0.58,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.18, 0.18, 0.2)
 	},
 	"shotgun":
 	{
-		"model": "res://assets/models/weapons/shotgun.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/shotgun.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.12, 0.16, 0.9),
-		"color": Color(0.25, 0.16, 0.1),
-		"model_scale": 0.6,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.25, 0.16, 0.1)
 	},
 	"pistol":
 	{
-		"model": "res://assets/models/weapons/pistol.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/pistol.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.08, 0.18, 0.35),
-		"color": Color(0.2, 0.2, 0.22),
-		"model_scale": 0.48,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, 0)
+		"color": Color(0.2, 0.2, 0.22)
 	},
 	"dmr":
 	{
-		"model": "res://assets/models/weapons/dmr.glb",
+		"model": "",
 		"icon": "res://assets/ui/icons/dmr.png",
 		"prim": Prim.BOX,
 		"size": Vector3(0.1, 0.16, 1.1),
-		"color": Color(0.15, 0.17, 0.2),
-		"model_scale": 0.34,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.02, -0.06)
+		"color": Color(0.15, 0.17, 0.2)
 	},
 	"robot_tick":
 	{
@@ -194,15 +173,12 @@ const CATALOG := {
 	},
 	"robot_elite":
 	{
-		# Elite — a bigger, gold-trimmed variant of the RobotExpressive grunt model (like heavy).
-		"model": "res://assets/models/robots/grunt.glb",
+		# Elite — procedural commander trooper (v0.5-B4; crest fin + gold trims).
+		"model": "",
 		"icon": "",
 		"prim": Prim.BOX,
 		"size": Vector3(1.0, 1.7, 1.0),
-		"color": Color(0.92, 0.72, 0.18),
-		"model_scale": 0.42,
-		"model_rot_deg": Vector3(0, 180, 0),
-		"model_offset": Vector3(0, -0.85, 0)
+		"color": Color(0.92, 0.72, 0.18)
 	},
 	# --- Biome fauna (v0.3, all-procedural ProceduralModels builders; the `color` also
 	"robot_sandworm":
@@ -302,6 +278,123 @@ const CATALOG := {
 		"prim": Prim.BOX,
 		"size": Vector3(0.35, 0.25, 0.35),
 		"color": Color(0.7, 0.6, 0.25)
+	},
+	# Walk-up reserve resupply dropped by dying machines (never enters the inventory —
+	# LootPickup routes it straight to the picker's WeaponController).
+	"loot_ammo_shard":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.22, 0.14, 0.22),
+		"color": Color(0.95, 0.78, 0.3)
+	},
+	# --- Batch B/C gear + consumables (ProceduralModelsGear builders; prim = safety
+	# net). Without CATALOG entries these ids were invisible: the icon prewarm loops
+	# THIS dict, so get_icon returned null forever -> grey boxes in the shop/stash.
+	"key_tower":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.3, 0.06, 0.15),
+		"color": Color(0.85, 0.7, 0.3)
+	},
+	"key_lodge":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.3, 0.06, 0.15),
+		"color": Color(0.55, 0.8, 0.95)
+	},
+	"key_temple":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.3, 0.06, 0.15),
+		"color": Color(0.9, 0.35, 0.25)
+	},
+	"loot_flare":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.CYLINDER,
+		"size": Vector3(0.12, 0.4, 0.12),
+		"color": Color(0.7, 0.4, 1.0)
+	},
+	"loot_bandage":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.CYLINDER,
+		"size": Vector3(0.22, 0.14, 0.22),
+		"color": Color(0.92, 0.9, 0.85)
+	},
+	"loot_splint":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.14, 0.42, 0.12),
+		"color": Color(0.72, 0.55, 0.3)
+	},
+	"loot_painkiller":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.CYLINDER,
+		"size": Vector3(0.15, 0.24, 0.15),
+		"color": Color(0.95, 0.6, 0.2)
+	},
+	"armor_helmet_t1":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.SPHERE,
+		"size": Vector3(0.42, 0.3, 0.42),
+		"color": Color(0.5, 0.52, 0.4)
+	},
+	"armor_helmet_t2":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.SPHERE,
+		"size": Vector3(0.44, 0.32, 0.44),
+		"color": Color(0.35, 0.4, 0.48)
+	},
+	"armor_vest_t1":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.42, 0.55, 0.2),
+		"color": Color(0.45, 0.47, 0.36)
+	},
+	"armor_vest_t2":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.44, 0.58, 0.22),
+		"color": Color(0.32, 0.36, 0.42)
+	},
+	"armor_pack_med":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.42, 0.55, 0.3),
+		"color": Color(0.55, 0.45, 0.3)
+	},
+	"armor_pack_large":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.46, 0.66, 0.34),
+		"color": Color(0.45, 0.38, 0.28)
 	},
 	"loot_plastic":
 	{
@@ -474,6 +567,30 @@ const CATALOG := {
 		"size": Vector3(0.12, 0.24, 0.09),
 		"color": Color(0.46, 0.48, 0.5)
 	},
+	"att_mag_shock":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.13, 0.28, 0.1),
+		"color": Color(0.3, 0.7, 0.95)
+	},
+	"att_mag_incendiary":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.13, 0.28, 0.1),
+		"color": Color(0.9, 0.45, 0.14)
+	},
+	"att_mag_cryo":
+	{
+		"model": "",
+		"icon": "",
+		"prim": Prim.BOX,
+		"size": Vector3(0.13, 0.28, 0.1),
+		"color": Color(0.72, 0.88, 1.0)
+	},
 	"att_long_barrel":
 	{
 		"model": "",
@@ -581,6 +698,9 @@ func _fit_model(glb: Node, entry: Dictionary) -> Node3D:
 	var albedo: Variant = entry.get("model_albedo", null)
 	if albedo is Color:
 		_retint_untextured(glb, albedo)
+	# De-toy pass: the orange RobotExpressive mascot (grunt/heavy) → dark gunmetal machine.
+	if bool(entry.get("reskin_machine", false)):
+		_machine_reskin(glb, entry.get("color", Color(0.6, 0.6, 0.6)))
 	return root
 
 
@@ -600,6 +720,102 @@ func _retint_untextured(node: Node, albedo: Color) -> void:
 					mi.set_surface_override_material(s, tinted)
 	for c in node.get_children():
 		_retint_untextured(c, albedo)
+
+
+## Re-skin a "toy" robot GLB (the orange Godot RobotExpressive mascot, used by grunt/heavy)
+## into a menacing dark MACHINE: dark desaturated gunmetal on the body (faint identity tint +
+## real metallic/roughness), HOT emissive accent on any eye/emissive surface (the "cold world +
+## one hot accent" signature). Per-surface overrides (the _retint_untextured pattern) so the
+## hit-flash still collects + duplicates them per instance. Visual only.
+func _machine_reskin(node: Node, ident: Color) -> void:
+	if node is MeshInstance3D:
+		# material_override (not surface overrides) — the RobotExpressive parts carry their own
+		# material_override which outranks surface overrides, so only this beats the toy colormap.
+		# It's also exactly what the hit-flash collects + duplicates per instance.
+		(node as MeshInstance3D).material_override = _machine_mat(ident)
+	for c in node.get_children():
+		_machine_reskin(c, ident)
+
+
+## The dark gunmetal MACHINE material: a cool desaturated steel faintly tinted toward the
+## enemy's identity hue, with real metallic/roughness so it reads as worn metal (not flat toy
+## plastic). One fresh instance per part per enemy (the hit-flash duplicate contract).
+func _machine_mat(ident: Color) -> StandardMaterial3D:
+	var d := StandardMaterial3D.new()
+	# DARK gunmetal hull faintly carrying the identity hue (art-panel "kill the
+	# salmon", exact formula: ident.lerp(gunmetal, 0.75) — the old mid-grey ×
+	# warm-lift lerp read as pink vinyl under AgX).
+	d.albedo_color = ident.lerp(Color(0.15, 0.16, 0.19), 0.75)
+	# Real machine metal: harder metallic, tighter roughness so plates catch the sun.
+	d.metallic = 0.6
+	d.roughness = 0.45
+	d.metallic_specular = 0.4
+	# NO body emission. LESSON (two failed takes): ANY whole-surface emission tints
+	# the entire silhouette into a flat glow blob — with one material_override per
+	# part, per-part "eye" isolation is impossible, so threat color lives in the
+	# dark-tinted albedo instead. A dark machine never goes pure-black thanks to the
+	# metallic sky response.
+	d.emission_enabled = false
+	return d
+
+
+# Merged-static-model cache: id -> ArrayMesh (or null when the model can't merge).
+var _merged_cache: Dictionary = {}
+
+
+## MERGED static model for HIGH-COUNT world props (loot pickups): the id's multi-part
+## model collapsed into ONE MeshInstance3D with one ArrayMesh surface per material —
+## ~100 pickups × ~4 parts stop costing a draw call per part. The ArrayMesh (with its
+## materials embedded) is cached per id and SHARED by every pickup, so this is only
+## safe for static visuals that never mutate materials per instance (loot never
+## hit-flashes; its rarity glow is an OmniLight). Falls back to get_model() when the
+## model has nothing mergeable (e.g. a skinned .glb).
+func get_model_merged(id: String) -> Node3D:
+	if not _merged_cache.has(id):
+		_merged_cache[id] = _merge_model(id)
+	var mesh: ArrayMesh = _merged_cache[id]
+	if mesh == null:
+		return get_model(id)
+	var root := Node3D.new()
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	root.add_child(mi)
+	return root
+
+
+func _merge_model(id: String) -> ArrayMesh:
+	var src: Node3D = get_model(id)
+	if src == null:
+		return null
+	var by_mat: Dictionary = {}  # Material -> SurfaceTool
+	_collect_merge_surfaces(src, Transform3D.IDENTITY, by_mat)
+	src.free()
+	if by_mat.is_empty():
+		return null
+	var arr := ArrayMesh.new()
+	for mat in by_mat:
+		var st: SurfaceTool = by_mat[mat]
+		st.commit(arr)
+		arr.surface_set_material(arr.get_surface_count() - 1, mat)
+	return arr
+
+
+func _collect_merge_surfaces(n: Node, xf: Transform3D, by_mat: Dictionary) -> void:
+	var local: Transform3D = xf
+	if n is Node3D:
+		local = xf * (n as Node3D).transform
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.mesh != null:
+			for s in mi.mesh.get_surface_count():
+				var mat: Material = mi.get_active_material(s)
+				if not by_mat.has(mat):
+					var st := SurfaceTool.new()
+					st.begin(Mesh.PRIMITIVE_TRIANGLES)
+					by_mat[mat] = st
+				(by_mat[mat] as SurfaceTool).append_from(mi.mesh, s, local)
+	for c in n.get_children():
+		_collect_merge_surfaces(c, local, by_mat)
 
 
 ## Returns an icon texture for inventory UI, or null (UI should draw a colored box fallback).

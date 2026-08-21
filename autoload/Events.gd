@@ -5,6 +5,10 @@ extends Node
 # --- Combat ---
 signal damage_dealt(target: Node, amount: float, source: Node)
 signal entity_died(entity: Node, killer: Node)
+## A weak-point Hurtbox (damage_multiplier > 1) was hit — fires on the AUTHORITY (the side
+## that applies the damage), so server-side listeners (the Machine Nemesis adaptation) can
+## tell a precision hit from a body hit. `damage` is the post-multiplier amount.
+signal weak_point_hit(enemy: Node, damage: float)
 signal weapon_fired(shooter: Node, weapon_id: String)
 ## Floating damage feedback (world position of the hit). is_crit styles it.
 signal damage_number(world_pos: Vector3, amount: float, is_crit: bool)
@@ -27,6 +31,10 @@ signal gadget_placed(player: Node, type: String, world_pos: Vector3)
 signal gadget_expired(type: String, world_pos: Vector3)
 ## A robot was EMP-stunned for `duration` seconds (FX/SFX hook; server-side gameplay).
 signal enemy_stunned(enemy: Node, duration: float)
+## Machine Chemistry (Phase 5): a status effect turned ON/OFF on a machine (server-side;
+## drives the nemesis chemistry telemetry + HUD). Visuals are driven separately by the
+## per-enemy flag-sync RPC so they show on every peer. kind ∈ {shock,burn,slow,brittle}.
+signal enemy_chemistry_applied(enemy: Node, kind: String, active: bool)
 
 # --- Movement (batch A) ---
 signal player_rolled(player: Node)
@@ -37,6 +45,12 @@ signal zipline_ride_started(player: Node, zipline: Node)
 ## A locked annex door was opened (fires on EVERY peer via the door's call_local RPC —
 ## UI/SFX hook; the door panel itself animates locally).
 signal door_opened(door: Node)
+## A window pane shattered (fires on EVERY peer, post-replication — audio/QA hook).
+signal glass_broken(pane: Node)
+signal chunk_broken(chunk: Node)
+## A machine LOCKED ON (calm→CHASE edge, throttled per enemy on every peer) — the
+## audible "spotted!" stealth cue (AudioManager plays the robot_alert chirp).
+signal enemy_chase_started(enemy: Node)
 ## The raid mutator for THIS match ("" = none). Re-emitted on every sync so late HUD
 ## instances catch it; drives the HUD banner + map label.
 signal raid_mutator_changed(mutator: String)
@@ -125,6 +139,39 @@ signal noise_emitted(world_pos: Vector3, loudness: float, kind: int)
 ## summon reinforcements toward `world_pos`. `level` scales the response (1.0 = normal).
 signal enemy_alerted(world_pos: Vector3, level: float)
 
+# --- Machine Nemesis (signature mechanic) ---
+## A robot SURVIVED a fight with the squad and became their persistent rival (server-auth,
+## fired once at raid end). `serial`/`title` = its generated identity. Drives the intro banner.
+signal nemesis_born(serial: String, title: String)
+## A persisted nemesis RETURNED in this raid (injected by NemesisDirector). `node` = the
+## spawned enemy. Drives the return banner + the M-map marker (Groups.NEMESIS).
+signal nemesis_returned(serial: String, title: String, node: Node)
+## The active nemesis was finally KILLED. Drives the defeat banner + (Phase 3) the payoff.
+signal nemesis_defeated(serial: String)
+## The host pushed the Rivals codex (active + history) to clients (Phase 4). The Hub tab
+## re-reads GameState.nemesis_active/nemesis_history on this.
+signal nemesis_codex_synced
+## Power-Core Beacon (Phase 4). A boss/miniboss dropped a carriable core (`node`);
+## a player picked it up (`peer`); a carrier extracted with it (`peer`). HUD banner + SFX.
+signal power_core_spawned(node: Node)
+signal power_core_picked(peer: int)
+signal power_core_extracted(peer: int)
+
+# --- Mutant Harvest: body-part SKILLS (signature mechanic) ---
+## A body-part skill was picked up / upgraded (the owner). `level` = the new level. Drives the
+## pickup toast + the hotbar.
+signal skill_acquired(skill_id: String, level: int)
+## A skill was cast (a hotbar key). Drives SFX/hooks; `level` is 0 on the VFX broadcast.
+signal skill_cast(skill_id: String, level: int)
+## Shield skill absorbed incoming damage (owner-local; drives the frozen-bullet FX
+## + the absorbed counter on the energy dome).
+signal shield_absorbed(amount: float)
+## A skill's cooldown changed (owner only). `remaining` seconds (0 = ready). Drives the hotbar
+## cooldown radial.
+signal skill_cooldown_changed(skill_id: String, remaining: float)
+## The owner's skill set changed (acquire / per-raid reset) — the hotbar rebuilds.
+signal skill_changed
+
 # --- Dynamic world events (Batch 3 "Live raid") ---
 ## A mid-raid world event began (server-auth, synced). `kind`: 0 supply_cache,
 ## 1 miniboss, 2 contested_poi, 3 surge. `world_pos` = marker location; `label` = HUD text.
@@ -160,9 +207,15 @@ signal extraction_window_changed(zone: Node, open: bool, remaining: float)
 signal map_toggled(open: bool)
 
 # --- Co-op combat / scoreboard ---
-## A teammate's shot, broadcast so everyone sees the tracer/muzzle/impact.
+## A teammate's shot, broadcast so everyone sees the tracer/muzzle/impact — and, since
+## v0.5-B3, HEARS it (wid picks the per-class positional crack; "" = generic).
 signal remote_shot(
-	muzzle: Vector3, hit_point: Vector3, arc: PackedVector3Array, enemy_hit: bool, normal: Vector3
+	muzzle: Vector3,
+	hit_point: Vector3,
+	arc: PackedVector3Array,
+	enemy_hit: bool,
+	normal: Vector3,
+	wid: String
 )
 ## Per-player kill counts changed (synced) — the TAB leaderboard refreshes.
 signal scoreboard_changed
@@ -207,6 +260,12 @@ signal interaction_available(prompt: String, target: Node)
 signal interaction_cleared
 ## Transient HUD notification / killfeed line. kind: 0 info, 1 good, 2 bad, 3 wave.
 signal notify(text: String, kind: int)
+## Talking boss (M2): one spoken line from the boss bark engine → the HUD speech chip.
+signal boss_bark(text: String)
+## Hijack & Pilot (v0.5-B2): `peer` stole / left a machine. Fired on EVERY peer by the
+## director's FX broadcast, so any HUD can react; the pilot's HUD shows the chip.
+signal hijack_started(peer: int, label: String)
+signal hijack_ended(peer: int)
 ## Sprint stamina for the stamina bar.
 signal stamina_changed(current: float, max_stamina: float)
 ## Inventory UI -> player: use an item (medkit/grenade/...).
@@ -235,6 +294,10 @@ signal raid_loot_granted(payload: Array, bonus: int)
 # --- Crafting / quests ---
 ## A crafting blueprint was learned (extract / buy / quest). Craft + shop UIs refresh.
 signal blueprint_learned(blueprint: String)
+## A recipe was actually CRAFTED. Distinct from `blueprint_learned`, which fires once when
+## the recipe becomes available — this fires on every successful craft, which is what audio
+## and quest feedback need to hear.
+signal crafted(recipe_id: String, output_id: String)
 ## A quest objective advanced / completed (Quests autoload). The Quests tab reads these.
 signal quest_progress(quest_id: String, current: int, target: int)
 signal quest_completed(quest_id: String)

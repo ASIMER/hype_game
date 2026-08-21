@@ -34,6 +34,7 @@ var _dust_mat: ParticleProcessMaterial
 
 var _env: Environment
 var _sun: DirectionalLight3D
+var _fill: DirectionalLight3D = null  # weak shadowless counter-sun (shade legibility)
 # The WorldEnvironment NODE (carries `.camera_attributes`, where DOF lives). Captured
 # alongside `_env` in _find_env_and_light so the DOF lever has somewhere to write.
 var _world_env_node: WorldEnvironment
@@ -51,9 +52,9 @@ var _tod: Node
 # SkyDome in _ready() so the storm tween always scales the real defaults. The
 # initial values here are only fallbacks if capture fails.
 var _base_ambient := 0.95
-var _base_fog_density := 0.001
-var _base_fog_color := Color(0.64, 0.68, 0.72, 1)
-var _base_glow := 0.55
+var _base_fog_density := 0.0008
+var _base_fog_color := Color(0.62, 0.66, 0.72, 1)
+var _base_glow := 0.5
 # Live volumetric-fog density (the value the quality setting last applied). The storm
 # tween thickens FROM this, and _restore_day() resets BACK to it.
 var _base_vol_fog_density := 0.025
@@ -72,25 +73,59 @@ var _captured := false
 # back to these whenever a NEW match begins, so a raid never inherits the previous
 # raid's storm darkness after a restart. Capture then scales the storm tween from
 # the live values, but these are the source-of-truth fallbacks/resets.
-const DAY_AMBIENT := 0.95
+# 0.48 → 0.62 in the texture-quality pass: shaded building faces read as pure coal
+# under the cold grade (containers «чёрные» from the south-west) — a modest ambient
+# floor keeps shadow sides legible without breaking the moody look.
+const DAY_AMBIENT := 0.70
 const DAY_FOG_DENSITY := 0.001
-const DAY_FOG_COLOR := Color(0.64, 0.68, 0.72, 1.0)
-const DAY_GLOW := 0.55
-const DAY_SUN_ENERGY := 1.35
-const DAY_CUMULUS_COVERAGE := 0.55
-const DAY_CUMULUS_THICKNESS := 0.0243
-const DAY_CUMULUS_INTENSITY := 0.7
-const DAY_ATM_DARKNESS := 0.45
-const DAY_SKYDOME_EXPOSURE := 1.0
+const DAY_FOG_COLOR := Color(0.54, 0.59, 0.67, 1.0)
+const DAY_GLOW := 0.5
+# Art-panel "turn the sun on": the fill used to OUT-power the key (1.4 vs 1.35),
+# erasing all modeling — AgX wants a hot key + weak fill (~6:1) to sculpt shadows.
+const DAY_SUN_ENERGY := 2.8
+const DAY_CUMULUS_COVERAGE := 0.66
+const DAY_CUMULUS_THICKNESS := 0.04
+const DAY_CUMULUS_INTENSITY := 0.42
+const DAY_ATM_DARKNESS := 0.72
+const DAY_SKYDOME_EXPOSURE := 0.8
+# D1.5 «Объёмка и воздух» — the AIR half of the day look. These three Environment fields are
+# driven PER BIOME from the `_apply_biome_look` tick (see `_apply_biome_air`), which means they
+# fall under the SAME trap the storm ramps live under: `_restore_day()` owns the Environment, so
+# anything the tick writes must be reset here too or a restart silently keeps the previous
+# raid's biome air. The values below ARE the neutral/urban entry of `_BIOME_LOOK`, so the day
+# reset and the urban tick agree to the digit (no visible settle on a fresh urban raid).
+const DAY_FOG_HEIGHT := 3.0
+const DAY_FOG_HEIGHT_DENSITY := 0.012
+const DAY_FOG_AERIAL := 0.50
 
 # Day-night drive (per-frame, from DayNight.sun_ratio). The sun energy + ambient + sun pitch
 # lerp between a NIGHT floor (sun_ratio 0) and the bright-DAY top (sun_ratio 1) — DAY_SUN_ENERGY
 # is the noon energy, so the drive never exceeds the authored day. Pitch sweeps shallow at
 # dawn/dusk to steep at noon (the sun rides high mid-day), yaw/roll kept from the captured base.
-const NIGHT_SUN_ENERGY := 0.15
-const NIGHT_AMBIENT := 0.4
-const DAYNIGHT_PITCH_LOW := -15.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0)
-const DAYNIGHT_PITCH_HIGH := -55.0  # sun pitch (deg) at noon (sun_ratio 1)
+# D1 RELIGHT: the photostand measured night frames at 97-99% of world pixels under the
+# grade's readable floor — night was not "moody", it was unlit. Moonlight and the ambient
+# floor both come up so silhouettes, ground and facades stay legible while staying clearly
+# night (day noon still runs 12× the moon energy).
+const NIGHT_SUN_ENERGY := 0.26
+const NIGHT_AMBIENT := 0.60
+# How much of the ambient comes from the SKY vs the explicit `ambient_light_color`
+# (see _apply_sun_ambient). Day leans on the sky; night leans on the authored colour.
+const NIGHT_SKY_CONTRIB := 0.28
+# Day stays sky-dominated: pulling it to 0.82 measurably DARKENED the daylight biomes whose
+# ambient colour is cooler than their sky (rain lost 0.08 of median luma), which is the
+# opposite of the intent. The blend is a night lever, not a day one.
+const DAY_SKY_CONTRIB := 0.96
+# Shadow-side fill light (see _apply_sun_ambient): weak, cool, shadowless, opposite the sun.
+# Re-tuned with the 2.8 sun (art-panel key:fill ≈6:1): 1.4 against the old 1.35 sun
+# out-powered the key and flattened all modeling; 0.45 keeps shade legible without
+# fighting the sun. (History: 0.55 vanished only because the SUN was too weak.)
+# D1 RELIGHT 0.45 → 0.72: still well under the 2.8 key (≈4:1, modeling intact) but enough
+# that the shadow side of a machine or a facade resolves as cold steel instead of one flat
+# value — the "readable but not flat" point the ratio is actually protecting.
+const FILL_ENERGY := 0.72
+const FILL_PITCH_DEG := -35.0
+const DAYNIGHT_PITCH_LOW := -8.0  # sun pitch (deg) at dawn/dusk (sun_ratio 0) — low golden-hour rake
+const DAYNIGHT_PITCH_HIGH := -42.0  # sun pitch (deg) at noon — kept low so shadows stay long/dramatic
 
 # Storm look targets for the SkyDome.
 const STORM_CUMULUS_COVERAGE := 0.92
@@ -101,14 +136,288 @@ const STORM_SKYDOME_EXPOSURE := 0.45
 # Storm-only GLOBAL volumetric haze (normal play keeps global density at 0 — fog lives
 # only in the localized FogZones; the storm justifies a brief whole-map murk).
 const STORM_VOLUMETRIC_DENSITY := 0.035
+# Storm fog tint. RELIGHT: the pre-D6.4 value was (0.22,0.20,0.24) — under the light
+# palette + cold grade that pulled every distant surface below the readable floor
+# (the same failure mode the crush 0.05 bug had). A storm-GREY keeps depth legible.
+const STORM_FOG_COLOR := Color(0.34, 0.33, 0.38, 1.0)
 
-var _storm_tween: Tween
+# ---------------------------------------------------------------------------
+# D6.4 — STORM FRONT v2: the storm ARRIVES instead of cross-fading everywhere at once.
+#
+# The old implementation was one global Tween over the sky/fog/sun parameters: the colour
+# changed but nothing HAPPENED. v2 replaces the tween with a per-frame drive of a single
+# storm mix `k`, computed as a function of TIME and the CAMERA's distance to a moving
+# FRONT PLANE — so the darkness, the fog, the wind and the debris all roll over you as a
+# wall passing by, and a squadmate on the far side of the map is still in clear sky for a
+# few more seconds.
+#
+# WHY A PLANE AND NOT A RADIUS: a front is directional. `_front_dir` is a unit XZ vector
+# picked deterministically from the match seed (same on every peer — and the whole system
+# is render-only anyway, so even a mismatch could only differ cosmetically, never in
+# gameplay). `_front_s` is the front's signed distance along that axis from the map centre;
+# it sweeps from fully upwind to fully downwind across `_front_time` seconds.
+#
+# EVERYTHING HERE IS RENDER-ONLY AND MUST NOT FIGHT `_restore_day()`: the mix writes the
+# SAME properties `_restore_day()` owns (sun energy/rotation, ambient, fog, glow, SkyDome)
+# and nothing else, so a match restart resets every one of them by simply calling
+# `_restore_day()`; `_storm_reset()` (called from there) clears the extra state this batch
+# owns — the grass wind uniforms, the debris field and the fog wall.
+# ---------------------------------------------------------------------------
+const FRONT_TIME_MULT := 1.6  # front travel time = STORM_TWEEN_TIME × this
+const FRONT_SOFT := 34.0  # half-width (m) of the front's soft edge — the "wall" thickness
+# Half the distance the front travels. Must clear the map's HALF-DIAGONAL plus the soft
+# edge, or a player standing in the far corner would never reach mix=1 (the storm would
+# visibly stall at ~0.6 for them).
+const FRONT_HALF_TRAVEL := WorldBounds.SPAN * 0.7072 + FRONT_SOFT + 24.0
+# Ambient floor for the stormed look. RELIGHT: the storm target used to be a flat
+# base×0.5; at night that stacked on an already-dim frame. The floor keeps machines and
+# facades above the grade's readable threshold while the frame still reads as a storm.
+const STORM_AMBIENT_FLOOR := 0.42
+const DUST_DAY_COLOR := Color(0.85, 0.84, 0.8, 0.18)
+const DUST_STORM_COLOR := Color(0.62, 0.60, 0.58, 0.30)
+
+# WIND — multipliers applied to the LIVE grass ShaderMaterial's authored wind uniforms
+# (shaders/grass.gdshader `sway_strength` / `sway_speed`, set in procedural_flora
+# _build_grass). Only the uniform VALUES are touched; the material, the shader and the
+# flora builder are untouched, and `_storm_reset()` writes the captured base back.
+# Both products stay inside the shader's authored hint_range (0.34×2.35=0.80 ≤ 1.0,
+# 2.0×2.10=4.2 ≤ 5.0) so the sway never clips into a jelly wobble.
+const WIND_SWAY_MULT := 2.35
+const WIND_SPEED_MULT := 2.10
+
+# WIND-BLOWN DEBRIS — one small camera-riding GPUParticles3D field. Riding the camera IS
+# the distance gate: nothing ever simulates out in the empty quadrants, and the count is
+# fixed (no pooling needed — a single emitter, built once, toggled by `emitting`).
+const DEBRIS_COUNT := 90
+const DEBRIS_BOX := Vector3(30.0, 11.0, 30.0)
+const DEBRIS_UPWIND := 16.0  # emitter sits this far UPWIND of the camera so scraps blow past
+const DEBRIS_SPEED_MIN := 11.0
+const DEBRIS_SPEED_MAX := 26.0
+# Light tan scraps, ALPHA-blended (never additive): an additive volume you can be INSIDE
+# is exactly the beacon-pillar whiteout lesson (extraction_zone.gd::_additive).
+const DEBRIS_COLOR := Color(0.74, 0.70, 0.62, 0.85)
+
+# THE VISIBLE WALL — a box FogVolume spanning the map, travelling with the front so the
+# storm is something you SEE coming. Only built when volumetric fog is actually enabled
+# (FogVolumes render nowhere otherwise); when it is off the mix's distance-fog ramp still
+# carries the arrival, so this is a pure bonus layer, never load-bearing.
+const WALL_THICK := 42.0
+const WALL_HEIGHT := 76.0
+# Density/albedo deliberately UNDER the landmark FogZones (0.40-0.55 @ ZONE_ALBEDO): the
+# front sweeps THROUGH the squad during the deadliest wave of the raid, and the fog-zone
+# art-panel lesson is that a bright, dense bank "erases enemies at 8 m". Thick enough to
+# read as a wall from 200 m, thin enough that you can still fight inside it.
+const WALL_DENSITY := 0.34
+const WALL_ALBEDO := Color(0.54, 0.59, 0.67)
+
+# LIGHTNING — no bolt geometry, no new material: a short spike ADDED on top of the mixed
+# sun + ambient energies, so it can never fight the per-frame drive.
+const FLASH_LEN := 0.55
+const FLASH_SUN := 2.6
+const FLASH_AMBIENT := 0.55
+const STRIKE_MIN := 2.6  # seconds between strikes (deterministic, hashed per strike index)
+const STRIKE_MAX := 7.4
+const STRIKE_K_MIN := 0.35  # no lightning in the clear sky AHEAD of the front
+const SOUND_SPEED := 340.0  # m/s — thunder delay = distance / this
+
 var _stormed := false
+# Storm-front runtime state (all reset by _storm_reset()).
+var _storm_t: float = 0.0
+var _front_time: float = 9.6
+var _front_dir: Vector2 = Vector2(0.0, 1.0)
+var _front_s: float = -FRONT_HALF_TRAVEL
+var _storm_seed: int = 0
+var _last_storm_k: float = -1.0
+# "From" side of every storm ramp — captured LIVE at storm start, not from the DAY_*
+# constants: at dusk/night the day-night drive has already dimmed the sun and ambient, and
+# ramping from the noon constants would make the storm BRIGHTEN a night raid.
+var _pre_sun_energy: float = DAY_SUN_ENERGY
+var _pre_sun_rot: Vector3 = Vector3.ZERO
+var _pre_ambient: float = DAY_AMBIENT
+var _pre_fog_density: float = DAY_FOG_DENSITY
+var _pre_fog_color: Color = DAY_FOG_COLOR
+var _pre_glow: float = DAY_GLOW
+# Mixed (flash-free) light energies — the flash is added on top of these every frame.
+var _storm_sun_e: float = DAY_SUN_ENERGY
+var _storm_amb_e: float = DAY_AMBIENT
+# Lightning
+var _flash: float = 0.0
+var _flash_t: float = 1000.0
+var _strike_accum: float = 0.0
+var _strike_idx: int = 0
+var _next_strike: float = STRIKE_MIN
+var _last_strike_pos: Vector3 = Vector3.ZERO
+var _last_strike_dist: float = 0.0
+var _last_strike_delay: float = 0.0
+# Live grass wind materials + their authored base (sway_strength, sway_speed).
+var _grass_mats: Array[ShaderMaterial] = []
+var _grass_base_wind: Array[Vector2] = []
+# Debris field + the travelling fog wall (both built lazily on the first storm).
+var _debris: GPUParticles3D = null
+var _debris_mat: ParticleProcessMaterial = null
+var _debris_k: float = -1.0
+var _front_fog: FogVolume = null
+var _front_fog_mat: FogMaterial = null
+var _wall_mult: float = 1.0
 # "fog" raid mutator: when active, the GLOBAL volumetric fog base density is raised from 0 to
 # Settings.MUTATOR_FOG_DENSITY (a permanent half-storm murk from t=0). The storm still wins
 # while it is active (it tweens density higher); _restore_day resets BACK to this base, so the
 # murk persists across the storm fade-out as long as the mutator is set.
 var _fog_mutator_active := false
+
+# Day-night throttle state (PERF): the Sky3D clock writes at 4 Hz; sun/ambient floats
+# write only when sun_ratio actually changed. -1.0 sentinels force a write after any
+# reset (match start / _restore_day) so a fresh raid never holds a stale sky.
+var _tod_accum: float = 0.0
+var _last_tod_hour: float = -1.0
+var _last_sun_ratio: float = -1.0
+
+# Climate-zone distance gate (PERF): the 3 landmark precip systems (~1700 particles)
+# + their FogVolumes/Decals simulate even when nobody is in that quadrant. Checked at
+# 1 Hz; 130m covers every zone radius (33-38m) + a 90m approach margin, so an 8s
+# snow column is fully populated before flakes are resolvable. The full-map ambient
+# dust/embers are deliberately NOT gated — the player is always inside those fields.
+var _climate_gate_accum: float = 1.0
+var _climate_root: Node3D = null
+
+# ---------------------------------------------------------------------------
+# D1.5 — GOD RAYS, calibrated by TIME OF DAY (and scaled per biome below).
+#
+# `light_volumetric_fog_energy` is a VOLUMETRIC-fog property: it scales how much this light
+# contributes to the froxel fog. Two consequences drive the whole design:
+#  * with the volumetric carrier OFF it is dead weight, so it is pinned to 0 there (the brief's
+#    "не включается там, где объёмка выключена настройками") — the old code wrote a flat 1.0
+#    regardless, which was a silent no-op on those configs and a fixed look on the others;
+#  * normal play keeps the GLOBAL density at 0, so shafts only ever appear where fog actually
+#    lives — inside the landmark FogZones / climate zones / the storm wall. That is exactly
+#    where god rays belong, and it is why this can be generous without hazing the map.
+#
+# The curve peaks at GOLDEN (the dawn/dusk ramp, where a raking sun cuts long shafts through a
+# smoke bank) and falls off toward noon (an overhead sun makes shafts short and near-invisible)
+# and toward night. Read the products, not the multipliers — the sun's own energy is already
+# swinging 0.26 → 2.8 across the same ramp, so the visible shaft strength is energy × this:
+#   night  0.26 × 0.55 = 0.14   golden  1.40 × 1.55 = 2.17   noon  2.80 × 0.45 = 1.26
+const GOD_RAY_PEAK := 0.42  # sun_ratio at which shafts are strongest (the golden-hour ramp)
+const GOD_RAY_GOLDEN := 1.55
+const GOD_RAY_NOON := 0.45
+const GOD_RAY_NIGHT := 0.55
+# Inside the storm the sun is behind a full cloud deck AND the whole map is fogged — leaving the
+# shafts at their clear-sky strength turns the storm front into a glare sheet. Damped, never 0
+# (a break in the deck is part of the drama).
+const GOD_RAY_STORM_MULT := 0.5
+
+# ---------------------------------------------------------------------------
+# D1.5 — AERIAL PERSPECTIVE re-tune (0.34 → 0.50, per-biome band 0.42-0.56 below).
+#
+# WHY THIS CANNOT MILK THE FRAME, by construction. Godot's fog blend fraction at a pixel is
+#     f = max(1 - exp(-dist · fog_density),  1 - exp((y - fog_height) · fog_height_density))
+# and `fog_aerial_perspective` does NOT enter that equation at all — it only decides how much
+# of the ALREADY-COMPUTED f takes the sky-cubemap colour instead of `fog_light_color`. So it
+# can re-tint haze, never add it. With DAY_FOG_DENSITY 0.001 the distance term is 3.9% at 40 m
+# and 5.8% at 60 m, and the strongest biome height term below peaks at ~8.9% (rain, at ground
+# level). In the 40-60 m band ≤9% of a machine's pixels are fog at all, so its silhouette and
+# its cast shadow keep ≥91% of their contrast no matter what this value says — the D1.5
+# acceptance criterion is met by the numbers, not by taste. Meanwhile at 200-320 m the distance
+# term is 18-27%, and that IS where 0.50 pays: far ridges and rooflines take half their haze
+# from the sky, which is what actually reads as air. The two levers that COULD milk the
+# mid-range (fog_density, fog_height_density) stay pinned; this one is free depth.
+#
+# The one exception is the "fog" raid mutator, which multiplies the distance density ×12 — at
+# 0.012 the 60 m blend jumps to ~51%, and re-tinting half of THAT toward a bright sky is the
+# milk failure. So aerial is damped while that mutator runs.
+const AERIAL_FOG_MUTATOR_MULT := 0.55
+
+# D1 RELIGHT — per-biome light TEMPERATURE (see _apply_biome_look). Colour only: energy,
+# rotation and sky density all belong to _restore_day / the storm tween, and anything
+# written here that they also write would be reverted on the next match start.
+# Urban stays the neutral cold-steel reference the identity was tuned on; snow goes bluer
+# and brighter in ambient (snow bounces), desert warms hard (sand bounces warm), rain goes
+# cold and dim (overcast). The fill is the counter-sun, so it leans OPPOSITE the key.
+#
+# D1.5 extends each entry with the biome's AIR (see `_apply_biome_air`). These four keys DO
+# write Environment fog fields, so every one of them is paired with an explicit reset in
+# `_restore_day()` (DAY_FOG_HEIGHT / DAY_FOG_HEIGHT_DENSITY / DAY_FOG_AERIAL / DAY_FOG_COLOR).
+#  * `fog_h` / `fog_hd` — the HEIGHT fog, i.e. the low-lying air. Note it is distance-INdependent
+#    (see the equation above): everything below `fog_h` is washed by the same fraction whether
+#    it is 5 m or 50 m away, which is precisely the "туман фальшиво подсвечивал интерьеры"
+#    failure D1 fixed by dropping 0.04 → 0.012. The fix is to keep the LAYER LOW rather than the
+#    density at zero: with `fog_h` at head height the mist pools in dips and hollows (a machine
+#    wades through it, its head clear) and a room floor two metres up is untouched.
+#    Ground sits at roughly y ∈ [-3.5, +3.5] (TERRAIN_HILL_AMP), so worst-case washes are
+#    urban 3.5%, snow 0.5%, desert 9.2%, rain 8.9% at y = 0.
+#  * `aerial` — a narrow band around DAY_FOG_AERIAL: dust scatters most (desert), clean cold air
+#    least (snow).
+#
+# MEASURED RETUNE (photostand d_tail): the first pass of this table DARKENED every biome it
+# touched — rain lost 0.08 median luma on a matched crop, desert 0.10 — for one reason that is
+# easy to miss. Haze is scattered SKYLIGHT: it is brighter than what it covers, and washing a
+# surface toward it must LIFT that surface. Three of these entries did the opposite. Rain's tint
+# was darker than the day reference outright; desert hung a waist-high layer in a colour darker
+# than the sand it lay on; snow cut `aerial` below the default, so distant geometry kept its own
+# dark value instead of blending toward a bright sky. Densities are now roughly half, the tints
+# sit at or above the surface they wash, and snow's sky-blend is back at the default. Keep that
+# rule when retuning: a fog colour DARKER than the ground it covers is a light subtractor.
+#  * `fog_col` — the distance/height fog tint. Written ONLY while not stormed: `_apply_storm_mix`
+#    owns `fog_light_color` during the storm, and `_storm_begin` captures the LIVE (already
+#    biome-tinted) colour as its ramp origin, so the two never fight and the storm still rolls
+#    in out of the local air.
+#  * `rays` — the biome multiplier on the god-ray curve above.
+const _BIOME_LOOK := {
+	"urban":
+	{
+		"sun": Color(1.0, 0.965, 0.905),
+		"fill": Color(0.58, 0.66, 0.80),
+		"ambient": Color(0.50, 0.56, 0.66),
+		"fog_col": DAY_FOG_COLOR,
+		"fog_h": DAY_FOG_HEIGHT,
+		"fog_hd": DAY_FOG_HEIGHT_DENSITY,
+		"aerial": DAY_FOG_AERIAL,
+		"rays": 1.0,
+	},
+	"snow":
+	{
+		"sun": Color(0.955, 0.975, 1.0),
+		"fill": Color(0.62, 0.72, 0.88),
+		"ambient": Color(0.58, 0.65, 0.78),
+		# Clean cold air: almost no ground layer, the least sky-blend of the four — the snow
+		# quadrant should be the one place where a machine at 120 m is still a hard silhouette.
+		"fog_col": Color(0.72, 0.77, 0.85),
+		"fog_h": 1.0,
+		"fog_hd": 0.004,
+		"aerial": 0.50,
+		"rays": 0.8,
+	},
+	"desert":
+	{
+		"sun": Color(1.0, 0.925, 0.795),
+		"fill": Color(0.66, 0.66, 0.72),
+		"ambient": Color(0.64, 0.60, 0.53),
+		# Warm dust hanging waist-to-head high, and the strongest sky-blend at distance —
+		# suspended sand is the one air that genuinely scatters.
+		"fog_col": Color(0.82, 0.74, 0.62),
+		"fog_h": 3.4,
+		"fog_hd": 0.009,
+		"aerial": 0.53,
+		"rays": 1.3,
+	},
+	"rain":
+	{
+		"sun": Color(0.90, 0.945, 1.0),
+		"fill": Color(0.54, 0.64, 0.78),
+		"ambient": Color(0.48, 0.545, 0.63),
+		# Low morning haze: the densest layer of the four but capped just above head height, so
+		# it reads as mist lying in the ground and clears by the time you are on a roof.
+		"fog_col": Color(0.62, 0.67, 0.74),
+		"fog_h": 3.0,
+		"fog_hd": 0.013,
+		"aerial": 0.48,
+		"rays": 1.15,
+	},
+}
+var _biome_look_accum: float = 0.0
+# Last biome's god-ray multiplier, cached so `_apply_graphics_quality` (which fires off the
+# settings menu, not off the biome tick) can recompute the shafts without re-resolving a biome.
+var _ray_biome_mult: float = 1.0
 
 
 func _ready() -> void:
@@ -170,7 +479,7 @@ func _apply_graphics_quality(level: int) -> void:
 			_env.sdfgi_cascades = 6 if rt else 4
 			_env.sdfgi_use_occlusion = true
 			_env.sdfgi_bounce_feedback = 0.75 if rt else 0.5
-			_env.sdfgi_energy = 1.1 if rt else 0.9
+			_env.sdfgi_energy = 1.2 if rt else 1.0
 		# "RT-style" raster reflections: SSR (Forward+; water/metal/wet). Read both ways.
 		_env.ssr_enabled = bool(SettingsManager.get_value("ssr"))
 		if _env.ssr_enabled:
@@ -182,7 +491,7 @@ func _apply_graphics_quality(level: int) -> void:
 		_env.ssil_enabled = bool(SettingsManager.get_value("ssil"))
 		if _env.ssil_enabled:
 			_env.ssil_radius = 5.0
-			_env.ssil_intensity = 1.0
+			_env.ssil_intensity = 1.15
 		# Volumetric fog = the CARRIER for the localized FogVolume smoke banks ONLY. The
 		# GLOBAL ambient density is ALWAYS ZERO (the map itself stays clear — the player
 		# explicitly does not want whole-map haze); fog exists only inside the FogZones
@@ -203,12 +512,26 @@ func _apply_graphics_quality(level: int) -> void:
 		ProceduralFogZones.apply_density(get_tree().current_scene if get_tree() else null)
 		# Same live rescale for the localized climate zones (particle amount_ratio + fog density).
 		ProceduralClimateZones.apply_density(get_tree().current_scene if get_tree() else null)
-	# God rays: let the sun cast volumetric shafts THROUGH the global fog (no-op when
-	# volumetric fog is off). Shadow distance also lives on the sun. Guard non-null.
+	# Soft-shadow FILTER quality (penumbra sampling noise, an image-quality knob —
+	# the penumbra WIDTH itself is the sun's light_angular_distance, identical for
+	# everyone). Derived from the preset level; no settings key of its own.
+	var soft_q: Array = [
+		RenderingServer.SHADOW_QUALITY_SOFT_LOW,
+		RenderingServer.SHADOW_QUALITY_SOFT_LOW,
+		RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM,
+		RenderingServer.SHADOW_QUALITY_SOFT_HIGH,
+		RenderingServer.SHADOW_QUALITY_SOFT_ULTRA,
+	]
+	var sq: RenderingServer.ShadowQuality = soft_q[clampi(level, 0, 4)]
+	RenderingServer.directional_soft_shadow_filter_set_quality(sq)
+	RenderingServer.positional_soft_shadow_filter_set_quality(sq)
+	# God rays: let the sun cast volumetric shafts through the fog. D1.5 — the strength is no
+	# longer a flat 1.0: it is calibrated by time of day and biome on the `_apply_biome_look`
+	# tick (see `_apply_god_rays`), and pinned to 0 whenever the volumetric CARRIER is off,
+	# which the old write did not check. Called here too so the settings toggle is immediate.
+	_apply_god_rays()
+	# Shadow distance also lives on the sun. Guard non-null.
 	if _sun != null:
-		_sun.light_volumetric_fog_energy = (
-			1.0 if bool(SettingsManager.get_value("god_rays")) else 0.0
-		)
 		_sun.directional_shadow_max_distance = clampf(
 			float(SettingsManager.get_value("shadow_distance")), 60.0, 250.0
 		)
@@ -392,6 +715,7 @@ func _find_env_and_light() -> void:
 	# Our main shadow-casting sun lives at the scene root (NOT under Sky3D, whose
 	# own SunLight/MoonLight are disabled). Prefer that one.
 	_sun = _find_main_sun(root, we)
+	_ensure_fill_light()
 	if Settings and Settings.NET_DEBUG:
 		print(
 			"[atmosphere] env=",
@@ -463,6 +787,21 @@ func _find_directional_light_excluding(n: Node, exclude: Node) -> DirectionalLig
 	return null
 
 
+## Create the weak cool shadow-side fill once (idempotent across arena reloads — the
+## node lives under this atmosphere instance and dies with it). Not a "second sun" in
+## the Sky3D sense: shadowless, ~1/6 the sun's energy, pure shade-legibility fill.
+func _ensure_fill_light() -> void:
+	if _fill != null and is_instance_valid(_fill):
+		return
+	_fill = DirectionalLight3D.new()
+	_fill.name = "ShadeFill"
+	_fill.light_color = Color(0.58, 0.66, 0.80)
+	_fill.light_energy = FILL_ENERGY
+	_fill.shadow_enabled = false
+	_fill.rotation = Vector3(deg_to_rad(FILL_PITCH_DEG), deg_to_rad(115.0), 0.0)
+	add_child(_fill)
+
+
 func _find_directional_light(n: Node) -> DirectionalLight3D:
 	if n is DirectionalLight3D:
 		return n as DirectionalLight3D
@@ -507,9 +846,9 @@ func _capture_baseline() -> void:
 ## A fresh match started — guarantee a bright day even if the previous raid ended in a
 ## storm (the shared Environment persists across restarts).
 func _on_match_started() -> void:
-	if _storm_tween != null and _storm_tween.is_valid():
-		_storm_tween.kill()
 	_stormed = false
+	# _restore_day() also calls _storm_reset(), which puts the grass wind uniforms, the
+	# debris field and the fog wall back — so a restart mid-storm leaves nothing behind.
 	_restore_day()
 	# If this new match has *already* flipped to the final wave by the time the signal
 	# lands (unlikely, but safe), re-storm.
@@ -533,6 +872,14 @@ func _restore_day() -> void:
 		_env.fog_density = DAY_FOG_DENSITY
 		_env.fog_light_color = DAY_FOG_COLOR
 		_env.glow_intensity = DAY_GLOW
+		# D1.5 — the AIR fields the per-biome tick drives (`_apply_biome_air`). PAIRED HERE ON
+		# PURPOSE: this function owns the Environment, so a field written only by the tick would
+		# be reset to whatever the .tres last held (or, worse, kept from the previous raid's
+		# biome) the moment a match restarts. Neutral/urban values — the tick eases to the
+		# camera's actual biome within ~1.5 s.
+		_env.fog_height = DAY_FOG_HEIGHT
+		_env.fog_height_density = DAY_FOG_HEIGHT_DENSITY
+		_env.fog_aerial_perspective = DAY_FOG_AERIAL
 		# Reset volumetric fog to its base density (0, or the fog-mutator murk), undoing the
 		# storm thicken.
 		if _env.volumetric_fog_enabled:
@@ -541,8 +888,17 @@ func _restore_day() -> void:
 		_sun.light_energy = DAY_SUN_ENERGY
 		if _base_sun_rot != Vector3.ZERO:
 			_sun.rotation = _base_sun_rot
+	# Same pairing for the god rays: drop the cached biome multiplier so a raid that ended in a
+	# stormed desert does not open in an urban dawn still wearing dust shafts. The recompute
+	# itself waits until AFTER _apply_daynight below — that is what refreshes `_last_sun_ratio`,
+	# and calling it here would calibrate the shafts off the PREVIOUS raid's hour.
+	_ray_biome_mult = 1.0
 	if _dust_mat != null:
-		_dust_mat.color = Color(0.85, 0.84, 0.8, 0.18)
+		_dust_mat.color = DUST_DAY_COLOR
+	# D6.4: everything the storm front owns OUTSIDE the properties reset above (grass wind
+	# uniforms, debris emitter, fog wall, front/lightning sentinels). Kept here so there is
+	# exactly ONE reset path for the whole atmosphere, shared by _ready and match start.
+	_storm_reset()
 	# Reset the sky clock + day-night sun/ambient to the match-start hour, so a fresh raid never
 	# inherits the previous raid's night. The per-frame drive corrects to the true hour next
 	# frame (e.g. immediately under the night_raid mutator). Guarded: this runs once at _ready
@@ -550,72 +906,142 @@ func _restore_day() -> void:
 	# branches inside _apply_daynight are null-safe, and _base_sun_rot.y/.z = 0 is the harmless
 	# default pre-capture (the authored yaw is applied from the very first _process frame).
 	_apply_daynight(Settings.DAY_NIGHT_START_HOUR)
+	# D1.5 — recalibrate the shafts for the hour just written (see `_ray_biome_mult` above).
+	_apply_god_rays()
 
 
 func _on_final_wave() -> void:
 	if _stormed:
 		return
 	_stormed = true
-	_start_storm_tween()
+	_storm_begin()
 
 
-func _start_storm_tween() -> void:
-	var t: float = max(0.1, Settings.STORM_TWEEN_TIME)
-	if _storm_tween != null and _storm_tween.is_valid():
-		_storm_tween.kill()
-	_storm_tween = create_tween()
-	_storm_tween.set_parallel(true)
-	_storm_tween.set_trans(Tween.TRANS_SINE)
-	_storm_tween.set_ease(Tween.EASE_IN_OUT)
-
-	# Sky3D clouds + atmosphere -> dark overcast.
-	if _skydome != null:
-		_storm_tween.tween_property(_skydome, "cumulus_coverage", STORM_CUMULUS_COVERAGE, t)
-		_storm_tween.tween_property(_skydome, "cumulus_thickness", STORM_CUMULUS_THICKNESS, t)
-		_storm_tween.tween_property(_skydome, "cumulus_intensity", STORM_CUMULUS_INTENSITY, t)
-		_storm_tween.tween_property(_skydome, "atm_darkness", STORM_ATM_DARKNESS, t)
-		_storm_tween.tween_property(_skydome, "exposure", STORM_SKYDOME_EXPOSURE, t)
-
-	if _env != null:
-		# Ambient floor ×0.5 (not ×0.45) so interiors stay readable in the storm.
-		_storm_tween.tween_property(_env, "ambient_light_energy", _base_ambient * 0.5, t)
-		_storm_tween.tween_property(_env, "fog_density", _base_fog_density * 3.2, t)
-		_storm_tween.tween_property(_env, "fog_light_color", Color(0.22, 0.20, 0.24, 1.0), t)
-		_storm_tween.tween_property(_env, "glow_intensity", _base_glow * 1.25, t)
-		# Storm-only global volumetric haze (a fixed constant — the normal-play global
-		# density is now permanently 0; the reset path restores _base_vol_fog_density=0).
-		if _env.volumetric_fog_enabled:
-			_storm_tween.tween_property(_env, "volumetric_fog_density", STORM_VOLUMETRIC_DENSITY, t)
-
+## Arm the front: pick the (deterministic) approach azimuth, capture the LIVE day values as
+## the "from" side of every ramp, park the front fully upwind and build the render-only
+## layers. From here `_storm_process` drives everything per frame — there is no Tween, so
+## nothing keeps writing after a restart kills the state.
+func _storm_begin() -> void:
+	_storm_reset()
+	_storm_seed = _match_seed()
+	_front_time = maxf(3.0, Settings.STORM_TWEEN_TIME * FRONT_TIME_MULT)
+	# Deterministic azimuth from the match seed: identical on every peer, different between
+	# raids that differ in mutator/difficulty/duration, and never randf() (rules + habit).
+	var ang: float = ProcHash.hf(_storm_seed) * TAU
+	_front_dir = Vector2(sin(ang), cos(ang))
+	_next_strike = ProcHash.hrange(_storm_seed + 17, STRIKE_MIN, STRIKE_MAX)
+	_pre_sun_rot = _base_sun_rot
 	if _sun != null:
-		_storm_tween.tween_property(_sun, "light_energy", _base_sun_energy * 0.4, t)
-		# Roll the sun lower/sideways like clouds sweeping in.
-		var target_rot := _base_sun_rot + Vector3(deg_to_rad(-18.0), deg_to_rad(35.0), 0.0)
-		_storm_tween.tween_property(_sun, "rotation", target_rot, t)
+		_pre_sun_energy = _sun.light_energy
+		_pre_sun_rot = _sun.rotation
+	if _env != null:
+		_pre_ambient = _env.ambient_light_energy
+		_pre_fog_density = _env.fog_density
+		_pre_fog_color = _env.fog_light_color
+		_pre_glow = _env.glow_intensity
+	_wall_mult = clampf(float(SettingsManager.get_value("volumetric_fog_density")), 0.0, 2.0)
+	_resolve_grass_mats()
+	_ensure_debris()
+	_ensure_front_fog()
 
-	# Thicken the ambient particles.
-	if _dust_mat != null:
-		_storm_tween.tween_property(_dust_mat, "color", Color(0.55, 0.52, 0.5, 0.3), t)
-	if _embers != null:
-		_storm_tween.tween_property(_embers, "amount_ratio", 1.0, t * 0.5)
+
+## The match "seed" for the front azimuth. There is no per-raid world seed (the world is
+## TERRAIN_SEED-fixed), so this folds in the three per-match values that ARE synced to
+## every peer — mutator, difficulty and match duration — on top of the world seed.
+func _match_seed() -> int:
+	var m: int = 0
+	if GameState != null:
+		m = (
+			GameState.raid_mutator.hash()
+			+ GameState.difficulty * 7919
+			+ int(GameState.match_duration)
+		)
+	return Settings.TERRAIN_SEED * 31 + m
 
 
+## Late-load / already-in-the-final-wave: skip the arrival and hold the fully-passed look.
 func _apply_storm_instant() -> void:
 	_stormed = true
+	_storm_begin()
+	_storm_t = _front_time
+	_front_s = FRONT_HALF_TRAVEL
+	_apply_storm_mix(1.0)
+	_drive_front_wall(1.0)
+
+
+# ---------------------------------------------------------------------------
+# Storm front — per-frame drive (replaces the old global Tween)
+# ---------------------------------------------------------------------------
+## One storm frame. `k` (0 = clear sky ahead of the wall, 1 = fully inside the storm) is a
+## function of TIME (the front's position along its axis) and the CAMERA's distance to that
+## front plane — which is what makes the storm a wave that passes rather than a fade.
+func _storm_process(delta: float) -> void:
+	_storm_t += delta
+	var tt: float = clampf(_storm_t / _front_time, 0.0, 1.0)
+	_front_s = lerpf(-FRONT_HALF_TRAVEL, FRONT_HALF_TRAVEL, tt)
+	var cam := get_viewport().get_camera_3d()
+	# No camera (headless never gets here; a frame between arena swaps can): hold the mix.
+	var k: float = maxf(_last_storm_k, 0.0)
+	if cam != null:
+		var p: Vector3 = cam.global_position
+		var d: float = (p.x - WorldBounds.CX) * _front_dir.x + (p.z - WorldBounds.CZ) * _front_dir.y
+		k = smoothstep(-FRONT_SOFT, FRONT_SOFT, _front_s - d)
+	_tick_lightning(delta, k)
+	# PERF: the heavy writes (SkyDome shader params, fog, grass uniforms) only run while the
+	# mix is actually moving — once the front has passed, k pins at 1.0 and this costs the
+	# two light-energy floats below and nothing else.
+	if absf(k - _last_storm_k) > 0.002:
+		_apply_storm_mix(k)
+	else:
+		_apply_lights()
+	_drive_debris(cam, k)
+	_drive_front_wall(tt)
+
+
+## Write the whole stormed look for mix `k`. Deliberately touches ONLY the properties
+## `_restore_day()` also writes (plus the wind/particle layers `_storm_reset()` clears), so
+## a match restart is guaranteed to undo every line of this.
+func _apply_storm_mix(k: float) -> void:
+	_last_storm_k = k
 	if _skydome != null:
-		_skydome.set("cumulus_coverage", STORM_CUMULUS_COVERAGE)
-		_skydome.set("cumulus_thickness", STORM_CUMULUS_THICKNESS)
-		_skydome.set("cumulus_intensity", STORM_CUMULUS_INTENSITY)
-		_skydome.set("atm_darkness", STORM_ATM_DARKNESS)
-		_skydome.set("exposure", STORM_SKYDOME_EXPOSURE)
+		_skydome.set("cumulus_coverage", lerpf(DAY_CUMULUS_COVERAGE, STORM_CUMULUS_COVERAGE, k))
+		_skydome.set("cumulus_thickness", lerpf(DAY_CUMULUS_THICKNESS, STORM_CUMULUS_THICKNESS, k))
+		_skydome.set("cumulus_intensity", lerpf(DAY_CUMULUS_INTENSITY, STORM_CUMULUS_INTENSITY, k))
+		_skydome.set("atm_darkness", lerpf(DAY_ATM_DARKNESS, STORM_ATM_DARKNESS, k))
+		_skydome.set("exposure", lerpf(DAY_SKYDOME_EXPOSURE, STORM_SKYDOME_EXPOSURE, k))
+	# Targets are clamped against the LIVE pre-storm values so the storm can only ever
+	# DARKEN (a night raid used to get a brighter sun when the storm hit), and floored so
+	# the relight's readable threshold survives.
+	var amb_target: float = maxf(minf(_pre_ambient, _base_ambient * 0.5), STORM_AMBIENT_FLOOR)
+	_storm_amb_e = lerpf(_pre_ambient, amb_target, k)
+	_storm_sun_e = lerpf(_pre_sun_energy, minf(_pre_sun_energy, _base_sun_energy * 0.4), k)
 	if _env != null:
-		_env.ambient_light_energy = _base_ambient * 0.5
-		_env.fog_density = _base_fog_density * 3.2
-		_env.fog_light_color = Color(0.22, 0.20, 0.24, 1.0)
-		_env.glow_intensity = _base_glow * 1.25
+		_env.fog_density = lerpf(_pre_fog_density, _pre_fog_density * 3.2, k)
+		_env.fog_light_color = _pre_fog_color.lerp(STORM_FOG_COLOR, k)
+		_env.glow_intensity = lerpf(_pre_glow, _pre_glow * 1.25, k)
+		if _env.volumetric_fog_enabled:
+			_env.volumetric_fog_density = lerpf(_base_vol_fog_density, STORM_VOLUMETRIC_DENSITY, k)
 	if _sun != null:
-		_sun.light_energy = _base_sun_energy * 0.4
-		_sun.rotation = _base_sun_rot + Vector3(deg_to_rad(-18.0), deg_to_rad(35.0), 0.0)
+		# Roll the sun lower/sideways like the cloud deck sweeping in.
+		_sun.rotation = _pre_sun_rot + Vector3(deg_to_rad(-18.0) * k, deg_to_rad(35.0) * k, 0.0)
+	if _dust_mat != null:
+		_dust_mat.color = DUST_DAY_COLOR.lerp(DUST_STORM_COLOR, k)
+	if _embers != null:
+		# Thicken the embers, but stay MULTIPLIED by the user's particle-density lever
+		# instead of stomping it to 1.0 the way the old tween did.
+		_embers.amount_ratio = clampf(_particle_density() * lerpf(1.0, 1.5, k), 0.0, 1.0)
+	_apply_wind(k)
+	_apply_lights()
+
+
+## The two per-frame light floats: the mixed energies plus the lightning spike. Split out of
+## _apply_storm_mix so a flash never has to re-run the heavy writes (and can never fight
+## them — it is strictly additive on top of the mixed value).
+func _apply_lights() -> void:
+	if _sun != null:
+		_sun.light_energy = _storm_sun_e + FLASH_SUN * _flash
+	if _env != null:
+		_env.ambient_light_energy = _storm_amb_e + FLASH_AMBIENT * _flash
 
 
 # ---------------------------------------------------------------------------
@@ -626,22 +1052,194 @@ func _apply_storm_instant() -> void:
 ## skip entirely while `_stormed`. Works offline too — DayNight reads GameState, which is set
 ## in single-player as well as co-op. Headless never reaches here (set_process false in _ready
 ## via the early return).
-func _process(_delta: float) -> void:
-	if _stormed:
-		return
+func _process(delta: float) -> void:
 	if GameState == null or GameState.phase != GameState.Phase.IN_MATCH:
+		# Match over (results screen): the sky/fog hold until _restore_day, but the storm's
+		# own particle field must stop — it would otherwise keep blowing behind RaidSummary.
+		if _debris != null and is_instance_valid(_debris) and _debris.emitting:
+			_debris.emitting = false
 		return
-	_apply_daynight(DayNight.current_hour())
+	# Housekeeping that must keep running in BOTH phases: the climate gate is a PERF gate
+	# (it would otherwise freeze mid-storm, leaving far-quadrant precip simulating), and the
+	# biome look writes light COLOUR only — the storm owns energy/rotation/fog, so the two
+	# never write the same property and a storm still reads as its biome.
+	_climate_gate_accum += delta
+	if _climate_gate_accum >= 1.0:
+		_climate_gate_accum = 0.0
+		_gate_climate_zones()
+	_biome_look_accum += delta
+	if _biome_look_accum >= 0.25:
+		_apply_biome_look(_biome_look_accum)
+		_biome_look_accum = 0.0
+	if _stormed:
+		_storm_process(delta)
+		return
+	# PERF: the Sky3D TimeOfDay setter runs a full celestial recompute (trig + sky
+	# shader params + signals) on EVERY write, and the sun/ambient writes dirty the
+	# environment — at 12 in-game hours per match the per-frame delta is invisible.
+	# Throttle the expensive sky-clock write to 4 Hz (dome step ≈0.08° — sub-pixel)
+	# and gate the cheap sun/ambient floats on an actual sun_ratio change (the ratio
+	# plateaus at 1.0 all day / 0.0 deep night, so writes only happen across the
+	# dawn/dusk ramps — per-frame-smooth exactly where the eye watches the change).
+	var hour: float = DayNight.current_hour()
+	_tod_accum += delta
+	if _tod_accum >= 0.25:
+		_tod_accum = 0.0
+		if _tod != null and absf(hour - _last_tod_hour) > 0.0005:
+			_last_tod_hour = hour
+			_tod.set("current_time", hour)
+	var s: float = DayNight.sun_ratio(hour)
+	if absf(s - _last_sun_ratio) > 0.0005:
+		_last_sun_ratio = s
+		_apply_sun_ambient(s)
 
 
 ## Apply one day-night frame for the given in-game hour: spin the Sky3D dome to that hour and
 ## lerp the Arena sun energy + pitch and the WorldEnvironment ambient off DayNight.sun_ratio.
-## Used both per-frame (_process) and as the static reset in _restore_day. The sun's yaw/roll
-## are kept from the captured base; only pitch (rotation.x) sweeps with the day.
+## Used by the throttled _process drive and as the FORCED reset in _restore_day (which also
+## clears the throttle sentinels so the next frame re-writes everything).
 func _apply_daynight(hour: float) -> void:
 	if _tod != null:
 		_tod.set("current_time", hour)
+	_last_tod_hour = hour
 	var s: float = DayNight.sun_ratio(hour)
+	_last_sun_ratio = s
+	_apply_sun_ambient(s)
+
+
+## D1 RELIGHT — per-biome LIGHT COLOUR (not energy): the four quadrants shared one white
+## sun and one ambient, so snow, desert, rain and urban only differed by ground tint and
+## particles. Each biome now carries its own sun/fill/ambient temperature, which is what
+## actually makes a place read as somewhere.
+##
+## THREE CONSTRAINTS THIS FUNCTION IS BUILT AROUND:
+##  1. `_restore_day()` and the storm tween own `light_energy`, `rotation`, `ambient_energy`,
+##     `fog_density`, `fog_light_color`, `glow_intensity` and the SkyDome cumulus/darkness/
+##     exposure — writing any of those here would be silently reverted on every match start.
+##     D1 therefore touched ONLY colour; D1.5 adds the AIR (height fog, aerial perspective,
+##     god rays) and pays the price the trap demands: every field it writes has an explicit
+##     paired reset in `_restore_day()`, and `fog_light_color` — which the STORM also owns —
+##     is written only while `not _stormed`.
+##  2. `WorldBounds.biome_at` is a hard split at the map centre with no seam, so blending by
+##     POSITION would pop. We blend in TIME instead (exponential approach), which reads as
+##     the light changing as you walk into a region.
+##  3. `_apply_sun_ambient` only runs when `sun_ratio` CHANGES, and that ratio plateaus for
+##     most of the match — anything put in there would freeze mid-day. Hence the own tick.
+##     D1.5 rides THIS tick for the same reason and adds no second poller.
+func _apply_biome_look(delta: float) -> void:
+	if _sun == null:
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var p: Vector3 = cam.global_position
+	var look: Dictionary = _BIOME_LOOK.get(WorldBounds.biome_at(p.x, p.z), _BIOME_LOOK["urban"])
+	# Exponential approach — frame-rate independent, ~1.5 s to cross a biome border.
+	var k: float = 1.0 - exp(-delta * 2.2)
+	var sun_c: Color = look["sun"]
+	var fill_c: Color = look["fill"]
+	var amb_c: Color = look["ambient"]
+	_sun.light_color = _sun.light_color.lerp(sun_c, k)
+	if _fill != null:
+		_fill.light_color = _fill.light_color.lerp(fill_c, k)
+	if _env != null:
+		_env.ambient_light_color = _env.ambient_light_color.lerp(amb_c, k)
+	_apply_biome_air(look, k)
+	# God rays ride the same tick (sun_ratio × biome × storm) — see _apply_god_rays.
+	_ray_biome_mult = float(look["rays"])
+	_apply_god_rays()
+
+
+## D1.5 — the biome's AIR: the low-lying height-fog layer, the aerial-perspective strength and
+## the fog tint, blended with the SAME time-based `k` as the light colours so walking from the
+## desert into the rain quadrant reads as the air changing rather than a hard cut at x = 80.
+##
+## Read/modify/write off the live Environment on purpose: it means the storm, the fog mutator
+## and `_restore_day()` can all move these underneath us and the next tick simply eases from
+## wherever they left them instead of snapping.
+func _apply_biome_air(look: Dictionary, k: float) -> void:
+	if _env == null:
+		return
+	var fog_h: float = look["fog_h"]
+	var fog_hd: float = look["fog_hd"]
+	var aerial: float = look["aerial"]
+	# The "fog" mutator multiplies the DISTANCE density ×12; at that density a strong sky-blend
+	# is exactly the milk failure this batch exists to avoid (see AERIAL_FOG_MUTATOR_MULT).
+	if _fog_mutator_active:
+		aerial *= AERIAL_FOG_MUTATOR_MULT
+	_env.fog_height = lerpf(_env.fog_height, fog_h, k)
+	_env.fog_height_density = lerpf(_env.fog_height_density, fog_hd, k)
+	_env.fog_aerial_perspective = lerpf(_env.fog_aerial_perspective, aerial, k)
+	# `_apply_storm_mix` owns the fog tint once the front is armed — hands off until it clears.
+	if not _stormed:
+		var fog_c: Color = look["fog_col"]
+		_env.fog_light_color = _env.fog_light_color.lerp(fog_c, k)
+
+
+## D1.5 — write the one god-ray float on the sun. Called from the biome tick (time of day ×
+## biome × storm) and from `_apply_graphics_quality` (so toggling God Rays in the settings menu
+## is immediate, and so a config with the volumetric carrier off is pinned to 0 right away).
+##
+## Deliberately NOT paired into `_restore_day()` as a hardcoded value: it is a pure function of
+## state that already survives a restart (`_last_sun_ratio`, `_ray_biome_mult`, `_stormed`), and
+## `_restore_day()` calls it at the end so a fresh raid is recomputed rather than frozen.
+func _apply_god_rays() -> void:
+	if _sun == null:
+		return
+	var carrier: bool = _env != null and _env.volumetric_fog_enabled
+	if not carrier or not bool(SettingsManager.get_value("god_rays")):
+		_sun.light_volumetric_fog_energy = 0.0
+		return
+	# `_last_sun_ratio` carries a -1.0 sentinel between resets — clamp before it reaches the
+	# curve or the first tick after a restart would read as "darker than midnight".
+	var s: float = clampf(_last_sun_ratio, 0.0, 1.0)
+	var e: float = 0.0
+	if s <= GOD_RAY_PEAK:
+		e = lerpf(GOD_RAY_NIGHT, GOD_RAY_GOLDEN, smoothstep(0.0, GOD_RAY_PEAK, s))
+	else:
+		e = lerpf(GOD_RAY_GOLDEN, GOD_RAY_NOON, smoothstep(GOD_RAY_PEAK, 1.0, s))
+	e *= _ray_biome_mult
+	if _stormed:
+		e *= lerpf(1.0, GOD_RAY_STORM_MULT, clampf(_last_storm_k, 0.0, 1.0))
+	_sun.light_volumetric_fog_energy = clampf(e, 0.0, 4.0)
+
+
+## PERF: pause the landmark climate systems (precip particles / fog volume / ground
+## decal) while the camera is far from that zone. Visibility only — deterministic
+## world build untouched. Re-resolves the ClimateZones root per arena (it dies with
+## the world); a camera-less frame (hub/menu) gates everything off.
+func _gate_climate_zones() -> void:
+	if _climate_root == null or not is_instance_valid(_climate_root):
+		_climate_root = null
+		var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
+		if arena != null:
+			_climate_root = arena.find_child("ClimateZones", true, false) as Node3D
+	if _climate_root == null:
+		return
+	var cam := get_viewport().get_camera_3d()
+	for zone in _climate_root.get_children():
+		if not (zone is Node3D):
+			continue
+		var near := (
+			cam != null
+			and (
+				cam.global_position.distance_squared_to((zone as Node3D).global_position)
+				< 130.0 * 130.0
+			)
+		)
+		var precip := zone.get_node_or_null("Precip") as GPUParticles3D
+		if precip != null and precip.emitting != near:
+			precip.emitting = near
+		var fog := zone.get_node_or_null("ClimateFog") as FogVolume
+		if fog != null and fog.visible != near:
+			fog.visible = near
+		var tint := zone.get_node_or_null("GroundTint") as Decal
+		if tint != null and tint.visible != near:
+			tint.visible = near
+
+
+## The cheap per-ramp writes: sun energy + pitch and the environment ambient.
+func _apply_sun_ambient(s: float) -> void:
 	if _sun != null:
 		_sun.light_energy = lerpf(NIGHT_SUN_ENERGY, DAY_SUN_ENERGY, s)
 		# Only sweep pitch once the authored yaw/roll have been captured — before that (the
@@ -652,6 +1250,42 @@ func _apply_daynight(hour: float) -> void:
 			_sun.rotation = Vector3(pitch, _base_sun_rot.y, _base_sun_rot.z)
 	if _env != null:
 		_env.ambient_light_energy = lerpf(NIGHT_AMBIENT, DAY_AMBIENT, s)
+		# D1 RELIGHT — the ambient SOURCE is SKY (default_env.tres `ambient_light_source = 3`),
+		# which means `ambient_light_color` was inert and raising `ambient_light_energy` at
+		# night only scaled a nearly-black night sky: measured night frames sat at 97-99% of
+		# world pixels under the readable floor no matter what the energy said. Blending the
+		# sky DOWN at night hands those frames the explicit (cool, per-biome) ambient colour
+		# instead, which is the only ambient with any level in it after dusk. Daylight keeps
+		# a sky-dominated blend so outdoor shading still picks up real sky colour.
+		_env.ambient_light_sky_contribution = lerpf(NIGHT_SKY_CONTRIB, DAY_SKY_CONTRIB, s)
+	# Cool shadow-side FILL (texture-quality pass): with SDFGI driving indirect light the
+	# env ambient barely reaches steep shaded faces — buildings read as pure coal from
+	# their south-west. A weak shadowless counter-sun keeps shade legible; scaled down at
+	# night so the dark identity survives.
+	if _fill != null:
+		_fill.light_energy = FILL_ENERGY * lerpf(0.35, 1.0, s)
+		if _captured:
+			_fill.rotation = Vector3(deg_to_rad(FILL_PITCH_DEG), _base_sun_rot.y + PI, 0.0)
+	# Night identity: warm window panes (shared glass pool) + street-lamp lights/heads
+	# fade IN as the sun fades OUT. Render-only; already throttled by the caller's
+	# sun_ratio change gate, so these writes only happen across the dawn/dusk ramps.
+	var night: float = 1.0 - s
+	var pool: Array[StandardMaterial3D] = ProceduralBuildings.glass_pool()
+	if pool.size() == 3:
+		# Glass is now TRANSPARENT (alpha-blended) — the blend scales perceived
+		# emission down ~×0.3, so the night multipliers compensate (was 1.2 / 2.6).
+		pool[1].emission_energy_multiplier = 3.5 * night
+		pool[2].emission_energy_multiplier = 7.5 * night
+	for ln in get_tree().get_nodes_in_group(Groups.NIGHT_LIGHTS):
+		var lamp := ln as OmniLight3D
+		if lamp == null:
+			continue
+		# D1 RELIGHT 2.2 → 3.4: a night frame is legitimately dark overall, so what makes it
+		# NAVIGABLE is not a raised floor but readable pools of light to move between.
+		lamp.light_energy = 3.4 * night
+		var gm: Variant = lamp.get_meta("night_glow_mat", null)
+		if gm is StandardMaterial3D:
+			(gm as StandardMaterial3D).emission_energy_multiplier = 3.0 * night
 
 
 # ---------------------------------------------------------------------------
@@ -685,3 +1319,297 @@ func _apply_fog_mutator(active: bool) -> void:
 	# distance fog (gate-free) or it would be a visual no-op on those configs; the
 	# baseline DAY_FOG_DENSITY is near-imperceptible, ×12 reads as a hazy raid.
 	_env.fog_density = DAY_FOG_DENSITY * (12.0 if active else 1.0)
+
+
+# ---------------------------------------------------------------------------
+# D6.4 — WIND (live grass shader uniforms)
+# ---------------------------------------------------------------------------
+## Push the grass wind uniforms with the storm mix. procedural_flora builds ONE shared
+## ShaderMaterial for every grass tile of both LOD layers, so this is a handful of
+## set_shader_parameter calls no matter how many tiles exist — and only on a mix change.
+## Values only: the material instance, the shader and the flora builder are never touched,
+## and k=0 writes the captured base back verbatim.
+func _apply_wind(k: float) -> void:
+	for i in range(_grass_mats.size()):
+		var m: ShaderMaterial = _grass_mats[i]
+		if m == null:
+			continue
+		var b: Vector2 = _grass_base_wind[i]
+		m.set_shader_parameter("sway_strength", b.x * lerpf(1.0, WIND_SWAY_MULT, k))
+		m.set_shader_parameter("sway_speed", b.y * lerpf(1.0, WIND_SPEED_MULT, k))
+
+
+## Find the live grass material(s) + remember their authored wind values. Resolved fresh at
+## every storm start (the arena — and its materials — die with the raid), and dropped in
+## _storm_reset so a stale material from a previous world is never written to.
+## NOTE: trees/bushes are Quaternius StandardMaterial3D (no wind uniform at all), so the
+## storm wind reads through the grass, the debris and the fog wall only — giving the
+## canopies sway needs a vertex-wind shader in the flora lane, not here.
+func _resolve_grass_mats() -> void:
+	_grass_mats.clear()
+	_grass_base_wind.clear()
+	var arena: Node = get_tree().get_first_node_in_group(Groups.ARENA)
+	if arena == null:
+		return
+	var flora: Node = arena.find_child("Flora", true, false)
+	if flora == null:
+		return
+	var roots: PackedStringArray = ["Grass_Near", "Grass_Far"]
+	for gname in roots:
+		var groot: Node = flora.get_node_or_null(NodePath(gname))
+		if groot == null:
+			continue
+		for c in groot.get_children():
+			var mmi := c as MultiMeshInstance3D
+			if mmi == null:
+				continue
+			# Every tile under a root shares the SAME material instance — one probe is enough.
+			var m := mmi.material_override as ShaderMaterial
+			if m != null and not _grass_mats.has(m):
+				_grass_mats.append(m)
+				_grass_base_wind.append(
+					Vector2(_shader_f(m, "sway_strength", 0.34), _shader_f(m, "sway_speed", 2.0))
+				)
+			break
+
+
+## Read a float shader uniform with a fallback. Written as an if (not a ternary): a
+## `var x := <Variant>` inference is a hard parse error in this project's warnings-as-errors
+## build, and get_shader_parameter returns Variant/null.
+func _shader_f(m: ShaderMaterial, key: String, fallback: float) -> float:
+	var v: Variant = m.get_shader_parameter(key)
+	if v == null:
+		return fallback
+	return float(v)
+
+
+# ---------------------------------------------------------------------------
+# D6.4 — WIND-BLOWN DEBRIS
+# ---------------------------------------------------------------------------
+## Build the (single, pooled-by-construction) debris emitter once. Alpha-blended light
+## scraps — never additive, and never a volume you can be inside.
+func _ensure_debris() -> void:
+	if _debris != null and is_instance_valid(_debris):
+		_orient_debris()
+		return
+	var p := GPUParticles3D.new()
+	p.name = "StormDebris"
+	p.amount = DEBRIS_COUNT
+	p.lifetime = 3.2
+	p.randomness = 1.0
+	p.fixed_fps = 30
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# GLOBAL coords (the engine default, made explicit): the emitter node rides the camera,
+	# so local coords would drag already-spawned scraps along with it instead of letting
+	# them stream past the player.
+	p.local_coords = false
+	# Local AABB (the node rides the camera), generous enough that fast scraps never pop out.
+	p.visibility_aabb = AABB(Vector3(-60.0, -30.0, -60.0), Vector3(120.0, 70.0, 120.0))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = DEBRIS_BOX * 0.5
+	pm.spread = 22.0
+	pm.initial_velocity_min = DEBRIS_SPEED_MIN
+	pm.initial_velocity_max = DEBRIS_SPEED_MAX
+	pm.scale_min = 0.5
+	pm.scale_max = 1.5
+	pm.angular_velocity_min = -220.0
+	pm.angular_velocity_max = 220.0
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 1.6
+	pm.turbulence_noise_scale = 1.4
+	pm.turbulence_influence_min = 0.2
+	pm.turbulence_influence_max = 0.7
+	pm.color = DEBRIS_COLOR
+	_debris_mat = pm
+	p.process_material = pm
+	p.draw_pass_1 = _scrap_mesh()
+	add_child(p)
+	p.emitting = false
+	_debris = p
+	_orient_debris()
+
+
+## Point the debris field down the front's travel direction (called per storm — the azimuth
+## is re-rolled every match).
+func _orient_debris() -> void:
+	if _debris_mat == null:
+		return
+	_debris_mat.direction = Vector3(_front_dir.x, 0.06, _front_dir.y)
+	# A little downwind acceleration + slight sink, so scraps skate rather than fall.
+	_debris_mat.gravity = Vector3(_front_dir.x * 6.0, -1.6, _front_dir.y * 6.0)
+
+
+## Small tumbling scrap quad. ALPHA blend (see DEBRIS_COLOR) and a light tan tone — the
+## relight brief bans new dark surfaces, and additive volumes you can stand inside.
+func _scrap_mesh() -> QuadMesh:
+	var q := QuadMesh.new()
+	q.size = Vector2(0.13, 0.09)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.billboard_keep_scale = true
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = DEBRIS_COLOR
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.disable_receive_shadows = true
+	q.material = m
+	return q
+
+
+## Ride the camera (offset UPWIND so scraps blow past the player). Parking the emitter on
+## the camera IS the distance gate: the field only ever simulates where someone is looking,
+## and it stops emitting entirely until the front actually reaches them.
+func _drive_debris(cam: Camera3D, k: float) -> void:
+	if _debris == null or not is_instance_valid(_debris):
+		return
+	var on: bool = cam != null and k > 0.10
+	if _debris.emitting != on:
+		_debris.emitting = on
+	if not on:
+		return
+	var p: Vector3 = cam.global_position
+	_debris.global_position = Vector3(
+		p.x - _front_dir.x * DEBRIS_UPWIND, p.y + 2.0, p.z - _front_dir.y * DEBRIS_UPWIND
+	)
+	if absf(k - _debris_k) > 0.02:
+		_debris_k = k
+		_debris.amount_ratio = clampf(k * _particle_density(), 0.0, 1.0)
+
+
+## The user's particle-density lever (shared by the embers + debris scaling).
+func _particle_density() -> float:
+	return clampf(float(SettingsManager.get_value("particle_density")), 0.0, 1.5)
+
+
+# ---------------------------------------------------------------------------
+# D6.4 — THE VISIBLE WALL (travelling box FogVolume)
+# ---------------------------------------------------------------------------
+## Build the map-spanning fog slab that travels with the front, so the storm is something
+## you watch ARRIVE. Only exists when volumetric fog is enabled — FogVolumes are invisible
+## otherwise, and the mix's distance-fog ramp already carries the arrival on those configs.
+func _ensure_front_fog() -> void:
+	if _env == null or not _env.volumetric_fog_enabled:
+		if _front_fog != null and is_instance_valid(_front_fog):
+			_front_fog.visible = false
+		return
+	if _front_fog == null or not is_instance_valid(_front_fog):
+		var f := FogVolume.new()
+		f.name = "StormFront"
+		f.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
+		f.size = Vector3(WorldBounds.SPAN * 1.7, WALL_HEIGHT, WALL_THICK)
+		var mat := FogMaterial.new()
+		mat.density = 0.0
+		mat.albedo = WALL_ALBEDO
+		# A wide edge fade is what makes walking INTO the wall read as fog rolling over you
+		# rather than crossing a hard plane (the FogZones lesson).
+		mat.edge_fade = 0.65
+		mat.height_falloff = 0.05
+		f.material = mat
+		_front_fog_mat = mat
+		add_child(f)
+		_front_fog = f
+	# Local +Z must point along the travel direction (a Y-rotation by θ maps +Z to
+	# (sin θ, 0, cos θ)), so the slab's THICKNESS is along the wind and its width spans
+	# the map across it.
+	_front_fog.rotation = Vector3(0.0, atan2(_front_dir.x, _front_dir.y), 0.0)
+	_front_fog.visible = false
+
+
+## Slide the wall along the front axis and fade its density in at the map edge / out once it
+## has swept past, so it never lingers as a static slab over the downwind quadrant.
+func _drive_front_wall(tt: float) -> void:
+	if _front_fog == null or not is_instance_valid(_front_fog):
+		return
+	var vis: bool = tt < 0.999
+	if _front_fog.visible != vis:
+		_front_fog.visible = vis
+	if not vis:
+		return
+	_front_fog.global_position = Vector3(
+		WorldBounds.CX + _front_dir.x * _front_s,
+		WALL_HEIGHT * 0.30,
+		WorldBounds.CZ + _front_dir.y * _front_s
+	)
+	if _front_fog_mat != null:
+		var a: float = smoothstep(0.0, 0.10, tt) * (1.0 - smoothstep(0.80, 1.0, tt))
+		_front_fog_mat.density = WALL_DENSITY * a * _wall_mult
+
+
+# ---------------------------------------------------------------------------
+# D6.4 — LIGHTNING
+# ---------------------------------------------------------------------------
+## Decay the current flash and, on a deterministic schedule, fire a new strike. No bolt
+## geometry and no new material: the flash is a scalar that `_apply_lights` ADDS on top of
+## the mixed sun + ambient energies, so it can never fight the per-frame storm drive and
+## `_storm_reset()` clearing `_flash` is enough to undo it.
+func _tick_lightning(delta: float, k: float) -> void:
+	_flash_t += delta
+	_flash = 0.0
+	if _flash_t < FLASH_LEN:
+		# Decaying flicker (the double-blink of a real strike) — one sin, no allocations.
+		var u: float = _flash_t / FLASH_LEN
+		_flash = clampf((1.0 - u) * (0.55 + 0.45 * sin(u * 26.0)), 0.0, 1.0)
+	# No lightning in the clear sky AHEAD of the wall — the first strike IS the arrival.
+	if k < STRIKE_K_MIN:
+		return
+	_strike_accum += delta
+	if _strike_accum < _next_strike:
+		return
+	_strike_accum = 0.0
+	_strike_idx += 1
+	_next_strike = ProcHash.hrange(_storm_seed + _strike_idx * 7919, STRIKE_MIN, STRIKE_MAX)
+	_flash_t = 0.0
+	# Strike point: on the front line, offset laterally (deterministic, so every peer
+	# flashes on the same schedule for free — render-only, no RPC).
+	var lat: float = (
+		ProcHash.hrange(_storm_seed + _strike_idx * 104729, -0.5, 0.5) * WorldBounds.SPAN
+	)
+	var perp := Vector2(_front_dir.y, -_front_dir.x)
+	var sp := Vector2(WorldBounds.CX, WorldBounds.CZ) + _front_dir * (_front_s + 20.0) + perp * lat
+	_last_strike_pos = Vector3(sp.x, 34.0, sp.y)
+	_last_strike_dist = 90.0
+	var cam := get_viewport().get_camera_3d()
+	if cam != null:
+		_last_strike_dist = cam.global_position.distance_to(_last_strike_pos)
+	_last_strike_delay = _last_strike_dist / SOUND_SPEED
+	# AUDIO HOOK (lead): THUNDER goes here. The strike is already resolved into
+	# `_last_strike_pos` (world), `_last_strike_dist` (m) and `_last_strike_delay`
+	# (seconds = dist / 340 m/s — a far strike should rumble ~0.6 s late and quieter, a near
+	# one crack almost immediately). AudioManager is not mine to call, so wire e.g.
+	#   AudioManager.play_delayed_3d("thunder", _last_strike_pos, _last_strike_delay)
+	# here (or emit a new Events signal if you'd rather keep this file signal-free).
+
+
+# ---------------------------------------------------------------------------
+# D6.4 — reset
+# ---------------------------------------------------------------------------
+## Undo everything the storm front owns beyond the properties `_restore_day()` already
+## rewrites. Called FROM `_restore_day()` (so _ready + every match start hit it) and again
+## at `_storm_begin()` so an interrupted storm can never leave doubled state behind.
+## Null-safe by construction: at the `_ready` call none of these layers exist yet.
+func _storm_reset() -> void:
+	_storm_t = 0.0
+	_front_s = -FRONT_HALF_TRAVEL
+	_last_storm_k = -1.0
+	_debris_k = -1.0
+	_flash = 0.0
+	_flash_t = 1000.0
+	_strike_accum = 0.0
+	_strike_idx = 0
+	_next_strike = STRIKE_MIN
+	# Put the authored wind back BEFORE dropping the references (a new raid rebuilds the
+	# world and resolves fresh materials anyway, but the old ones must not be left gusting).
+	_apply_wind(0.0)
+	_grass_mats.clear()
+	_grass_base_wind.clear()
+	if _debris != null and is_instance_valid(_debris):
+		_debris.emitting = false
+	if _front_fog != null and is_instance_valid(_front_fog):
+		_front_fog.visible = false
+		if _front_fog_mat != null:
+			_front_fog_mat.density = 0.0
+	if _embers != null:
+		_embers.amount_ratio = clampf(_particle_density(), 0.0, 1.0)

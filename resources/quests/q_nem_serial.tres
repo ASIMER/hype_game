@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqnemserial01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_nem_serial"
+title = "Serial Number"
+desc = "One of them came back with a name, a serial and your habits memorised. Put your rival down and take the core out of its chest."
+daily = false
+obj_type = "pickup"
+obj_target = "loot_nemesis_core"
+obj_count = 1
+reward_currency = 1100
+reward_item_ids = PackedStringArray("att_mag_shock")
+reward_item_counts = PackedInt32Array(1)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray()
+prereq = PackedStringArray("q_nem_field_notes")
+lore = "\"It has a serial now. That is not the factory talking — that is the thing deciding it is somebody.\" — The Archivist"
+giver = "The Archivist"
+questline = "ql_nemesis"
+offer_weight = 0
+reward_xp = 450
+reward_giver_rep = 3
+reward_skill_points = 1

@@ -120,11 +120,21 @@ func _resolve_camera() -> Camera3D:
 
 # --- input: place a ping ----------------------------------------------------
 
+# Input only QUEUES the ping; the camera raycast runs in the physics step (space-
+# state queries are only thread-safe there — physics/3d/run_on_separate_thread).
+var _ping_queued: bool = false
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ping"):
-		_place_ping_from_camera()
+		_ping_queued = true
 		# Don't consume — a middle-click might be wanted elsewhere; harmless either way.
+
+
+func _physics_process(_delta: float) -> void:
+	if _ping_queued:
+		_ping_queued = false
+		_place_ping_from_camera()
 
 
 ## Raycast from the camera, classify the hit, and broadcast it to the squad.

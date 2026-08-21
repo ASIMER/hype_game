@@ -83,7 +83,6 @@ var _camera_distance: HSlider
 var _camera_distance_value: Label
 var _camera_shoulder: HSlider
 var _camera_shoulder_value: Label
-var _default_view: OptionButton
 
 # Dynamic resolution list for the current monitor (built in _populate_options).
 var _res_list: Array = []
@@ -105,21 +104,30 @@ var _res_list: Array = []
 @onready var _reset: Button = $Panel/Root/Buttons/Reset
 @onready var _back: Button = $Panel/Root/Buttons/Back
 
+# M7.6 remap: rows with a real ACTION name are REBINDABLE (click → press a key);
+# rows with "" stay informational (mouse/composite bindings).
 const KEYBINDS := [
-	["Move", "WASD"],
-	["Sprint", "Shift"],
-	["Jump", "Space"],
-	["Fire", "LMB"],
-	["Aim", "RMB"],
-	["Reload", "R"],
-	["Swap shoulder", "Q"],
-	["Weapons", "1-5 / Wheel"],
-	["Grenade", "G"],
-	["Heal", "H"],
-	["Loot", "E"],
-	["Inventory", "I"],
-	["Pause", "Esc"],
+	["Move", "WASD", ""],
+	["Sprint", "Shift", "sprint"],
+	["Jump", "Space", "jump"],
+	["Fire", "LMB", ""],
+	["Aim", "RMB", ""],
+	["Reload", "R", "reload"],
+	["Swap shoulder", "Q", "shoulder_swap"],
+	["Weapons", "1-5 / Wheel", ""],
+	["Grenade", "G", "grenade"],
+	["Heal", "H", "heal"],
+	["Loot", "E", "interact"],
+	["Inventory", "I", "toggle_inventory"],
+	["Crouch", "Ctrl", "crouch"],
+	["Map", "M", "map"],
+	["Camera zoom", "V", "toggle_view"],
+	["Pause", "Esc", ""],
 ]
+
+# Remap capture state: the action currently waiting for a key ("" = idle).
+var _remap_action: String = ""
+var _remap_btn: Button = null
 
 # Guards re-entrant signals while we sync control values from SettingsManager.
 var _syncing := false
@@ -203,12 +211,77 @@ func _populate_keybinds() -> void:
 		var name_l := Label.new()
 		name_l.text = pair[0]
 		name_l.custom_minimum_size = Vector2(220, 0)
-		var key_l := Label.new()
-		key_l.text = pair[1]
-		key_l.add_theme_color_override("font_color", Color(0.91, 0.64, 0.24, 1))
 		row.add_child(name_l)
-		row.add_child(key_l)
+		var action: String = String(pair[2])
+		if action == "":
+			var key_l := Label.new()
+			key_l.text = pair[1]
+			key_l.add_theme_color_override("font_color", Color(0.91, 0.64, 0.24, 1))
+			row.add_child(key_l)
+		else:
+			# M7.6 remap: a button shows the LIVE binding; click arms capture.
+			var btn := Button.new()
+			btn.text = _binding_label(action, String(pair[1]))
+			btn.custom_minimum_size = Vector2(120, 0)
+			btn.pressed.connect(_arm_remap.bind(action, btn))
+			row.add_child(btn)
 		_keybinds.add_child(row)
+
+
+## Current key label for an action (falls back to the authored default text).
+func _binding_label(action: String, fallback: String) -> String:
+	if not InputMap.has_action(action):
+		return fallback
+	for ev in InputMap.action_get_events(action):
+		if ev is InputEventKey:
+			var k := ev as InputEventKey
+			return OS.get_keycode_string(k.physical_keycode if k.keycode == 0 else k.keycode)
+	return fallback
+
+
+func _arm_remap(action: String, btn: Button) -> void:
+	if _remap_btn != null:
+		_populate_keybinds()  # un-arm any previous row
+	_remap_action = action
+	_remap_btn = btn
+	btn.text = tr("Press a key…")
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if _remap_action == "":
+		return
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	get_viewport().set_input_as_handled()
+	if key.keycode == KEY_ESCAPE:
+		_remap_action = ""
+		_remap_btn = null
+		_populate_keybinds()
+		return
+	_apply_remap(_remap_action, key.keycode)
+	_remap_action = ""
+	_remap_btn = null
+	_populate_keybinds()
+
+
+## Swap the action's KEY events for the new keycode (mouse/pad events untouched)
+## and persist the override so SettingsManager re-applies it on every boot.
+func _apply_remap(action: String, keycode: int) -> void:
+	if not InputMap.has_action(action):
+		return
+	for ev in InputMap.action_get_events(action).duplicate():
+		if ev is InputEventKey:
+			InputMap.action_erase_event(action, ev)
+	var nk := InputEventKey.new()
+	nk.keycode = keycode as Key
+	InputMap.action_add_event(action, nk)
+	var overrides: Dictionary = {}
+	var raw: Variant = SettingsManager.get_value("input_overrides")
+	if raw is Dictionary:
+		overrides = (raw as Dictionary).duplicate()
+	overrides[action] = keycode
+	_apply_setting("input_overrides", overrides)
 
 
 # Builds the manual quality-lever rows + the stats-overlay section programmatically,
@@ -373,6 +446,12 @@ func _build_interface_rows() -> void:
 	_ui_fx = _add_interface_toggle_row(
 		"UI Glass FX", "ui_fx_enabled", "Scanlines, grain & frosted-glass blur behind menus"
 	)
+	# M7.6 accessibility: bigger, outlined map/minimap markers (colorblind assist).
+	_add_interface_toggle_row(
+		"High-Contrast Markers",
+		"hi_contrast_markers",
+		"Larger map/minimap markers with outlines (colorblind assist)"
+	)
 
 	# --- HUD layout (ultrawide-friendly insets + global scale) ---
 	_interface_v.add_child(_make_header("HUD LAYOUT (ULTRAWIDE)", accent))
@@ -410,20 +489,9 @@ func _build_interface_rows() -> void:
 	_camera_shoulder.value_changed.connect(_on_camera_shoulder)
 	_interface_v.add_child(sh_row[0])
 
-	var view_row := HBoxContainer.new()
-	view_row.add_theme_constant_override("separation", 16)
-	var view_label := Label.new()
-	view_label.text = "Default View"
-	view_label.custom_minimum_size = Vector2(220, 0)
-	_default_view = OptionButton.new()
-	_default_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for s in ["Third Person", "First Person"]:
-		_default_view.add_item(s)
-	_default_view.item_selected.connect(func(i): _apply_setting("default_view", i))
-	view_row.add_child(view_label)
-	view_row.add_child(_default_view)
-	_interface_v.add_child(view_row)
-	_interface_v.add_child(_make_note("(toggle in-game with V)"))
+	# The "Default View" first-person picker is GONE (user verdict: the helmet view
+	# is deleted — V now cycles the three third-person zooms only).
+	_interface_v.add_child(_make_note("(camera zoom in-game: V)"))
 
 
 func _on_camera_distance(v: float) -> void:
@@ -509,7 +577,7 @@ func _make_note(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", 12)
 	return l
 
 
@@ -644,7 +712,6 @@ func sync_from_settings() -> void:
 	var cam_sh: float = float(g.get_value("camera_shoulder"))
 	_camera_shoulder.value = cam_sh
 	_camera_shoulder_value.text = "%d%%" % roundi(cam_sh * 100.0)
-	_default_view.select(int(g.get_value("default_view")))
 
 	_master.value = float(g.get_value("master_volume"))
 	_master_value.text = "%d%%" % roundi(_master.value * 100.0)

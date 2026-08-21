@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://citempwrcore1"]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "loot_power_core"
+display_name = "Power Core"
+kind = 0
+rarity = 3
+weight = 1.5
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "A charged reactor core ripped from a downed boss-class machine. You carried it out under fire — and that's exactly what it's worth."
+value = 350

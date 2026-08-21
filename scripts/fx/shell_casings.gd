@@ -7,6 +7,10 @@ class_name ShellCasings
 
 const LIFETIME := 1.5
 
+var pooled := false  # set by FXPool; end-of-life releases instead of freeing
+var _t := 0.0
+var _ps: GPUParticles3D
+
 
 func _ready() -> void:
 	var ps := GPUParticles3D.new()
@@ -51,6 +55,24 @@ func _ready() -> void:
 	ps.draw_pass_1 = mesh
 	add_child(ps)
 	ps.emitting = true
+	_ps = ps
 
-	var timer := get_tree().create_timer(LIFETIME + 0.3)
-	timer.timeout.connect(queue_free)
+
+## (Re)start the brass burst for a pooled reuse.
+func fire() -> void:
+	_t = 0.0
+	visible = true
+	set_process(true)
+	if _ps != null:
+		_ps.restart()
+
+
+## Delta-accumulated end-of-life (was a per-shot create_timer). Pooled instances
+## return to the pool, standalone ones free.
+func _process(delta: float) -> void:
+	_t += delta
+	if _t >= LIFETIME + 0.3:
+		if pooled and FXPool.active != null:
+			FXPool.active.release(self)
+		else:
+			queue_free()

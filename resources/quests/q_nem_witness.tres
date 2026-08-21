@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3 uid="uid://cqnemwitness01"]
+
+[ext_resource type="Script" path="res://scripts/quests/quest_data.gd" id="1_q"]
+
+[resource]
+script = ExtResource("1_q")
+id = "q_nem_witness"
+title = "Leave a Witness"
+desc = "A machine only learns your face if it lives through meeting you. Fight, then walk away — extract from 2 raids."
+daily = false
+obj_type = "extract"
+obj_target = ""
+obj_count = 2
+reward_currency = 400
+reward_item_ids = PackedStringArray("loot_circuit")
+reward_item_counts = PackedInt32Array(4)
+reward_blueprints = PackedStringArray()
+unlock = PackedStringArray("mobs_total>=15")
+prereq = PackedStringArray()
+lore = "\"Everything you kill out there dies stupid. It's the ones that limp home I want to hear about.\" — The Archivist"
+giver = "The Archivist"
+questline = "ql_nemesis"
+offer_weight = 0
+reward_xp = 120
+reward_giver_rep = 1

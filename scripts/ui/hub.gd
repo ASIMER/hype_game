@@ -34,6 +34,21 @@ const TAB_QUESTS := 4
 const TAB_GUNSMITH := 5
 const TAB_PROGRESSION := 6
 const TAB_CHARACTER := 7
+const TAB_RIVALS := 8
+
+# Header subtitle per tab (the old static "STASH // LOADOUT // WORKSHOP" read as a
+# breadcrumb that never updated — critic-panel finding). Index = TAB_* constant.
+const TAB_TAGLINES := [
+	"Everything you extracted — sell, recycle, prepare.",
+	"What you take is what you risk.",
+	"Craft from what the machines left behind.",
+	"Spend credits — stock rotates with your reputation.",
+	"Contracts and dailies — claim what you've earned.",
+	"Attachments ride into the raid. And don't come back.",
+	"Levels, skills, reputation, mastery.",
+	"Build your machine — parts and paint.",
+	"The machines that survived you. They remember.",
+]
 
 # Paths to tab scenes (built by other agents — guarded with ResourceLoader.exists).
 const TAB_PATHS := [
@@ -45,6 +60,7 @@ const TAB_PATHS := [
 	"res://scenes/ui/tabs/GunsmithTab.tscn",
 	"res://scenes/ui/tabs/ProgressionTab.tscn",
 	"res://scenes/ui/tabs/CharacterTab.tscn",
+	"res://scenes/ui/tabs/RivalsTab.tscn",
 ]
 
 # Difficulty one-line descriptions (mirrors Workshop.gd).
@@ -116,6 +132,7 @@ func _ready() -> void:
 	if _deploy_btn:
 		_deploy_btn.pressed.connect(_on_deploy_pressed)
 		UIStyle.hover_lift(_deploy_btn)
+		_add_hunter_taunt()
 
 	# ── Wire difficulty selector ──────────────────────────────────────────────
 	if _diff_option:
@@ -178,7 +195,7 @@ func _ready() -> void:
 	# ── Initial state ─────────────────────────────────────────────────────────
 	_refresh_currency()
 	_refresh_difficulty()
-	_update_tab_button_states()
+	_switch_tab(_active_tab)  # also seeds the per-tab header subtitle
 	_refresh_squad()
 	_refresh_deploy_button()
 
@@ -189,6 +206,37 @@ func _ready() -> void:
 	# ── Live currency updates (reconnect-safe) ────────────────────────────────
 	if not Events.currency_changed.is_connected(_on_currency_changed):
 		Events.currency_changed.connect(_on_currency_changed)
+
+
+## M7.9 body-fantasy beat: while a HUNTER is alive it TAUNTS you right over the
+## deploy button — the grudge follows you into the menu. Reads the codex mirror
+## (host + synced clients both have GameState.nemesis_active). NOTE: added as a
+## STANDALONE function BELOW _ready — inserting it mid-_ready once orphaned the
+## whole tab-instantiation tail («хаб пустой» regression).
+func _add_hunter_taunt() -> void:
+	var nem: Dictionary = GameState.nemesis_active
+	if nem.is_empty():
+		return
+	var serial: String = String(nem.get("serial", ""))
+	if serial == "":
+		return
+	var taunt := Label.new()
+	taunt.text = tr("⚠ %s IS OUT THERE. IT REMEMBERS.") % serial
+	taunt.theme_type_variation = "HeaderSmall"
+	taunt.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+	taunt.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	taunt.anchor_left = 1.0
+	taunt.anchor_top = 1.0
+	taunt.offset_left = -420.0
+	taunt.offset_right = -24.0
+	taunt.offset_top = -92.0
+	taunt.offset_bottom = -72.0
+	taunt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	taunt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(taunt)
+	var tw := taunt.create_tween().set_loops()
+	tw.tween_property(taunt, "modulate:a", 0.55, 1.1)
+	tw.tween_property(taunt, "modulate:a", 1.0, 1.1)
 
 
 # Insurance maturity poll (batch B): returns can mature WHILE the Hub is open, so
@@ -237,6 +285,15 @@ func _on_deploy_pressed() -> void:
 		NetworkManager.set_ready.rpc_id(1, _self_ready)
 		_refresh_deploy_button()
 		return
+	# Phase 3 error-prevention (ARC pattern): catch the classic mistake BEFORE the
+	# raid — deploying with an empty weapon loadout.
+	if MetaProgression.get_loadout().is_empty():
+		UIStyle.confirm(
+			self,
+			tr("Deploy with NO weapons in the loadout?"),
+			func() -> void: deploy_requested.emit()
+		)
+		return
 	deploy_requested.emit()
 
 
@@ -265,18 +322,12 @@ func _build_squad_panel() -> void:
 		return
 	var panel := PanelContainer.new()
 	panel.name = "SquadPanel"
-	# Bottom strip: anchored to the bottom edge, stretched across, lifted clear of
-	# the footer row so the DEPLOY/START button stays unobstructed. The footer
-	# ($Layout/Footer PanelContainer in the VBox) is a flow element whose height
-	# grows with the DEPLOY button + wrapped difficulty description (~70–140px at
-	# larger HUD scales); GROW_BEGIN anchors the band's BOTTOM at -148 (clear of a
-	# tall footer) and lets it grow upward so its size is preserved at any scale.
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.offset_left = 24
-	panel.offset_right = -24
-	panel.offset_top = -184
-	panel.offset_bottom = -148
+	# P0 fix (UI audit): the strip used to be an ABSOLUTELY-ANCHORED overlay at a fixed
+	# y-band and painted OVER tab content on 6 of 8 tabs (shop BUY buttons, loadout
+	# rows, gunsmith dropdowns, cosmetic EQUIP…). It now lives IN the $Layout VBox flow
+	# between Body and Footer — the Body simply ends above it, so occlusion is
+	# impossible by construction at any HUD scale.
+	panel.custom_minimum_size = Vector2(0, 34)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", UIStyle.glass_panel(0.70))
 	var row := HBoxContainer.new()
@@ -294,7 +345,9 @@ func _build_squad_panel() -> void:
 	_squad_list.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_squad_list.add_theme_constant_override("separation", 18)
 	scroll.add_child(_squad_list)
-	add_child(panel)
+	var layout: Control = $Layout
+	layout.add_child(panel)
+	layout.move_child(panel, ($Layout/Footer as Control).get_index())
 	_squad_panel = panel
 
 
@@ -355,6 +408,11 @@ func _switch_tab(idx: int) -> void:
 			_tabs[i].visible = should_show
 			if should_show:
 				UIStyle.pop_in(_tabs[i], UIStyle.Dir.DOWN, 10.0, 0.14)
+	# The header subtitle tracks the ACTIVE tab (it used to be a static pseudo-
+	# breadcrumb that never updated).
+	var sub := get_node_or_null("Layout/Header/HeaderVBox/HRow/TitleBox/Subtitle") as Label
+	if sub != null and _active_tab < TAB_TAGLINES.size():
+		sub.text = tr(TAB_TAGLINES[_active_tab])
 	_update_tab_button_states()
 
 

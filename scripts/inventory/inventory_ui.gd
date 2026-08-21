@@ -28,6 +28,9 @@ class_name InventoryUI
 @onready var _value_label: Label = $Panel/Margin/VBox/Footer/ValueLabel
 
 const SLOT_SIZE := Vector2(64, 64)
+# Minimum visible cells — items + dim placeholders pad up to this count (and to a
+# full row) so the grid reads as a CONTAINER, not items floating in a void.
+const PLACEHOLDER_MIN_CELLS := 24
 
 # Sort modes for the OptionButton, in display order. Index -> Inventory.sort_stacks mode.
 const SORT_MODES := ["name", "weight", "value", "rarity"]
@@ -47,6 +50,19 @@ var _context_count: int = 0
 # Secure-pouch header counter ("SECURE n/2"): a chip Label built at _ready and
 # inserted into the Header HBox. Updated on every refresh.
 var _secure_chip: Label = null
+
+# Item ids wanted elsewhere in the meta loop — rebuilt each _refresh (tiny data).
+# _craft_needed: input of an UNLOCKED recipe, or a schematic that learns one.
+# _quest_needed: obj_target of an accepted (or daily) item-objective quest.
+var _craft_needed: Dictionary = {}
+var _quest_needed: Dictionary = {}
+
+# Empty-state caption under the grid ("pockets empty" / "no items of this type").
+var _empty_label: Label = null
+
+# Weight-bar micro-tween (Phase 5): the fill glides to the new weight instead of
+# snapping. Kept as a member so a rapid refresh kills the previous glide.
+var _weight_tw: Tween = null
 
 
 func _ready() -> void:
@@ -73,6 +89,7 @@ func _ready() -> void:
 	_setup_filters()
 	_setup_context_menu()
 	_setup_secure_chip()
+	_setup_empty_label()
 
 	Events.local_player_spawned.connect(_on_local_player_spawned)
 	Events.inventory_changed.connect(_on_inventory_changed)
@@ -144,8 +161,12 @@ func _unhandled_input(event: InputEvent) -> void:
 ## (the pause menu owns the cursor in that case).
 func _set_open(open: bool) -> void:
 	visible = open
+	AudioManager.ui_panel(open)
 	if open:
 		_refresh()
+		var root_panel := get_node_or_null("Panel") as Control
+		if root_panel != null:
+			UIStyle.pop_in(root_panel, UIStyle.Dir.DOWN, 12.0, 0.16)
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	else:
 		if _context_menu != null:
@@ -200,13 +221,22 @@ func _refresh() -> void:
 	if not is_inside_tree():
 		return
 	_clear_grid()
+	_rebuild_needed_sets()
 	var stacks: Array = _visible_stacks()
+	var shown: int = 0
 	for s in stacks:
 		var item: ItemData = s.get("item", null)
 		var cnt: int = int(s.get("count", 0))
 		if item == null:
 			continue
 		_grid.add_child(_make_slot(item, cnt))
+		shown += 1
+	# Pad with dim placeholders to a full row and at least PLACEHOLDER_MIN_CELLS.
+	var cols: int = maxi(1, _grid.columns)
+	var target: int = int(ceil(float(maxi(PLACEHOLDER_MIN_CELLS, shown)) / cols)) * cols
+	for _i in range(target - shown):
+		_grid.add_child(_make_placeholder_slot())
+	_update_empty_label(shown)
 	_update_footer()
 	_update_secure_chip()
 
@@ -224,7 +254,18 @@ func _visible_stacks() -> Array:
 func _update_footer() -> void:
 	var weight := _inventory.total_weight() if _inventory != null else 0.0
 	var value := _inventory.total_value() if _inventory != null else 0
-	_weight_bar.value = weight
+	if _weight_tw != null and _weight_tw.is_valid():
+		_weight_tw.kill()
+	if visible:
+		_weight_tw = _weight_bar.create_tween()
+		(
+			_weight_tw
+			. tween_property(_weight_bar, "value", weight, 0.2)
+			. set_trans(Tween.TRANS_CUBIC)
+			. set_ease(Tween.EASE_OUT)
+		)
+	else:
+		_weight_bar.value = weight
 	_weight_label.text = tr("%.1f / %.0f kg") % [weight, Settings.INVENTORY_MAX_WEIGHT]
 	_value_label.text = tr("Value: %d") % value
 
@@ -283,7 +324,91 @@ func _make_slot(item: ItemData, cnt: int) -> Control:
 
 	if _secured_count(item.id) > 0:
 		slot.add_child(_secure_badge())
+	# "Wanted elsewhere" corner markers (Phase 4): quest wins over craft when both.
+	if _quest_needed.has(item.id):
+		slot.add_child(_corner_marker(UIStyle.AMBER))
+	elif _craft_needed.has(item.id):
+		slot.add_child(_corner_marker(UIStyle.TEAL))
 	return slot
+
+
+## A dim empty slot (same footprint as _make_slot) — the container-grid feel.
+func _make_placeholder_slot() -> Panel:
+	var p := Panel.new()
+	p.custom_minimum_size = SLOT_SIZE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.025)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1, 1, 1, 0.06)
+	sb.set_corner_radius_all(4)
+	p.add_theme_stylebox_override("panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return p
+
+
+## Caption under the grid, hidden while there are items to show.
+func _setup_empty_label() -> void:
+	var vbox: Node = _grid.get_parent()
+	if vbox == null:
+		return
+	_empty_label = UIStyle.caption("")
+	_empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_empty_label.visible = false
+	vbox.add_child(_empty_label)
+	vbox.move_child(_empty_label, _grid.get_index() + 1)
+
+
+func _update_empty_label(shown: int) -> void:
+	if _empty_label == null:
+		return
+	_empty_label.visible = shown == 0
+	if shown > 0:
+		return
+	var has_any: bool = _inventory != null and not _inventory.stacks.is_empty()
+	if has_any and _filter_kind >= 0:
+		_empty_label.text = tr("No items of this type carried.")
+	else:
+		_empty_label.text = tr(
+			"Pockets empty — everything you loot rides here, at risk until you extract."
+		)  # gdlint: ignore=max-line-length
+
+
+## A small corner triangle (top-right) flagging the item as wanted by a quest
+## (amber) or an unlocked craft recipe (teal). Drawn — no glyph-font dependency.
+func _corner_marker(col: Color) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(14, 14)
+	c.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	c.position = Vector2(-16, 2)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(
+		func() -> void:
+			var pts := PackedVector2Array([Vector2(14, 0), Vector2(14, 12), Vector2(2, 0)])
+			c.draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.95))
+	)
+	return c
+
+
+## Rebuilds the "wanted elsewhere" id sets. Craft: inputs of every UNLOCKED recipe
+## plus schematics that would learn one (don't drop/recycle those). Quest: item
+## objectives (extract_item / pickup) of accepted + daily contracts still short of
+## their count.
+func _rebuild_needed_sets() -> void:
+	_craft_needed.clear()
+	_quest_needed.clear()
+	for r: CraftRecipe in Crafting.all_recipes():
+		if Crafting.recipe_unlocked(r):
+			for id in r.input_ids:
+				_craft_needed[String(id)] = true
+		elif r.learn_item != "":
+			_craft_needed[r.learn_item] = true
+	var wanted: Array = Quests.accepted() + Quests.daily_unclaimed()
+	for q: QuestData in wanted:
+		if q.obj_type != "extract_item" and q.obj_type != "pickup":
+			continue
+		if q.obj_target == "" or Quests.is_complete(q):
+			continue
+		_quest_needed[q.obj_target] = true
 
 
 ## A small amber padlock marker for the top-left of a secured slot. Drawn as a
@@ -326,8 +451,9 @@ func _slot_stylebox(item: ItemData) -> StyleBoxFlat:
 
 ## Rich tooltip text: name + rarity tier + weight + value + description. The name
 ## line is BBCode-free (Control tooltips are plain), but we still surface rarity.
+## Appends the "wanted elsewhere" lines matching the corner markers.
 func _tooltip_for(item: ItemData) -> String:
-	return (
+	var text: String = (
 		tr("%s\n[%s]\nWeight: %.1f kg\nValue: %d\n\n%s")
 		% [
 			item.display_name,
@@ -337,6 +463,11 @@ func _tooltip_for(item: ItemData) -> String:
 			item.description,
 		]
 	)
+	if _quest_needed.has(item.id):
+		text += "\n\n" + tr("▲ Wanted for a quest")
+	if _craft_needed.has(item.id):
+		text += "\n\n" + tr("▲ Needed for crafting")
+	return text
 
 
 ## Per-slot input: right-click opens the context menu for that stack.

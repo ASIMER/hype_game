@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttachmentData" load_steps=2 format=3 uid="uid://cattmagcryo01"]
+
+[ext_resource type="Script" path="res://scripts/combat/attachment_data.gd" id="1_a"]
+
+[resource]
+script = ExtResource("1_a")
+id = "att_mag_cryo"
+display_name = "Cryo Mag"
+kind = 4
+rarity = 2
+weight = 0.8
+max_stack = 1
+grid_w = 1
+grid_h = 1
+description = "Coolant-jacketed rounds. Sustained fire slows a machine deeper and deeper — freeze it solid and it turns BRITTLE, shattering under the next hits. Slightly lighter loads."
+value = 240
+slot = "mag"
+damage_mult = 0.9
+element = "slow"

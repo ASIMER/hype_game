@@ -31,5 +31,11 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "godot-prompter@godot-prompter-marketplace": true,
+    "godot@awesome-gamedev-agent-skills": true,
+    "disciplines@awesome-gamedev-agent-skills": true,
+    "example-skills@anthropic-agent-skills": true
   }
 }

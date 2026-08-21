@@ -41,6 +41,7 @@ var _arena: Node = null
 # Cached references set during an active event.
 var _active_cache: Node = null  # kind 0: the SupplyCache Area3D
 var _active_miniboss: Node = null  # kind 1: the tracked Elite node
+var _goblin_event: bool = false  # M5.2: this miniboss event is a GOLDEN COURIER
 var _active_marker: Node3D = null  # kind 2/3: the simple Node3D map marker
 var _active_siege: Node = null  # kind 4: the SiegeZone Area3D
 var _event_elapsed: float = 0.0  # time since current event started (for timeouts)
@@ -408,7 +409,11 @@ func _start_miniboss() -> void:
 	)
 	if not ResourceLoader.exists(boss_scene):
 		boss_scene = "res://scenes/enemies/RobotElite.tscn"
-	wm.spawn_reinforcements(1, spawn_pos, true, boss_scene)
+	# M5.2 rare encounter: ~22% of miniboss events are a GOLDEN COURIER instead —
+	# a NON-hunter elite that wanders on patrol senses (you hunt IT), and its
+	# death rains a loot shower (handled in _end_miniboss).
+	_goblin_event = randf() < 0.22
+	wm.spawn_reinforcements(1, spawn_pos, not _goblin_event, boss_scene)
 
 	# Find the freshly-spawned boss: scan Net/Enemies newest-first for the chosen scene.
 	_active_miniboss = null
@@ -436,9 +441,14 @@ func _start_miniboss() -> void:
 
 	_active_kind = 1
 	_event_elapsed = 0.0
+	# (marker/lifetime shared with the plain miniboss event)
 
-	Events.world_event_started.emit(1, spawn_pos, tr("Mini-boss"))
-	Events.notify.emit(tr("Hostile Elite detected — eliminate the target"), 2)
+	if _goblin_event:
+		Events.world_event_started.emit(1, spawn_pos, tr("Golden Courier"))
+		Events.notify.emit(tr("⚡ GOLDEN COURIER spotted — intercept it before it slips away"), 3)
+	else:
+		Events.world_event_started.emit(1, spawn_pos, tr("Mini-boss"))
+		Events.notify.emit(tr("Hostile Elite detected — eliminate the target"), 2)
 
 
 ## True when `node` was instanced from `scene_path` — the scene file path is the
@@ -460,6 +470,21 @@ func _on_entity_died(entity: Node, _killer: Node) -> void:
 
 func _end_miniboss(success: bool) -> void:
 	if success:
+		# M5.2 GOLDEN COURIER payoff: a loot shower at the corpse (replicated
+		# pickups — every peer can grab a share), on top of the credit reward.
+		if _goblin_event and is_instance_valid(_active_miniboss):
+			var arena: Node = _get_arena()
+			var loot_root: Node = arena.get_node_or_null("Net/Loot") if arena != null else null
+			var dpos: Vector3 = (_active_miniboss as Node3D).global_position
+			if loot_root != null:
+				for gi in 5:
+					var gid: String = LootTables.roll_for_enemy(3)
+					if gid == "":
+						continue
+					var ang: float = TAU * float(gi) / 5.0
+					var ring := Vector3(cos(ang) * 1.3, 0.0, sin(ang) * 1.3)
+					LootPickup.spawn_at(loot_root, dpos + ring, gid, 1)
+			Events.notify.emit(tr("★ Courier down — loot shower!"), 1)
 		# MVP: credit host's profile. Co-op caveat: full per-peer reward needs RPC
 		# (each peer calls MetaProgression.earn on its own machine). The host always
 		# gets the reward; a client's reward would require NetworkManager involvement

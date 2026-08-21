@@ -183,19 +183,80 @@ func _rebuild_weapon_bar() -> void:
 # ── Content body ──────────────────────────────────────────────────────────────
 
 
-## Clears and rebuilds the attachment + perk panels for _selected_weapon.
+## Clears and rebuilds the preview + attachment + perk panels for _selected_weapon.
 func _rebuild_content() -> void:
 	for c in _content_body.get_children():
 		c.queue_free()
 	_grids.clear()
+	_wp_pivot = null
 
 	if _selected_weapon.is_empty():
 		return
 
+	_build_weapon_preview()
 	_build_attachments_section()
 	_build_perks_section()
 	# Apply responsive columns once the tree has laid out (size.x is valid).
 	_apply_columns.call_deferred()
+
+
+# ── Live weapon preview (Phase 3: the genre-staple render the tab was missing) ──
+
+var _wp_pivot: Node3D = null
+
+
+func _process(delta: float) -> void:
+	if _wp_pivot != null and _wp_pivot.is_inside_tree():
+		_wp_pivot.rotation.y += 0.6 * delta
+
+
+## A slowly rotating 3D render of the selected weapon in its own lit stage —
+## mirrors the CHARACTER tab's SubViewport preview (headless → skipped).
+func _build_weapon_preview() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var panel := PanelContainer.new()
+	panel.name = "WeaponPreview"
+	panel.custom_minimum_size = Vector2(0, 150)
+	panel.add_theme_stylebox_override("panel", UIStyle.glass_panel())
+	_content_body.add_child(panel)
+	var svc := SubViewportContainer.new()
+	svc.stretch = true
+	svc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	svc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_child(svc)
+	var vp := SubViewport.new()
+	vp.size = Vector2i(560, 150)
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	vp.msaa_3d = Viewport.MSAA_4X
+	svc.add_child(vp)
+	var world := World3D.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.085, 0.105, 0.13)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.55, 0.6, 0.68)
+	env.ambient_light_energy = 0.9
+	world.environment = env
+	vp.world_3d = world
+	var key := DirectionalLight3D.new()
+	key.rotation_degrees = Vector3(-40, -120, 0)
+	key.light_energy = 1.5
+	vp.add_child(key)
+	var fill := DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-15, 70, 0)
+	fill.light_energy = 0.5
+	vp.add_child(fill)
+	var cam := Camera3D.new()
+	cam.position = Vector3(0.0, 0.05, 0.62)
+	cam.fov = 35.0
+	vp.add_child(cam)
+	_wp_pivot = Node3D.new()
+	vp.add_child(_wp_pivot)
+	var model: Node3D = AssetRegistry.get_model(_selected_weapon)
+	if model != null:
+		_wp_pivot.add_child(model)
 
 
 ## Column count that fits the current tab width (minus the panel padding + scrollbar).
@@ -409,7 +470,7 @@ func _build_perk_row(key: String) -> HBoxContainer:
 	desc_lbl.name = "PerkDesc"
 	desc_lbl.text = tr(String(perk_dict.get("desc", "")))
 	desc_lbl.add_theme_color_override("font_color", COL_DIM)
-	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_font_size_override("font_size", 13)
 	info_vbox.add_child(desc_lbl)
 
 	# Level indicator.
@@ -523,7 +584,7 @@ func _make_panel() -> PanelContainer:
 func _make_section_header(title: String) -> PanelContainer:
 	var pc := PanelContainer.new()
 	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pc.add_theme_stylebox_override("panel", UIStyle.header_panel(UIStyle.TEAL))
+	pc.add_theme_stylebox_override("panel", UIStyle.section_bar(UIStyle.TEAL))
 	pc.add_child(UIStyle.micro_header(title, UIStyle.TEAL, 15))
 	return pc
 

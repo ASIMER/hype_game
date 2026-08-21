@@ -25,6 +25,8 @@ class_name RobotEnemy
 
 const LOOT_SCENE := "res://scenes/items/LootPickup.tscn"
 const LOOT_IDS := ["loot_scrap", "loot_cell"]
+# Throttle for the "body-part dropped" toast so a wave of kills doesn't spam the feed (UI-only).
+static var _last_part_toast_ms: int = 0
 const HP_BAR_SCENE := "res://scenes/enemies/EnemyHealthBar.tscn"
 const DEBRIS_SCENE := "res://scenes/fx/RobotDebris.tscn"
 const IMPACT_SCENE := "res://scenes/fx/Impact.tscn"
@@ -76,6 +78,12 @@ var _death_fx_started: bool = false
 var _stuck_dist: float = INF  # best (smallest) distance-to-target seen while chasing
 var _stuck_time: float = 0.0
 var _recover_count: int = 0
+# PERF: last goal actually submitted to the NavigationAgent — chase/investigate only
+# re-issue a path when the goal MOVED (the agent's setter repaths unconditionally;
+# per-frame live-position writes cost a full navmesh A* per enemy per tick).
+var _last_nav_goal: Vector3 = Vector3(INF, INF, INF)
+# PERF: per-enemy noise-handling cooldown (see _on_noise_emitted).
+var _noise_ignore_until_ms: int = 0
 const STUCK_PROGRESS: float = 1.0  # metres the gap must close to count as progress
 const STUCK_LIMIT: float = 2.5  # seconds chasing without closing the gap -> recover
 
@@ -136,6 +144,9 @@ var _hp_bar: EnemyHealthBar = null
 # replicated body transform/velocity/state — so co-op stays in sync.
 var _has_proc_anim: bool = false
 var _anim_time: float = 0.0
+# PERF gate: idle animation only runs when the camera is within 60m (2 Hz check).
+var _idle_gate_accum: float = 1.0  # start past the threshold → first frame evaluates
+var _idle_anim_on: bool = true
 # Tick parts.
 var _proc_eye: MeshInstance3D = null
 var _proc_legs: Array[Node3D] = []
@@ -149,6 +160,10 @@ var _pulse_base_energy: float = 6.0
 # Replicated to clients by the MultiplayerSynchronizer (see .tscn). Authority
 # writes it each tick; clients read it for animation/state-driven visuals.
 var current_state: int = State.PATROL
+# Alert-chirp bookkeeping (visual/_process side; see the calm→CHASE watcher).
+var _sfx_state_prev: int = State.PATROL
+var _sfx_age: float = 0.0
+var _sfx_alert_last_ms: int = -10000
 
 # Hunter mode: wave-spawned enemies actively seek the nearest player (ignoring the
 # detect radius / line-of-sight gate) so survival waves stay aggressive on the big
@@ -159,6 +174,7 @@ var hunter: bool = false
 # Last-heard world position the enemy is walking toward while investigating.
 var _investigate_point: Vector3 = Vector3.ZERO
 var _investigate_timer: float = 0.0  # counts DOWN from INVESTIGATE_GIVEUP
+var _leash_calm_ms: int = 0  # M3: after a leash break, ignore re-acquire until this tick
 var _investigate_arrived: bool = false  # true once within INVESTIGATE_ARRIVE
 
 # Cascading alert refractory: monotonic counter decremented each physics tick.
@@ -186,17 +202,40 @@ var modifiers: Array[String] = []
 # Cached HP/s for the regenerating mod (0 = not regenerating); read each physics tick.
 var _regen_rate: float = 0.0
 
+# --- Machine Nemesis (signature) — parsed from the _NEM name token on EVERY peer, so a
+# returning rival rebuilds the IDENTICAL scarred/buffed body everywhere. is_nemesis gates the
+# tier health scalar, the learned-counter resists (emp_hard in apply_stun), and the scars.
+var is_nemesis: bool = false
+var nemesis_tier: int = 0
+var nemesis_traits: Array[String] = []
+var scar_seed: int = 0
+
+# --- Machine Chemistry (Phase 5) — the per-enemy status component (code-instantiated,
+# authority-local logic; brittle hooks Health.damage_filter, slow scales _apply_movement).
+# _status_flags_visual is the last flag set received via sync_chemistry_flags (every peer)
+# and drives the per-status FX nodes in _chem_fx (render-only).
+var _status: EnemyStatus = null
+var _status_flags_visual: int = 0
+var _chem_fx: Dictionary = {}
+
 
 func _ready() -> void:
 	# Parse elite modifiers FIRST (every peer) — wave_manager name-encoded them before
 	# add_child, so the name is already correct here and replicates to clients.
 	_parse_modifiers_from_name()
+	# Machine Nemesis: parse the _NEM token (every peer) right after the elite mods so the
+	# rival's tier/traits/scars are known before stats + visuals are built.
+	_parse_nemesis_from_name()
 	add_to_group(Groups.ENEMIES)
+	if is_nemesis:
+		add_to_group(Groups.NEMESIS)  # map marker + kill-payoff lookup (server + clients)
 	_home = global_position
 	_load_stats()
 	# Apply modifier stat multipliers onto the resolved _stat_* BEFORE the health refill
 	# + collision/avoidance setup, so armored reaches max_health and swift reaches max_speed.
 	_apply_modifier_stats()
+	# Nemesis tier/trait stat counters layer on top of the elite mults (same pre-refill window).
+	_apply_nemesis_stats()
 
 	# Populate the visual model from the registry (CC0 art or primitive).
 	var model := AssetRegistry.get_model(enemy_id)
@@ -208,14 +247,18 @@ func _ready() -> void:
 		# grunt/heavy animate themselves). Subclasses override _cache_proc_parts.
 		if _anim_player == null:
 			_cache_proc_parts()
-	# Remember the model's rest transform so the hit flinch can return to it.
+	# Rest transform for the flinch — capture BEFORE assemble (rest at 0.05 shrank enemies).
 	if _model_root:
 		_model_rest_pos = _model_root.position
 		_model_rest_scale = _model_root.scale
+	if model:
+		LimbBurst.assemble(_model_root, self)  # M1: spawn-assembly (scale-up + ring)
 
 	# Elite modifier visuals (tint + feet glow ring). Runs on every peer; tints the
 	# already-duplicated _flash_mats so it never bleeds onto other instances. Headless-guarded.
 	_apply_modifier_visuals()
+	# Nemesis scars (deterministic in scar_seed → identical on every peer; render-only).
+	_apply_nemesis_scars()
 
 	# Health is configured via the scene export; ensure max matches stats even if
 	# the scene drifts, then refill. Only the authority should own its state.
@@ -226,11 +269,26 @@ func _ready() -> void:
 	if not _health.health_changed.is_connected(_on_health_changed):
 		_health.health_changed.connect(_on_health_changed)
 
+	# Machine Chemistry (Phase 5): the status component (no scene edit — built here). The
+	# brittle status amplifies incoming damage via Health.damage_filter, which enemies
+	# otherwise leave unset; the burn tick exempts itself via _status.is_dot_tick().
+	_status = EnemyStatus.new()
+	add_child(_status)
+	_status.setup(self)
+	_health.damage_filter = _chemistry_damage_filter
+
 	_setup_health_bar()
 	_setup_collision_and_avoidance()
 
 	_fsm = EnemyStateMachine.new()
 	_fsm.setup(self)
+
+	# M2 boss fight: the staged-encounter brain (added on EVERY peer — its FX rpcs
+	# need the same node path everywhere; logic self-gates to the server inside).
+	if enemy_id == "robot_boss":
+		var brain := BossBrain.new()
+		brain.name = "BossBrain"
+		add_child(brain)
 
 	_agent.path_desired_distance = 0.6
 	_agent.target_desired_distance = maxf(1.0, _stat_attack_range * 0.6)
@@ -263,21 +321,23 @@ func _setup_weakpoint_marker() -> void:
 	var shape := wp.get_node_or_null("CollisionShape3D")
 	var radius := 0.18
 	if shape is CollisionShape3D and (shape as CollisionShape3D).shape is SphereShape3D:
-		radius = ((shape as CollisionShape3D).shape as SphereShape3D).radius * 0.85
+		radius = ((shape as CollisionShape3D).shape as SphereShape3D).radius * 0.55
 	var mesh := SphereMesh.new()
 	mesh.radius = radius
 	mesh.height = radius * 2.0
 	mesh.radial_segments = 10
 	mesh.rings = 6
+	# D2: MATTE HAZARD PAINT, not a lamp. This used to be an unshaded emissive dome at 0.85
+	# radius — against the old charcoal hulls it read as a marker, but against the two-tone
+	# light plate it became a glowing orange balloon covering the machine's head and stealing
+	# the one emissive signal the design allows (the eye). A weak point is a PAINTED panel on
+	# real hardware, so it is a small matte gold patch now: it still says "shoot here" through
+	# hue and value contrast against the bone hull, without competing with the state glow.
 	var mat := StandardMaterial3D.new()
-	var accent := AssetRegistry.get_color(enemy_id).lerp(Color(1.0, 0.85, 0.2), 0.6)
+	var accent := AssetRegistry.get_color(enemy_id).lerp(Color(0.91, 0.77, 0.42), 0.85)
 	mat.albedo_color = accent
-	mat.emission_enabled = true
-	mat.emission = accent
-	mat.emission_energy_multiplier = 2.2
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color.a = 0.85
+	mat.roughness = 0.75
+	mat.metallic = 0.05
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat
@@ -403,7 +463,12 @@ func _physics_process(delta: float) -> void:
 		# within detect — or the player gets close. evaluate() has no INVESTIGATE case (it
 		# would return INVESTIGATE unchanged), so seed the FSM into CHASE first, then let
 		# evaluate resolve CHASE→ATTACK (or back to PATROL if the gap reopens).
-		if _target != null and (has_los or near) and dist <= detect:
+		if (
+			_target != null
+			and (has_los or near)
+			and dist <= detect
+			and Time.get_ticks_msec() >= _leash_calm_ms
+		):
 			_fsm.state = State.CHASE
 			current_state = _fsm.evaluate(
 				_target, dist, has_los or near, detect, _stat_attack_range
@@ -413,6 +478,14 @@ func _physics_process(delta: float) -> void:
 	if current_state == State.CHASE and not _was_chasing:
 		_cascade_alert()
 	_was_chasing = (current_state == State.CHASE)
+
+	# M3 territoriality: a non-hunter defends its spawn spot — a chase dragging it past
+	# the leash breaks off toward home (calm window stops boundary flip-flop). Hunters exempt.
+	var engaged := current_state == State.CHASE or current_state == State.ATTACK
+	if not hunter and engaged and global_position.distance_to(_home) > Settings.ENEMY_LEASH_RADIUS:
+		_target = null
+		_leash_calm_ms = Time.get_ticks_msec() + 4000
+		_start_investigate(_home)
 
 	match current_state:
 		State.PATROL:
@@ -442,9 +515,36 @@ func _process(delta: float) -> void:
 		_tick_death_pop(delta)
 		_tick_flash(delta)  # let a final hit-flash finish; it only touches emission
 		return
+	# Audible "spotted!" cue: calm→CHASE edge on the REPLICATED state (every peer hears
+	# it positionally). Age-gated so hunter waves that spawn straight into CHASE don't
+	# chorus; per-enemy cooldown so flapping LOS doesn't spam.
+	_sfx_age += delta
+	if current_state != _sfx_state_prev:
+		var from_calm := _sfx_state_prev == State.PATROL or _sfx_state_prev == State.INVESTIGATE
+		if (
+			current_state == State.CHASE
+			and from_calm
+			and _sfx_age > 1.5
+			and Time.get_ticks_msec() - _sfx_alert_last_ms > 4000
+		):
+			_sfx_alert_last_ms = Time.get_ticks_msec()
+			Events.enemy_chase_started.emit(self)
+		_sfx_state_prev = current_state
 	if _has_proc_anim:
-		_anim_time += delta
-		_animate_visual(delta)
+		# PERF: idle bobbing/rotor spin is invisible past ~60m — gate it on camera
+		# distance (2 Hz check, per peer, render-only). Combat feedback below
+		# (_tick_flash/_tick_stagger) is deliberately NEVER gated.
+		_idle_gate_accum += delta
+		if _idle_gate_accum >= 0.5:
+			_idle_gate_accum = 0.0
+			var cam := get_viewport().get_camera_3d()
+			_idle_anim_on = (
+				cam != null
+				and cam.global_position.distance_squared_to(global_position) < 60.0 * 60.0
+			)
+		if _idle_anim_on:
+			_anim_time += delta
+			_animate_visual(delta)
 	_tick_flash(delta)
 	_tick_stagger(delta)
 
@@ -645,6 +745,9 @@ func _nearest_player_visual() -> Node3D:
 		# Don't visually track a downed player (matches the AI ignoring them for targeting).
 		if pn.has_method("is_downed") and pn.is_downed():
 			continue
+		# CLOAKED player (recon-family skill): machines can't see it at all.
+		if SkillDirector.is_player_cloaked(pn):
+			continue
 		var d := global_position.distance_to(pn.global_position)
 		if d < best:
 			best = d
@@ -654,10 +757,20 @@ func _nearest_player_visual() -> Node3D:
 
 # --- Hit flash --------------------------------------------------------------
 
-
 ## Walk the model subtree and remember every StandardMaterial3D (and its base
 ## emission) so a hit can briefly drive emission white. We duplicate shared
 ## materials so flashing one enemy doesn't flash every instance sharing the art.
+## OVERRIDE TRAP: procedural parts assign their material via `material_override`,
+## which OUTRANKS surface overrides at draw time — installing the dup as a surface
+## override left the flash mutating a material that was never drawn (the flash and
+## the elite tint were silently invisible on every procedural enemy). When the
+## active material IS the override, the dup must replace the override itself.
+## `_flash_dups` maps each SOURCE material to its one dup, so the ~30 parts sharing a
+## builder's 5 role materials keep sharing 5 dups — duplicating per PART exploded the
+## scene's unique-material count ~6× and cost real frame time at 15+ enemies.
+var _flash_dups: Dictionary = {}
+
+
 func _collect_flash_materials(root: Node) -> void:
 	if root is MeshInstance3D:
 		var mi := root as MeshInstance3D
@@ -666,12 +779,20 @@ func _collect_flash_materials(root: Node) -> void:
 			for s in mesh.get_surface_count():
 				var mat := mi.get_active_material(s)
 				if mat is StandardMaterial3D:
-					var dup := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
-					mi.set_surface_override_material(s, dup)
-					_flash_mats.append(dup)
-					_flash_base_emission.append(
-						dup.emission if dup.emission_enabled else Color(0, 0, 0)
-					)
+					var dup: StandardMaterial3D
+					if _flash_dups.has(mat):
+						dup = _flash_dups[mat]
+					else:
+						dup = (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
+						_flash_dups[mat] = dup
+						_flash_mats.append(dup)
+						_flash_base_emission.append(
+							dup.emission if dup.emission_enabled else Color(0, 0, 0)
+						)
+					if mi.material_override == mat:
+						mi.material_override = dup
+					else:
+						mi.set_surface_override_material(s, dup)
 	for c in root.get_children():
 		_collect_flash_materials(c)
 
@@ -715,6 +836,12 @@ func _on_health_changed(current: float, _max_health: float) -> void:
 ## knockback away from the likely shooter (nearest player) so the body reacts.
 func _start_stagger() -> void:
 	_stagger_t = STAGGER_TIME
+	# M1 feel: a quick scale-PUNCH so every single bullet visibly rocks the body
+	# (the rotation flinch alone read as nothing at range).
+	if _model_root != null and not _dying:
+		_model_root.scale = Vector3.ONE * 1.07
+		var tw := _model_root.create_tween()
+		tw.tween_property(_model_root, "scale", Vector3.ONE, 0.12)
 	if is_multiplayer_authority() and not _dying:
 		var shooter := _find_nearest_player()
 		if shooter and is_instance_valid(shooter):
@@ -758,6 +885,7 @@ func _setup_health_bar() -> void:
 	_hp_bar.bar_y = _health_bar_height()
 	add_child(_hp_bar)
 	_hp_bar.setup(_health)
+	_hp_bar.set_modifier_label(modifiers)  # M3: elite tag over the bar
 
 
 ## Default bar height; flyers/bosses override to clear taller models. OVERRIDE.
@@ -789,7 +917,15 @@ func _do_chase(delta: float) -> void:
 	if _target == null:
 		_apply_movement(Vector3.ZERO, delta)
 		return
-	_agent.set_target_position(_target.global_position)
+	# PERF: setting target_position to the LIVE player position every physics tick
+	# forced a full navmesh A* replan per enemy per frame (~1ms each — 15 chasers ate
+	# the whole frame; NavigationAgent3D's setter repaths unconditionally, it does NOT
+	# compare values). Replan only when the target drifted >1.5m from the last goal;
+	# the agent keeps following its computed path in between (visually identical).
+	var goal: Vector3 = _target.global_position
+	if goal.distance_squared_to(_last_nav_goal) > 2.25:
+		_last_nav_goal = goal
+		_agent.set_target_position(goal)
 	_navigate_to_agent(delta)
 
 
@@ -822,8 +958,12 @@ func _do_investigate(delta: float) -> void:
 		_apply_movement(Vector3.ZERO, delta)
 	else:
 		_investigate_arrived = false
-		# Navigate at INVESTIGATE_SPEED_MULT of normal speed.
-		_agent.set_target_position(_investigate_point)
+		# Navigate at INVESTIGATE_SPEED_MULT of normal speed. PERF: the point is
+		# static — re-issue the path only when it actually changed (the agent setter
+		# repaths unconditionally on every call).
+		if _investigate_point.distance_squared_to(_last_nav_goal) > 0.01:
+			_last_nav_goal = _investigate_point
+			_agent.set_target_position(_investigate_point)
 		# Temporarily scale speed, navigate, then restore.
 		var base_speed := _stat_speed
 		_stat_speed = base_speed * Settings.INVESTIGATE_SPEED_MULT
@@ -852,7 +992,86 @@ func apply_stun(duration: float) -> void:
 		return
 	# Explicit typed local — an inferred `:=` on this ternary trips the Variant parse trap.
 	var d: float = duration * (Settings.EMP_BOSS_STUN_MULT if _is_boss() else 1.0)
-	_stunned_until_ms = Time.get_ticks_msec() + int(d * 1000.0)
+	# Nemesis "emp_hard" learned counter: a rival you kept EMP-locking shrugs most of it off.
+	if "emp_hard" in nemesis_traits:
+		d *= Settings.NEMESIS_EMP_STUN_MULT
+	# maxi so a short chemistry SHOCK can never cut a long EMP stun short (and vice-versa).
+	_stunned_until_ms = maxi(_stunned_until_ms, Time.get_ticks_msec() + int(d * 1000.0))
+
+
+## Machine Chemistry (Phase 5) — the raw duck-typed status setter, called by
+## MachineChemistry.apply() (which has already resolved climate + fires reactions) and by
+## the chain/freeze reactions. Server-side only; the result replicates via HP/position and
+## the visual flag-sync RPC. Identity-safe to call on any enemy.
+func apply_chemistry(kind: String, dur: float, mag: float) -> void:
+	if not GameState.is_local_authority_server() or _status == null:
+		return
+	_status.apply(kind, dur, mag)
+
+
+## Active status for the harness (state.enemies[].status). On the authority: remaining
+## seconds per kind. On a CLIENT (the status logic is server-only): the synced visual flags
+## as active-kind bools — so co-op parity is verifiable even though clients don't simulate it.
+func chemistry_status() -> Dictionary:
+	if _status != null and is_multiplayer_authority():
+		return _status.status_dict()
+	var out: Dictionary = {}
+	for kind in ["shock", "burn", "slow", "brittle"]:
+		if (_status_flags_visual & MachineChemistry.bit_for(kind)) != 0:
+			out[kind] = true
+	return out
+
+
+## Broadcast the active-status flag set to every peer (call_local runs it here too) so each
+## builds the identical per-status FX. The authority is the only writer; clients are visual.
+@rpc("authority", "call_local", "reliable")
+func sync_chemistry_flags(flags: int) -> void:
+	var changed: int = flags ^ _status_flags_visual
+	_status_flags_visual = flags
+	if DisplayServer.get_name() == "headless":
+		return
+	for kind in ["shock", "burn", "slow", "brittle"]:
+		var bit: int = MachineChemistry.bit_for(kind)
+		if (changed & bit) != 0:
+			apply_chemistry_fx(kind, (flags & bit) != 0)
+
+
+## Add (active) / free (inactive) the per-status FX aura. Distance-gated on spawn (cheap
+## like the idle-anim gate); render-only, every peer. Frees all on death via the flags=0 sync.
+func apply_chemistry_fx(kind: String, active: bool) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if not active:
+		var old: Node = _chem_fx.get(kind)
+		if old != null and is_instance_valid(old):
+			old.queue_free()
+		_chem_fx.erase(kind)
+		return
+	if _chem_fx.has(kind):
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var dd: float = cam.global_position.distance_squared_to(global_position)
+	if dd > Settings.CHEM_FX_DIST * Settings.CHEM_FX_DIST:
+		return
+	var fx := MachineChemistry.make_fx(kind)
+	if fx != null:
+		add_child(fx)
+		_chem_fx[kind] = fx
+
+
+## Health.damage_filter hook for BRITTLE: amplify incoming damage while brittle is active.
+## Exempts our own burn DoT (is_dot_tick) so burn never compounds. The amplified value flows
+## on through Events.damage_dealt (correct — the grudge telemetry should see real damage).
+func _chemistry_damage_filter(amount: float, _source: Node) -> float:
+	if _status == null or _status.is_dot_tick():
+		return amount
+	var amplified: float = amount * _status.incoming_damage_mult()
+	# SHATTER flavor: a brittle machine this hit will kill (server-side notify on the host).
+	if _status.has("brittle") and amplified > amount and _health.current - amplified <= 0.0:
+		Events.notify.emit(tr("SHATTER!"), 1)
+	return amplified
 
 
 ## Public cascading-alert entry point. Another enemy (or the caller) tells this
@@ -942,14 +1161,22 @@ func _cascade_alert() -> void:
 
 ## Noise event handler (gunfire / grenades from Events.noise_emitted).
 ## Only runs on the authority (connected in _ready only when authority).
+## PERF: EVERY enemy receives EVERY noise event (4 players sustained-firing = ~40
+## events/s × N enemies) — cheap squared-distance cull first, plus a short per-enemy
+## cooldown once a noise was actually HANDLED so a barrage costs ≤3 reactions/s each.
 func _on_noise_emitted(world_pos: Vector3, loudness: float, kind: int) -> void:
 	if hunter:
 		return
+	var now := Time.get_ticks_msec()
+	if now < _noise_ignore_until_ms:
+		return
 	if _dying or (_health != null and _health.is_dead):
 		return
-	var d := global_position.distance_to(world_pos)
-	if d > loudness:
+	var dsq := global_position.distance_squared_to(world_pos)
+	if dsq > loudness * loudness:
 		return
+	_noise_ignore_until_ms = now + 300
+	var d := sqrt(dsq)
 	# Already chasing something nearby? Don't downgrade.
 	if current_state == State.CHASE or current_state == State.ATTACK:
 		return
@@ -1003,6 +1230,10 @@ func _update_stuck(delta: float) -> void:
 		_stuck_dist = d
 		_stuck_time = 0.0
 		_recover_count = 0
+		return
+	# A cryo-SLOWED machine makes slow progress legitimately — don't count it as stuck
+	# (else the recovery re-seat would fire falsely and teleport it).
+	if _status != null and _status.speed_mult() < 0.99:
 		return
 	_stuck_time += delta
 	if _stuck_time >= STUCK_LIMIT:
@@ -1090,6 +1321,10 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	# enemies can never reach melee (looks like "they run in place and won't attack").
 	# So we clamp the separation magnitude well below 1.0 AND fade it out as the enemy
 	# closes on its target, letting the swarm commit to a dogpile within attack range.
+	# M3 combat dance: shooters strafe-orbit in ATTACK, anyone jukes when aimed
+	# at (helper keeps its state in node meta; boss excluded — BossBrain leads).
+	if enemy_id != "robot_boss":
+		dir = EnemyDance.adjust(self, _target, dir, _stat_attack_range, int(current_state))
 	var sep := _separation_steer()
 	if sep.length() > SEPARATION_MAX:
 		sep = sep.normalized() * SEPARATION_MAX
@@ -1108,7 +1343,9 @@ func _apply_movement(dir: Vector3, delta: float) -> void:
 	var move := dir + sep
 	if move.length() > 1.0:
 		move = move.normalized()
-	var speed: float = _stat_speed
+	# Machine Chemistry: a cryo SLOW scales movement (authority-local; the slowed body
+	# replicates via position, so clients see it without extra state).
+	var speed: float = _stat_speed * (_status.speed_mult() if _status != null else 1.0)
 	velocity.x = move.x * speed + _knockback.x
 	velocity.z = move.z * speed + _knockback.z
 	# Bleed off the hit knockback nudge.
@@ -1190,6 +1427,9 @@ func _find_nearest_player() -> Node3D:
 		# Skip DOWNED players — AI fully ignores a downed player (it's threatened only by
 		# the bleedout timer), so the revive window isn't a near-instant death in combat.
 		if pn.has_method("is_downed") and pn.is_downed():
+			continue
+		# Skip CLOAKED players (recon-family active camo) — invisible to machines.
+		if SkillDirector.is_player_cloaked(pn):
 			continue
 		var d := global_position.distance_to(pn.global_position)
 		if d < best:
@@ -1342,6 +1582,8 @@ func _start_death_fx() -> void:
 	# Kill any in-flight stagger so it stops fighting the death pop for ModelRoot.
 	_stagger_t = 0.0
 	_spawn_death_burst()
+	# The machine breaks into its family LIMBS (the same model the loot uses).
+	LimbBurst.burst(enemy_id, global_position, _loot_container(), _debris_scale())
 	if _is_boss():
 		Events.screen_shake.emit(0.6)
 
@@ -1403,6 +1645,22 @@ func _spawn_loot() -> void:
 	# add_child here was auto-spawned with the scene's default item_id, so clients
 	# saw the wrong model (or nothing) for every enemy drop.
 	LootPickup.spawn_at(container, global_position, loot_id, 1)
+	# Mutant Harvest: every enemy ALSO drops its signature body-part as a pickup-able skill.
+	# M4.1: count SMUGGLES the limb tier (1 common / 2 rare 14% / 3 exotic 2%).
+	if Settings.SKILL_DROP_GUARANTEED:
+		var skill_id: String = Settings.skill_for_enemy(enemy_id)
+		var troll: float = randf()
+		var part_tier: int = 3 if troll < 0.02 else (2 if troll < 0.16 else 1)
+		LootPickup.spawn_at(
+			container, global_position + Vector3(-0.6, 0.0, 0.0), "bodypart_" + skill_id, part_tier
+		)
+		# Loud on-screen toast so the drop is unmissable (the floating part + beam can be easy to miss).
+		# Throttled so a full wave of kills doesn't spam the feed (UI-only — not a deterministic path).
+		var now_ms: int = Time.get_ticks_msec()
+		if now_ms - _last_part_toast_ms > 2500:
+			_last_part_toast_ms = now_ms
+			var sname: String = String(Settings.skill_def(skill_id).get("name", skill_id))
+			Events.notify.emit(tr("⚙ %s part dropped — press E") % sname, 1)
 	# Batch C: elites/minibosses may ALSO drop a biome-matched annex key — an extra
 	# independent roll (LootTables gates it on this enemy's modifiers/enemy_id).
 	var key_id: String = LootTables.roll_key_drop(self, global_position)
@@ -1435,14 +1693,12 @@ func _parse_modifiers_from_name() -> void:
 ## harmless to compute everywhere). Called right after _load_stats(), before the refill +
 ## avoidance setup. Also caches the regen rate for _physics_process.
 func _apply_modifier_stats() -> void:
-	if modifiers.is_empty():
-		return
-	if "armored" in modifiers:
-		_stat_health *= float(EnemyModifiers.stats_for("armored").get("health_mult", 1.0))
-	if "swift" in modifiers:
-		_stat_speed *= float(EnemyModifiers.stats_for("swift").get("speed_mult", 1.0))
-	if "regenerating" in modifiers:
-		_regen_rate = float(EnemyModifiers.stats_for("regenerating").get("regen", 0.0))
+	# Generic field-driven fold so a new modifier (e.g. golden) needs no code here.
+	for m in modifiers:
+		var ms: Dictionary = EnemyModifiers.stats_for(m)
+		_stat_health *= float(ms.get("health_mult", 1.0))
+		_stat_speed *= float(ms.get("speed_mult", 1.0))
+		_regen_rate = maxf(_regen_rate, float(ms.get("regen", 0.0)))
 
 
 ## Detonate the volatile death blast: a flat-falloff radial hit on nearby players (downed
@@ -1465,6 +1721,61 @@ func _apply_modifier_visuals() -> void:
 	EnemyModifiers.build_glow_ring(_model_root, color)
 
 
+## Parse the Machine Nemesis `_NEM` token off the node name (every peer). Sets is_nemesis +
+## tier/traits/scar_seed so the appliers below can rebuild the rival's body identically.
+func _parse_nemesis_from_name() -> void:
+	var info := NemesisProfile.parse_token(str(name))
+	if info.is_empty():
+		return
+	is_nemesis = true
+	nemesis_tier = int(info.get("tier", 1))
+	scar_seed = int(info.get("scar_seed", 0))
+	var raw: Array = info.get("traits", [])
+	var typed: Array[String] = []
+	for t in raw:
+		typed.append(String(t))
+	nemesis_traits = typed
+
+
+## Nemesis tier/trait stat counters, layered after the elite mults (same pre-refill window).
+## Tier makes a returning rival tankier; "keen" sharpens its senses; "weakpoint_armored"
+## armors the former weak spot. EMP/blast resists are read at their own sites (apply_stun /
+## filter_blast), not here. Harmless to compute on every peer (the WeakPoint Hurtbox is a
+## scene child, already _ready by the time this runs in the parent's _ready).
+func _apply_nemesis_stats() -> void:
+	if not is_nemesis:
+		return
+	_stat_health *= 1.0 + float(nemesis_tier) * Settings.NEMESIS_TIER_HEALTH
+	if "keen" in nemesis_traits:
+		_stat_detect *= float(Settings.NEMESIS_TRAIT_STATS.get("keen", {}).get("detect_mult", 1.0))
+	if "weakpoint_armored" in nemesis_traits:
+		var wp := get_node_or_null(Groups.NODE_WEAKPOINT)
+		if wp != null and "damage_multiplier" in wp:
+			# ABSOLUTE armor value (not a base mult) — works for any 2.0/2.5/×3 weak-point.
+			wp.damage_multiplier = float(
+				Settings.NEMESIS_TRAIT_STATS.get("weakpoint_armored", {}).get("armor_mult", 0.8)
+			)
+
+
+## Blast/AoE resist hook for the "blast_hard" learned counter — called duck-typed by the
+## grenade's radial-damage loop BEFORE Health.take_damage (the grenade's damage source is the
+## thrower, not the grenade, so this can't live in Health.damage_filter). Identity on a
+## non-blast-hard enemy, so it's safe to call on every enemy.
+func filter_blast(dmg: float) -> float:
+	if "blast_hard" in nemesis_traits:
+		return dmg * Settings.NEMESIS_BLAST_MULT
+	return dmg
+
+
+## Render the rival's scars (charred wash + blood-red ring + blown/bent plating) via the
+## shared static so the Hub codex portrait gets the IDENTICAL look. Deterministic in
+## scar_seed → every peer scars identically. Render-only, skipped headless.
+func _apply_nemesis_scars() -> void:
+	if not is_nemesis or DisplayServer.get_name() == "headless":
+		return
+	ProceduralModels.apply_nemesis_scars(_model_root, _proc_root(), scar_seed, nemesis_tier)
+
+
 ## Armored elites get a larger (×1.3) and brighter (×3 emission) weak-point marker so the
 ## "shoot the glowing spot" read stays obvious through the steel-blue tint. Render-only;
 ## no-op headless or if there's no marker. Must run AFTER _setup_weakpoint_marker().
@@ -1478,10 +1789,8 @@ func _boost_weakpoint_for_armored() -> void:
 		if not (c is MeshInstance3D):
 			continue
 		var mi := c as MeshInstance3D
-		mi.scale *= 1.3
-		var mat := mi.material_override
-		if mat is StandardMaterial3D:
-			(mat as StandardMaterial3D).emission_energy_multiplier *= 3.0
+		mi.scale *= 1.35  # the marker is matte paint now (see _setup_weakpoint_marker),
+		# so an armored elite advertises its one soft spot by PATCH SIZE, not by glowing.
 
 
 # --- Target helper (exposed for waves / debugging) --------------------------

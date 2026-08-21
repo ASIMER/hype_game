@@ -25,6 +25,8 @@ const ITEM_PATHS := {
 	"loot_grenade_smoke": "res://resources/items/grenade_smoke.tres",
 	"loot_grenade_emp": "res://resources/items/grenade_emp.tres",
 	"loot_grenade_decoy": "res://resources/items/grenade_decoy.tres",
+	"loot_grenade_incendiary": "res://resources/items/grenade_incendiary.tres",
+	"loot_grenade_cryo": "res://resources/items/grenade_cryo.tres",
 	"gadget_turret": "res://resources/items/gadget_turret.tres",
 	"gadget_dome": "res://resources/items/gadget_dome.tres",
 	"gadget_sensor": "res://resources/items/gadget_sensor.tres",
@@ -54,8 +56,11 @@ const SPIN_SPEED := 1.0
 const BOB_AMP := 0.1
 const BOB_SPEED := 2.0
 const HOVER := 0.22
+const SKILL_ICON_H := 1.05  # Mutant-Harvest: height of the SMALL skill-icon above a body-part
 var _model_root: Node3D = null
 var _bob_t: float = 0.0
+var _hover: float = HOVER  # rest height (body-parts lie LOW on the ground, not floating)
+var _skill_icon: Sprite3D = null  # small 2D skill icon above a dropped body-part (render-only)
 
 
 func _ready() -> void:
@@ -64,11 +69,28 @@ func _ready() -> void:
 	monitoring = true
 	add_to_group(Groups.PICKUPS)
 
-	var model := AssetRegistry.get_model(item_id)
+	# Merged static model: one MeshInstance3D per pickup instead of ~4 part draws —
+	# the map carries ~100 pickups, so this saves a few hundred draw calls.
+	var model: Node3D
+	if item_id.begins_with("bodypart_"):
+		# Mutant-Harvest body-part: a RECOGNIZABLE severed LIMB (arm/leg) lying flat on the ground —
+		# pick it up and it grows onto your body. The limb is the visual; the skill icon is a small
+		# label hint. (Was an abstract bit + a big spinning icon — the user wanted an actual limb.)
+		var sid: String = item_id.substr(9)
+		var sdef: Dictionary = Settings.skill_def(sid)
+		var limb := ProceduralAbsorbed.build_limb_model(sid, sdef["color"])
+		limb.rotation = Vector3(deg_to_rad(82.0), 0.0, 0.0)  # lay it nearly flat on the ground
+		limb.scale = Vector3.ONE * 1.4  # ~1.3 m — a clearly-visible severed limb
+		model = Node3D.new()  # spinnable wrapper so the flat limb slowly turns on the ground
+		model.add_child(limb)
+		_hover = 0.12  # rest LOW, like a dropped limb
+		_build_skill_billboard(sid, sdef["color"])
+	else:
+		model = AssetRegistry.get_model_merged(item_id)
 	model.name = "ModelRoot"
 	add_child(model)
 	_model_root = model
-	model.position.y = HOVER
+	model.position.y = _hover
 	_apply_loot_glow()
 
 	if _has_spawn_pos:
@@ -86,7 +108,11 @@ func _process(delta: float) -> void:
 		return
 	_bob_t += delta
 	_model_root.rotation.y += SPIN_SPEED * delta
-	_model_root.position.y = HOVER + sin(_bob_t * BOB_SPEED) * BOB_AMP
+	_model_root.position.y = _hover + sin(_bob_t * BOB_SPEED) * BOB_AMP
+	# Mutant-Harvest: a small skill-icon hint hovers above the limb (the LIMB itself is the visual).
+	if _skill_icon != null:
+		_skill_icon.rotation.y += SPIN_SPEED * 1.6 * delta
+		_skill_icon.position.y = SKILL_ICON_H + sin(_bob_t * BOB_SPEED) * (BOB_AMP * 0.6)
 
 
 ## A rarity-coloured glow: an OmniLight for UNCOMMON+, plus a soft light pillar for
@@ -94,7 +120,11 @@ func _process(delta: float) -> void:
 func _apply_loot_glow() -> void:
 	var rarity: int
 	var col: Color
-	if item_id == "power_cache":
+	if item_id.begins_with("bodypart_"):
+		# Body-part: glow in the skill's signature colour + a pillar so it reads as a skill drop.
+		rarity = 2
+		col = Settings.skill_def(item_id.substr(9))["color"]
+	elif item_id == "power_cache":
 		# Power caches always glow brightly (gold) with a tall pillar so they're findable.
 		rarity = 2
 		col = Color(0.98, 0.80, 0.30)
@@ -129,6 +159,30 @@ func _apply_loot_glow() -> void:
 		bm.albedo_color = Color(col.r, col.g, col.b, 0.12)
 		beam.material_override = bm
 		add_child(beam)
+
+
+## Mutant-Harvest: a spinning, bright skill ICON floating above a dropped body-part so the player
+## reads WHICH skill it is from afar. A double-sided upright Sprite3D (not billboard) so the Y-spin
+## actually reads as a turning card. Render-only — skip on headless (no rendering).
+func _build_skill_billboard(skill_id: String, col: Color) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var path: String = "res://assets/ui/icons/skills/%s.svg" % skill_id
+	if not ResourceLoader.exists(path):
+		return
+	var tex := load(path) as Texture2D
+	if tex == null:
+		return
+	var spr := Sprite3D.new()
+	spr.texture = tex
+	spr.modulate = Color(col.r, col.g, col.b, 1.0)
+	spr.pixel_size = 0.0008  # 512 px → ~0.41 m: a small HINT above the limb, not the main visual
+	spr.shaded = false
+	spr.double_sided = true
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED  # always face the camera (readable hint)
+	spr.position = Vector3(0.0, SKILL_ICON_H, 0.0)
+	add_child(spr)
+	_skill_icon = spr
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -205,6 +259,22 @@ func _on_pickup_requested(player: Node, pickup: Node) -> void:
 		return
 	if not is_instance_valid(player):
 		return
+	# Mutant Harvest: a body-part is NOT inventory loot — grant the skill to the picker (routed
+	# to its own machine) and despawn. Goes BEFORE the inventory logic (like power_cache).
+	if item_id.begins_with("bodypart_"):
+		# M4.1: the pickup's `count` smuggles the limb TIER (1 common / 2 rare /
+		# 3 exotic) through the existing replication — no new fields.
+		SkillDirector.grant_skill(player.get_multiplayer_authority(), item_id.substr(9), count)
+		queue_free()
+		return
+	# Ammo shard: NOT inventory loot — resupplies the picker's weapons directly on
+	# ITS machine (reserve ammo lives in the owner's WeaponController).
+	if item_id == "loot_ammo_shard":
+		var gear := player.get_node_or_null("Gear")
+		if gear != null:
+			gear.grant_ammo.rpc_id(player.get_multiplayer_authority(), Settings.AMMO_SHARD_FRAC)
+		queue_free()
+		return
 	# Power cache: NOT inventory loot — consume it and trigger the opener's non-blocking
 	# reveal (the buff applies on THEIR client after the reveal animation finishes).
 	if item_id == "power_cache":
@@ -273,12 +343,39 @@ func _get_player_inventory(player: Node) -> Inventory:
 
 
 # ----------------------------------------------------------------- spawn helper
+## SNAP a spawn position onto the first layer-1 surface below it (pickups are static
+## Area3D — they never fall, so loot spawned above a roof edge / container gap / a
+## flyer's death point floated unreachably forever). Runs ON THE SERVER before the
+## position travels as replicated spawn data, so every peer builds the same snapped
+## pickup. Falls back to the pure terrain height when no collider is below (or when
+## physics isn't reachable, e.g. unit tests).
+static func snap_to_surface(reference: Node, pos: Vector3) -> Vector3:
+	if reference == null or not reference.is_inside_tree():
+		return pos
+	var world: World3D = (
+		reference.get_viewport().find_world_3d() if reference.get_viewport() else null
+	)
+	if world == null or world.direct_space_state == null:
+		return Vector3(pos.x, ProceduralTerrain.height_at(pos.x, pos.z), pos.z)
+	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP * 0.5, pos + Vector3.DOWN * 80.0)
+	q.collision_mask = 1
+	var hit: Dictionary = world.direct_space_state.intersect_ray(q)
+	if hit.is_empty():
+		return Vector3(pos.x, ProceduralTerrain.height_at(pos.x, pos.z), pos.z)
+	return hit["position"]
+
+
 ## Spawns a LootPickup of `id`/`count` at `pos` under `parent`. Used by enemy
 ## death drops and the wave reward system. Returns the spawned pickup (or null).
 ## Call on the server; the LootSpawner (MultiplayerSpawner) replicates it to peers.
-static func spawn_at(parent: Node, pos: Vector3, id: String, count: int = 1) -> LootPickup:
+## `snap` grounds the position on the first surface below (see snap_to_surface).
+static func spawn_at(
+	parent: Node, pos: Vector3, id: String, count: int = 1, snap: bool = true
+) -> LootPickup:
 	if parent == null:
 		return null
+	if snap:
+		pos = snap_to_surface(parent, pos)
 	# Preferred path: route through the Net/LootSpawner's custom spawn_function so the
 	# id/count/pos travel as REPLICATED spawn data (clients build the correct pickup).
 	# `parent` is the Net/Loot node; the spawner is its sibling Net/LootSpawner.

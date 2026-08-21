@@ -101,12 +101,26 @@ func _build_persistent_overlays() -> void:
 	if ResourceLoader.exists(LOADING_SCREEN):
 		_loading = (load(LOADING_SCREEN) as PackedScene).instantiate()
 		add_child(_loading)
+	# Controller UI navigation: focuses the top-most interactive Control the first time a pad
+	# input arrives with nothing focused, so every screen — including ones added later — is
+	# reachable without a per-screen grab_focus(). Inert for mouse/keyboard.
+	add_child((load("res://scripts/ui/ui_focus_pad.gd") as GDScript).new())
 	# "Military glass" FX veil (scanline/grain/vignette over the shell UI). Script-only
 	# CanvasLayer; self-gates on Settings.ui_fx_enabled + shell-vs-raid state.
 	add_child((load("res://scripts/ui/fx_overlay.gd") as GDScript).new())
+	# Cinematic raid vignette (dark cool edges) — the grade cue, shown only DURING a raid.
+	add_child((load("res://scripts/ui/raid_vignette.gd") as GDScript).new())
+	# Diegetic world-event beacons: a colored light pillar at every mid-raid event
+	# (the «не понимаю, где босс» fix) — render-only, listens to the Events bus.
+	add_child((load("res://scripts/fx/event_beacons.gd") as GDScript).new())
+	# Cold-cinematic colour grade (teal shadows / warm highlights / crushed blacks) — the
+	# headline "this world is graded" pass, world-only (below the HUD), raid-gated.
+	add_child((load("res://scripts/ui/cold_grade.gd") as GDScript).new())
 	# Quest reward popup — self-shows on Events.quest_reward_granted (Iter 3). Persistent so it
 	# works from both the QUESTS tab and the QuestDetail modal claim paths.
 	add_child((load("res://scripts/ui/reward_popup.gd") as GDScript).new())
+	# First-raid onboarding hints (fresh profiles only; inert once stamped).
+	add_child((load("res://scripts/ui/onboarding_hints.gd") as GDScript).new())
 
 
 func _show_menu() -> void:
@@ -203,7 +217,16 @@ func _park_window_offscreen() -> void:
 		return
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
-	DisplayServer.window_set_size(Vector2i(640, 360))
+	# Default agent window is tiny (fast); `--agent-res 1920x1080` sizes it for
+	# production-fidelity screenshots (players see ≥1080p — QA should too).
+	var res := Vector2i(640, 360)
+	var args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	for i in args.size():
+		if args[i] == "--agent-res" and i + 1 < args.size():
+			var parts := String(args[i + 1]).split("x")
+			if parts.size() == 2 and int(parts[0]) > 0 and int(parts[1]) > 0:
+				res = Vector2i(int(parts[0]), int(parts[1]))
+	DisplayServer.window_set_size(res)
 	# Far off any monitor so it never appears in front of the user. Offset each
 	# instance by its agent-port slot so multiple windows don't stack (only matters
 	# if someone drags them on-screen — off-screen they're invisible regardless).
@@ -272,6 +295,11 @@ func load_arena() -> void:
 	# whole squad sees each other's combat (co-op FX sync).
 	if DisplayServer.get_name() != "headless":
 		world_root.add_child(RemoteShotFX.new())
+		# Per-raid combat-FX pool (PERF): impacts, tracers, blasts, muzzle, shells. Local
+		# visuals only; it dies with the world. TracerPool is no longer instanced — FXPool
+		# owns the streak now (see weapon.gd for the parent-frame scaling bug that made the
+		# old one draw a dotted line), and running both would double-draw every shot.
+		world_root.add_child(FXPool.new())
 	# Local HUD + inventory overlay (skip on a dedicated headless server).
 	if DisplayServer.get_name() != "headless":
 		if ResourceLoader.exists("res://scenes/ui/HUD.tscn"):
@@ -375,8 +403,20 @@ func _on_match_started() -> void:
 ## between raids); RESTART reloads a fresh raid directly.
 func _on_summary_continue() -> void:
 	_raid_summary = null
+	_paused = false
+	get_tree().paused = false  # defensive, mirrors _on_quit_to_menu
+	# BUG FIX: the Hub used to OVERLAY a still-simulating arena — enemies / the bleed
+	# DoT kept dealing damage to the leftover player, so the "I'm hit" SFX looped in
+	# the lobby. Free the world FIRST, while the phase is still RESULTS (the teardown
+	# -driven win/lose re-fires hit the RESULTS idempotency guards), with an explicit
+	# remove_child so a same-frame re-deploy can never collide with the freed Arena's
+	# node name (the @Arena@2 spawner-path-parity bug — see load_arena).
+	for c in world_root.get_children():
+		world_root.remove_child(c)
+		c.queue_free()
 	if GameState.is_local_authority_server():
 		GameState.reset_match()
+	GameState.set_phase(GameState.Phase.LOBBY)  # the Hub IS the lobby (per-peer local)
 	open_hub(_deploy_mode)
 
 

@@ -168,7 +168,7 @@ func _build_upgrade_rows() -> void:
 		desc_lbl.name = "DescLbl"
 		desc_lbl.text = tr(info["desc"])
 		desc_lbl.add_theme_color_override("font_color", COL_DIM)
-		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.add_theme_font_size_override("font_size", 13)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		vname.add_child(desc_lbl)
 

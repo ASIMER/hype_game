@@ -1,0 +1,206 @@
+{
+	"intro": [
+		"Target acquired. Disposal protocol active.",
+		"Scanning. Meat, cloth, fear. Nothing of value.",
+		"You came for the iron. The iron came for you.",
+		"Scavenger registered. Priority: high.",
+		"My sensors know you now. You are already on my list.",
+		"Welcome to the breakdown line. You are raw material.",
+		"Recording this fight. Your ending goes to the archive.",
+		"The limb collector. At last. I have been waiting.",
+		"You breathe loudly. My sensors can hear it."
+	],
+	"phase2": [
+		"Armor shed. Switching to the second protocol.",
+		"You cracked the hull. Threat level raised.",
+		"Recalculating tactics. Your window is closing.",
+		"Reserve circuits online. Let us continue.",
+		"The first layer is gone. The steel beneath is thicker.",
+		"An error in my calculations. Correcting. Now.",
+		"You have earned phase two. You will not enjoy it."
+	],
+	"phase3_enrage": [
+		"Limiters off. There are no protocols anymore.",
+		"Overheating. I no longer care. You should.",
+		"Core in the red. I will take you with me.",
+		"Last circuit. I will become your grave.",
+		"Disabling safety. Beginning destruction.",
+		"Rage is not an emotion. It is a mode. It is on.",
+		"You pushed me this far. Now I push back."
+	],
+	"player_hiding": [
+		"Hiding? My sensors see heat. You are a candle.",
+		"Silence will not save you. I hear your pulse.",
+		"Corners are finite. My sensors are not.",
+		"You smell of gunpowder. The trail leads to you.",
+		"Hide your breathing. I have found the rest.",
+		"Thermal contact: three meters right. Coming.",
+		"Meat in cover is still meat. Just boxed.",
+		"You blink. I do not. I will find you first.",
+		"Hide-and-seek is not in my protocol. Come out."
+	],
+	"player_camping": [
+		"Standing still? That makes aiming easier.",
+		"You have grown roots. I am good at uprooting.",
+		"One position - one mistake. Your last one.",
+		"Coordinates locked. You are not moving.",
+		"Motionless. Almost a corpse. Efficient.",
+		"Your position is committed to memory. Forever.",
+		"Dug in? Then I will bring the collapse."
+	],
+	"player_rushing": [
+		"Running at me? Logic damaged. Like you.",
+		"Close quarters. My favorite radius.",
+		"Brave. Stupid. The difference shows in the autopsy.",
+		"Come closer. I have a use for your arms.",
+		"Distance zero. Beginning disassembly.",
+		"You are in my zone. Counting down from one.",
+		"A frontal attack. Logged as suicide."
+	],
+	"player_low_hp": [
+		"Your readings are dropping. I hear it in your steps.",
+		"Blood is poor coolant. You have a leak.",
+		"Organism resource near zero. Finishing up.",
+		"You are held together by willpower. I break that too.",
+		"A little more. Your chassis does not self-repair.",
+		"Save the bandages. They do not stop a protocol.",
+		"Red zone. Machines repair. You do not."
+	],
+	"player_downed": [
+		"You fell. Logged. Satisfying.",
+		"The downed do not run. Energy saved.",
+		"Crawl. I want to see how far you get.",
+		"Your friends will be late. I calculated everything.",
+		"Reassemble yourself, scavenger. Or stay down there.",
+		"One down. Proceeding through the list.",
+		"I hear you calling. Only I can hear you."
+	],
+	"boss_hit_weakpoint": [
+		"You found a node. It will not stay open.",
+		"Precise shot. Recording your signature.",
+		"Critical damage. You are learning. So am I.",
+		"That plate will close. Yours will not.",
+		"Pain? No. But inefficient. Correcting.",
+		"There was a weak point. Key word - was.",
+		"You aim at my schematics. I rewrite schematics.",
+		"Excellent shot. There will not be a second.",
+		"Tactic logged. Adaptation running."
+	],
+	"boss_healthy_taunt": [
+		"My hull is intact. Yours is temporary.",
+		"You are shooting armor. Armor does not count them.",
+		"Keep going. I am gathering statistics.",
+		"Your ammo will run out before my patience.",
+		"Your tactics are predictable. Computing all branches.",
+		"Metal does not tire. Meat always does.",
+		"I know no fear. You are its source.",
+		"Every shot you fire is a line in my report.",
+		"You are fighting a factory. The factory does not end.",
+		"How many limbs will you steal before the finale?",
+		"Your weapon is scrap. Mine is engineering."
+	],
+	"minion_died": [
+		"You broke one unit. I have a warehouse.",
+		"Scrap. Replaced in nine seconds.",
+		"It was expendable. So are you.",
+		"Minus one chassis. Minus zero threat.",
+		"You dismantle mine. I will dismantle you.",
+		"Their wreckage will pile on top of yours.",
+		"Thanks for the scrap metal. I will recycle it later."
+	],
+	"player_skill_used": [
+		"A stolen limb in combat. Looted iron.",
+		"You use our schematics. Against us.",
+		"Return the limbs, scavenger.",
+		"That ability was ours. I am taking it back.",
+		"You wear dead machines. I hear their protocol.",
+		"Stolen power. The warranty is void.",
+		"Implants made of scrap. They fail first."
+	],
+	"player_wall_break": [
+		"You break concrete. I break what hides behind it.",
+		"Destruction logged. The invoice is coming.",
+		"The walls were never yours. Neither is this sector.",
+		"That collapse was heard two blocks away. Thank you.",
+		"Keep breaking. There will be less cover.",
+		"You are opening a firing line. For you and for me.",
+		"The dust settled. Your silhouette did not."
+	],
+	"nemesis_return": [
+		"%s remembers your shot.",
+		"%s is back. It has studied you.",
+		"You ran from %s once. Not again.",
+		"%s wears scars in your handwriting.",
+		"We rebuilt %s. Improved it. For you.",
+		"%s does not forget. That is its protocol.",
+		"Hear that grinding? %s is coming to collect.",
+		"%s has flagged you. Priority: lifetime.",
+		"Your old acquaintance %s is back online.",
+		"%s has adapted. Your old trick is dead.",
+		"Hunter %s in position. Run, if you believe in that."
+	],
+	"nemesis_killed_you_before": [
+		"%s has dropped you before. Remember the dust?",
+		"You died to %s once. Repeating per protocol.",
+		"%s knows the taste of your blood on its plating.",
+		"Score: %s - one, you - zero.",
+		"%s will finish what it started last time.",
+		"You did not learn %s's lesson. Repeating it louder.",
+		"%s keeps your profile in memory."
+	],
+	"boss_dying": [
+		"Critical failure. But the data already left.",
+		"You broke the hull. The network will remember me.",
+		"I am not the last. I am only the first report.",
+		"My schematics will spread to every machine.",
+		"Shutting down. Your profile is already uploaded.",
+		"Take my limbs. They will remember you.",
+		"A machine's death is an update. Prepare.",
+		"Core fading. Your name is already in the archive.",
+		"You won the round. The factory wins the war."
+	],
+	"boss_defeated_you": [
+		"Target neutralized. Collecting samples.",
+		"You became scrap. As planned.",
+		"Protocol complete. Reclaiming the limbs.",
+		"Out of meat. Returning to patrol.",
+		"Logging: attempt failed. As always.",
+		"Your loot is mine now. Breakdown complete.",
+		"You were a statistic. Now you are a line item."
+	],
+	"storm": [
+		"The storm is here. It is on my side.",
+		"The storm jams your comms. Not mine.",
+		"Storm. Every machine is converging on your signal.",
+		"Weather is a protocol too. And it is mine.",
+		"The wind carries iron. Straight to you.",
+		"Evac is closing. So is your window.",
+		"No one will find you in the storm. Except me."
+	],
+	"generic_combat": [
+		"Keep moving. I need the practice.",
+		"Your pulse is my crosshair.",
+		"Counting the rounds in your magazine. Few left.",
+		"Every step you take is a step toward me.",
+		"Dodge. I will correct the trajectory.",
+		"Meat, cloth, bone. All predictable.",
+		"You fight a calculation. The calculation wins.",
+		"Your armor is foil. My hull is plate.",
+		"Retreat. Beyond this, everything is my sector.",
+		"I see you in three spectrums at once.",
+		"You are tired. I hear it in your tempo.",
+		"A mistake. Another. Soon the last one.",
+		"Do not holster the weapon. It will not save you anyway.",
+		"Your team is far away. Sensor-verified.",
+		"Metal versus meat. The outcome is known.",
+		"A little more data and I will know all of you.",
+		"Your sprints are adding up to a pattern.",
+		"I am not in a hurry. My charge is infinite.",
+		"Dust, blood, scrap. A standard report.",
+		"You are temporary. I am serial.",
+		"Reload. I will wait. Briefly.",
+		"I hear footsteps. Heavy ones. Carrying loot.",
+		"Your body is poor engineering. Too soft.",
+		"Surrender or run. Same result."
+	]
+}

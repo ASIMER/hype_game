@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://cplayer0arc01"]
+[gd_scene load_steps=12 format=3 uid="uid://cplayer0arc01"]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/combat/health.gd" id="2_health"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/player/player_animator.gd" id="6_animator"]
 [ext_resource type="Script" path="res://scripts/fx/camera_fx.gd" id="7_camfx"]
 [ext_resource type="Script" path="res://scripts/player/player_status.gd" id="8_status"]
+[ext_resource type="Script" path="res://scripts/player/player_skills.gd" id="9_skills"]
 
 [sub_resource type="CapsuleShape3D" id="Capsule_body"]
 radius = 0.4
@@ -71,6 +72,9 @@ properties/17/replication_mode = 1
 properties/18/path = NodePath(".:_painkillers")
 properties/18/spawn = true
 properties/18/replication_mode = 1
+properties/19/path = NodePath(".:skills")
+properties/19/spawn = true
+properties/19/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2
@@ -101,7 +105,7 @@ spot_range = 26.0
 spot_angle = 32.0
 
 [node name="SpringArm3D" type="SpringArm3D" parent="CameraPivot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 spring_length = 4.0
 collision_mask = 1
 
@@ -114,6 +118,9 @@ script = ExtResource("7_camfx")
 
 [node name="Status" type="Node" parent="."]
 script = ExtResource("8_status")
+
+[node name="Skills" type="Node" parent="."]
+script = ExtResource("9_skills")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2_health")

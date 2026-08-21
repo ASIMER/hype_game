@@ -50,6 +50,9 @@ func _ready() -> void:
 	if vp != null and not vp.size_changed.is_connected(_apply_hud_inset):
 		vp.size_changed.connect(_apply_hud_inset)
 	Events.local_player_spawned.connect(func(p): _player = p as Node3D)
+	# The fullscreen tactical map supersedes the minimap — hide while it's open
+	# (it rendered ON TOP of the map's extraction board).
+	Events.map_toggled.connect(func(open: bool) -> void: visible = not open)
 	Events.extraction_window_changed.connect(_on_window_changed)
 	Events.world_event_started.connect(_on_world_event_started)
 	Events.world_event_ended.connect(_on_world_event_ended)
@@ -128,9 +131,18 @@ func _event_ratio(node: Node) -> float:
 	return -1.0
 
 
+# PERF: a full minimap redraw iterates every enemy/zone/event — 10 Hz is visually
+# indistinguishable for a radar (the sweep/pulse stay smooth because _pulse keeps
+# real time and _draw derives everything from it at draw time).
+var _redraw_accum: float = 0.0
+
+
 func _process(delta: float) -> void:
 	_pulse += delta
-	queue_redraw()
+	_redraw_accum += delta
+	if _redraw_accum >= 0.1 and visible:
+		_redraw_accum = 0.0
+		queue_redraw()
 
 
 func _draw() -> void:
@@ -197,6 +209,18 @@ func _draw() -> void:
 				Color(1.0, 0.3, 0.3),
 				3.0
 			)
+	# Machine Nemesis (the rival): a pulsing blood-red ring so it reads apart from grunts.
+	for n in get_tree().get_nodes_in_group(Groups.NEMESIS):
+		if n is Node3D:
+			var npos := _to_radar((n as Node3D).global_position, _player.global_position, yaw)
+			var pr: float = 5.0 + 1.5 * (0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.006))
+			draw_arc(c + npos, pr, 0.0, TAU, 20, Color(0.95, 0.12, 0.12, 0.95), 2.0)
+			_blip(c, npos, Color(0.95, 0.12, 0.12), 3.0)
+	# Power-Core Beacon: amber blip (the prize to carry out).
+	for pc in get_tree().get_nodes_in_group(Groups.POWER_CORE):
+		if pc is Node3D:
+			var pcpos := _to_radar((pc as Node3D).global_position, _player.global_position, yaw)
+			_blip(c, pcpos, Color(1.0, 0.68, 0.18), 4.0)
 	# World-event blips (supply cache / miniboss / contested / surge).
 	_draw_event_blips(c, yaw)
 	# Teammates (co-op): green dots; clamped to the rim as an outward chevron when out of range,
@@ -351,4 +375,9 @@ func _to_radar(wpos: Vector3, ppos: Vector3, yaw: float) -> Vector2:
 
 
 func _blip(center: Vector2, offset: Vector2, color: Color, r: float) -> void:
+	# M7.6 colorblind assist: the hi-contrast toggle grows every blip and gives it
+	# a dark outline, so hue stops being the only channel.
+	if bool(SettingsManager.get_value("hi_contrast_markers")):
+		r *= 1.45
+		draw_circle(center + offset, r + 1.5, Color(0.0, 0.0, 0.0, 0.85))
 	draw_circle(center + offset, r, color)

@@ -174,6 +174,22 @@ var weapon_perks: Dictionary = {}
 ## always available) + the currently EQUIPPED variant per category (head/torso/arms/legs/
 ## paint). Replicated to other peers from the player at spawn so co-op shows your look.
 var unlocked_cosmetics: Array[String] = []
+# First-raid onboarding hint sequence completed (per profile; see onboarding_hints.gd).
+var onboarding_done := false
+# First HUNTER (nemesis) teaching card shown (per profile; hud.gd shows it once).
+var nemesis_intro_done := false
+# M4.7 KIA gestalt: best single-raid personal kill count (records beat consolation).
+var best_run_kills: int = 0
+# M7.8 usage telemetry: counter name → int (raids/extracts/deaths/skill_casts/…).
+# Local-profile only; read back via the harness quest-stats verb for data-driven tuning.
+var usage: Dictionary = {}
+
+
+## Bump a usage counter (persisted with the profile on the next save).
+func count_usage(key: String, by: int = 1) -> void:
+	usage[key] = int(usage.get(key, 0)) + by
+
+
 var equipped_cosmetics: Dictionary = {}
 ## Worn gear (AT-RISK): slot (Settings.GEAR_SLOTS) -> armor item id. Empty slot = none.
 var equipped_gear: Dictionary = {}
@@ -377,6 +393,31 @@ func cosmetic_cost(variant_id: String) -> int:
 
 
 ## Buy + unlock a cosmetic variant (spends currency). Returns true if newly unlocked.
+## Stamp the first-raid onboarding sequence as seen (persisted immediately).
+func mark_onboarding_done() -> void:
+	if onboarding_done:
+		return
+	onboarding_done = true
+	save_profile()
+
+
+## Stamp the first-hunter teaching card as seen (persisted immediately).
+func mark_nemesis_intro_done() -> void:
+	if nemesis_intro_done:
+		return
+	nemesis_intro_done = true
+	save_profile()
+
+
+## M4.7: fold a finished raid's kill count into the record. True when it's a NEW best.
+func record_run_kills(kills: int) -> bool:
+	if kills <= best_run_kills or kills <= 0:
+		return false
+	best_run_kills = kills
+	save_profile()
+	return true
+
+
 func unlock_cosmetic(variant_id: String) -> bool:
 	if is_cosmetic_unlocked(variant_id):
 		return false
@@ -1082,6 +1123,10 @@ func save_profile() -> void:
 		return  # --no-save test run: progression is not persisted
 	var cfg := ConfigFile.new()
 	cfg.set_value("meta", "save_version", Settings.GAME_VERSION)
+	cfg.set_value("meta", "onboarding_done", onboarding_done)
+	cfg.set_value("meta", "nemesis_intro_done", nemesis_intro_done)
+	cfg.set_value("meta", "best_run_kills", best_run_kills)
+	cfg.set_value("meta", "usage", usage)
 	cfg.set_value("meta", "currency", currency)
 	cfg.set_value("meta", "unlocked", unlocked)
 	cfg.set_value("meta", "upgrades", upgrades)
@@ -1139,6 +1184,11 @@ func load_profile() -> void:
 			)
 	else:
 		_migrate(cfg, save_ver)
+	onboarding_done = bool(cfg.get_value("meta", "onboarding_done", false))
+	nemesis_intro_done = bool(cfg.get_value("meta", "nemesis_intro_done", false))
+	best_run_kills = int(cfg.get_value("meta", "best_run_kills", 0))
+	var raw_usage: Variant = cfg.get_value("meta", "usage", {})
+	usage = raw_usage if raw_usage is Dictionary else {}
 	currency = int(cfg.get_value("meta", "currency", 0))
 	var raw_unlocked: Array = cfg.get_value("meta", "unlocked", [])
 	unlocked.clear()

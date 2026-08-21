@@ -1,0 +1,4422 @@
+{
+ "label": "e0_baseline",
+ "port": 24700,
+ "captured": "2026-08-21 07:27:54",
+ "mutator": "",
+ "local_player": "1",
+ "teleport_gate": {
+  "speed_m_s": 4.0,
+  "speed_source": "Settings.ENEMY_STATS[robot_grunt].speed",
+  "margin_x": 1.5,
+  "min_allow_m": 2.0,
+  "rule": "gain = hypot(horizontal, RISE) per sample; gain > speed*dt*margin is a stuck-watchdog relocation -> verdict can never be PASS"
+ },
+ "verdicts": {
+  "ground_control": {
+   "verdict": "PASS",
+   "kind": "walked",
+   "route": "walked",
+   "expect_fail": false
+  },
+  "tower_floor2": {
+   "verdict": "PASS",
+   "kind": "walked",
+   "route": "walked",
+   "expect_fail": false
+  },
+  "tower_roof": {
+   "verdict": "FAIL",
+   "kind": "wedge",
+   "route": "none",
+   "expect_fail": false
+  },
+  "warehouse_roof": {
+   "verdict": "PASS",
+   "kind": "walked",
+   "route": "walked",
+   "expect_fail": false
+  },
+  "house_wing": {
+   "verdict": "PASS",
+   "kind": "walked",
+   "route": "walked",
+   "expect_fail": false
+  },
+  "yard_deck": {
+   "verdict": "PASS",
+   "kind": "walked",
+   "route": "walked",
+   "expect_fail": false
+  },
+  "crate_top_negctl": {
+   "verdict": "FAIL",
+   "kind": "not-in-navmesh",
+   "route": "none",
+   "expect_fail": true
+  }
+ },
+ "watchdog_carried_native": [
+  {
+   "probe": "tower_floor2",
+   "verdict_watchdog_free": "PASS",
+   "teleport": {
+    "t": 7.92,
+    "gain_m": 10.1,
+    "horiz_m": 10.1,
+    "climb_m": 0.0,
+    "dt_s": 0.77,
+    "allowed_m": 4.6,
+    "budget_x": 3.29,
+    "after_closure": false,
+    "from": [
+     -37.71,
+     -0.05,
+     -53.28
+    ],
+    "to": [
+     -29.93,
+     -0.05,
+     -46.84
+    ]
+   },
+   "path_was_progressing": true
+  },
+  {
+   "probe": "tower_roof",
+   "verdict_watchdog_free": "FAIL",
+   "teleport": {
+    "t": 8.57,
+    "gain_m": 12.01,
+    "horiz_m": 7.9,
+    "climb_m": 9.05,
+    "dt_s": 0.8,
+    "allowed_m": 4.8,
+    "budget_x": 3.75,
+    "after_closure": false,
+    "from": [
+     -38.25,
+     -0.05,
+     -53.28
+    ],
+    "to": [
+     -32.84,
+     9.0,
+     -47.53
+    ]
+   },
+   "path_was_progressing": true
+  },
+  {
+   "probe": "crate_top_negctl",
+   "verdict_watchdog_free": "FAIL",
+   "teleport": {
+    "t": 8.72,
+    "gain_m": 7.53,
+    "horiz_m": 7.53,
+    "climb_m": 0.0,
+    "dt_s": 0.78,
+    "allowed_m": 4.69,
+    "budget_x": 2.41,
+    "after_closure": false,
+    "from": [
+     43.9,
+     -0.05,
+     50.55
+    ],
+    "to": [
+     47.38,
+     -0.05,
+     43.87
+    ]
+   },
+   "path_was_progressing": null
+  }
+ ],
+ "nav_gate": {
+  "region": {
+   "baking": false,
+   "enabled": true,
+   "map_iteration": 23,
+   "map_valid": true,
+   "polygons": 13470
+  },
+  "player_snap": [
+   57.997,
+   0.185,
+   61.996
+  ]
+ },
+ "probes": [
+  {
+   "probe": "ground_control",
+   "expect_fail": false,
+   "immune": true,
+   "player_pos": [
+    30.0,
+    -0.36,
+    30.0
+   ],
+   "stand_drift_xz": 0.0,
+   "enemy": "RobotEnemy",
+   "immunised": true,
+   "walk_speed": 3.8,
+   "walk_speed_source": "Settings.ENEMY_STATS[robot_grunt].speed x 0.95 slow",
+   "samples": [
+    {
+     "t": 0.01,
+     "dist": 10.81,
+     "dy": -0.82,
+     "pos": [
+      19.28,
+      -1.18,
+      31.09
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 0.78,
+     "dist": 8.45,
+     "dy": 0.08,
+     "pos": [
+      21.66,
+      -0.28,
+      31.33
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 1.54,
+     "dist": 5.53,
+     "dy": 0.01,
+     "pos": [
+      24.54,
+      -0.35,
+      30.91
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 2.33,
+     "dist": 2.56,
+     "dy": 0.07,
+     "pos": [
+      27.48,
+      -0.29,
+      30.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.09,
+     "dist": 2.18,
+     "dy": 0.06,
+     "pos": [
+      27.85,
+      -0.3,
+      30.38
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 3.88,
+     "dist": 2.18,
+     "dy": 0.06,
+     "pos": [
+      27.85,
+      -0.3,
+      30.38
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 4.68,
+     "dist": 2.18,
+     "dy": 0.06,
+     "pos": [
+      27.85,
+      -0.3,
+      30.38
+     ],
+     "state": 2,
+     "target": "1"
+    }
+   ],
+   "nav": [
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 10,
+     "reachable": true,
+     "target": [
+      30.0,
+      -0.361,
+      30.0
+     ],
+     "player_snap": [
+      29.997,
+      0.092,
+      30.007
+     ],
+     "t": 0.01
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 10,
+     "reachable": true,
+     "target": [
+      30.0,
+      -0.361,
+      30.0
+     ],
+     "player_snap": [
+      29.997,
+      0.092,
+      30.007
+     ],
+     "t": 1.54
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 10,
+     "reachable": true,
+     "target": [
+      30.0,
+      -0.361,
+      30.0
+     ],
+     "player_snap": [
+      29.997,
+      0.092,
+      30.007
+     ],
+     "t": 3.09
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 10,
+     "reachable": true,
+     "target": [
+      30.0,
+      -0.361,
+      30.0
+     ],
+     "player_snap": [
+      29.997,
+      0.092,
+      30.007
+     ],
+     "t": 3.88
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 10,
+     "reachable": true,
+     "target": [
+      30.0,
+      -0.361,
+      30.0
+     ],
+     "player_snap": [
+      29.997,
+      0.092,
+      30.007
+     ],
+     "t": 4.68
+    }
+   ],
+   "teleports": 0,
+   "teleport_detected": false,
+   "teleport": null,
+   "first_teleport_s": null,
+   "walk_headroom": 1.0,
+   "foreign_swept": 0,
+   "max_unreachable_streak": 0,
+   "local_player": "1",
+   "dist0": 10.81,
+   "dist_min": 2.18,
+   "closed_m": 8.63,
+   "last_pos": [
+    27.85,
+    -0.3,
+    30.38
+   ],
+   "arrived_s": 2.33,
+   "elapsed_s": 4.68,
+   "best_dy": 0.01,
+   "reachable_last": true,
+   "path_len_first": 10,
+   "path_len_last": 10,
+   "player_snap": [
+    30.0,
+    0.09,
+    30.01
+   ],
+   "confirm_move": 0.0,
+   "confirm_attack": true,
+   "route": "walked",
+   "verdict": "PASS",
+   "kind": "walked",
+   "diagnosis": "WALKED to 2.18 m on the player's level at t=2.3s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 3.8 m/s walk budget (loudest 1.00x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe",
+   "attempt": 1,
+   "attempts_voided": 0,
+   "void_attempts": [],
+   "native": {
+    "verdict": "PASS",
+    "kind": "walked",
+    "route": "walked",
+    "teleport": null,
+    "watchdog_relocated": false,
+    "arrived_s": 2.35,
+    "reachable_last": true,
+    "path_len_first": 10,
+    "path_len_last": 10,
+    "path_was_progressing": null,
+    "diagnosis": "WALKED to 2.13 m on the player's level at t=2.4s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 4.0 m/s walk budget (loudest 1.00x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe"
+   },
+   "watchdog_relocated_native": false
+  },
+  {
+   "probe": "tower_floor2",
+   "expect_fail": false,
+   "immune": true,
+   "player_pos": [
+    -38.0,
+    3.0,
+    -43.01
+   ],
+   "stand_drift_xz": 0.01,
+   "enemy": "RobotEnemy",
+   "immunised": true,
+   "walk_speed": 3.8,
+   "walk_speed_source": "Settings.ENEMY_STATS[robot_grunt].speed x 0.95 slow",
+   "samples": [
+    {
+     "t": 0.01,
+     "dist": 12.0,
+     "dy": -3.06,
+     "pos": [
+      -36.53,
+      -0.06,
+      -31.5
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 0.78,
+     "dist": 10.56,
+     "dy": -3.05,
+     "pos": [
+      -34.39,
+      -0.05,
+      -33.56
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 1.55,
+     "dist": 9.83,
+     "dy": -3.05,
+     "pos": [
+      -32.3,
+      -0.05,
+      -35.6
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 2.35,
+     "dist": 9.01,
+     "dy": -3.05,
+     "pos": [
+      -31.04,
+      -0.05,
+      -38.16
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.11,
+     "dist": 7.88,
+     "dy": -3.05,
+     "pos": [
+      -30.99,
+      -0.05,
+      -41.08
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.9,
+     "dist": 7.76,
+     "dy": -3.05,
+     "pos": [
+      -30.94,
+      -0.05,
+      -44.05
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 4.68,
+     "dist": 8.72,
+     "dy": -3.05,
+     "pos": [
+      -30.89,
+      -0.05,
+      -47.03
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 5.46,
+     "dist": 10.46,
+     "dy": -3.05,
+     "pos": [
+      -30.84,
+      -0.05,
+      -50.01
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 6.22,
+     "dist": 12.46,
+     "dy": -3.05,
+     "pos": [
+      -30.97,
+      -0.05,
+      -52.83
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.0,
+     "dist": 11.43,
+     "dy": -3.05,
+     "pos": [
+      -33.9,
+      -0.05,
+      -53.24
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.78,
+     "dist": 10.76,
+     "dy": -3.05,
+     "pos": [
+      -36.88,
+      -0.05,
+      -53.27
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 8.61,
+     "dist": 10.44,
+     "dy": -3.05,
+     "pos": [
+      -39.45,
+      -0.05,
+      -52.89
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 9.38,
+     "dist": 9.85,
+     "dy": -3.0,
+     "pos": [
+      -42.18,
+      0.0,
+      -51.41
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.18,
+     "dist": 10.92,
+     "dy": -3.0,
+     "pos": [
+      -44.99,
+      0.0,
+      -50.84
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.95,
+     "dist": 10.82,
+     "dy": -2.12,
+     "pos": [
+      -46.35,
+      0.88,
+      -49.55
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 11.73,
+     "dist": 9.8,
+     "dy": -0.72,
+     "pos": [
+      -46.63,
+      2.28,
+      -47.59
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 12.52,
+     "dist": 8.25,
+     "dy": 0.0,
+     "pos": [
+      -45.51,
+      3.0,
+      -46.42
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 13.37,
+     "dist": 5.19,
+     "dy": 0.0,
+     "pos": [
+      -42.72,
+      3.0,
+      -45.17
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 14.13,
+     "dist": 2.28,
+     "dy": 0.0,
+     "pos": [
+      -40.07,
+      3.0,
+      -43.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 14.93,
+     "dist": 2.2,
+     "dy": 0.0,
+     "pos": [
+      -40.0,
+      3.0,
+      -43.92
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 15.72,
+     "dist": 2.2,
+     "dy": 0.0,
+     "pos": [
+      -40.0,
+      3.0,
+      -43.92
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 16.55,
+     "dist": 2.2,
+     "dy": 0.0,
+     "pos": [
+      -40.0,
+      3.0,
+      -43.92
+     ],
+     "state": 2,
+     "target": "1"
+    }
+   ],
+   "nav": [
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 0.01
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 1.55
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 3.11
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 4.68
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 6.22
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 7.78
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 9.38
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 10.95
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 12.52
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 14.13
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 14.93
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 15.72
+    },
+    {
+     "agent_map_iteration": 23,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 25,
+     "reachable": true,
+     "target": [
+      -38.0,
+      3.0,
+      -43.009
+     ],
+     "player_snap": [
+      -38.0,
+      3.23,
+      -43.009
+     ],
+     "t": 16.55
+    }
+   ],
+   "teleports": 0,
+   "teleport_detected": false,
+   "teleport": null,
+   "first_teleport_s": null,
+   "walk_headroom": 1.06,
+   "foreign_swept": 5,
+   "max_unreachable_streak": 0,
+   "local_player": "1",
+   "dist0": 12.0,
+   "dist_min": 2.2,
+   "closed_m": 9.8,
+   "last_pos": [
+    -40.0,
+    3.0,
+    -43.92
+   ],
+   "arrived_s": 14.13,
+   "elapsed_s": 16.55,
+   "best_dy": 0.0,
+   "reachable_last": true,
+   "path_len_first": 25,
+   "path_len_last": 25,
+   "player_snap": [
+    -38.0,
+    3.23,
+    -43.01
+   ],
+   "confirm_move": 0.0,
+   "confirm_attack": true,
+   "route": "walked",
+   "verdict": "PASS",
+   "kind": "walked",
+   "diagnosis": "WALKED to 2.20 m on the player's level at t=14.1s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 3.8 m/s walk budget (loudest 1.06x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe",
+   "attempt": 1,
+   "attempts_voided": 0,
+   "void_attempts": [],
+   "native": {
+    "verdict": "INCONCLUSIVE",
+    "kind": "teleport-assisted",
+    "route": "teleport-assisted",
+    "teleport": {
+     "t": 7.92,
+     "gain_m": 10.1,
+     "horiz_m": 10.1,
+     "climb_m": 0.0,
+     "dt_s": 0.77,
+     "allowed_m": 4.6,
+     "budget_x": 3.29,
+     "after_closure": false,
+     "from": [
+      -37.71,
+      -0.05,
+      -53.28
+     ],
+     "to": [
+      -29.93,
+      -0.05,
+      -46.84
+     ]
+    },
+    "watchdog_relocated": true,
+    "arrived_s": null,
+    "reachable_last": true,
+    "path_len_first": 25,
+    "path_len_last": 17,
+    "path_was_progressing": true,
+    "diagnosis": "stuck-watchdog RELOCATED the machine at t=7.9s: [-37.71, -0.05, -53.28] -> [-29.93, -0.05, -46.84] in 0.77s = 10.1 m (10.1 sideways + 0.0 climb) where its own 4.0 m/s allows 4.6 m \u2014 3.3x the walk budget, so the route was NOT walked. Only the navmesh verdict stands (reachable=True, path_len 25->17); dist 10.91->7.75 m \u2014 NOTE its navmesh path was still SHRINKING when the watchdog fired: robot_enemy._update_stuck judges progress by DIRECT distance, which any detour around a footprint trips by design"
+   },
+   "watchdog_relocated_native": true
+  },
+  {
+   "probe": "tower_roof",
+   "expect_fail": false,
+   "immune": true,
+   "player_pos": [
+    -38.0,
+    9.0,
+    -43.0
+   ],
+   "stand_drift_xz": 0.0,
+   "enemy": "RobotEnemy",
+   "immunised": true,
+   "walk_speed": 3.8,
+   "walk_speed_source": "Settings.ENEMY_STATS[robot_grunt].speed x 0.95 slow",
+   "samples": [
+    {
+     "t": 0.01,
+     "dist": 14.74,
+     "dy": -9.06,
+     "pos": [
+      -36.57,
+      -0.06,
+      -31.46
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 0.78,
+     "dist": 13.58,
+     "dy": -9.05,
+     "pos": [
+      -34.43,
+      -0.05,
+      -33.53
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 1.55,
+     "dist": 13.01,
+     "dy": -9.05,
+     "pos": [
+      -32.34,
+      -0.05,
+      -35.56
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 2.33,
+     "dist": 12.45,
+     "dy": -9.05,
+     "pos": [
+      -31.04,
+      -0.05,
+      -38.05
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.1,
+     "dist": 11.63,
+     "dy": -9.05,
+     "pos": [
+      -30.99,
+      -0.05,
+      -40.96
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.88,
+     "dist": 11.51,
+     "dy": -9.05,
+     "pos": [
+      -30.94,
+      -0.05,
+      -43.93
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 4.66,
+     "dist": 12.15,
+     "dy": -9.05,
+     "pos": [
+      -30.89,
+      -0.05,
+      -46.91
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 5.45,
+     "dist": 13.43,
+     "dy": -9.05,
+     "pos": [
+      -30.85,
+      -0.05,
+      -49.89
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 6.21,
+     "dist": 15.07,
+     "dy": -9.05,
+     "pos": [
+      -30.96,
+      -0.05,
+      -52.78
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.01,
+     "dist": 14.26,
+     "dy": -9.05,
+     "pos": [
+      -33.91,
+      -0.05,
+      -53.24
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.78,
+     "dist": 13.74,
+     "dy": -9.05,
+     "pos": [
+      -36.82,
+      -0.05,
+      -53.27
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 8.62,
+     "dist": 13.43,
+     "dy": -9.05,
+     "pos": [
+      -39.56,
+      -0.05,
+      -52.8
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 9.38,
+     "dist": 12.96,
+     "dy": -9.0,
+     "pos": [
+      -41.93,
+      0.0,
+      -51.46
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.18,
+     "dist": 13.8,
+     "dy": -9.0,
+     "pos": [
+      -44.91,
+      0.0,
+      -50.85
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.95,
+     "dist": 13.39,
+     "dy": -8.15,
+     "pos": [
+      -46.33,
+      0.85,
+      -49.59
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 11.75,
+     "dist": 11.87,
+     "dy": -6.72,
+     "pos": [
+      -46.63,
+      2.28,
+      -47.59
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 12.53,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 13.33,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 14.1,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 14.9,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 15.66,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 16.46,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 17.23,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 18.02,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 18.78,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 19.56,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 20.35,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 21.16,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 21.95,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 22.76,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 23.53,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 24.35,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 25.11,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 25.95,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 26.73,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 27.56,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 28.35,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 29.15,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 29.91,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 30.7,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 31.46,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 32.3,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 33.06,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 33.9,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 34.66,
+     "dist": 11.25,
+     "dy": -6.27,
+     "pos": [
+      -46.47,
+      2.73,
+      -46.95
+     ],
+     "state": 1,
+     "target": "1"
+    }
+   ],
+   "nav": [
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 0.01
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 1.55
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 3.1
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 4.66
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 6.21
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 7.78
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 9.38
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 10.95
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 12.53
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 14.1
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 15.66
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 17.23
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 18.78
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 20.35
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 21.95
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 23.53
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 25.11
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 26.73
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 28.35
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 29.91
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 31.46
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 33.06
+    },
+    {
+     "agent_map_iteration": 26,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 41,
+     "reachable": true,
+     "target": [
+      -38.0,
+      9.0,
+      -43.0
+     ],
+     "player_snap": [
+      -38.0,
+      9.23,
+      -43.0
+     ],
+     "t": 34.66
+    }
+   ],
+   "teleports": 0,
+   "teleport_detected": false,
+   "teleport": null,
+   "first_teleport_s": null,
+   "walk_headroom": 1.02,
+   "foreign_swept": 15,
+   "max_unreachable_streak": 0,
+   "local_player": "1",
+   "dist0": 14.74,
+   "dist_min": 11.25,
+   "closed_m": 3.49,
+   "last_pos": [
+    -46.47,
+    2.73,
+    -46.95
+   ],
+   "arrived_s": null,
+   "elapsed_s": 34.66,
+   "best_dy": 6.27,
+   "reachable_last": true,
+   "path_len_first": 41,
+   "path_len_last": 41,
+   "player_snap": [
+    -38.0,
+    9.23,
+    -43.0
+   ],
+   "verdict": "FAIL",
+   "route": "none",
+   "kind": "wedge",
+   "diagnosis": "geometric wedge: path exists (reachable=true) but distance flattened (min 11.51 m in the first 10s -> 11.25 m in the last 10s of a 34.7s window); machine stuck at [-46.47, 2.73, -46.95], player at [-38.0, 9.0, -43.0]",
+   "attempt": 2,
+   "attempts_voided": 1,
+   "void_attempts": [
+    {
+     "attempt": 1,
+     "verdict": "INCONCLUSIVE",
+     "kind": "teleport-assisted",
+     "teleport": {
+      "t": 7.76,
+      "gain_m": 15.24,
+      "horiz_m": 12.26,
+      "climb_m": 9.05,
+      "dt_s": 0.77,
+      "allowed_m": 4.36,
+      "budget_x": 5.24,
+      "after_closure": false,
+      "from": [
+       -37.6,
+       -0.05,
+       -53.28
+      ],
+      "to": [
+       -45.68,
+       9.0,
+       -44.05
+      ]
+     },
+     "diagnosis": "stuck-watchdog RELOCATED the machine at t=7.8s: [-37.6, -0.05, -53.28] -> [-45.68, 9.0, -44.05] in 0.77s = 15.2 m (12.3 sideways + 9.1 climb) where its own 3.8 m/s allows 4.4 m \u2014 5.2x the walk budget, so the route was NOT walked. Only the navmesh verdict stands (reachable=True, path_len 41->33); dist 13.82->7.75 m \u2014 NOTE its navmesh path was still SHRINKING when the watchdog fired: robot_enemy._update_stuck judges progress by DIRECT distance, which any detour around a footprint trips by design"
+    }
+   ],
+   "native": {
+    "verdict": "INCONCLUSIVE",
+    "kind": "teleport-assisted",
+    "route": "teleport-assisted",
+    "teleport": {
+     "t": 8.57,
+     "gain_m": 12.01,
+     "horiz_m": 7.9,
+     "climb_m": 9.05,
+     "dt_s": 0.8,
+     "allowed_m": 4.8,
+     "budget_x": 3.75,
+     "after_closure": false,
+     "from": [
+      -38.25,
+      -0.05,
+      -53.28
+     ],
+     "to": [
+      -32.84,
+      9.0,
+      -47.53
+     ]
+    },
+    "watchdog_relocated": true,
+    "arrived_s": null,
+    "reachable_last": true,
+    "path_len_first": 41,
+    "path_len_last": 33,
+    "path_was_progressing": true,
+    "diagnosis": "stuck-watchdog RELOCATED the machine at t=8.6s: [-38.25, -0.05, -53.28] -> [-32.84, 9.0, -47.53] in 0.80s = 12.0 m (7.9 sideways + 9.1 climb) where its own 4.0 m/s allows 4.8 m \u2014 3.8x the walk budget, so the route was NOT walked. Only the navmesh verdict stands (reachable=True, path_len 41->33); dist 14.74->6.87 m \u2014 NOTE its navmesh path was still SHRINKING when the watchdog fired: robot_enemy._update_stuck judges progress by DIRECT distance, which any detour around a footprint trips by design"
+   },
+   "watchdog_relocated_native": true
+  },
+  {
+   "probe": "warehouse_roof",
+   "expect_fail": false,
+   "immune": true,
+   "player_pos": [
+    50.0,
+    5.0,
+    -34.0
+   ],
+   "stand_drift_xz": 0.0,
+   "enemy": "RobotEnemy",
+   "immunised": true,
+   "walk_speed": 3.8,
+   "walk_speed_source": "Settings.ENEMY_STATS[robot_grunt].speed x 0.95 slow",
+   "samples": [
+    {
+     "t": 0.02,
+     "dist": 16.93,
+     "dy": -4.66,
+     "pos": [
+      66.16,
+      0.34,
+      -32.06
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 0.8,
+     "dist": 14.78,
+     "dy": -4.96,
+     "pos": [
+      63.52,
+      0.04,
+      -30.68
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 1.57,
+     "dist": 12.96,
+     "dy": -5.05,
+     "pos": [
+      60.96,
+      -0.05,
+      -29.28
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 2.37,
+     "dist": 11.57,
+     "dy": -5.05,
+     "pos": [
+      58.33,
+      -0.05,
+      -27.75
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.14,
+     "dist": 10.89,
+     "dy": -5.05,
+     "pos": [
+      55.81,
+      -0.05,
+      -26.3
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.92,
+     "dist": 9.95,
+     "dy": -5.05,
+     "pos": [
+      52.91,
+      -0.05,
+      -25.93
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 4.7,
+     "dist": 8.16,
+     "dy": -5.05,
+     "pos": [
+      50.46,
+      -0.05,
+      -27.61
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 5.49,
+     "dist": 7.12,
+     "dy": -5.05,
+     "pos": [
+      48.06,
+      -0.05,
+      -29.38
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 6.25,
+     "dist": 7.22,
+     "dy": -5.05,
+     "pos": [
+      45.72,
+      -0.05,
+      -31.11
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.05,
+     "dist": 8.48,
+     "dy": -5.05,
+     "pos": [
+      43.28,
+      -0.05,
+      -32.92
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.82,
+     "dist": 9.56,
+     "dy": -5.05,
+     "pos": [
+      41.89,
+      -0.05,
+      -34.29
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 8.62,
+     "dist": 7.5,
+     "dy": -3.74,
+     "pos": [
+      43.58,
+      1.26,
+      -35.03
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 9.4,
+     "dist": 5.16,
+     "dy": -2.34,
+     "pos": [
+      45.55,
+      2.66,
+      -35.14
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.24,
+     "dist": 2.88,
+     "dy": -0.89,
+     "pos": [
+      47.57,
+      4.11,
+      -35.26
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 11.0,
+     "dist": 2.19,
+     "dy": -0.42,
+     "pos": [
+      48.24,
+      4.58,
+      -35.23
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 11.79,
+     "dist": 2.19,
+     "dy": -0.42,
+     "pos": [
+      48.24,
+      4.58,
+      -35.23
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 12.64,
+     "dist": 2.19,
+     "dy": -0.42,
+     "pos": [
+      48.24,
+      4.58,
+      -35.23
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 13.55,
+     "dist": 2.19,
+     "dy": -0.42,
+     "pos": [
+      48.24,
+      4.58,
+      -35.23
+     ],
+     "state": 2,
+     "target": "1"
+    }
+   ],
+   "nav": [
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 0.02
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 1.57
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 3.14
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 4.7
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 6.25
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 7.82
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 9.4
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 11.0
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 11.79
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 12.64
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      50.0,
+      5.0,
+      -34.0
+     ],
+     "player_snap": [
+      50.003,
+      5.216,
+      -34.036
+     ],
+     "t": 13.55
+    }
+   ],
+   "teleports": 0,
+   "teleport_detected": false,
+   "teleport": null,
+   "first_teleport_s": null,
+   "walk_headroom": 1.0,
+   "foreign_swept": 7,
+   "max_unreachable_streak": 0,
+   "local_player": "1",
+   "dist0": 16.93,
+   "dist_min": 2.19,
+   "closed_m": 14.74,
+   "last_pos": [
+    48.24,
+    4.58,
+    -35.23
+   ],
+   "arrived_s": 11.0,
+   "elapsed_s": 13.55,
+   "best_dy": 0.42,
+   "reachable_last": true,
+   "path_len_first": 21,
+   "path_len_last": 21,
+   "player_snap": [
+    50.0,
+    5.22,
+    -34.04
+   ],
+   "confirm_move": 0.0,
+   "confirm_attack": true,
+   "route": "walked",
+   "verdict": "PASS",
+   "kind": "walked",
+   "diagnosis": "WALKED to 2.19 m on the player's level at t=11.0s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 3.8 m/s walk budget (loudest 1.00x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe",
+   "attempt": 1,
+   "attempts_voided": 0,
+   "void_attempts": [],
+   "native": {
+    "verdict": "PASS",
+    "kind": "walked",
+    "route": "walked",
+    "teleport": null,
+    "watchdog_relocated": false,
+    "arrived_s": 10.2,
+    "reachable_last": true,
+    "path_len_first": 21,
+    "path_len_last": 4,
+    "path_was_progressing": null,
+    "diagnosis": "WALKED to 2.16 m on the player's level at t=10.2s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 4.0 m/s walk budget (loudest 1.04x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe"
+   },
+   "watchdog_relocated_native": false
+  },
+  {
+   "probe": "house_wing",
+   "expect_fail": false,
+   "immune": true,
+   "player_pos": [
+    -49.5,
+    3.0,
+    23.85
+   ],
+   "stand_drift_xz": 0.0,
+   "enemy": "RobotEnemy",
+   "immunised": true,
+   "walk_speed": 3.8,
+   "walk_speed_source": "Settings.ENEMY_STATS[robot_grunt].speed x 0.95 slow",
+   "samples": [
+    {
+     "t": 0.02,
+     "dist": 15.64,
+     "dy": -2.87,
+     "pos": [
+      -35.81,
+      0.13,
+      30.84
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 0.8,
+     "dist": 13.07,
+     "dy": -3.05,
+     "pos": [
+      -38.66,
+      -0.05,
+      30.5
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 1.57,
+     "dist": 10.41,
+     "dy": -3.05,
+     "pos": [
+      -41.48,
+      -0.05,
+      29.75
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 2.35,
+     "dist": 7.85,
+     "dy": -3.03,
+     "pos": [
+      -44.33,
+      -0.03,
+      28.91
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.12,
+     "dist": 5.69,
+     "dy": -3.0,
+     "pos": [
+      -47.1,
+      0.0,
+      28.04
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.94,
+     "dist": 4.46,
+     "dy": -3.0,
+     "pos": [
+      -50.06,
+      0.0,
+      27.1
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 4.72,
+     "dist": 5.1,
+     "dy": -3.0,
+     "pos": [
+      -52.89,
+      0.0,
+      26.2
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 5.5,
+     "dist": 6.26,
+     "dy": -3.0,
+     "pos": [
+      -54.82,
+      0.0,
+      25.23
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 6.27,
+     "dist": 4.97,
+     "dy": -2.14,
+     "pos": [
+      -53.97,
+      0.86,
+      24.23
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.05,
+     "dist": 2.61,
+     "dy": -0.73,
+     "pos": [
+      -52.0,
+      2.27,
+      24.01
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.82,
+     "dist": 2.18,
+     "dy": -0.46,
+     "pos": [
+      -51.63,
+      2.54,
+      23.99
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 8.65,
+     "dist": 2.18,
+     "dy": -0.46,
+     "pos": [
+      -51.63,
+      2.54,
+      23.99
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 9.44,
+     "dist": 2.18,
+     "dy": -0.46,
+     "pos": [
+      -51.63,
+      2.54,
+      23.99
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 10.27,
+     "dist": 2.18,
+     "dy": -0.46,
+     "pos": [
+      -51.63,
+      2.54,
+      23.99
+     ],
+     "state": 2,
+     "target": "1"
+    }
+   ],
+   "nav": [
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 0.02
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 1.57
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 3.12
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 4.72
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 6.27
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 7.82
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 8.65
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 9.44
+    },
+    {
+     "agent_map_iteration": 29,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 16,
+     "reachable": true,
+     "target": [
+      -49.5,
+      3.0,
+      23.851
+     ],
+     "player_snap": [
+      -49.5,
+      3.101,
+      23.885
+     ],
+     "t": 10.27
+    }
+   ],
+   "teleports": 0,
+   "teleport_detected": false,
+   "teleport": null,
+   "first_teleport_s": null,
+   "walk_headroom": 1.0,
+   "foreign_swept": 3,
+   "max_unreachable_streak": 0,
+   "local_player": "1",
+   "dist0": 15.64,
+   "dist_min": 2.18,
+   "closed_m": 13.46,
+   "last_pos": [
+    -51.63,
+    2.54,
+    23.99
+   ],
+   "arrived_s": 7.82,
+   "elapsed_s": 10.27,
+   "best_dy": 0.46,
+   "reachable_last": true,
+   "path_len_first": 16,
+   "path_len_last": 16,
+   "player_snap": [
+    -49.5,
+    3.1,
+    23.89
+   ],
+   "confirm_move": 0.0,
+   "confirm_attack": true,
+   "route": "walked",
+   "verdict": "PASS",
+   "kind": "walked",
+   "diagnosis": "WALKED to 2.18 m on the player's level at t=7.8s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 3.8 m/s walk budget (loudest 1.00x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe",
+   "attempt": 1,
+   "attempts_voided": 0,
+   "void_attempts": [],
+   "native": {
+    "verdict": "PASS",
+    "kind": "walked",
+    "route": "walked",
+    "teleport": null,
+    "watchdog_relocated": false,
+    "arrived_s": 7.05,
+    "reachable_last": true,
+    "path_len_first": 16,
+    "path_len_last": 4,
+    "path_was_progressing": null,
+    "diagnosis": "WALKED to 2.19 m on the player's level at t=7.0s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 4.0 m/s walk budget (loudest 1.02x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe"
+   },
+   "watchdog_relocated_native": false
+  },
+  {
+   "probe": "yard_deck",
+   "expect_fail": false,
+   "immune": true,
+   "player_pos": [
+    49.5,
+    5.2,
+    48.4
+   ],
+   "stand_drift_xz": 0.0,
+   "enemy": "RobotEnemy",
+   "immunised": true,
+   "walk_speed": 3.8,
+   "walk_speed_source": "Settings.ENEMY_STATS[robot_grunt].speed x 0.95 slow",
+   "samples": [
+    {
+     "t": 0.01,
+     "dist": 16.07,
+     "dy": -5.26,
+     "pos": [
+      34.44,
+      -0.06,
+      46.46
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 0.93,
+     "dist": 13.71,
+     "dy": -5.25,
+     "pos": [
+      36.85,
+      -0.05,
+      49.06
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 1.69,
+     "dist": 12.16,
+     "dy": -5.25,
+     "pos": [
+      38.93,
+      -0.05,
+      51.32
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 2.48,
+     "dist": 11.2,
+     "dy": -5.25,
+     "pos": [
+      41.08,
+      -0.05,
+      53.59
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.25,
+     "dist": 9.29,
+     "dy": -5.25,
+     "pos": [
+      44.07,
+      -0.05,
+      53.82
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 4.03,
+     "dist": 7.69,
+     "dy": -5.25,
+     "pos": [
+      47.19,
+      -0.05,
+      53.52
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 4.83,
+     "dist": 7.17,
+     "dy": -5.25,
+     "pos": [
+      50.22,
+      -0.05,
+      53.24
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 5.63,
+     "dist": 7.89,
+     "dy": -5.25,
+     "pos": [
+      53.24,
+      -0.05,
+      52.95
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 6.4,
+     "dist": 9.48,
+     "dy": -5.25,
+     "pos": [
+      56.15,
+      -0.05,
+      52.66
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.18,
+     "dist": 9.33,
+     "dy": -4.95,
+     "pos": [
+      56.73,
+      0.25,
+      51.59
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.95,
+     "dist": 6.98,
+     "dy": -3.58,
+     "pos": [
+      54.82,
+      1.62,
+      51.16
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 8.76,
+     "dist": 4.61,
+     "dy": -2.12,
+     "pos": [
+      52.77,
+      3.08,
+      50.86
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 9.53,
+     "dist": 2.67,
+     "dy": -0.74,
+     "pos": [
+      50.84,
+      4.46,
+      50.59
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.31,
+     "dist": 2.15,
+     "dy": -0.39,
+     "pos": [
+      50.35,
+      4.81,
+      50.34
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 11.08,
+     "dist": 2.15,
+     "dy": -0.39,
+     "pos": [
+      50.35,
+      4.81,
+      50.34
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 11.86,
+     "dist": 2.15,
+     "dy": -0.39,
+     "pos": [
+      50.35,
+      4.81,
+      50.34
+     ],
+     "state": 2,
+     "target": "1"
+    },
+    {
+     "t": 12.68,
+     "dist": 2.15,
+     "dy": -0.39,
+     "pos": [
+      50.35,
+      4.81,
+      50.34
+     ],
+     "state": 2,
+     "target": "1"
+    }
+   ],
+   "nav": [
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 0.01
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 1.69
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 3.25
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 4.83
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 6.4
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 7.95
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 9.53
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 11.08
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 11.86
+    },
+    {
+     "agent_map_iteration": 32,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 21,
+     "reachable": true,
+     "target": [
+      49.5,
+      5.2,
+      48.4
+     ],
+     "player_snap": [
+      49.5,
+      5.43,
+      48.4
+     ],
+     "t": 12.68
+    }
+   ],
+   "teleports": 0,
+   "teleport_detected": false,
+   "teleport": null,
+   "first_teleport_s": null,
+   "walk_headroom": 1.06,
+   "foreign_swept": 2,
+   "max_unreachable_streak": 0,
+   "local_player": "1",
+   "dist0": 16.07,
+   "dist_min": 2.15,
+   "closed_m": 13.92,
+   "last_pos": [
+    50.35,
+    4.81,
+    50.34
+   ],
+   "arrived_s": 10.31,
+   "elapsed_s": 12.68,
+   "best_dy": 0.39,
+   "reachable_last": true,
+   "path_len_first": 21,
+   "path_len_last": 21,
+   "player_snap": [
+    49.5,
+    5.43,
+    48.4
+   ],
+   "confirm_move": 0.0,
+   "confirm_attack": true,
+   "route": "walked",
+   "verdict": "PASS",
+   "kind": "walked",
+   "diagnosis": "WALKED to 2.15 m on the player's level at t=10.3s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 3.8 m/s walk budget (loudest 1.06x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe",
+   "attempt": 1,
+   "attempts_voided": 0,
+   "void_attempts": [],
+   "native": {
+    "verdict": "PASS",
+    "kind": "walked",
+    "route": "walked",
+    "teleport": null,
+    "watchdog_relocated": false,
+    "arrived_s": 9.38,
+    "reachable_last": true,
+    "path_len_first": 21,
+    "path_len_last": 8,
+    "path_was_progressing": null,
+    "diagnosis": "WALKED to 2.16 m on the player's level at t=9.4s, confirmed by 3 more samples (tail moved 0.00 m, attack=True); every step was inside the 4.0 m/s walk budget (loudest 1.00x of it, threshold 1.5x) \u2014 no watchdog relocation anywhere in the probe"
+   },
+   "watchdog_relocated_native": false
+  },
+  {
+   "probe": "crate_top_negctl",
+   "expect_fail": true,
+   "immune": true,
+   "player_pos": [
+    42.5,
+    3.3,
+    50.0
+   ],
+   "stand_drift_xz": 0.0,
+   "enemy": "RobotEnemy",
+   "immunised": true,
+   "walk_speed": 3.8,
+   "walk_speed_source": "Settings.ENEMY_STATS[robot_grunt].speed x 0.95 slow",
+   "samples": [
+    {
+     "t": 0.01,
+     "dist": 11.58,
+     "dy": -3.68,
+     "pos": [
+      32.41,
+      -0.38,
+      54.32
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 0.78,
+     "dist": 8.98,
+     "dy": -3.35,
+     "pos": [
+      35.33,
+      -0.05,
+      54.23
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 1.55,
+     "dist": 6.84,
+     "dy": -3.35,
+     "pos": [
+      38.24,
+      -0.05,
+      54.17
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 2.33,
+     "dist": 5.46,
+     "dy": -3.35,
+     "pos": [
+      41.22,
+      -0.05,
+      54.11
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.11,
+     "dist": 4.69,
+     "dy": -3.35,
+     "pos": [
+      43.53,
+      -0.05,
+      53.11
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 3.9,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 4.68,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.47
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 5.46,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 6.23,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.01,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.47
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 7.77,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 8.58,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.47
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 9.35,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.47
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.13,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 10.9,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.47
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 11.68,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 12.48,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 13.43,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.47
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 14.2,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.47
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 14.98,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 15.74,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.54
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 16.56,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.52
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 17.33,
+     "dist": 3.67,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.52
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 18.16,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 18.93,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 19.71,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 20.51,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 21.3,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 22.08,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 22.9,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 23.68,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 24.49,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 25.28,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 26.06,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 26.83,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 27.61,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 28.4,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.44
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 29.18,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 29.95,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 30.75,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 31.51,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 32.35,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 33.11,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.9,
+      -0.05,
+      50.51
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 33.91,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.46
+     ],
+     "state": 1,
+     "target": "1"
+    },
+    {
+     "t": 34.68,
+     "dist": 3.66,
+     "dy": -3.35,
+     "pos": [
+      43.91,
+      -0.05,
+      50.46
+     ],
+     "state": 1,
+     "target": "1"
+    }
+   ],
+   "nav": [
+    {
+     "agent_map_iteration": 35,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 0.01
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 1.55
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": false,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 3.11
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 4.68
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 6.23
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 7.77
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 9.35
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 10.9
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 12.48
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 14.2
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 15.74
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 17.33
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 18.93
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 20.51
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 22.08
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 23.68
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 25.28
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 26.83
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 28.4
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 29.95
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 31.51
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 33.11
+    },
+    {
+     "agent_map_iteration": 35,
+     "finished": true,
+     "name": "RobotEnemy",
+     "path_len": 11,
+     "reachable": false,
+     "target": [
+      42.5,
+      3.3,
+      50.0
+     ],
+     "player_snap": [
+      42.5,
+      2.83,
+      49.3
+     ],
+     "t": 34.68
+    }
+   ],
+   "teleports": 0,
+   "teleport_detected": false,
+   "teleport": null,
+   "first_teleport_s": null,
+   "walk_headroom": 1.0,
+   "foreign_swept": 9,
+   "max_unreachable_streak": 23,
+   "local_player": "1",
+   "dist0": 11.58,
+   "dist_min": 3.66,
+   "closed_m": 7.92,
+   "last_pos": [
+    43.91,
+    -0.05,
+    50.46
+   ],
+   "arrived_s": null,
+   "elapsed_s": 34.68,
+   "best_dy": 3.35,
+   "reachable_last": false,
+   "path_len_first": 11,
+   "path_len_last": 11,
+   "player_snap": [
+    42.5,
+    2.83,
+    49.3
+   ],
+   "verdict": "FAIL",
+   "route": "none",
+   "kind": "not-in-navmesh",
+   "diagnosis": "floor not in navmesh: NavigationAgent3D.is_target_reachable() = false in 23 consecutive polls; closest navmesh point to the player is (42.50, 2.83, 49.30), 0.47 m below him (player y=3.30)",
+   "attempt": 1,
+   "attempts_voided": 0,
+   "void_attempts": [],
+   "native": {
+    "verdict": "FAIL",
+    "kind": "not-in-navmesh",
+    "route": "none",
+    "teleport": {
+     "t": 8.72,
+     "gain_m": 7.53,
+     "horiz_m": 7.53,
+     "climb_m": 0.0,
+     "dt_s": 0.78,
+     "allowed_m": 4.69,
+     "budget_x": 2.41,
+     "after_closure": false,
+     "from": [
+      43.9,
+      -0.05,
+      50.55
+     ],
+     "to": [
+      47.38,
+      -0.05,
+      43.87
+     ]
+    },
+    "watchdog_relocated": true,
+    "arrived_s": null,
+    "reachable_last": false,
+    "path_len_first": 11,
+    "path_len_last": 2,
+    "path_was_progressing": null,
+    "diagnosis": "floor not in navmesh: is_target_reachable() = false in 6 consecutive polls before the stuck-watchdog relocated the body at t=8.7s; closest navmesh point to the player is (42.50, 2.83, 49.30), 0.47 m below him (player y=3.30)"
+   },
+   "watchdog_relocated_native": true
+  }
+ ]
+}

@@ -32,7 +32,10 @@ const ZONES := {
 	8: {"kind": "desert", "radius": 38.0, "top": 16.0},  # Desert Ruins (SW)
 }
 
-# Per-kind base particle counts (scaled by particle_density at build + climate_density live).
+# Per-kind base particle counts. FAIRNESS: climate precipitation is deliberately NOT
+# scaled by the particle_density quality lever (that lever now drives only the
+# gameplay-neutral ambient dust/embers) — weather visibility must be identical on every
+# preset. Only climate_density (preset-equal, manual slider = Custom) modulates it live.
 const BASE_AMOUNT := {"rain": 950, "snow": 460, "desert": 320}
 
 # Cached soft-radial decal texture (white RGB, radial alpha) — one shared instance.
@@ -70,14 +73,12 @@ static func _add_zone(root: Node3D, center: Vector3, prof: Dictionary) -> void:
 	var kind: String = String(prof["kind"])
 	var radius: float = float(prof["radius"])
 	var top: float = float(prof["top"])
-	# Particle count scales with the ambient particle-density quality lever (like dust/embers).
-	var pd: float = clampf(float(SettingsManager.get_value("particle_density")), 0.0, 1.5)
 	var zone := Node3D.new()
 	zone.name = "Climate_%s" % kind
 	root.add_child(zone)
 	zone.global_position = Vector3(center.x, 0.0, center.z)
-	# Precipitation / haze.
-	var p := _build_particles(kind, radius, top, pd)
+	# Precipitation / haze — fixed base amount (fair across presets; see BASE_AMOUNT).
+	var p := _build_particles(kind, radius, top)
 	zone.add_child(p)
 	# Ground tint (conforms to terrain relief).
 	var dec := _build_decal(kind, radius)
@@ -88,10 +89,10 @@ static func _add_zone(root: Node3D, center: Vector3, prof: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- particles
-static func _build_particles(kind: String, radius: float, top: float, pd: float) -> GPUParticles3D:
+static func _build_particles(kind: String, radius: float, top: float) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.name = "Precip"
-	p.amount = maxi(1, int(float(int(BASE_AMOUNT.get(kind, 300))) * clampf(pd, 0.05, 1.5)))
+	p.amount = int(BASE_AMOUNT.get(kind, 300))
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.fixed_fps = 24
 	p.randomness = 1.0
@@ -198,8 +199,14 @@ static func _build_decal(kind: String, radius: float) -> Decal:
 			dec.modulate = Color(0.16, 0.18, 0.22)  # dark wet sheen
 			dec.albedo_mix = 0.55
 		"snow":
-			dec.modulate = Color(0.93, 0.96, 1.0)  # white snow blanket
-			dec.albedo_mix = 0.88
+			# Capped below pure white (P3): the 0.93+ blanket blew out under the hot sun.
+			# M6.10 — pushed further DOWN and colder (0.72 grey → 0.58 blue-grey): from INSIDE
+			# the zone the ground still out-shone the deliberately thin fog, so every prop and
+			# enemy read as a dark cut-out on a white sheet. The lower albedo_mix (0.70 → 0.60)
+			# also lets the terrain's own rock/gravel splat through, so the field has texture
+			# to sit against instead of one flat blanket.
+			dec.modulate = Color(0.58, 0.62, 0.72)
+			dec.albedo_mix = 0.6
 		_:  # desert
 			dec.modulate = Color(0.80, 0.66, 0.38)  # warm sand
 			dec.albedo_mix = 0.6
@@ -233,19 +240,26 @@ static func _build_fog(kind: String, radius: float, top: float) -> FogVolume:
 	fog.position = Vector3(0.0, top * 0.35, 0.0)
 	var mat := FogMaterial.new()
 	mat.edge_fade = 0.5
+	# Fog SHADES, never glows (art-panel P3/P4): the old bright-albedo snow fog +
+	# the 2.8 sun multiplied into a total whiteout — the biome read as a white void.
 	var base: float = 0.5
 	match kind:
 		"rain":
-			mat.albedo = Color(0.55, 0.60, 0.68)
-			base = 0.7
+			mat.albedo = Color(0.48, 0.54, 0.62)
+			base = 0.55
 			mat.height_falloff = 0.2
 		"snow":
-			mat.albedo = Color(0.90, 0.93, 0.98)
-			base = 0.5
+			# 0.28 still read as milk from INSIDE the 35 m zone — 0.12 keeps a cold
+			# haze while the lodge/enemies stay readable silhouettes. M6.10: with the
+			# ground decal darkened the fog can carry a little more weight (0.12 → 0.16)
+			# and go colder/dimmer, so it SHADES the depth between the player and the
+			# lodge instead of sitting as a separate bright veil.
+			mat.albedo = Color(0.56, 0.62, 0.72)
+			base = 0.16
 			mat.height_falloff = 0.25
 		_:  # desert
-			mat.albedo = Color(0.84, 0.71, 0.45)
-			base = 0.55
+			mat.albedo = Color(0.66, 0.56, 0.38)
+			base = 0.4
 			mat.height_falloff = 0.18
 	mat.density = base * clampf(Settings.climate_density, 0.0, 2.0)
 	fog.material = mat

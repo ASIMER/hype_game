@@ -90,6 +90,9 @@ var stance: int = Stance.STAND
 ## so remotes render this player's chosen look. The body is (re)built whenever it changes.
 var cosmetics: Dictionary = {}
 var _built_cos_str: String = ""  # signature of the cosmetics the body was last built from
+## Harvested body-part skills {skill_id: level} — owner-replicated; the Skills node owns all
+## logic (this lives here only so the SceneReplicationConfig can sync it). See player_skills.gd.
+var skills: Dictionary = {}
 var _slide_timer: float = 0.0  # counts down during a SLIDE
 var _slide_dir: Vector3 = Vector3.ZERO  # locked horizontal entry direction of the slide
 # Dodge-roll (Stance.ROLL) — authority-local except the replicated stance int itself.
@@ -110,8 +113,8 @@ var _zipline: Node = null
 var _gear: PlayerGear = null  # grenade/gadget verbs component (created in _ready)
 var _cam_base_y: float = 1.5  # CameraPivot's base local Y (cached once in _ready)
 
-# --- View toggle + camera-from-settings (authority only) ---
-var _first_person: bool = false  # init from Settings.default_first_person in _ready
+# --- View ZOOM cycle (V) + camera-from-settings (authority only) ---
+var _view_step: int = 1  # close/med/far→first-person; V zooms out, not into the head. Reset in _ready.
 var _cam_distance_scale: float = 1.0  # cached Settings.camera_distance_scale
 var _cam_shoulder_scale: float = 1.0  # cached Settings.camera_shoulder_scale
 
@@ -166,6 +169,12 @@ func _ready() -> void:
 	_gear = PlayerGear.new()
 	_gear.name = "Gear"
 	add_child(_gear)
+	PlayerHijack.attach(self)  # Hijack & Pilot (v0.5-B2) — same component discipline
+	PlayerPadLook.attach(self)  # right-stick look, external (this file is at the ceiling)
+	# M1 body feel (landing squash / lean / dust) — owner-local render component.
+	var body_feel := PlayerBodyFeel.new()
+	body_feel.name = "BodyFeel"
+	add_child(body_feel)
 	_status = get_node_or_null("Status") as PlayerStatus
 
 	# Health is tuned from the central Settings and wired to the global bus so HUD
@@ -193,10 +202,11 @@ func _ready() -> void:
 	camera.fov = Settings.fov
 	# Cache the camera pivot's authored base height (crouch/slide lerp down from this).
 	_cam_base_y = camera_pivot.position.y
-	# Read player-tunable camera distance/shoulder + the spawn view from Settings.
 	_read_camera_settings()
-	_first_person = Settings.default_first_person
-	spring_arm.spring_length = _third_person_len()
+	# Always spawn in the third-person default — the first-person "helmet" view is
+	# REMOVED (user verdict; V cycles the three third-person zooms only).
+	_view_step = Settings.DEFAULT_VIEW_STEP
+	spring_arm.spring_length = Settings.FP_SPRING_LENGTH if _is_first_person() else _step_len()
 	spring_arm.position.x = _shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale
 	# Anti-cheat: the spring arm pulls the camera in against world geometry (layer 1, where
 	# buildings live) so you can't see through walls. A small margin avoids clipping thin
@@ -224,7 +234,7 @@ func _ready() -> void:
 		# current — guards against the client "grey screen" (no active camera).
 		_ensure_camera_current.call_deferred()
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-		Events.item_use_requested.connect(_on_item_use)
+		Events.item_use_requested.connect(_gear.on_item_use)
 		# Re-read camera distance/shoulder when the player changes them in Settings.
 		if not Events.camera_settings_changed.is_connected(_read_camera_settings):
 			Events.camera_settings_changed.connect(_read_camera_settings)
@@ -274,6 +284,10 @@ func _physics_process(delta: float) -> void:
 		_build_player_model()
 	if not is_multiplayer_authority():
 		return
+
+	# Deferred gadget placement (queued by the input handler; the ground-snap raycast
+	# must run in the physics step — see PlayerGear.physics_tick).
+	_gear.physics_tick()
 
 	# Active power-cache buffs: count down + apply per-frame effects (regen/overshield decay).
 	_tick_buffs(delta)
@@ -427,8 +441,8 @@ func _physics_process(delta: float) -> void:
 			# Wading/swimming slows movement (sluggish in water).
 			if _water_state != Water.DRY:
 				speed *= WATER_SLOW
-			# Carrying a downed buddy is slow + heavy (sidearm only).
-			if is_carrying():
+			# Carrying a downed buddy OR the Power-Core is slow + heavy.
+			if is_carrying() or _carrying_core():
 				speed *= Settings.CARRY_SPEED_MULT
 			# Active power-cache buff (Swift / Frenzy).
 			speed *= buff_speed_mult()
@@ -478,6 +492,10 @@ func _physics_process(delta: float) -> void:
 ## Fires the active weapon. Uses the WeaponController once wired (multi-weapon +
 ## ammo); falls back to the single legacy Weapon until then.
 func _fire_current() -> void:
+	var hj := get_node_or_null(Groups.NODE_HIJACK)
+	if hj != null and bool(hj.call("is_piloting")):
+		hj.call("pilot_fire")  # fire while piloting = the stolen hull's slam
+		return
 	if _weapon_controller and _weapon_controller.has_method("try_fire"):
 		_weapon_controller.try_fire(camera)
 
@@ -487,8 +505,8 @@ func _fire_current() -> void:
 ## shoulder side — so the player can see/aim around building corners.
 func _update_camera(delta: float) -> void:
 	var want_ads: bool
-	if is_carrying():
-		want_ads = false  # carrying a buddy can't ADS
+	if is_carrying() or _carrying_core():
+		want_ads = false  # carrying a buddy / the Power-Core can't ADS (hands full)
 	elif AgentBridge.active:
 		want_ads = AgentBridge.ads
 	elif Settings.ads_toggle:
@@ -500,15 +518,14 @@ func _update_camera(delta: float) -> void:
 		Events.ads_changed.emit(self, _ads)
 
 	var target_fov := _ads_fov() if _ads else Settings.fov
-	# Spring length: ADS overrides everything; else first-person vs settings-scaled
-	# third-person distance.
+	# Spring length: ADS pull-in (unless 1st-person), else the zoom-step distance.
 	var target_len: float
-	if _ads:
+	if _ads and not _is_first_person():
 		target_len = Settings.ADS_SPRING_LENGTH
-	elif _first_person:
+	elif _is_first_person():
 		target_len = Settings.FP_SPRING_LENGTH
 	else:
-		target_len = _third_person_len()
+		target_len = _step_len()
 	var base_off := (
 		_shoulder_sign * Settings.SHOULDER_OFFSET * _cam_shoulder_scale * (0.65 if _ads else 1.0)
 	)
@@ -756,26 +773,42 @@ func end_zipline(jump: bool) -> void:
 		velocity.y = Settings.PLAYER_JUMP_VELOCITY * 0.6
 
 
-## Third-person spring length, scaled by the player's camera-distance setting.
-func _third_person_len() -> float:
-	return Settings.DEFAULT_SPRING_LENGTH * _cam_distance_scale
+## True when the current zoom step is the first-person step (camera in the head, body hidden).
+func _is_first_person() -> bool:
+	return _view_step == Settings.VIEW_STEP_FIRST_PERSON
 
 
-## Re-read the player-tunable camera distance/shoulder scales from Settings. Connected to
-## Events.camera_settings_changed so live edits apply (the lerp in _update_camera eases to
-## the new target). Safe to call as a 0-arg signal handler.
+## Third-person spring length for the current zoom step (close/medium/far) × the distance setting.
+func _step_len() -> float:
+	var lengths: Array = Settings.VIEW_STEP_LENGTHS
+	var idx: int = clampi(_view_step, 0, lengths.size() - 1)
+	return float(lengths[idx]) * _cam_distance_scale
+
+
+## Re-read camera distance/shoulder scales from Settings (Events.camera_settings_changed handler).
 func _read_camera_settings() -> void:
 	_cam_distance_scale = Settings.camera_distance_scale
 	_cam_shoulder_scale = Settings.camera_shoulder_scale
 
 
+# WeaponMount poses: third-person hand height vs the FP eye-line hold (right-low-
+# forward of the 1.5 m CameraPivot so the gun reads bottom-right like classic FP).
+const _WM_POSE_TP := Vector3(0.35, 1.1, -0.35)
+const _WM_POSE_FP := Vector3(0.3, 1.3, -0.55)
+
+
 ## Show/hide the LOCAL body mesh for first/third-person. Only the authority toggles its own
-## visibility — a remote peer's body must stay visible to everyone else.
+## visibility — a remote peer's body must stay visible to everyone else. In FP the
+## WeaponMount also lifts to the eye line — the hand-height hold sat below the frame,
+## so first-person showed NO weapon at all.
 func _apply_view_visibility() -> void:
 	if not is_multiplayer_authority():
 		return
 	if model_root:
-		model_root.visible = not _first_person
+		model_root.visible = not _is_first_person()
+	var mount := get_node_or_null("WeaponMount") as Node3D
+	if mount:
+		mount.position = _WM_POSE_FP if _is_first_person() else _WM_POSE_TP
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -802,9 +835,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		# converged shot keeps the same impact point).
 		_shoulder_sign = -_shoulder_sign
 	elif event.is_action_pressed("toggle_view"):
-		# Flip between third- and first-person. The spring-length target folds into the
-		# ADS lerp in _update_camera; the local body is hidden in first-person.
-		_first_person = not _first_person
+		# V = ZOOM cycle: close→medium→far→first-person→close (folds into the _update_camera lerp).
+		_view_step = (_view_step + 1) % Settings.VIEW_STEP_COUNT
 		_apply_view_visibility()
 	elif event.is_action_pressed("heal"):
 		# While downed the heal key triggers a SELF-REVIVE (if you brought one); the crawl
@@ -1078,39 +1110,12 @@ func _update_interaction() -> void:
 	_interact_target = best
 	if best:
 		var item_id := str(best.get("item_id")) if "item_id" in best else "item"
-		if item_id == "power_cache":
-			Events.interaction_available.emit(tr("Open Power Cache"), best)
-		else:
-			var nice := item_id.replace("loot_", "").capitalize()
-			Events.interaction_available.emit(tr("Pick up %s") % nice, best)
+		Events.interaction_available.emit(Settings.loot_prompt(item_id), best)
 	else:
 		Events.interaction_cleared.emit()
 
 
 ## Inventory UI -> player: use a carried item by id.
-func _on_item_use(item_id: String) -> void:
-	if not is_multiplayer_authority():
-		return
-	match item_id:
-		"loot_medkit", "medkit":
-			_try_heal()
-		"loot_grenade", "grenade":
-			# Inventory-Use throws a FRAG specifically (the G key throws the selection).
-			_grenade_sel = "frag"
-			if int(_grenade_counts.get("frag", 0)) <= 0:
-				_grenade_counts["frag"] = 1
-			_gear.throw_selected()
-		"loot_grenade_smoke", "loot_grenade_emp", "loot_grenade_decoy":
-			var gtype := item_id.trim_prefix("loot_grenade_")
-			_grenade_sel = gtype
-			if int(_grenade_counts.get(gtype, 0)) <= 0:
-				_grenade_counts[gtype] = 1
-			_gear.throw_selected()
-		Settings.SELF_REVIVE_ITEM, "self_revive":
-			if downed:
-				_self_revive()
-
-
 # --- Active power-cache buffs ------------------------------------------------
 ## Server → opener: roll a power, play the NON-BLOCKING reveal, then apply it AFTER the reveal.
 ## Runs on the opener's own client (its authority), so it rolls from THAT player's unlocked pool
@@ -1365,6 +1370,10 @@ func _true_death() -> void:
 	# gear-profile lane lands).
 	if is_multiplayer_authority() and MetaProgression.has_method("convert_insured_to_pending"):
 		MetaProgression.convert_insured_to_pending()
+	# Machine Nemesis (Phase 3): the owner reports its at-risk gear to the host so a
+	# surviving rival "wears" + drops it on defeat ("reclaim your armor").
+	if is_multiplayer_authority():
+		NetworkManager.report_nemesis_loss(RaidManager.committed_item_ids())
 	var pid := str(name).to_int()
 	if GameState.is_local_authority_server():
 		_server_handle_death(pid)
@@ -1751,6 +1760,12 @@ func noise_radius() -> float:
 ## True if the local player can only use a sidearm / can't ADS (carrying a buddy).
 func is_carrying() -> bool:
 	return _carry_target != null
+
+
+## Carrying the Phase-4 Power-Core (state owned by PowerCoreDirector). Blocks ADS + slows
+## (NOT fire — unlike buddy-carry, you can still shoot your way to evac). Read-only here.
+func _carrying_core() -> bool:
+	return PowerCoreDirector.is_carried_by(str(name).to_int())
 
 
 ## Client -> server: "my player died". Server-only resolution below.

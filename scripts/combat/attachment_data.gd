@@ -26,6 +26,9 @@ class_name AttachmentData
 @export var reserve_add: int = 0
 @export var crit_add: float = 0.0
 @export var noise_mult: float = 1.0  # <1 = quieter (suppressor); composable
+## Elemental ammo (Chemistry Phase 6): "" = none, else "shock"|"burn"|"slow" — the mag
+## turns every landed hit into a machine-chemistry tag (last equipped element wins).
+@export var element: String = ""
 
 
 ## Applies this attachment's mods to a (duplicated) WeaponData in place.
@@ -42,6 +45,8 @@ func apply_to(w: WeaponData) -> void:
 	w.crit_mult = maxf(1.0, w.crit_mult + crit_add)
 	if "noise_mult" in w:
 		w.noise_mult *= noise_mult
+	if element != "" and "element" in w:
+		w.element = element
 
 
 ## True when this attachment fits the given weapon id.
